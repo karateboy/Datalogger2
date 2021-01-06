@@ -1,0 +1,189 @@
+2020.12.25 01:41:16 INFO  Started: Metals version 0.9.8 in workspace 'D:\webApp\DataLogger2' for client vscode.
+2020.12.25 01:41:17 INFO  time: initialize in 0.44s
+2020.12.25 01:41:17 WARN  Build server is not auto-connectable.
+2020.12.25 01:41:17 WARN  Unsupported sbt version 0.13.8
+2020.12.25 01:41:58 WARN  no build target for: D:\webApp\DataLogger2\app\Global.scala
+2020.12.25 01:42:02 INFO  no build target: using presentation compiler with only scala-library
+2020.12.25 01:42:13 WARN  code navigation does not work for the file 'D:\webApp\DataLogger2\app\Global.scala' because it doesn't belong to a build target.
+2020.12.25 01:43:54 INFO  shutting down Metals
+2020.12.25 01:44:07 INFO  Started: Metals version 0.9.8 in workspace 'D:\webApp\DataLogger2' for client vscode.
+2020.12.25 01:44:07 INFO  time: initialize in 0.52s
+2020.12.25 01:44:08 WARN  Build server is not auto-connectable.
+2020.12.25 01:44:14 INFO  running 'C:\Program Files\Java\jdk1.8.0_201\bin\java -Djline.terminal=jline.UnsupportedTerminal -Dsbt.log.noformat=true -Dfile.encoding=UTF-8 -jar C:\Users\user\AppData\Local\Temp\metals7345953218791795085\sbt-launch.jar -Dbloop.export-jar-classifiers=sources bloopInstall'
+2020.12.25 01:44:15 ERROR [warn] [launcher] insecure HTTP request is deprecated 'http://repo.typesafe.com/typesafe/releases'; switch to HTTPS or opt-in as ',allowInsecureProtocol'
+2020.12.25 01:44:15 ERROR [warn] [launcher] insecure HTTP request is deprecated 'http://repo.typesafe.com/typesafe/ivy-releases'; switch to HTTPS or opt-in as ',allowInsecureProtocol'
+2020.12.25 01:44:15 ERROR [info] [launcher] getting org.scala-sbt sbt 1.4.5  (this may take some time)...
+2020.12.25 01:44:52 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/sbt/1.4.5/sbt-1.4.5.jar ...
+2020.12.25 01:44:52 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/main_2.12/1.4.5/main_2.12-1.4.5.jar ...
+2020.12.25 01:44:52 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/logic_2.12/1.4.5/logic_2.12-1.4.5.jar ...
+2020.12.25 01:44:52 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/actions_2.12/1.4.5/actions_2.12-1.4.5.jar ...
+2020.12.25 01:44:52 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/run_2.12/1.4.5/run_2.12-1.4.5.jar ...
+2020.12.25 01:44:52 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/main-settings_2.12/1.4.5/main-settings_2.12-1.4.5.jar ...
+2020.12.25 01:44:52 ERROR :: loading settings :: url = jar:file:/C:/Users/user/AppData/Local/Temp/metals7345953218791795085/sbt-launch.jar!/org/apache/ivy/core/settings/ivysettings.xml
+2020.12.25 01:44:52 ERROR :: loading settings :: url = jar:file:/C:/Users/user/AppData/Local/Temp/metals7345953218791795085/sbt-launch.jar!/org/apache/ivy/core/settings/ivysettings.xml
+2020.12.25 01:44:52 ERROR :: loading settings :: url = jar:file:/C:/Users/user/AppData/Local/Temp/metals7345953218791795085/sbt-launch.jar!/org/apache/ivy/core/settings/ivysettings.xml
+2020.12.25 01:44:52 ERROR :: loading settings :: url = jar:file:/C:/Users/user/AppData/Local/Temp/metals7345953218791795085/sbt-launch.jar!/org/apache/ivy/core/settings/ivysettings.xml
+2020.12.25 01:44:52 ERROR :: loading settings :: url = jar:file:/C:/Users/user/AppData/Local/Temp/metals7345953218791795085/sbt-launch.jar!/org/apache/ivy/core/settings/ivysettings.xml
+2020.12.25 01:44:52 ERROR :: loading settings :: url = jar:file:/C:/Users/user/AppData/Local/Temp/metals7345953218791795085/sbt-launch.jar!/org/apache/ivy/core/settings/ivysettings.xml
+2020.12.25 01:44:52 ERROR :: loading settings :: url = jar:file:/C:/Users/user/AppData/Local/Temp/metals7345953218791795085/sbt-launch.jar!/org/apache/ivy/core/settings/ivysettings.xml
+2020.12.25 01:44:52 ERROR :: loading settings :: url = jar:file:/C:/Users/user/AppData/Local/Temp/metals7345953218791795085/sbt-launch.jar!/org/apache/ivy/core/settings/ivysettings.xml
+2020.12.25 01:44:52 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/command_2.12/1.4.5/command_2.12-1.4.5.jar ...
+2020.12.25 01:44:52 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/collections_2.12/1.4.5/collections_2.12-1.4.5.jar ...
+2020.12.25 01:44:52 ERROR 	[SUCCESSFUL ] org.scala-sbt#sbt;1.4.5!sbt.jar (741ms)
+2020.12.25 01:44:52 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/scripted-plugin_2.12/1.4.5/scripted-plugin_2.12-1.4.5.jar ...
+2020.12.25 01:44:53 ERROR 	[SUCCESSFUL ] org.scala-sbt#logic_2.12;1.4.5!logic_2.12.jar (1041ms)
+2020.12.25 01:44:53 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/zinc-lm-integration_2.12/1.4.5/zinc-lm-integration_2.12-1.4.5.jar ...
+2020.12.25 01:44:53 ERROR 	[SUCCESSFUL ] org.scala-sbt#run_2.12;1.4.5!run_2.12.jar (1118ms)
+2020.12.25 01:44:53 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/util-logging_2.12/1.4.5/util-logging_2.12-1.4.5.jar ...
+2020.12.25 01:44:53 ERROR 	[SUCCESSFUL ] org.scala-sbt#scripted-plugin_2.12;1.4.5!scripted-plugin_2.12.jar (530ms)
+2020.12.25 01:44:53 ERROR downloading https://repo1.maven.org/maven2/io/get-coursier/lm-coursier-shaded_2.12/2.0.4/lm-coursier-shaded_2.12-2.0.4.jar ...
+2020.12.25 01:44:53 ERROR 	[SUCCESSFUL ] org.scala-sbt#command_2.12;1.4.5!command_2.12.jar (1300ms)
+2020.12.25 01:44:53 ERROR downloading https://repo1.maven.org/maven2/com/swoval/file-tree-views/2.1.6/file-tree-views-2.1.6.jar ...
+2020.12.25 01:44:53 ERROR 	[SUCCESSFUL ] org.scala-sbt#actions_2.12;1.4.5!actions_2.12.jar (1410ms)
+2020.12.25 01:44:53 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/librarymanagement-core_2.12/1.4.1/librarymanagement-core_2.12-1.4.1.jar ...
+2020.12.25 01:44:53 ERROR 	[SUCCESSFUL ] org.scala-sbt#collections_2.12;1.4.5!collections_2.12.jar (1473ms)
+2020.12.25 01:44:53 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/librarymanagement-ivy_2.12/1.4.1/librarymanagement-ivy_2.12-1.4.1.jar ...
+2020.12.25 01:44:53 ERROR 	[SUCCESSFUL ] org.scala-sbt#zinc-lm-integration_2.12;1.4.5!zinc-lm-integration_2.12.jar (603ms)
+2020.12.25 01:44:53 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/compiler-interface/1.4.3/compiler-interface-1.4.3.jar ...
+2020.12.25 01:44:53 ERROR 	[SUCCESSFUL ] org.scala-sbt#main-settings_2.12;1.4.5!main-settings_2.12.jar (1724ms)
+2020.12.25 01:44:53 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/zinc-compile_2.12/1.4.3/zinc-compile_2.12-1.4.3.jar ...
+2020.12.25 01:44:53 ERROR 	[SUCCESSFUL ] org.scala-sbt#main_2.12;1.4.5!main_2.12.jar (1932ms)
+2020.12.25 01:44:53 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/util-relation_2.12/1.4.5/util-relation_2.12-1.4.5.jar ...
+2020.12.25 01:44:53 ERROR 	[SUCCESSFUL ] com.swoval#file-tree-views;2.1.6!file-tree-views.jar (603ms)
+2020.12.25 01:44:53 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/util-position_2.12/1.4.5/util-position_2.12-1.4.5.jar ...
+2020.12.25 01:44:54 ERROR 	[SUCCESSFUL ] org.scala-sbt#util-logging_2.12;1.4.5!util-logging_2.12.jar (939ms)
+2020.12.25 01:44:54 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/completion_2.12/1.4.5/completion_2.12-1.4.5.jar ...
+2020.12.25 01:44:54 ERROR 	[SUCCESSFUL ] org.scala-sbt#compiler-interface;1.4.3!compiler-interface.jar (614ms)
+2020.12.25 01:44:54 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/task-system_2.12/1.4.5/task-system_2.12-1.4.5.jar ...
+2020.12.25 01:44:54 ERROR 	[SUCCESSFUL ] org.scala-sbt#zinc-compile_2.12;1.4.3!zinc-compile_2.12.jar (717ms)
+2020.12.25 01:44:54 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/tasks_2.12/1.4.5/tasks_2.12-1.4.5.jar ...
+2020.12.25 01:44:54 ERROR 	[SUCCESSFUL ] org.scala-sbt#librarymanagement-core_2.12;1.4.1!librarymanagement-core_2.12.jar (1138ms)
+2020.12.25 01:44:54 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/testing_2.12/1.4.5/testing_2.12-1.4.5.jar ...
+2020.12.25 01:44:54 ERROR 	[SUCCESSFUL ] org.scala-sbt#util-relation_2.12;1.4.5!util-relation_2.12.jar (620ms)
+2020.12.25 01:44:54 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/util-tracking_2.12/1.4.5/util-tracking_2.12-1.4.5.jar ...
+2020.12.25 01:44:54 ERROR 	[SUCCESSFUL ] org.scala-sbt#util-position_2.12;1.4.5!util-position_2.12.jar (628ms)
+2020.12.25 01:44:54 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/zinc-classpath_2.12/1.4.3/zinc-classpath_2.12-1.4.3.jar ...
+2020.12.25 01:44:54 ERROR 	[SUCCESSFUL ] org.scala-sbt#librarymanagement-ivy_2.12;1.4.1!librarymanagement-ivy_2.12.jar (1121ms)
+2020.12.25 01:44:54 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/zinc-apiinfo_2.12/1.4.3/zinc-apiinfo_2.12-1.4.3.jar ...
+2020.12.25 01:44:54 ERROR 	[SUCCESSFUL ] org.scala-sbt#task-system_2.12;1.4.5!task-system_2.12.jar (552ms)
+2020.12.25 01:44:54 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/zinc_2.12/1.4.3/zinc_2.12-1.4.3.jar ...
+2020.12.25 01:44:55 ERROR 	[SUCCESSFUL ] org.scala-sbt#completion_2.12;1.4.5!completion_2.12.jar (1012ms)
+2020.12.25 01:44:55 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/util-control_2.12/1.4.5/util-control_2.12-1.4.5.jar ...
+2020.12.25 01:44:55 ERROR 	[SUCCESSFUL ] org.scala-sbt#zinc-classpath_2.12;1.4.3!zinc-classpath_2.12.jar (568ms)
+2020.12.25 01:44:55 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/util-interface/1.4.5/util-interface-1.4.5.jar ...
+2020.12.25 01:44:55 ERROR 	[SUCCESSFUL ] org.scala-sbt#tasks_2.12;1.4.5!tasks_2.12.jar (719ms)
+2020.12.25 01:44:55 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/core-macros_2.12/1.4.5/core-macros_2.12-1.4.5.jar ...
+2020.12.25 01:44:55 ERROR 	[SUCCESSFUL ] org.scala-sbt#util-tracking_2.12;1.4.5!util-tracking_2.12.jar (651ms)
+2020.12.25 01:44:55 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/util-cache_2.12/1.4.5/util-cache_2.12-1.4.5.jar ...
+2020.12.25 01:44:55 ERROR 	[SUCCESSFUL ] org.scala-sbt#zinc-apiinfo_2.12;1.4.3!zinc-apiinfo_2.12.jar (616ms)
+2020.12.25 01:44:55 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/test-agent/1.4.5/test-agent-1.4.5.jar ...
+2020.12.25 01:44:55 ERROR 	[SUCCESSFUL ] io.get-coursier#lm-coursier-shaded_2.12;2.0.4!lm-coursier-shaded_2.12.jar (2015ms)
+2020.12.25 01:44:55 ERROR 	[SUCCESSFUL ] org.scala-sbt#testing_2.12;1.4.5!testing_2.12.jar (738ms)
+2020.12.25 01:44:55 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/compiler-bridge_2.12/1.4.3/compiler-bridge_2.12-1.4.3.jar ...
+2020.12.25 01:44:55 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/zinc-classfile_2.12/1.4.3/zinc-classfile_2.12-1.4.3.jar ...
+2020.12.25 01:44:55 ERROR 	[SUCCESSFUL ] org.scala-sbt#zinc_2.12;1.4.3!zinc_2.12.jar (539ms)
+2020.12.25 01:44:55 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/zinc-core_2.12/1.4.3/zinc-core_2.12-1.4.3.jar ...
+2020.12.25 01:44:55 ERROR 	[SUCCESSFUL ] org.scala-sbt#util-control_2.12;1.4.5!util-control_2.12.jar (626ms)
+2020.12.25 01:44:55 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/zinc-persist_2.12/1.4.3/zinc-persist_2.12-1.4.3.jar ...
+2020.12.25 01:44:55 ERROR 	[SUCCESSFUL ] org.scala-sbt#util-interface;1.4.5!util-interface.jar (591ms)
+2020.12.25 01:44:55 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/zinc-compile-core_2.12/1.4.3/zinc-compile-core_2.12-1.4.3.jar ...
+2020.12.25 01:44:55 ERROR 	[SUCCESSFUL ] org.scala-sbt#test-agent;1.4.5!test-agent.jar (553ms)
+2020.12.25 01:44:55 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/zinc-persist-core-assembly/1.4.3/zinc-persist-core-assembly-1.4.3.jar ...
+2020.12.25 01:44:55 ERROR 	[SUCCESSFUL ] org.scala-sbt#core-macros_2.12;1.4.5!core-macros_2.12.jar (654ms)
+2020.12.25 01:44:55 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/protocol_2.12/1.4.5/protocol_2.12-1.4.5.jar ...
+2020.12.25 01:44:55 ERROR 	[SUCCESSFUL ] org.scala-sbt#util-cache_2.12;1.4.5!util-cache_2.12.jar (666ms)
+2020.12.25 01:44:55 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/ipcsocket/ipcsocket/1.3.0/ipcsocket-1.3.0.jar ...
+2020.12.25 01:44:55 ERROR 	[SUCCESSFUL ] org.scala-sbt#zinc-classfile_2.12;1.4.3!zinc-classfile_2.12.jar (606ms)
+2020.12.25 01:44:55 ERROR downloading https://repo1.maven.org/maven2/org/scala-lang/modules/scala-collection-compat_2.12/2.2.0/scala-collection-compat_2.12-2.2.0.jar ...
+2020.12.25 01:44:55 ERROR 	[SUCCESSFUL ] org.scala-sbt#compiler-bridge_2.12;1.4.3!compiler-bridge_2.12.jar (625ms)
+2020.12.25 01:44:55 ERROR downloading https://repo1.maven.org/maven2/org/scala-sbt/ivy/ivy/2.3.0-sbt-fbc4f586aeeb1591710b14eb4f41b94880dcd745/ivy-2.3.0-sbt-fbc4f586aeeb1591710b14eb4f41b94880dcd745.jar ...
+2020.12.25 01:44:55 ERROR 	[SUCCESSFUL ] org.scala-sbt#zinc-core_2.12;1.4.3!zinc-core_2.12.jar (629ms)
+2020.12.25 01:44:56 ERROR 	[SUCCESSFUL ] org.scala-sbt#zinc-persist_2.12;1.4.3!zinc-persist_2.12.jar (652ms)
+2020.12.25 01:44:56 ERROR 	[SUCCESSFUL ] org.scala-sbt#zinc-compile-core_2.12;1.4.3!zinc-compile-core_2.12.jar (761ms)
+2020.12.25 01:44:56 ERROR 	[SUCCESSFUL ] org.scala-sbt#zinc-persist-core-assembly;1.4.3!zinc-persist-core-assembly.jar (1023ms)
+2020.12.25 01:44:56 ERROR 	[SUCCESSFUL ] org.scala-lang.modules#scala-collection-compat_2.12;2.2.0!scala-collection-compat_2.12.jar (958ms)
+2020.12.25 01:44:56 ERROR 	[SUCCESSFUL ] org.scala-sbt.ipcsocket#ipcsocket;1.3.0!ipcsocket.jar (1052ms)
+2020.12.25 01:44:56 ERROR 	[SUCCESSFUL ] org.scala-sbt#protocol_2.12;1.4.5!protocol_2.12.jar (1199ms)
+2020.12.25 01:44:56 ERROR 	[SUCCESSFUL ] org.scala-sbt.ivy#ivy;2.3.0-sbt-fbc4f586aeeb1591710b14eb4f41b94880dcd745!ivy.jar (1347ms)
+2020.12.25 01:44:56 ERROR :: retrieving :: org.scala-sbt#boot-app
+2020.12.25 01:44:56 ERROR 	confs: [default]
+2020.12.25 01:44:57 ERROR 	84 artifacts copied, 0 already retrieved
+2020.12.25 01:44:59 INFO  [info] welcome to sbt 1.4.5 (Oracle Corporation Java 1.8.0_201)
+2020.12.25 01:45:01 INFO  [info] loading global plugins from C:\Users\user\.sbt\1.0\plugins
+2020.12.25 01:45:01 INFO  [error] insecure HTTP request is unsupported 'http://repo.typesafe.com/typesafe/releases'; switch to HTTPS or opt-in as ("typesafe-releases" at "http://repo.typesafe.com/typesafe/releases").withAllowInsecureProtocol(true), or by using allowInsecureProtocol in repositories file
+2020.12.25 01:45:01 INFO  [error] insecure HTTP request is unsupported 'http://repo.typesafe.com/typesafe/releases'; switch to HTTPS or opt-in as ("typesafe-releases" at "http://repo.typesafe.com/typesafe/releases").withAllowInsecureProtocol(true), or by using allowInsecureProtocol in repositories file
+2020.12.25 01:45:01 INFO  [error] insecure HTTP request is unsupported 'http://repo.typesafe.com/typesafe/releases'; switch to HTTPS or opt-in as ("typesafe-releases" at "http://repo.typesafe.com/typesafe/releases").withAllowInsecureProtocol(true), or by using allowInsecureProtocol in repositories file
+2020.12.25 01:45:01 INFO  [error] java.lang.RuntimeException: insecure protocol is unsupported
+2020.12.25 01:45:01 INFO  [error] 	at scala.sys.package$.error(package.scala:30)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.Classpaths$.errorInsecureProtocol(Defaults.scala:3117)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.Classpaths$.$anonfun$mkIvyConfiguration$1(Defaults.scala:3713)
+2020.12.25 01:45:01 INFO  [error] 	at scala.Function1.$anonfun$compose$1(Function1.scala:49)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.internal.util.$tilde$greater.$anonfun$$u2219$1(TypeFunctions.scala:62)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.std.Transform$$anon$4.work(Transform.scala:68)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.Execute.$anonfun$submit$2(Execute.scala:282)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.internal.util.ErrorHandling$.wideConvert(ErrorHandling.scala:23)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.Execute.work(Execute.scala:291)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.Execute.$anonfun$submit$1(Execute.scala:282)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.ConcurrentRestrictions$$anon$4.$anonfun$submitValid$1(ConcurrentRestrictions.scala:265)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.CompletionService$$anon$2.call(CompletionService.scala:64)
+2020.12.25 01:45:01 INFO  [error] 	at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+2020.12.25 01:45:01 INFO  [error] 	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511)
+2020.12.25 01:45:01 INFO  [error] 	at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+2020.12.25 01:45:01 INFO  [error] 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+2020.12.25 01:45:01 INFO  [error] 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+2020.12.25 01:45:01 INFO  [error] 	at java.lang.Thread.run(Thread.java:748)
+2020.12.25 01:45:01 INFO  [error] java.lang.RuntimeException: insecure protocol is unsupported
+2020.12.25 01:45:01 INFO  [error] 	at scala.sys.package$.error(package.scala:30)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.Classpaths$.errorInsecureProtocol(Defaults.scala:3117)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.coursierint.LMCoursier$.coursierConfiguration(LMCoursier.scala:144)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.coursierint.LMCoursier$.$anonfun$coursierConfigurationTask$1(LMCoursier.scala:198)
+2020.12.25 01:45:01 INFO  [error] 	at scala.Function1.$anonfun$compose$1(Function1.scala:49)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.internal.util.$tilde$greater.$anonfun$$u2219$1(TypeFunctions.scala:62)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.std.Transform$$anon$4.work(Transform.scala:68)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.Execute.$anonfun$submit$2(Execute.scala:282)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.internal.util.ErrorHandling$.wideConvert(ErrorHandling.scala:23)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.Execute.work(Execute.scala:291)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.Execute.$anonfun$submit$1(Execute.scala:282)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.ConcurrentRestrictions$$anon$4.$anonfun$submitValid$1(ConcurrentRestrictions.scala:265)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.CompletionService$$anon$2.call(CompletionService.scala:64)
+2020.12.25 01:45:01 INFO  [error] 	at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+2020.12.25 01:45:01 INFO  [error] 	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511)
+2020.12.25 01:45:01 INFO  [error] 	at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+2020.12.25 01:45:01 INFO  [error] 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+2020.12.25 01:45:01 INFO  [error] 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+2020.12.25 01:45:01 INFO  [error] 	at java.lang.Thread.run(Thread.java:748)
+2020.12.25 01:45:01 INFO  [error] java.lang.RuntimeException: insecure protocol is unsupported
+2020.12.25 01:45:01 INFO  [error] 	at scala.sys.package$.error(package.scala:30)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.Classpaths$.errorInsecureProtocol(Defaults.scala:3117)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.coursierint.LMCoursier$.coursierConfiguration(LMCoursier.scala:144)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.coursierint.LMCoursier$.$anonfun$scalaCompilerBridgeConfigurationTask$1(LMCoursier.scala:279)
+2020.12.25 01:45:01 INFO  [error] 	at scala.Function1.$anonfun$compose$1(Function1.scala:49)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.internal.util.$tilde$greater.$anonfun$$u2219$1(TypeFunctions.scala:62)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.std.Transform$$anon$4.work(Transform.scala:68)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.Execute.$anonfun$submit$2(Execute.scala:282)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.internal.util.ErrorHandling$.wideConvert(ErrorHandling.scala:23)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.Execute.work(Execute.scala:291)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.Execute.$anonfun$submit$1(Execute.scala:282)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.ConcurrentRestrictions$$anon$4.$anonfun$submitValid$1(ConcurrentRestrictions.scala:265)
+2020.12.25 01:45:01 INFO  [error] 	at sbt.CompletionService$$anon$2.call(CompletionService.scala:64)
+2020.12.25 01:45:01 INFO  [error] 	at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+2020.12.25 01:45:01 INFO  [error] 	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511)
+2020.12.25 01:45:01 INFO  [error] 	at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+2020.12.25 01:45:01 INFO  [error] 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+2020.12.25 01:45:01 INFO  [error] 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+2020.12.25 01:45:01 INFO  [error] 	at java.lang.Thread.run(Thread.java:748)
+2020.12.25 01:45:01 INFO  [error] (ivyConfiguration) insecure protocol is unsupported
+2020.12.25 01:45:01 INFO  [error] (csrConfiguration) insecure protocol is unsupported
+2020.12.25 01:45:01 INFO  [error] (scalaCompilerBridgeScope / csrConfiguration) insecure protocol is unsupported
+2020.12.25 01:45:01 INFO  [warn] Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? (default: r)
+2020.12.25 01:45:01 INFO  sbt bloopInstall exit: 1
+2020.12.25 01:45:01 INFO  time: ran 'sbt bloopInstall' in 46s
+2020.12.25 01:45:01 ERROR sbt command failed: C:\Program Files\Java\jdk1.8.0_201\bin\java -Djline.terminal=jline.UnsupportedTerminal -Dsbt.log.noformat=true -Dfile.encoding=UTF-8 -jar C:\Users\user\AppData\Local\Temp\metals7345953218791795085\sbt-launch.jar -Dbloop.export-jar-classifiers=sources bloopInstall
+2020.12.25 01:46:16 INFO  shutting down Metals
+2021.01.04 15:23:39 INFO  Started: Metals version 0.9.8 in workspace 'D:\webApp\DataLogger2' for client vscode.
+2021.01.04 15:23:39 INFO  time: initialize in 0.49s
+2021.01.04 15:23:40 WARN  Build server is not auto-connectable.
+2021.01.04 15:23:40 WARN  Unsupported sbt version 0.13.8
+2021.01.04 15:23:59 INFO  shutting down Metals
+2021.01.04 22:04:13 INFO  Started: Metals version 0.9.8 in workspace 'D:\webApp\DataLogger2' for client vscode.
+2021.01.04 22:04:13 INFO  time: initialize in 0.64s
