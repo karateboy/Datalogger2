@@ -1,6 +1,5 @@
 package models
-import play.api._
-import TapiTxx._
+import akka.actor.ActorSystem
 object TapiT360 extends TapiTxx(ModelConfig("T360", List("CO2"))) {
   lazy val modelReg = readModelSetting
 
@@ -12,17 +11,20 @@ object TapiT360 extends TapiTxx(ModelConfig("T360", List("CO2"))) {
     TapiTxxCollector.start(protocol, props)
   }
 }
+import javax.inject._
+class T360Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
+                              alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                              calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)(instId: String, modelReg: ModelReg, config: TapiConfig)
+  extends TapiTxxCollector(instrumentOp, monitorStatusOp,
+    alarmOp, system, monitorTypeOp,
+    calibrationOp, instrumentStatusOp)(instId, modelReg, config){
 
-class T360Collector(instId: String, modelReg: ModelReg, config: TapiConfig) extends TapiTxxCollector(instId, modelReg, config) {
-  import DataCollectManager._
-  import TapiTxx._
   import com.serotonin.modbus4j.locator.BaseLocator
-  import com.serotonin.modbus4j.code.DataType
 
   override def reportData(regValue: ModelRegValue) =
     for (idx <- findDataRegIdx(regValue)(18)) yield {
       val v = regValue.inputRegs(idx)
-      ReportData(List(MonitorTypeData(MonitorType.withName("CO2"), v._2.toDouble, collectorState)))
+      ReportData(List(MonitorTypeData(("CO2"), v._2.toDouble, collectorState)))
     }
 
   override def triggerZeroCalibration(v: Boolean) {

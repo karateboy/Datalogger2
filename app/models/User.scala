@@ -10,22 +10,24 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.implicitConversions
 
 case class User(email: String, password: String, name: String, phone: String, isAdmin: Boolean,
-                alarmConfig: Option[AlarmConfig] = Some(AlarmConfig.defaultConfig), widgets: Option[List[MonitorType.Value]] = Some(List.empty[MonitorType.Value]))
+                alarmConfig: Option[AlarmConfig] = Some(AlarmConfig.defaultConfig), widgets: Option[List[String]] = Some(List.empty[String]))
 
-object User {
+import javax.inject._
+@Singleton
+class UserOp @Inject()(mongoDB: MongoDB) {
   import org.mongodb.scala._
   import scala.concurrent._
   import scala.concurrent.duration._
 
   val ColName = "users"
-  val collection = MongoDB.database.getCollection(ColName)
+  val collection = mongoDB.database.getCollection(ColName)
   def toDocument(user: User) = Document("_id" -> user.email, "password" -> user.password,
     "name" -> user.name, "phone" -> user.phone, "isAdmin" -> user.isAdmin,
     "alarmConfig" -> user.alarmConfig, "widgets" -> user.widgets)
 
   def init(colNames:Seq[String]){
     if(!colNames.contains(ColName)){
-      val f = MongoDB.database.createCollection(ColName).toFuture()
+      val f = mongoDB.database.createCollection(ColName).toFuture()
       f.onFailure(errorHandler)
     }  
     val f = collection.countDocuments().toFuture()
@@ -44,7 +46,7 @@ object User {
     import scala.collection.JavaConversions._
     import models.AlarmConfig._
     val widgetArray = if (doc("widgets").isArray())
-      Some(doc("widgets").asArray().getValues.map { w => MonitorType.withName(w.asString().getValue) }.toList)
+      Some(doc("widgets").asArray().getValues.map { w => (w.asString().getValue) }.toList)
     else
       None
 

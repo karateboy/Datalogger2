@@ -26,17 +26,19 @@ object Baseline9000Collector {
 
 }
 
-class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Baseline9000Config) extends Actor {
+import javax.inject._
+
+class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp: CalibrationOp,
+                                      monitorTypeOp: MonitorTypeOp, system: ActorSystem)(id: String, protocolParam: ProtocolParam, config: Baseline9000Config) extends Actor {
   import Baseline9000Collector._
   import scala.concurrent.duration._
   import scala.concurrent.Future
   import scala.concurrent.blocking
   import ModelHelper._
-  import DataCollectManager._
   import TapiTxx._
 
   var collectorState = {
-    val instrument = Instrument.getInstrument(id)
+    val instrument = instrumentOp.getInstrument(id)
     instrument(0).state
   }
 
@@ -44,7 +46,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
   var timerOpt: Option[Cancellable] = None
 
   override def preStart() = {
-    timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort))
+    timerOpt = Some(system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort))
   }
 
   // override postRestart so we don't call preStart and schedule a new message
@@ -72,9 +74,9 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
             for (serial <- serialCommOpt) {
               serial.port.writeByte(StartShippingDataByte)
             }
-            Some(Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadData))
+            Some(system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadData))
           } else {
-            Some(Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, SetState(id, MonitorStatus.NormalStat)))
+            Some(system.scheduler.scheduleOnce(Duration(3, SECONDS), self, SetState(id, MonitorStatus.NormalStat)))
           }
         }
       } onFailure serialErrorHandler
@@ -88,12 +90,12 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
         serialCommOpt = None
       }
       context become openComPort
-      timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort))
+      timerOpt = Some(system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort))
   }
 
-  val mtCH4 = MonitorType.withName("CH4")
-  val mtNMHC = MonitorType.withName("NMHC")
-  val mtTHC = MonitorType.withName("THC")
+  val mtCH4 = ("CH4")
+  val mtNMHC = ("NMHC")
+  val mtTHC = ("THC")
 
   var calibrateRecordStart = false
 
@@ -118,7 +120,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
             }
           }
         }
-        timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
+        timerOpt = Some(system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
       }
     } onFailure serialErrorHandler
   }
@@ -136,13 +138,13 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
       Future {
         blocking {
           collectorState = state
-          Instrument.setState(id, state)
+          instrumentOp.setState(id, state)
           if (state == MonitorStatus.NormalStat) {
             for (serial <- serialCommOpt) {
               serial.port.writeByte(BackToNormalByte)
               serial.port.writeByte(StartShippingDataByte)
             }
-            timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
+            timerOpt = Some(system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
           }
         }
       } onFailure serialErrorHandler
@@ -150,28 +152,28 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
     case AutoCalibration(instId) =>
       assert(instId == id)
       collectorState = MonitorStatus.ZeroCalibrationStat
-      Instrument.setState(id, collectorState)
+      instrumentOp.setState(id, collectorState)
       context become calibrationHandler(AutoZero, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
       self ! RaiseStart
 
     case ManualZeroCalibration(instId) =>
       assert(instId == id)
       collectorState = MonitorStatus.ZeroCalibrationStat
-      Instrument.setState(id, collectorState)
+      instrumentOp.setState(id, collectorState)
       context become calibrationHandler(ManualZero, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
       self ! RaiseStart
 
     case ManualSpanCalibration(instId) =>
       assert(instId == id)
       collectorState = MonitorStatus.SpanCalibrationStat
-      Instrument.setState(id, collectorState)
+      instrumentOp.setState(id, collectorState)
       context become calibrationHandler(ManualSpan, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
       self ! RaiseStart
   }
 
   var calibrateTimerOpt: Option[Cancellable] = None
 
-  def calibrationHandler(calibrationType: CalibrationType, mt: MonitorType.Value, startTime: com.github.nscala_time.time.Imports.DateTime,
+  def calibrationHandler(calibrationType: CalibrationType, mt: String, startTime: com.github.nscala_time.time.Imports.DateTime,
                          calibrationDataList: List[MonitorTypeData], zeroValue: Option[Double]): Receive = {
     case ReadData =>
       readData
@@ -205,7 +207,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
 
           for (serial <- serialCommOpt)
             serial.port.writeByte(cmd)
-          calibrateTimerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(config.raiseTime, SECONDS), self, HoldStart))
+          calibrateTimerOpt = Some(system.scheduler.scheduleOnce(Duration(config.raiseTime, SECONDS), self, HoldStart))
         }
       } onFailure serialErrorHandler
 
@@ -216,7 +218,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
     case HoldStart =>
       Logger.debug(s"${calibrationType} HoldStart: $mt")
       calibrateRecordStart = true
-      calibrateTimerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(config.holdTime, SECONDS), self, DownStart))
+      calibrateTimerOpt = Some(system.scheduler.scheduleOnce(Duration(config.holdTime, SECONDS), self, DownStart))
 
     case DownStart =>
       Logger.debug(s"${calibrationType} DownStart: $mt")
@@ -240,12 +242,12 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
             serial.port.writeByte(BackToNormalByte)
 
           calibrateTimerOpt = if (calibrationType.auto && calibrationType.zero)
-            Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, CalibrateEnd))
+            Some(system.scheduler.scheduleOnce(Duration(1, SECONDS), self, CalibrateEnd))
           else {
             collectorState = MonitorStatus.CalibrationResume
-            Instrument.setState(id, collectorState)
+            instrumentOp.setState(id, collectorState)
 
-            Some(Akka.system.scheduler.scheduleOnce(Duration(config.downTime, SECONDS), self, CalibrateEnd))
+            Some(system.scheduler.scheduleOnce(Duration(config.downTime, SECONDS), self, CalibrateEnd))
           }
         }
       } onFailure serialErrorHandler
@@ -260,38 +262,38 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
       if (calibrationType.auto && calibrationType.zero) {
         Logger.info(s"$mt zero calibration end. ($avg)")
         collectorState = MonitorStatus.SpanCalibrationStat
-        Instrument.setState(id, collectorState)
+        instrumentOp.setState(id, collectorState)
         context become calibrationHandler(AutoSpan, mt, startTime, List.empty[MonitorTypeData], avg)
         self ! RaiseStart
       } else {
         Logger.info(s"$mt calibration end.")
         val cal =
           if (calibrationType.auto) {
-            Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, zeroValue, MonitorType.map(mt).span, avg)
+            Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, zeroValue, monitorTypeOp.map(mt).span, avg)
           } else {
             if (calibrationType.zero) {
               Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, avg, None, None)
             } else {
-              Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, None, MonitorType.map(mt).span, avg)
+              Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, None, monitorTypeOp.map(mt).span, avg)
             }
           }
-        Calibration.insert(cal)
+        calibrationOp.insert(cal)
 
         if (mt == mtCH4) {
           if (calibrationType.auto) {
             collectorState = MonitorStatus.ZeroCalibrationStat
-            Instrument.setState(id, collectorState)
+            instrumentOp.setState(id, collectorState)
             context become calibrationHandler(AutoZero,
               mtTHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
           } else {
             if (calibrationType.zero) {
               collectorState = MonitorStatus.ZeroCalibrationStat
-              Instrument.setState(id, collectorState)
+              instrumentOp.setState(id, collectorState)
               context become calibrationHandler(ManualZero,
                 mtTHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
             } else {
               collectorState = MonitorStatus.SpanCalibrationStat
-              Instrument.setState(id, collectorState)
+              instrumentOp.setState(id, collectorState)
               context become calibrationHandler(ManualSpan,
                 mtTHC, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
             }
@@ -299,7 +301,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
           self ! RaiseStart
         } else {
           collectorState = MonitorStatus.NormalStat
-          Instrument.setState(id, collectorState)
+          instrumentOp.setState(id, collectorState)
           context become comPortOpened
         }
       }
@@ -309,7 +311,7 @@ class Baseline9000Collector(id: String, protocolParam: ProtocolParam, config: Ba
         blocking {
           if (state == MonitorStatus.NormalStat) {
             collectorState = state
-            Instrument.setState(id, state)
+            instrumentOp.setState(id, state)
 
             for (serial <- serialCommOpt) {
               serial.port.writeByte(BackToNormalByte)

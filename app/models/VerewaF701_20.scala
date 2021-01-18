@@ -5,9 +5,9 @@ import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import com.github.nscala_time.time.Imports._
 
-case class F701_20Config(monitorType:MonitorType.Value)
+case class F701_20Config(monitorType:String)
 object VerewaF701_20 extends DriverOps {
-  lazy val supportedMonitorTypes = List(MonitorType.withName("PM25"), MonitorType.withName("PM10"))
+  lazy val supportedMonitorTypes = List(("PM25"), ("PM10"))
   implicit val configRead = Json.reads[F701_20Config]
   implicit val configWrite = Json.writes[F701_20Config]
   override def verifyParam(json: String) = {
@@ -22,7 +22,7 @@ object VerewaF701_20 extends DriverOps {
       })
   }
 
-  override def getMonitorTypes(param: String): List[MonitorType.Value] = {
+  override def getMonitorTypes(param: String): List[String] = {
     val config = validateParam(param)
     List(config.monitorType)
   }

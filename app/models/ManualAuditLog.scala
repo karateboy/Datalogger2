@@ -6,25 +6,28 @@ import models._
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.mongodb.scala._
 
-case class ManualAuditLog(dataTime: DateTime, mt: MonitorType.Value, modifiedTime: DateTime,
+case class ManualAuditLog(dataTime: DateTime, mt: String, modifiedTime: DateTime,
                           operator: String, changedStatus: String, reason: String)
 
-object ManualAuditLog {
+import javax.inject._
+
+@Singleton
+class ManualAuditLogOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp) {
   import play.api.libs.json._
   import play.api.libs.functional.syntax._
 
   implicit val writer = Json.writes[ManualAuditLog]
   val collectionName = "auditLogs"
-  val collection = MongoDB.database.getCollection(collectionName)
+  val collection = mongoDB.database.getCollection(collectionName)
   def toDocument(al: ManualAuditLog) = {
     import org.mongodb.scala.bson._
-    Document("dataTime" -> (al.dataTime: BsonDateTime), "mt" -> MonitorType.BFName(al.mt),
+    Document("dataTime" -> (al.dataTime: BsonDateTime), "mt" -> monitorTypeOp.BFName(al.mt),
       "modifiedTime" -> (al.modifiedTime: BsonDateTime), "operator" -> al.operator, "changedStatus" -> al.changedStatus, "reason" -> al.reason)
   }
 
   def toAuditLog(doc: Document) = {
     val dataTime = new DateTime(doc.get("dataTime").get.asDateTime().getValue)
-    val mt = MonitorType.withName(doc.get("mt").get.asString().getValue)
+    val mt = (doc.get("mt").get.asString().getValue)
     val modifiedTime = new DateTime(doc.get("modifiedTime").get.asDateTime().getValue)
     val operator = doc.get("operator").get.asString().getValue
     val changedStatus = doc.get("changedStatus").get.asString().getValue
@@ -36,7 +39,7 @@ object ManualAuditLog {
   def init(colNames: Seq[String]) {
     import org.mongodb.scala.model.Indexes._
     if (!colNames.contains(collectionName)) {
-      val f = MongoDB.database.createCollection(collectionName).toFuture()
+      val f = mongoDB.database.createCollection(collectionName).toFuture()
       f.onFailure(errorHandler)
       f.onSuccess({
         case _ =>
@@ -49,7 +52,7 @@ object ManualAuditLog {
   def upsertLog(log: ManualAuditLog) = {
     import org.mongodb.scala.model.ReplaceOptions
     import org.mongodb.scala.bson.BsonDateTime
-    val f = collection.replaceOne(and(equal("dataTime", log.dataTime:BsonDateTime), equal("mt", MonitorType.BFName(log.mt))),
+    val f = collection.replaceOne(and(equal("dataTime", log.dataTime:BsonDateTime), equal("mt", monitorTypeOp.BFName(log.mt))),
       toDocument(log), ReplaceOptions().upsert(true)).toFuture()
       
     f.onFailure(errorHandler)

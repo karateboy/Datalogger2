@@ -1,29 +1,33 @@
 package models
-import play.api._
-import ModelHelper._
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
+
 import akka.actor._
+import play.api._
+import play.api.libs.json._
 
-object MoxaE1240 extends DriverOps {
-  case class ChannelCfg(enable: Boolean, mt: Option[MonitorType.Value], max: Option[Double], mtMax: Option[Double],
-                        min: Option[Double], mtMin: Option[Double], repairMode: Option[Boolean])
-  case class MoxaE1240Param(addr: Int, ch: Seq[ChannelCfg])
+import javax.inject._
 
-  implicit val cfgReads = Json.reads[ChannelCfg]
-  implicit val reads = Json.reads[MoxaE1240Param]
+case class MoxaE1240Param(addr: Int, ch: Seq[ChannelCfg])
 
+@Singleton
+class MoxaE1240 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
   override def getMonitorTypes(param: String) = {
-    val e1240Param = MoxaE1240.validateParam(param)
-    val mtList = e1240Param.ch.filter { _.enable }.flatMap { _.mt }.toList
+    val e1240Param = validateParam(param)
+    val mtList = e1240Param.ch.filter {
+      _.enable
+    }.flatMap {
+      _.mt
+    }.toList
     val rawMtList = mtList map {
-      MonitorType.getRawMonitorType(_)
+      monitorTypeOp.getRawMonitorType(_)
     }
-    
+
     mtList ++ rawMtList
   }
 
   override def verifyParam(json: String) = {
+    implicit val cfgReads = Json.reads[ChannelCfg]
+    implicit val reads = Json.reads[MoxaE1240Param]
+
     val ret = Json.parse(json).validate[MoxaE1240Param]
     ret.fold(
       error => {
@@ -39,7 +43,7 @@ object MoxaE1240 extends DriverOps {
             assert(cfg.mt.isDefined)
             assert(cfg.max.get > cfg.min.get)
             assert(cfg.mtMax.get > cfg.mtMin.get)
-            MonitorType.ensureRawMonitorType(cfg.mt.get, "V")
+            monitorTypeOp.ensureRawMonitorType(cfg.mt.get, "V")
           }
         }
         json
@@ -49,7 +53,7 @@ object MoxaE1240 extends DriverOps {
   import Protocol.ProtocolParam
 
   override def start(id: String, protocolParam: ProtocolParam, param: String)(implicit context: ActorContext) = {
-    val driverParam = MoxaE1240.validateParam(param)
+    val driverParam = validateParam(param)
 
     MoxaE1240Collector.start(id, protocolParam, driverParam)
   }
@@ -59,6 +63,8 @@ object MoxaE1240 extends DriverOps {
   }
 
   def validateParam(json: String) = {
+    implicit val cfgReads = Json.reads[ChannelCfg]
+    implicit val reads = Json.reads[MoxaE1240Param]
     val ret = Json.parse(json).validate[MoxaE1240Param]
     ret.fold(
       error => {

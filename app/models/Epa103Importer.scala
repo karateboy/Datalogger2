@@ -13,10 +13,14 @@ import org.apache.poi.openxml4j.opc._
 import org.apache.poi.xssf.usermodel._
 import org.apache.poi.ss.usermodel._
 import org.mongodb.scala._
+import javax.inject._
 
-object Epa103Importer {
+@Singleton
+class Epa103ImporterOp @Inject()
+(system: ActorSystem, monitorTypeOp: MonitorTypeOp)
+{
   def importData(path: String) = {
-    val worker = Akka.system.actorOf(Props[Epa103Importer], name = "epaImporter" + (Math.random() * 1000).toInt)
+    val worker = system.actorOf(Props[Epa103Importer], name = "epaImporter" + (Math.random() * 1000).toInt)
     worker ! ImportEpa(path)
   }
 
@@ -30,11 +34,14 @@ object Epa103Importer {
 
 case class ImportEpa(path: String)
 
-class Epa103Importer extends Actor {
+class Epa103Importer @Inject()
+(epa103ImporterOp: Epa103ImporterOp, monitorTypeOp: MonitorTypeOp,
+ mongoDB: MongoDB, recordOp: RecordOp)
+  extends Actor {
 
   def receive = {
     case ImportEpa(path) =>
-      val files = Epa103Importer.listAllFiles(path)
+      val files = epa103ImporterOp.listAllFiles(path)
       for (f <- files) {
         importEpaData(f)
         f.delete()
@@ -69,7 +76,7 @@ class Epa103Importer extends Actor {
 
           val mtId = {
             try {
-              Some(MonitorType.withName(mt))
+              Some((mt))
             } catch {
               case _: Throwable =>
                 None
@@ -112,7 +119,7 @@ class Epa103Importer extends Actor {
               Document("_id" -> bdt)
             })
             if (mtId.isDefined) {
-              val newDoc = doc ++ Document(MonitorType.BFName(mtId.get) -> Document("v" -> value, "s" -> "010"))
+              val newDoc = doc ++ Document(monitorTypeOp.BFName(mtId.get) -> Document("v" -> value, "s" -> "010"))
               docMap.put(dt, newDoc)
             }
           }
@@ -131,7 +138,7 @@ class Epa103Importer extends Actor {
     } while (!finish)
     //Flush docs
 
-    val col = MongoDB.database.getCollection(Record.HourCollection)
+    val col = mongoDB.database.getCollection(recordOp.HourCollection)
     col.insertMany(docMap.values.toSeq).toFuture().onComplete(t => {
       Logger.info("db write complete.")
     })

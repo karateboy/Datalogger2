@@ -24,12 +24,13 @@ object Adam4068Collector {
 
 import Adam4068._
 import Protocol.ProtocolParam
+import javax.inject._
 
-class Adam4068Collector(id: String, protocolParam: ProtocolParam, param: Adam4068Param) extends Actor with ActorLogging {
+class Adam4068Collector @Inject()
+(id: String, protocolParam: ProtocolParam, param: Adam4068Param, system:ActorSystem) extends Actor with ActorLogging {
   var comm: SerialComm = SerialComm.open(protocolParam.comPort.get)
   var handleEvtOperation = false
 
-  import DataCollectManager._
   import Adam4068Collector._
 
   import scala.concurrent.Future
@@ -77,7 +78,7 @@ class Adam4068Collector(id: String, protocolParam: ProtocolParam, param: Adam406
         } {
           if (ch.enable && ch.evtOp == Some(EventOperation.OverThreshold)) {
             self ! WriteDO(idx, true)
-            Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(ch.duration.get, SECONDS), self, StopEvtOperationOverThreshold)
+            system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(ch.duration.get, SECONDS), self, StopEvtOperationOverThreshold)
           }
         }
       }

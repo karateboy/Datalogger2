@@ -1,40 +1,39 @@
 package models
 
-import com.github.nscala_time.time.Imports._
-import play.api._
+import models.Protocol.ProtocolParam
 import play.api.libs.json._
-import play.api.libs.functional.syntax._
+import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
-import org.joda.time.LocalTime
-import Protocol.ProtocolParam
 case class InstrumentInfo(_id: String, instType: String, state: String,
                           protocol: String, protocolParam: String, monitorTypes: String, calibrationTime: Option[String])
 
-case class InstrumentStatusType(key:String, addr:Int, desc:String, unit:String)                          
-case class Instrument(_id: String, instType: InstrumentType.Value,
+case class InstrumentStatusType(key:String, addr:Int, desc:String, unit:String)
+
+case class Instrument(_id: String, instType: String,
                       protocol: ProtocolParam, param: String, active: Boolean, 
                       state: String,
                       statusType:Option[List[InstrumentStatusType]]) {
 
-  def getMonitorTypes: List[MonitorType.Value] = {
-    val instTypeCase = InstrumentType.map(instType)
+  /*
+  def getMonitorTypes: List[String] = {
+    val instTypeCase = instrumentTypeOp.map(instType)
     instTypeCase.driver.getMonitorTypes(param)
   }
 
   def getCalibrationTime = {
-    val instTypeCase = InstrumentType.map(instType)
+    val instTypeCase = instrumentTypeOp.map(instType)
     instTypeCase.driver.getCalibrationTime(param)
   }
 
   def getStateStr = {
     if (active){
-      MonitorStatus.map(state).desp
+      monitorStatusOp.map(state).desp
     }else
       "停用"
   }
   
   def getInfoClass = {
-    val mtStr = getMonitorTypes.map { MonitorType.map(_).desp }.mkString(",")
+    val mtStr = getMonitorTypes.map { monitorTypeOp.map(_).desp }.mkString(",")
     val protocolParam =
       protocol.protocol match {
         case Protocol.tcp =>
@@ -46,18 +45,19 @@ case class Instrument(_id: String, instType: InstrumentType.Value,
 
     val state = getStateStr
 
-    InstrumentInfo(_id, InstrumentType.map(instType).desp, state, Protocol.map(protocol.protocol), protocolParam, mtStr, calibrationTime)
+    InstrumentInfo(_id, instrumentTypeOp.map(instType).desp, state, Protocol.map(protocol.protocol), protocolParam, mtStr, calibrationTime)
   }
-
+  */
   def replaceParam(newParam: String) = {
     Instrument(_id, instType, protocol, newParam, active, state, statusType)
   }
 }
 
+import models.ModelHelper._
 import org.mongodb.scala._
-import ModelHelper._
 
-object Instrument {
+@Singleton
+class InstrumentOp @Inject() (mongoDB: MongoDB) {
   implicit val ipRead = Json.reads[InstrumentStatusType]
   implicit val reader = Json.reads[Instrument]
   implicit val ipWrite = Json.writes[InstrumentStatusType]
@@ -65,7 +65,7 @@ object Instrument {
   implicit val infoWrites = Json.writes[InstrumentInfo]
 
   val collectionName = "instruments"
-  val collection = MongoDB.database.getCollection(collectionName)
+  val collection: MongoCollection[Document] = mongoDB.database.getCollection(collectionName)
   def toDocument(inst: Instrument) = {
     val json = Json.toJson(inst)
     val doc = Document(json.toString())
@@ -87,7 +87,7 @@ object Instrument {
 
   def init(colNames: Seq[String]) {
     if (!colNames.contains(collectionName)) {
-      val f = MongoDB.database.createCollection(collectionName).toFuture()
+      val f = mongoDB.database.createCollection(collectionName).toFuture()
       f.onFailure(errorHandler)
     }
   }
@@ -112,13 +112,7 @@ object Instrument {
   }
 
   def getAllInstrumentFuture = {
-    import org.mongodb.scala.bson._
-    import org.mongodb.scala.model.Filters._
-    import org.mongodb.scala.model.Projections._
-    import org.mongodb.scala.model.Sorts._
-
-    val docsFuture = Instrument.collection.find().sort(ascending("_id")).toFuture()
-    for(docs <- docsFuture)
+    for(docs <- collection.find().toFuture())
       yield
         docs.map { toInstrument }
   }
@@ -160,8 +154,8 @@ object Instrument {
   }
   
   def updateStatusType(id:String, status:List[InstrumentStatusType]) = {
-    import org.mongodb.scala.model.Updates._
     import org.mongodb.scala.bson.BsonArray
+    import org.mongodb.scala.model.Updates._
     val bArray = new BsonArray
     
     val statusDoc = status.map{ s => bArray.add(Document(Json.toJson(s).toString).toBsonDocument)}

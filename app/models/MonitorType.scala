@@ -66,19 +66,19 @@ case class MonitorType(_id: String, desp: String, unit: String,
 }
 //MeasuredBy => History...
 //MeasuringBy => Current...
+import javax.inject._
 
-object MonitorType extends Enumeration {
+@Singleton
+class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
   import org.mongodb.scala.bson._
   import scala.concurrent._
   import scala.concurrent.duration._
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  implicit val mtvRead: Reads[MonitorType.Value] = EnumUtils.enumReads(MonitorType)
-  implicit val mtvWrite: Writes[MonitorType.Value] = EnumUtils.enumWrites
   implicit val mtWrite = Json.writes[MonitorType]
   implicit val mtRead = Json.reads[MonitorType]
-  implicit object TransformMonitorType extends BsonTransformer[MonitorType.Value] {
-    def apply(mt: MonitorType.Value): BsonString = new BsonString(mt.toString)
+  implicit object TransformMonitorType extends BsonTransformer[MonitorType] {
+    def apply(mt: MonitorType): BsonString = new BsonString(mt.toString)
   }
 
   import org.mongodb.scala.bson.codecs.Macros._
@@ -87,7 +87,7 @@ object MonitorType extends Enumeration {
 
   val codecRegistry = fromRegistries(fromProviders(classOf[MonitorType]), DEFAULT_CODEC_REGISTRY)
   val colName = "monitorTypes"
-  val collection = MongoDB.database.getCollection[MonitorType](colName).withCodecRegistry(codecRegistry)
+  val collection = mongoDB.database.getCollection[MonitorType](colName).withCodecRegistry(codecRegistry)
 
   val MonitorTypeVer = 2
 
@@ -141,27 +141,27 @@ object MonitorType extends Enumeration {
     signalType("SMOKE", "煙霧"),
     signalType("FLOW", "採樣流量"))
 
-  lazy val WIN_SPEED = MonitorType.withName("WD_SPEED")
-  lazy val WIN_DIRECTION = MonitorType.withName("WD_DIR")
-  lazy val RAIN = MonitorType.withName("RAIN")
-  lazy val PM25 = MonitorType.withName("PM25")
-  lazy val PM10 = MonitorType.withName("PM10")
-  lazy val LAT = MonitorType.withName("LAT")
-  lazy val LNG = MonitorType.withName("LNG")
+  lazy val WIN_SPEED = ("WD_SPEED")
+  lazy val WIN_DIRECTION = ("WD_DIR")
+  lazy val RAIN = ("RAIN")
+  lazy val PM25 = ("PM25")
+  lazy val PM10 = ("PM10")
+  lazy val LAT = ("LAT")
+  lazy val LNG = ("LNG")
 
-  val DOOR = Value("DOOR")
-  val SMOKE = Value("SMOKE")
-  val FLOW = Value("FLOW")
+  val DOOR = "DOOR"
+  val SMOKE = "SMOKE"
+  val FLOW = "FLOW"
 
-  var signalMtOldValue = Map.empty[MonitorType.Value, Boolean]
+  var signalMtOldValue = Map.empty[MonitorType, Boolean]
 
-  def logDiMonitorType(mt: MonitorType.Value, v: Boolean) = {
+  def logDiMonitorType(mt: String, v: Boolean) = {
     if (!signalMtvList.contains(mt))
       Logger.warn(s"${mt} is not DI monitor type!")
 
     if (v) {
-      val mtCase = MonitorType.map(mt)
-      Alarm.log(Alarm.Src(), Alarm.Level.WARN, s"${mtCase.desp}=>觸發", 1)
+      val mtCase = map(mt)
+      alarmOp.log(alarmOp.Src(), alarmOp.Level.WARN, s"${mtCase.desp}=>觸發", 1)
     }
 
   }
@@ -186,30 +186,15 @@ object MonitorType extends Enumeration {
     }
 
     if (!colNames.contains(colName)) { // New
-      val f = MongoDB.database.createCollection(colName).toFuture()
+      val f = mongoDB.database.createCollection(colName).toFuture()
       f.onFailure(errorHandler)
       waitReadyResult(f)
     }
-    val currentMtVer = waitReadyResult(SysConfig.get(SysConfig.MonitorTypeVer)).asInt32().getValue
-
-    if (currentMtVer != MonitorTypeVer) {
-      Logger.info(s"Current monitorType ver=$currentMtVer upgrade to $MonitorTypeVer")
-      val instrumentListFuture = Instrument.getAllInstrumentFuture
-
-      val instList = waitReadyResult(instrumentListFuture)
-      for (inst <- instList) {
-        val instType = InstrumentType.map(inst.instType)
-        instType.driver.verifyParam(inst.param)
-      }
-      
-      SysConfig.set(SysConfig.MonitorTypeVer, new org.bson.BsonInt32(MonitorTypeVer))
-    } else
-      Future {}
 
     updateMt
   }
 
-  def BFName(mt: MonitorType.Value) = {
+  def BFName(mt: String) = {
     val mtCase = map(mt)
     mtCase._id.replace(".", "_")
   }
@@ -233,30 +218,22 @@ object MonitorType extends Enumeration {
 
   private def mtList: List[MonitorType] =
     {
-      val f = MongoDB.database.getCollection(colName).find().toFuture()
+      val f = mongoDB.database.getCollection(colName).find().toFuture()
       val r = waitReadyResult(f)
       r.map { toMonitorType }.toList
     }
 
-  def exist(mt: MonitorType) = {
-    try {
-      MonitorType.withName(mt._id)
-      true
-    } catch {
-      case _: NoSuchElementException =>
-        false
-    }
-  }
+  def exist(mt: MonitorType) =  map.contains(mt._id)
 
   def rawMonitorTypeID(_id: String) = s"${_id}_raw"
 
-  def getRawMonitorType(mt: MonitorType.Value) =
-    MonitorType.withName(rawMonitorTypeID(mt.toString()))
+  def getRawMonitorType(mt: String) =
+    (rawMonitorTypeID(mt.toString()))
 
-  def ensureRawMonitorType(mt: MonitorType.Value, unit: String) {
-    val mtCase = MonitorType.map(mt)
+  def ensureRawMonitorType(mt: String, unit: String) {
+    val mtCase = map(mt)
     try {
-      MonitorType.withName(s"${mtCase._id}_raw")
+      (s"${mtCase._id}_raw")
     } catch {
       case _: NoSuchElementException =>
         val rawMonitorType = rangeType(
@@ -266,23 +243,23 @@ object MonitorType extends Enumeration {
     }
   }
 
-  def refreshMtv: (List[MonitorType.Value], List[MonitorType.Value], Map[MonitorType.Value, MonitorType]) = {
+  def refreshMtv: (List[String], List[String], Map[String, MonitorType]) = {
     val list = mtList.sortBy { _.order }
     val mtPair =
       for (mt <- list) yield {
         try {
-          val mtv = MonitorType.withName(mt._id)
+          val mtv = (mt._id)
           (mtv -> mt)
         } catch {
           case _: NoSuchElementException =>
-            (Value(mt._id) -> mt)
+            (mt._id -> mt)
         }
       }
 
     val rangeList = list.filter { mt => mt.signalType == false }
-    val rangeMtvList = rangeList.map(mt => MonitorType.withName(mt._id))
+    val rangeMtvList = rangeList.map(mt => (mt._id))
     val signalList = list.filter { mt => mt.signalType }
-    val signalMvList = signalList.map(mt => MonitorType.withName(mt._id))
+    val signalMvList = signalList.map(mt => (mt._id))
     mtvList = rangeMtvList
     signalMtvList = signalMvList
     map = mtPair.toMap
@@ -307,7 +284,7 @@ object MonitorType extends Enumeration {
     })
   }
 
-  def addMeasuring(mt: MonitorType.Value, instrumentId: String, append: Boolean) = {
+  def addMeasuring(mt: String, instrumentId: String, append: Boolean) = {
     val newMt = map(mt).addMeasuring(instrumentId, append)
     map = map + (mt -> newMt)
     upsertMonitorTypeFuture(newMt)
@@ -352,7 +329,7 @@ object MonitorType extends Enumeration {
   //    f
   //  }
 
-  def updateMonitorType(mt: MonitorType.Value, colname: String, newValue: String) = {
+  def updateMonitorType(mt: String, colname: String, newValue: String) = {
     import org.mongodb.scala._
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Updates._
@@ -385,7 +362,7 @@ object MonitorType extends Enumeration {
     map = map + (mt -> mtCase)
   }
 
-  def format(mt: MonitorType.Value, v: Option[Double]) = {
+  def format(mt: String, v: Option[Double]) = {
     if (v.isEmpty)
       "-"
     else {
@@ -394,8 +371,8 @@ object MonitorType extends Enumeration {
     }
   }
 
-  def overStd(mt: MonitorType.Value, v: Double) = {
-    val mtCase = MonitorType.map(mt)
+  def overStd(mt: String, v: Double) = {
+    val mtCase = map(mt)
     val overInternal =
       if (mtCase.std_internal.isDefined) {
         if (v > mtCase.std_internal.get)
@@ -415,7 +392,7 @@ object MonitorType extends Enumeration {
     (overInternal, overLaw)
   }
 
-  def getOverStd(mt: MonitorType.Value, r: Option[Record]) = {
+  def getOverStd(mt: String, r: Option[Record]) = {
     if (r.isEmpty)
       false
     else {
@@ -424,7 +401,7 @@ object MonitorType extends Enumeration {
     }
   }
 
-  def formatRecord(mt: MonitorType.Value, r: Option[Record]) = {
+  def formatRecord(mt: String, r: Option[Record]) = {
     if (r.isEmpty)
       "-"
     else {
@@ -438,7 +415,7 @@ object MonitorType extends Enumeration {
     }
   }
 
-  def getCssClassStr(mt: MonitorType.Value, r: Option[Record]) = {
+  def getCssClassStr(mt: String, r: Option[Record]) = {
     if (r.isEmpty)
       ""
     else {
@@ -448,7 +425,7 @@ object MonitorType extends Enumeration {
     }
   }
 
-  def displayMeasuringBy(mt: MonitorType.Value) = {
+  def displayMeasuringBy(mt: String) = {
     val mtCase = map(mt)
     if (mtCase.measuringBy.isDefined) {
       val instrumentList = mtCase.measuringBy.get

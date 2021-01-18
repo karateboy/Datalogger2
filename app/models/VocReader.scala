@@ -9,8 +9,9 @@ import ModelHelper._
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import scala.concurrent.ExecutionContext.Implicits.global
-
-object VocReader {
+import javax.inject._
+@Singleton
+class VocReaderOp @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, system: ActorSystem) {
   case object ReadFile
   case class ReparseDir(year: Int, month: Int)
 
@@ -20,7 +21,7 @@ object VocReader {
     val props = Props(classOf[VocReader], dir)
     Logger.info(s"VOC dir=>$dir")
 
-    managerOpt = Some(Akka.system.actorOf(props, name = s"vocReader$count"))
+    managerOpt = Some(system.actorOf(props, name = s"vocReader$count"))
     count += 1
   }
 
@@ -78,23 +79,23 @@ object VocReader {
       for (line <- recordList) yield {
         val mtName = line(2)
         val mtID = "_" + mtName.replace(",", "_").replace("-", "_")
-        val mtCase = MonitorType.rangeType(mtID, mtName, "ppb", 2)
+        val mtCase = monitorTypeOp.rangeType(mtID, mtName, "ppb", 2)
         mtCase.measuringBy = Some(List.empty[String])
-        if (!MonitorType.exist(mtCase)) {
-          MonitorType.upsertMonitorType(mtCase)
-          MonitorType.refreshMtv
+        if (!monitorTypeOp.exist(mtCase)) {
+          monitorTypeOp.upsertMonitorType(mtCase)
+          monitorTypeOp.refreshMtv
         }
 
         try {
           val v = line(5).toDouble
-          Some((MonitorType.withName(mtID), (v, MonitorStatus.NormalStat)))
+          Some(((mtID), (v, MonitorStatus.NormalStat)))
         } catch {
           case ex: Throwable =>
             None
         }
       }
     reader.close()
-    Record.findAndUpdate(dateTime, dataList.flatMap(x => x))(Record.HourCollection)
+    recordOp.findAndUpdate(dateTime, dataList.flatMap(x => x))(recordOp.HourCollection)
   }
 
   def parseAllTx0(dir: String, year: Int, month: Int, ignoreParsed: Boolean = false) = {
@@ -130,11 +131,11 @@ object VocReader {
   }
 }
 
-class VocReader(dir: String) extends Actor {
-  import VocReader._
+class VocReader @Inject()(vocReaderOp: VocReaderOp, system: ActorSystem)(dir: String) extends Actor {
+  import vocReaderOp._
   def resetTimer = {
     import scala.concurrent.duration._
-    Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ReadFile)
+    system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ReadFile)
   }
 
   var timer = resetTimer

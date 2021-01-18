@@ -7,8 +7,8 @@ import akka.actor._
 
 object GPS extends DriverOps {
   override def getMonitorTypes(param: String) = {
-    val lat = MonitorType.withName("LAT")
-    val lng = MonitorType.withName("LNG")
+    val lat = ("LAT")
+    val lng = ("LNG")
     List(lat, lng)
   }
 

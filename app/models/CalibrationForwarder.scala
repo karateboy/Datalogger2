@@ -1,22 +1,21 @@
 package models
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import com.github.nscala_time.time.Imports._
 import akka.actor.Actor
-import akka.actor.actorRef2Scala
+import com.github.nscala_time.time.Imports._
 import play.api.Logger
-import play.api.Play.current
-import play.api.libs.json.JsError
-import play.api.libs.json.Json
-import play.api.libs.ws.WS
+import play.api.libs.json.{JsError, Json}
+import play.api.libs.ws.WSClient
 
-class CalibrationForwarder(server: String, monitor: String) extends Actor {
+import javax.inject._
+import scala.concurrent.ExecutionContext.Implicits.global
+
+class CalibrationForwarder @Inject()(ws:WSClient, calibrationOp: CalibrationOp)(server: String, monitor: String) extends Actor {
   import ForwardManager._
   def receive = handler(None)
 
   def checkLatest = {
     val url = s"http://$server/CalibrationRecordRange/$monitor"
-    val f = WS.url(url).get().map {
+    val f = ws.url(url).get().map {
       response =>
         val result = response.json.validate[LatestRecordTime]
         result.fold(
@@ -43,13 +42,13 @@ class CalibrationForwarder(server: String, monitor: String) extends Actor {
   }
 
   def uploadCalibration(latestCalibration: Long) = {
-    import Calibration._
-    val recordFuture = Calibration.calibrationReportFuture(new DateTime(latestCalibration + 1))
+    import calibrationOp.jsonWrites
+    val recordFuture = calibrationOp.calibrationReportFuture(new DateTime(latestCalibration + 1))
     for (records <- recordFuture) {
       if (!records.isEmpty) {
         val recordJSON = records.map { _.toJSON }
         val url = s"http://$server/CalibrationRecord/$monitor"
-        val f = WS.url(url).put(Json.toJson(recordJSON))
+        val f = ws.url(url).put(Json.toJson(recordJSON))
         f onSuccess {
           case response =>
             context become handler(Some(records.last.startTime.getMillis))

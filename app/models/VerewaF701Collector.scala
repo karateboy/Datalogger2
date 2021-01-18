@@ -12,7 +12,7 @@ object VerewaF701Collector {
   case object ReadData
 
   var count = 0
-  def start(id: String, protocolParam: ProtocolParam, mt: MonitorType.Value)(implicit context: ActorContext) = {
+  def start(id: String, protocolParam: ProtocolParam, mt: String)(implicit context: ActorContext) = {
     import Protocol.ProtocolParam
     val actorName = s"F701_${mt}_${count}"
     count += 1
@@ -24,34 +24,37 @@ object VerewaF701Collector {
 
 }
 
-class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorType.Value) extends Actor {
+import javax.inject._
+class VerewaF701Collector @Inject()
+(alarmOp: AlarmOp, monitorStatusOp: MonitorStatusOp, instrumentOp: InstrumentOp, system: ActorSystem)
+(id: String, protocolParam: ProtocolParam, mt: String) extends Actor {
   import VerewaF701Collector._
   import scala.concurrent.duration._
-  var cancelable = Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort)
+  var cancelable = system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort)
   var serialOpt: Option[SerialComm] = None
 
   import scala.concurrent.Future
   import scala.concurrent.blocking
-  import DataCollectManager._
+
   var collectorStatus = MonitorStatus.NormalStat
   var instrumentStatus: Byte = 0
   def checkStatus(status: Byte) {
-    import Alarm._
+    import alarmOp._
     if ((instrumentStatus & 0x1) != (status & 0x1)) {
       if ((status & 0x1) == 1)
-        log(instStr(id), Level.INFO, "standby")
+        alarmOp.log(alarmOp.instStr(id), alarmOp.Level.INFO, "standby")
       else
-        log(instStr(id), Level.INFO, "concentration")
+        alarmOp.log(instStr(id), Level.INFO, "concentration")
     }
 
     if ((instrumentStatus & 0x2) != (status & 0x2)) {
       if ((status & 0x2) == 1)
-        log(instStr(id), Level.INFO, "Film measurement")
+        alarmOp.log(alarmOp.instStr(id), alarmOp.Level.INFO, "Film measurement")
     }
 
     if ((instrumentStatus & 0x4) != (status & 0x4)) {
       if ((status & 0x4) == 1)
-        log(instStr(id), Level.INFO, "Zero point measurement")
+        alarmOp.log(alarmOp.instStr(id), Level.INFO, "Zero point measurement")
     }
 
     if ((instrumentStatus & 0x8) != (status & 0x8)) {
@@ -68,7 +71,7 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
   }
 
   def checkErrorStatus(error: Byte) {
-    import Alarm._
+    import alarmOp._
     if ((error & 0x1) != 0) {
       log(instStr(id), Level.WARN, "Volume error")
     }
@@ -95,7 +98,7 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
   }
 
   def checkErrorStatus(channel: Int, error: Byte) {
-    import Alarm._
+    import alarmOp._
     if (channel == 0)
       checkErrorStatus(error)
     else {
@@ -124,12 +127,12 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
     case OpenComPort =>
       try {
         serialOpt = Some(SerialComm.open(protocolParam.comPort.get))
-        cancelable = Akka.system.scheduler.schedule(scala.concurrent.duration.Duration(3, SECONDS), Duration(3, SECONDS), self, ReadData)
+        cancelable = system.scheduler.schedule(scala.concurrent.duration.Duration(3, SECONDS), Duration(3, SECONDS), self, ReadData)
       } catch {
         case ex: Exception =>
           Logger.error(ex.getMessage, ex)
           Logger.info("Reopen 1 min latter...")
-          cancelable = Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort)
+          cancelable = system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort)
       }
 
     case ReadData =>
@@ -160,9 +163,9 @@ class VerewaF701Collector(id: String, protocolParam: ProtocolParam, mt: MonitorT
       } onFailure errorHandler
 
     case SetState(id, state) =>
-      Logger.info(s"SetState(${MonitorStatus.map(state).desp})")
+      Logger.info(s"SetState(${monitorStatusOp.map(state).desp})")
       collectorStatus = state
-      Instrument.setState(id, state)
+      instrumentOp.setState(id, state)
   }
 
   override def postStop(): Unit = {

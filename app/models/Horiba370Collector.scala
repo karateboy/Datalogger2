@@ -1,19 +1,22 @@
 package models
+
 import play.api._
 import akka.actor._
-import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import Protocol.ProtocolParam
 import scala.concurrent.ExecutionContext.Implicits.global
-import akka.actor.{ Actor, ActorRef, Props }
-import akka.io.{ IO, Tcp }
+import akka.actor.{Actor, ActorRef, Props}
+import akka.io.{IO, Tcp}
 import akka.util.ByteString
 
 object Horiba370Collector {
+
   case object ReadData
+
   case object CheckStatus
 
   var count = 0
+
   def start(id: String, protocolParam: ProtocolParam, config: Horiba370Config)(implicit context: ActorContext) = {
     import Protocol.ProtocolParam
     val actorName = s"Horiba_${count}"
@@ -34,6 +37,7 @@ object Horiba370Collector {
 
       now.withHourOfDay(hour).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0) + nextDay.day
     }
+
     // suppose every 10 min
     val period = 30
     val nextTime = getNextTime(period)
@@ -42,31 +46,38 @@ object Horiba370Collector {
   }
 }
 
-class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config) extends Actor {
+import javax.inject._
+
+class Horiba370Collector @Inject()
+(instrumentOp: InstrumentOp, instrumentStatusOp: InstrumentStatusOp,
+ calibrationOp: CalibrationOp, monitorTypeOp: MonitorTypeOp, actorSystem: ActorSystem)
+(id: String, targetAddr: String, config: Horiba370Config) extends Actor {
+
   import Horiba370Collector._
   import scala.concurrent.duration._
   import scala.concurrent.Future
   import scala.concurrent.blocking
   import ModelHelper._
-  import DataCollectManager._
+
   import TapiTxx._
 
   var (collectorState, instrumentStatusTypesOpt) = {
-    val instrument = Instrument.getInstrument(id)
+    val instrument = instrumentOp.getInstrument(id)
     val inst = instrument(0)
     (inst.state, inst.statusType)
   }
 
   var nextLoggingStatusTime = getNextLoggingStatusTime
   var statusMap = Map.empty[String, Double]
+
   def logStatus() = {
     import com.github.nscala_time.time.Imports._
     //Log Instrument state
     if (DateTime.now() > nextLoggingStatusTime) {
       try {
-        val statusList = statusMap map { kv => InstrumentStatus.Status(kv._1, kv._2) }
-        val is = InstrumentStatus.InstrumentStatus(DateTime.now(), id, statusList.toList)
-        InstrumentStatus.log(is)
+        val statusList = statusMap map { kv => instrumentStatusOp.Status(kv._1, kv._2) }
+        val is = instrumentStatusOp.InstrumentStatus(DateTime.now(), id, statusList.toList)
+        instrumentStatusOp.log(is)
       } catch {
         case _: Throwable =>
           Logger.error("Log instrument status failed")
@@ -77,26 +88,26 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
 
   if (instrumentStatusTypesOpt.isEmpty) {
     instrumentStatusTypesOpt = Some(Horiba370.InstrumentStatusTypeList)
-    Instrument.updateStatusType(id, Horiba370.InstrumentStatusTypeList)
+    instrumentOp.updateStatusType(id, Horiba370.InstrumentStatusTypeList)
   } else {
     val instrumentStatusTypes = instrumentStatusTypesOpt.get
     if (instrumentStatusTypes.length != Horiba370.InstrumentStatusTypeList.length) {
-      Instrument.updateStatusType(id, Horiba370.InstrumentStatusTypeList)
+      instrumentOp.updateStatusType(id, Horiba370.InstrumentStatusTypeList)
     }
   }
 
-  val timerOpt: Option[Cancellable] = Some(Akka.system.scheduler.schedule(Duration(1, SECONDS), Duration(2, SECONDS),
+  val timerOpt: Option[Cancellable] = Some(actorSystem.scheduler.schedule(Duration(1, SECONDS), Duration(2, SECONDS),
     self, ReadData))
 
-  val statusTimerOpt: Option[Cancellable] = Some(Akka.system.scheduler.schedule(Duration(30, SECONDS), Duration(1, MINUTES),
+  val statusTimerOpt: Option[Cancellable] = Some(actorSystem.scheduler.schedule(Duration(30, SECONDS), Duration(1, MINUTES),
     self, CheckStatus))
 
   // override postRestart so we don't call preStart and schedule a new message
   override def postRestart(reason: Throwable) = {}
 
-  val mtCH4 = MonitorType.withName("CH4")
-  val mtNMHC = MonitorType.withName("NMHC")
-  val mtTHC = MonitorType.withName("THC")
+  val mtCH4 = ("CH4")
+  val mtNMHC = ("NMHC")
+  val mtTHC = ("THC")
 
   def processResponse(data: ByteString)(implicit calibrateRecordStart: Boolean) = {
     def getResponse = {
@@ -153,18 +164,21 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
             statusMap += (Horiba370.Press + idx -> value)
           }
         }
-        
+
       case "R038" =>
-        //Logger.info("R038")
-        //Logger.info(prmStr)
-        //val ret = prmStr.split(",")
-        //Logger.info("#=" + ret.length)
+      //Logger.info("R038")
+      //Logger.info(prmStr)
+      //val ret = prmStr.split(",")
+      //Logger.info("#=" + ret.length)
     }
   }
 
   case object RaiseStart
+
   case object HoldStart
+
   case object DownStart
+
   case object CalibrateEnd
 
   import context.system
@@ -293,11 +307,11 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
       if (config.calibratorPurgeTime.isDefined && config.calibratorPurgeTime.get != 0) {
         collectorState = MonitorStatus.NormalStat
         reqNormal(connection)
-        Instrument.setState(id, collectorState)
+        instrumentOp.setState(id, collectorState)
 
         Some(purgeCalibrator)
       } else
-        Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart))
+        Some(system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart))
   }
 
   def purgeCalibrator() = {
@@ -317,7 +331,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
     val purgeTime = config.calibratorPurgeTime.get
     Logger.info(s"Purge calibrator. Delay start of calibration $purgeTime seconds")
     triggerCalibratorPurge(true)
-    Akka.system.scheduler.scheduleOnce(Duration(purgeTime + 1, SECONDS), self, RaiseStart)
+    system.scheduler.scheduleOnce(Duration(purgeTime + 1, SECONDS), self, RaiseStart)
   }
 
   def connectionReady(connection: ActorRef)(implicit calibrateRecordStart: Boolean): Receive = {
@@ -343,7 +357,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
       Future {
         blocking {
           collectorState = state
-          Instrument.setState(id, state)
+          instrumentOp.setState(id, state)
           if (state == MonitorStatus.NormalStat) {
             reqNormal(connection)
             raiseStartTimerOpt map {
@@ -356,26 +370,26 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
     case AutoCalibration(instId) =>
       assert(instId == id)
       collectorState = MonitorStatus.ZeroCalibrationStat
-      Instrument.setState(id, collectorState)
+      instrumentOp.setState(id, collectorState)
       context become calibrationHandler(connection, AutoZero,
         com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData],
-        Map.empty[MonitorType.Value, Option[Double]])
+        Map.empty[String, Option[Double]])
       self ! RaiseStart
 
     case ManualZeroCalibration(instId) =>
       assert(instId == id)
       collectorState = MonitorStatus.ZeroCalibrationStat
-      Instrument.setState(id, collectorState)
+      instrumentOp.setState(id, collectorState)
       context become calibrationHandler(connection, ManualZero,
         com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData],
-        Map.empty[MonitorType.Value, Option[Double]])
+        Map.empty[String, Option[Double]])
       self ! RaiseStart
 
     case ManualSpanCalibration(instId) =>
       assert(instId == id)
       context become calibrationHandler(connection, ManualSpan,
         com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData],
-        Map.empty[MonitorType.Value, Option[Double]])
+        Map.empty[String, Option[Double]])
 
       setupSpanRaiseStartTimer(connection)
   }
@@ -386,7 +400,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
                          startTime: com.github.nscala_time.time.Imports.DateTime,
                          recording: Boolean,
                          calibrationDataList: List[MonitorTypeData],
-                         zeroMap: Map[MonitorType.Value, Option[Double]]): Receive = {
+                         zeroMap: Map[String, Option[Double]]): Receive = {
 
     case UdpConnected.Received(data) =>
       processResponse(data)(recording)
@@ -408,7 +422,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
           else
             collectorState = MonitorStatus.SpanCalibrationStat
 
-          Instrument.setState(id, collectorState)
+          instrumentOp.setState(id, collectorState)
 
           Logger.info(s"${calibrationType} RasieStart")
           val cmd =
@@ -428,7 +442,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
               reqSpanCalibration(connection)
             }
 
-          calibrateTimerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(config.raiseTime, SECONDS), self, HoldStart))
+          calibrateTimerOpt = Some(actorSystem.scheduler.scheduleOnce(Duration(config.raiseTime, SECONDS), self, HoldStart))
         }
       }
 
@@ -441,7 +455,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
       Logger.debug(s"${calibrationType} HoldStart")
       context become calibrationHandler(connection, calibrationType, startTime, true,
         calibrationDataList, zeroMap)
-      calibrateTimerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(config.holdTime, SECONDS), self, DownStart))
+      calibrateTimerOpt = Some(system.scheduler.scheduleOnce(Duration(config.holdTime, SECONDS), self, DownStart))
 
     case DownStart =>
       Logger.debug(s"${calibrationType} DownStart")
@@ -464,19 +478,19 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
         blocking {
 
           calibrateTimerOpt = if (calibrationType.auto && calibrationType.zero)
-            Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, CalibrateEnd))
+            Some(system.scheduler.scheduleOnce(Duration(1, SECONDS), self, CalibrateEnd))
           else {
             collectorState = MonitorStatus.CalibrationResume
-            Instrument.setState(id, collectorState)
+            instrumentOp.setState(id, collectorState)
 
-            Some(Akka.system.scheduler.scheduleOnce(Duration(config.downTime, SECONDS), self, CalibrateEnd))
+            Some(system.scheduler.scheduleOnce(Duration(config.downTime, SECONDS), self, CalibrateEnd))
           }
         }
       }
 
     case CalibrateEnd =>
       import scala.collection.mutable.Map
-      val mtValueMap = Map.empty[MonitorType.Value, List[Double]]
+      val mtValueMap = Map.empty[String, List[Double]]
       for {
         record <- calibrationDataList
       } {
@@ -509,7 +523,7 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
               mt <- monitorTypes
               zeroValue = zeroMap(mt)
               avg = mtAvgMap(mt)
-            } yield Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, zeroValue, MonitorType.map(mt).span, avg)
+            } yield Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, zeroValue, monitorTypeOp.map(mt).span, avg)
           } else {
             for {
               mt <- monitorTypes
@@ -518,12 +532,12 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
               if (calibrationType.zero) {
                 Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, avg, None, None)
               } else {
-                Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, None, MonitorType.map(mt).span, avg)
+                Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, None, monitorTypeOp.map(mt).span, avg)
               }
             }
           }
         for (cal <- calibrationList)
-          Calibration.insert(cal)
+          calibrationOp.insert(cal)
 
         self ! SetState(id, MonitorStatus.NormalStat)
       }
@@ -532,13 +546,13 @@ class Horiba370Collector(id: String, targetAddr: String, config: Horiba370Config
       reqFlameStatus(connection)
       reqPressure(connection)
       reqFlow(connection)
-      
+
     case SetState(id, state) =>
       Future {
         blocking {
           if (state == MonitorStatus.NormalStat) {
             collectorState = state
-            Instrument.setState(id, state)
+            instrumentOp.setState(id, state)
 
             reqNormal(connection)
             calibrateTimerOpt map {

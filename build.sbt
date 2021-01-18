@@ -33,6 +33,4 @@ mappings in Universal ++=
 
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
 
-scalacOptions ++= Seq("-feature")
-
-fork in run := false
+routesGenerator := InjectedRoutesGenerator

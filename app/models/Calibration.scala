@@ -10,7 +10,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 case class CalibrationJSON(monitorType: String, startTime: Long, endTime: Long, zero_val: Option[Double],
                            span_std: Option[Double], span_val: Option[Double])
 
-case class Calibration(monitorType: MonitorType.Value, startTime: DateTime, endTime: DateTime, zero_val: Option[Double],
+case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTime, zero_val: Option[Double],
                        span_std: Option[Double], span_val: Option[Double]) {
   def zero_dev = zero_val.map(Math.abs)
   def span_dev =
@@ -26,15 +26,17 @@ case class Calibration(monitorType: MonitorType.Value, startTime: DateTime, endT
   }
 }
 
-object Calibration {
+import javax.inject._
+@Singleton
+class CalibrationOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp) {
 
   val collectionName = "calibration"
-  val collection = MongoDB.database.getCollection(collectionName)
+  val collection = mongoDB.database.getCollection(collectionName)
   import org.mongodb.scala._
   import org.mongodb.scala.model.Indexes._
   def init(colNames: Seq[String]) {
     if (!colNames.contains(collectionName)) {
-      val f = MongoDB.database.createCollection(collectionName).toFuture()
+      val f = mongoDB.database.createCollection(collectionName).toFuture()
       f.onFailure(errorHandler)
       f.onSuccess({
         case _ =>
@@ -63,7 +65,7 @@ object Calibration {
 
     val startTime = new DateTime(doc.get("startTime").get.asDateTime().getValue)
     val endTime = new DateTime(doc.get("endTime").get.asDateTime().getValue)
-    val monitorType = MonitorType.withName(doc.get("monitorType").get.asString().getValue)
+    val monitorType = (doc.get("monitorType").get.asString().getValue)
     val zero_val = doc.get("zero_val").collect(doublePf)
 
     val span_std = doc.get("span_std").collect(doublePf)
@@ -101,7 +103,7 @@ object Calibration {
       yield docs.map { toCalibration }
   }
 
-  def calibrationReport(mt: MonitorType.Value, start: DateTime, end: DateTime) = {
+  def calibrationReport(mt: String, start: DateTime, end: DateTime) = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Projections._
     import org.mongodb.scala.model.Sorts._
@@ -111,7 +113,7 @@ object Calibration {
     docs.map { toCalibration }
   }
 
-  def calibrationMonthly(monitorType: MonitorType.Value, start: DateTime) = {
+  def calibrationMonthly(monitorType: String, start: DateTime) = {
     val end = start + 1.month
     val report = List.empty[Calibration]
     val pairs =
@@ -135,8 +137,8 @@ object Calibration {
     val styleOpt =
       for {
         zero_val <- cal.zero_val
-        zd_internal <- MonitorType.map(cal.monitorType).zd_internal
-        zd_law <- MonitorType.map(cal.monitorType).zd_law
+        zd_internal <- monitorTypeOp.map(cal.monitorType).zd_internal
+        zd_law <- monitorTypeOp.map(cal.monitorType).zd_law
       } yield if (zero_val > zd_law)
         "red"
       else if (zero_val > zd_internal)
@@ -151,8 +153,8 @@ object Calibration {
     val styleOpt =
       for {
         span_dev_ratio <- cal.span_dev_ratio
-        span_dev_internal <- MonitorType.map(cal.monitorType).span_dev_internal
-        span_dev_law <- MonitorType.map(cal.monitorType).span_dev_law
+        span_dev_internal <- monitorTypeOp.map(cal.monitorType).span_dev_internal
+        span_dev_law <- monitorTypeOp.map(cal.monitorType).span_dev_law
       } yield if (span_dev_ratio > span_dev_law)
         "red"
       else if (span_dev_ratio > span_dev_internal)
@@ -167,8 +169,8 @@ object Calibration {
     val zeroStyleOpt =
       for {
         zero_val <- cal.zero_val
-        zd_internal <- MonitorType.map(cal.monitorType).zd_internal
-        zd_law <- MonitorType.map(cal.monitorType).zd_law
+        zd_internal <- monitorTypeOp.map(cal.monitorType).zd_internal
+        zd_law <- monitorTypeOp.map(cal.monitorType).zd_law
       } yield if (zero_val > zd_law)
         "red"
       else if (zero_val > zd_internal)
@@ -179,8 +181,8 @@ object Calibration {
     val spanStyleOpt =
       for {
         span_dev_ratio <- cal.span_dev_ratio
-        span_dev_internal <- MonitorType.map(cal.monitorType).span_dev_internal
-        span_dev_law <- MonitorType.map(cal.monitorType).span_dev_law
+        span_dev_internal <- monitorTypeOp.map(cal.monitorType).span_dev_internal
+        span_dev_law <- monitorTypeOp.map(cal.monitorType).span_dev_law
       } yield if (span_dev_ratio > span_dev_law)
         "danger"
       else if (span_dev_ratio > span_dev_internal)
@@ -204,8 +206,8 @@ object Calibration {
     val zeroResultOpt =
       for {
         zero_val <- cal.zero_val
-        zd_internal <- MonitorType.map(cal.monitorType).zd_internal
-        zd_law <- MonitorType.map(cal.monitorType).zd_law
+        zd_internal <- monitorTypeOp.map(cal.monitorType).zd_internal
+        zd_law <- monitorTypeOp.map(cal.monitorType).zd_law
       } yield if (zero_val > zd_law)
         false
       else
@@ -214,8 +216,8 @@ object Calibration {
     val spanResultOpt =
       for {
         span_dev_ratio <- cal.span_dev_ratio
-        span_dev_internal <- MonitorType.map(cal.monitorType).span_dev_internal
-        span_dev_law <- MonitorType.map(cal.monitorType).span_dev_law
+        span_dev_internal <- monitorTypeOp.map(cal.monitorType).span_dev_internal
+        span_dev_law <- monitorTypeOp.map(cal.monitorType).span_dev_law
       } yield if (span_dev_ratio > span_dev_law)
         false
       else

@@ -25,8 +25,8 @@ object Baseline9000 extends DriverOps {
       })
   }
 
-  override def getMonitorTypes(param: String): List[MonitorType.Value] = {
-    List(MonitorType.withName("CH4"), MonitorType.withName("NMHC"), MonitorType.withName("THC"))
+  override def getMonitorTypes(param: String): List[String] = {
+    List(("CH4"), ("NMHC"), ("THC"))
   }
 
   def validateParam(json: String) = {

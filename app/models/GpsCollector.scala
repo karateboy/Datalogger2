@@ -28,12 +28,13 @@ import net.sf.marineapi.nmea.event.SentenceListener;
 import net.sf.marineapi.nmea.io.SentenceReader;
 import net.sf.marineapi.nmea.sentence.SentenceValidator;
 
-class GpsCollector(id: String, protocolParam: ProtocolParam) extends Actor
+import javax.inject._
+@Singleton
+class GpsCollector @Inject()(monitorTypeOp: MonitorTypeOp)(id: String, protocolParam: ProtocolParam) extends Actor
     with ActorLogging with SentenceListener with ExceptionListener with PositionListener {
   val comm: SerialComm = SerialComm.open(protocolParam.comPort.get)
   var reader: SentenceReader = _
 
-  import DataCollectManager._
   import scala.concurrent.Future
   import scala.concurrent.blocking
 
@@ -69,8 +70,8 @@ class GpsCollector(id: String, protocolParam: ProtocolParam) extends Actor
   var reportTime = DateTime.now
   def providerUpdate(evt: PositionEvent) {
     if (reportTime < DateTime.now - 3.second) {
-      val lat = MonitorTypeData(MonitorType.LAT, evt.getPosition.getLatitude, MonitorStatus.NormalStat)
-      val lng = MonitorTypeData(MonitorType.LNG, evt.getPosition.getLongitude, MonitorStatus.NormalStat)
+      val lat = MonitorTypeData(monitorTypeOp.LAT, evt.getPosition.getLatitude, MonitorStatus.NormalStat)
+      val lng = MonitorTypeData(monitorTypeOp.LNG, evt.getPosition.getLongitude, MonitorStatus.NormalStat)
       context.parent ! ReportData(List(lat, lng))
       reportTime = DateTime.now
     }

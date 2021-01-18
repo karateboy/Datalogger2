@@ -1,12 +1,10 @@
 package models
-import play.api._
-import ModelHelper._
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
 import com.github.nscala_time.time.Imports._
 import com.typesafe.config.ConfigFactory
+import play.api._
+import play.api.libs.json._
 
-case class TapiConfig(slaveID: Int, calibrationTime: Option[LocalTime], monitorTypes: Option[List[MonitorType.Value]], 
+case class TapiConfig(slaveID: Int, calibrationTime: Option[LocalTime], monitorTypes: Option[List[String]],
     raiseTime:Option[Int], downTime:Option[Int], holdTime:Option[Int], 
     calibrateZeoSeq:Option[Int], calibrateSpanSeq:Option[Int], 
     calibratorPurgeSeq:Option[Int], calibratorPurgeTime:Option[Int],
@@ -21,8 +19,6 @@ object TapiTxx {
 abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
   implicit val cfgReads = Json.reads[TapiConfig]
   implicit val cfgWrites = Json.writes[TapiConfig]
-  import Protocol.ProtocolParam
-  import TapiTxx._
   
   def getModel = modelConfig.model
   def readModelSetting = {
@@ -97,7 +93,7 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
       },
       param => {
         //Append monitor Type into config
-        val mt = modelConfig.monitorTypeIDs.map { MonitorType.withName(_) }
+        val mt = modelConfig.monitorTypeIDs
         val newParam = TapiConfig(param.slaveID, param.calibrationTime, Some(mt), 
             param.raiseTime, param.downTime, param.holdTime,
             param.calibrateZeoSeq, param.calibrateSpanSeq,
@@ -109,12 +105,12 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
       })
   }
 
-  override def getMonitorTypes(param: String): List[MonitorType.Value] = {
+  override def getMonitorTypes(param: String): List[String] = {
     val config = validateParam(param)
     if (config.monitorTypes.isDefined)
       config.monitorTypes.get
     else
-      List.empty[MonitorType.Value]
+      List.empty[String]
   }
 
   def validateParam(json: String) = {

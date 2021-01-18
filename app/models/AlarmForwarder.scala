@@ -1,21 +1,20 @@
 package models
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import com.github.nscala_time.time.Imports._
 import akka.actor.Actor
-import akka.actor.actorRef2Scala
+import com.github.nscala_time.time.Imports._
 import play.api.Logger
-import play.api.Play.current
-import play.api.libs.json.JsError
-import play.api.libs.json.Json
-import play.api.libs.ws.WS
+import play.api.libs.json.{JsError, Json}
+import play.api.libs.ws.WSClient
 
-class AlarmForwarder(server: String, monitor: String) extends Actor {
+import javax.inject._
+import scala.concurrent.ExecutionContext.Implicits.global
+
+class AlarmForwarder @Inject()(alarmOp: AlarmOp, ws: WSClient)(server: String, monitor: String) extends Actor {
   import ForwardManager._
   def receive = handler(None)
   def checkLatest = {
     val url = s"http://$server/AlarmRecordRange/$monitor"
-    val f = WS.url(url).get().map {
+    val f = ws.url(url).get().map {
       response =>
         val result = response.json.validate[LatestRecordTime]
         result.fold(
@@ -42,12 +41,13 @@ class AlarmForwarder(server: String, monitor: String) extends Actor {
   }
 
   def uploadAlarm(latestAlarm: Long) = {
-    val recordFuture = Alarm.getAlarmsFuture(new DateTime(latestAlarm + 1), DateTime.now)
+    val recordFuture = alarmOp.getAlarmsFuture(new DateTime(latestAlarm + 1), DateTime.now)
     for (records <- recordFuture) {
       if (!records.isEmpty) {
         val recordJSON = records.map { _.toJson }
         val url = s"http://$server/AlarmRecord/$monitor"
-        val f = WS.url(url).put(Json.toJson(recordJSON))
+        import alarmOp.jsonWrite
+        val f = ws.url(url).put(Json.toJson(recordJSON))
         f onSuccess {
           case response =>
             context become handler(Some(records.last.time.getMillis))

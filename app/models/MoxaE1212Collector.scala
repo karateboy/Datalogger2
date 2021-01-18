@@ -5,8 +5,8 @@ import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import ModelHelper._
 import scala.concurrent.ExecutionContext.Implicits.global
-import MoxaE1212._
 import Protocol.ProtocolParam
+import javax.inject._
 
 object MoxaE1212Collector {
 
@@ -26,11 +26,12 @@ object MoxaE1212Collector {
   }
 }
 
-class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1212Param) extends Actor with ActorLogging {
+class MoxaE1212Collector @Inject()
+(instrumentOp: InstrumentOp, monitorTypeOp: MonitorTypeOp, system: ActorSystem)
+(id: String, protocolParam: ProtocolParam, param: MoxaE1212Param) extends Actor with ActorLogging {
   import MoxaE1212Collector._
   import java.io.BufferedReader
   import java.io._
-  import DataCollectManager._
 
   var cancelable: Cancellable = _
 
@@ -40,12 +41,11 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
     val resetTime = DateTime.now().withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0) + 1.hour
     val duration = new Duration(DateTime.now(), resetTime)
     import scala.concurrent.duration._
-    Akka.system.scheduler.schedule(scala.concurrent.duration.Duration(duration.getStandardSeconds, SECONDS),
+    system.scheduler.schedule(scala.concurrent.duration.Duration(duration.getStandardSeconds, SECONDS),
       scala.concurrent.duration.Duration(1, HOURS), self, ResetCounter)
   }
 
   def decodeDiCounter(values: Seq[Int], collectorState: String) = {
-    import DataCollectManager._
     val dataOptList =
       for {
         cfg <- param.ch.zipWithIndex
@@ -66,7 +66,6 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
     context.parent ! ReportData(dataList.toList)
   }
 
-  import DataCollectManager._
   import scala.concurrent.Future
   import scala.concurrent.blocking
   import com.serotonin.modbus4j._
@@ -92,14 +91,14 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
             master.init();
             context become handler(collectorState, Some(master))
             import scala.concurrent.duration._
-            cancelable = Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
+            cancelable = system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)
               Logger.info("Try again 1 min later...")
               //Try again
               import scala.concurrent.duration._
-              cancelable = Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
+              cancelable = system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
           }
 
         }
@@ -140,8 +139,6 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
               val result =
                 for (idx <- 0 to 7) yield rawResult.getValue(idx).asInstanceOf[Boolean]
 
-              import DataCollectManager._
-
               for {
                 cfg <- param.ch.zipWithIndex
                 chCfg = cfg._1 if chCfg.enable && chCfg.mt.isDefined
@@ -149,13 +146,13 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
                 idx = cfg._2
                 v = result(idx)
               } yield {
-                if(MonitorType.signalMtvList.contains(mt))
-                  MonitorType.logDiMonitorType(mt, v)
+                if(monitorTypeOp.signalMtvList.contains(mt))
+                  monitorTypeOp.logDiMonitorType(mt, v)
               }
             }
 
             import scala.concurrent.duration._
-            cancelable = Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
+            cancelable = system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Throwable =>
               Logger.error("Read reg failed", ex)
@@ -168,7 +165,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
 
     case SetState(id, state) =>
       Logger.info(s"$self => $state")
-      Instrument.setState(id, state)
+      instrumentOp.setState(id, state)
       context become handler(state, masterOpt)
 
     case ResetCounter =>
@@ -179,7 +176,7 @@ class MoxaE1212Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
         val resetRegAddr = 272
 
         for {
-          ch_idx <- param.ch.zipWithIndex if ch_idx._1.enable && ch_idx._1.mt == Some(MonitorType.RAIN)
+          ch_idx <- param.ch.zipWithIndex if ch_idx._1.enable && ch_idx._1.mt == Some(monitorTypeOp.RAIN)
           ch = ch_idx._1
           idx = ch_idx._2
         } {

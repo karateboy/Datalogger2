@@ -1,18 +1,17 @@
 package models
-import play.api._
 import akka.actor._
-import play.api.Play.current
-import play.api.libs.concurrent.Akka
 import com.github.nscala_time.time.Imports._
 import play.api.Play.current
-import ModelHelper._
+import play.api._
+import play.api.libs.concurrent.Akka
 import play.api.libs.json._
-import play.api.libs.functional.syntax._
+import play.api.libs.ws.WSClient
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 case class LatestRecordTime(time: Long)
+
 object ForwardManager {
-  import com.typesafe.config.ConfigFactory
   implicit val latestRecordTimeRead = Json.reads[LatestRecordTime]
 
   val serverConfig = Play.current.configuration.getConfig("server").getOrElse(Configuration.empty)
@@ -66,7 +65,10 @@ object ForwardManager {
 
 }
 
-class ForwardManager(server: String, monitor: String) extends Actor {
+import javax.inject._
+class ForwardManager @Inject()
+(system: ActorSystem, dataCollectManagerOp: DataCollectManagerOp, ws: WSClient)
+(server: String, monitor: String) extends Actor {
   import ForwardManager._
 
   val hourRecordForwarder = context.actorOf(Props(classOf[HourRecordForwarder], server, monitor),
@@ -90,32 +92,30 @@ class ForwardManager(server: String, monitor: String) extends Actor {
   {
     import scala.concurrent.duration._
 
-    Akka.system.scheduler.scheduleOnce(Duration(30, SECONDS), statusTypeForwarder, UpdateInstrumentStatusType)
+    system.scheduler.scheduleOnce(Duration(30, SECONDS), statusTypeForwarder, UpdateInstrumentStatusType)
   }
 
   val timer = {
     import scala.concurrent.duration._
-    Akka.system.scheduler.schedule(Duration(30, SECONDS), Duration(10, MINUTES), instrumentStatusForwarder, ForwardInstrumentStatus)
+    system.scheduler.schedule(Duration(30, SECONDS), Duration(10, MINUTES), instrumentStatusForwarder, ForwardInstrumentStatus)
   }
 
   val timer2 = {
     import scala.concurrent.duration._
-    Akka.system.scheduler.schedule(Duration(30, SECONDS), Duration(5, MINUTES), calibrationForwarder, ForwardCalibration)
+    system.scheduler.schedule(Duration(30, SECONDS), Duration(5, MINUTES), calibrationForwarder, ForwardCalibration)
   }
 
   val timer3 = {
     import scala.concurrent.duration._
-    Akka.system.scheduler.schedule(Duration(30, SECONDS), Duration(3, MINUTES), alarmForwarder, ForwardAlarm)
+    system.scheduler.schedule(Duration(30, SECONDS), Duration(3, MINUTES), alarmForwarder, ForwardAlarm)
   }
 
   val timer4 = {
     import scala.concurrent.duration._
-    Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, GetInstrumentCmd)
+    system.scheduler.scheduleOnce(Duration(3, SECONDS), self, GetInstrumentCmd)
   }
 
   def receive = handler
-
-  import play.api.libs.ws._
   def handler: Receive = {
     case ForwardHour =>
       hourRecordForwarder ! ForwardHour
@@ -144,7 +144,7 @@ class ForwardManager(server: String, monitor: String) extends Actor {
 
     case GetInstrumentCmd =>
       val url = s"http://$server/InstrumentCmd/$monitor"
-      val f = WS.url(url).get().map {
+      val f = ws.url(url).get().map {
         response =>
 
           val result = response.json.validate[Seq[InstrumentCommand]]
@@ -159,16 +159,16 @@ class ForwardManager(server: String, monitor: String) extends Actor {
                 for (cmd <- cmdSeq) {
                   cmd.cmd match {
                     case InstrumentCommand.AutoCalibration.cmd =>
-                      DataCollectManager.autoCalibration(cmd.instId)
+                      dataCollectManagerOp.autoCalibration(cmd.instId)
 
                     case InstrumentCommand.ManualZeroCalibration.cmd =>
-                      DataCollectManager.zeroCalibration(cmd.instId)
+                      dataCollectManagerOp.zeroCalibration(cmd.instId)
 
                     case InstrumentCommand.ManualSpanCalibration.cmd =>
-                      DataCollectManager.spanCalibration(cmd.instId)
+                      dataCollectManagerOp.spanCalibration(cmd.instId)
 
                     case InstrumentCommand.BackToNormal.cmd =>
-                      DataCollectManager.setInstrumentState(cmd.instId, MonitorStatus.NormalStat)
+                      dataCollectManagerOp.setInstrumentState(cmd.instId, MonitorStatus.NormalStat)
                   }
                 }
               }
@@ -182,7 +182,7 @@ class ForwardManager(server: String, monitor: String) extends Actor {
       f onComplete { x =>
         {
           import scala.concurrent.duration._
-          Akka.system.scheduler.scheduleOnce(Duration(10, SECONDS), self, GetInstrumentCmd)
+          system.scheduler.scheduleOnce(Duration(10, SECONDS), self, GetInstrumentCmd)
         }
       }            
   }

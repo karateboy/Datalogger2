@@ -30,7 +30,7 @@ object Security {
   }
   
   def onUnauthorized(request: RequestHeader) = {
-    Results.Redirect(routes.Login.prompt()) 
+    Results.Unauthorized
   }
   
   //def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A]) => Future[Result]) = {

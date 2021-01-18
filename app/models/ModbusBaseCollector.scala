@@ -1,9 +1,9 @@
 package models
-import play.api._
 import akka.actor._
-import play.api.Play.current
+import play.api._
 import play.api.libs.concurrent.Akka
-import ModelHelper._
+
+import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object ModbusBaseCollector {
@@ -27,16 +27,19 @@ object ModbusBaseCollector {
 
 }
 
-abstract class ModbusBaseCollector(instId: String, slaveID: Int, modelReg: ModelReg, config: ModbusModelConfig) extends Actor {
+
+abstract class ModbusBaseCollector @Inject()
+(instrumentOp: InstrumentOp, alarmOp: AlarmOp, system: ActorSystem,
+ instrumentStatusOp: InstrumentStatusOp, monitorStatusOp: MonitorStatusOp)(instId: String, slaveID: Int, modelReg: ModelReg, config: ModbusModelConfig) extends Actor {
   var timerOpt: Option[Cancellable] = None
-  import DataCollectManager._
+
   import ModbusBaseCollector._
   import com.serotonin.modbus4j._
   import com.serotonin.modbus4j.ip.IpParameters
 
   var masterOpt: Option[ModbusMaster] = None
   var (collectorState, instrumentStatusTypesOpt) = {
-    val instList = Instrument.getInstrument(instId)
+    val instList = instrumentOp.getInstrument(instId)
     if (!instList.isEmpty) {
       val inst = instList(0)
       (inst.state, inst.statusType)
@@ -50,7 +53,7 @@ abstract class ModbusBaseCollector(instId: String, slaveID: Int, modelReg: Model
 
   def getMonitorTypeStatusMap = mtStatusMap
 
-  Logger.info(s"$self state=${MonitorStatus.map(collectorState).desp}")
+  Logger.info(s"$self state=${monitorStatusOp.map(collectorState).desp}")
 
   val InputKey = "Input"
   val HoldingKey = "Holding"
@@ -59,8 +62,8 @@ abstract class ModbusBaseCollector(instId: String, slaveID: Int, modelReg: Model
 
   def probeInstrumentStatusType = {
     Logger.info("Probing supported modbus registers...")
-    import com.serotonin.modbus4j.locator.BaseLocator
     import com.serotonin.modbus4j.code.DataType
+    import com.serotonin.modbus4j.locator.BaseLocator
 
     def probeInputReg(addr: Int, desc: String) = {
       try {
@@ -143,8 +146,8 @@ abstract class ModbusBaseCollector(instId: String, slaveID: Int, modelReg: Model
     import com.serotonin.modbus4j.BatchRead
     val batch = new BatchRead[Integer]
 
-    import com.serotonin.modbus4j.locator.BaseLocator
     import com.serotonin.modbus4j.code.DataType
+    import com.serotonin.modbus4j.locator.BaseLocator
 
     for {
       st_idx <- statusTypeList.zipWithIndex
@@ -194,12 +197,10 @@ abstract class ModbusBaseCollector(instId: String, slaveID: Int, modelReg: Model
 
   var connected = false
   var oldModelReg: Option[ModelRegValue] = None
-  import Alarm._
 
   def receive = normalReceive
 
-  import scala.concurrent.Future
-  import scala.concurrent.blocking
+  import scala.concurrent.{Future, blocking}
   def readRegFuture(recordCalibration: Boolean) =
     Future {
       blocking {
@@ -213,12 +214,12 @@ abstract class ModbusBaseCollector(instId: String, slaveID: Int, modelReg: Model
           case ex: Exception =>
             Logger.error(ex.getMessage, ex)
             if (connected)
-              log(instStr(instId), Level.ERR, s"${ex.getMessage}")
+              alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
 
             connected = false
         } finally {
           import scala.concurrent.duration._
-          timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(2, SECONDS), self, ReadRegister))
+          timerOpt = Some(system.scheduler.scheduleOnce(Duration(2, SECONDS), self, ReadRegister))
         }
       }
     }
@@ -244,17 +245,17 @@ abstract class ModbusBaseCollector(instId: String, slaveID: Int, modelReg: Model
 
             if (instrumentStatusTypesOpt.isEmpty) {
               instrumentStatusTypesOpt = Some(probeInstrumentStatusType)
-              Instrument.updateStatusType(instId, instrumentStatusTypesOpt.get)
+              instrumentOp.updateStatusType(instId, instrumentStatusTypesOpt.get)
             }
             import scala.concurrent.duration._
-            timerOpt = Some(Akka.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadRegister))
+            timerOpt = Some(system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadRegister))
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)
-              log(instStr(instId), Level.ERR, s"無法連接:${ex.getMessage}")
+              alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
-              Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost(host))
+              system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost(host))
           }
         }
       }
@@ -267,9 +268,9 @@ abstract class ModbusBaseCollector(instId: String, slaveID: Int, modelReg: Model
         Logger.error(s"Unexpected command: SetState($state)")
       } else {
         collectorState = state
-        Instrument.setState(instId, collectorState)
+        instrumentOp.setState(instId, collectorState)
       }
-      Logger.info(s"$self => ${MonitorStatus.map(collectorState).desp}")
+      Logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
 
     case SetMonitorTypeState(id, mt, state) =>
       mtStatusMap = mtStatusMap + (mt -> state)
@@ -313,7 +314,7 @@ abstract class ModbusBaseCollector(instId: String, slaveID: Int, modelReg: Model
     } {
       if (enable) {
         if (oldModelReg.isEmpty || oldModelReg.get.modeRegs(idx)._2 != enable) {
-          log(instStr(instId), Level.INFO, statusType.desc)
+          alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.INFO, statusType.desc)
         }
       }
     }
@@ -326,11 +327,11 @@ abstract class ModbusBaseCollector(instId: String, slaveID: Int, modelReg: Model
     } {
       if (enable) {
         if (oldModelReg.isEmpty || oldModelReg.get.warnRegs(idx)._2 != enable) {
-          log(instStr(instId), Level.WARN, statusType.desc)
+          alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.WARN, statusType.desc)
         }
       } else {
         if (oldModelReg.isDefined && oldModelReg.get.warnRegs(idx)._2 != enable) {
-          log(instStr(instId), Level.INFO, s"${statusType.desc} 解除")
+          alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.INFO, s"${statusType.desc} 解除")
         }
       }
     }
@@ -352,15 +353,15 @@ abstract class ModbusBaseCollector(instId: String, slaveID: Int, modelReg: Model
   }
 
   def logInstrumentStatus(regValue: ModelRegValue) = {
-    import InstrumentStatus._
     val isList = regValue.inputRegs.map {
       kv =>
         val k = kv._1
         val v = kv._2
-        Status(k.key, v)
+        instrumentStatusOp.Status(k.key, v)
     }
-    val instStatus = InstrumentStatus(DateTime.now(), instId, isList).excludeNaN
-    log(instStatus)
+
+    val instStatus = instrumentStatusOp.InstrumentStatus(DateTime.now(), instId, isList).excludeNaN
+    instrumentStatusOp.log(instStatus)
   }
 
   def findDataRegIdx(regValue: ModelRegValue)(addr: Int) = {

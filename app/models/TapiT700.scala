@@ -1,4 +1,5 @@
 package models
+import akka.actor.ActorSystem
 import play.api._
 
 object TapiT700 extends TapiTxx(ModelConfig("T700", List.empty[String])) {
@@ -13,9 +14,14 @@ object TapiT700 extends TapiTxx(ModelConfig("T700", List.empty[String])) {
   }
 }
 
-import TapiTxx._
-class T700Collector(instId: String, modelReg: ModelReg, config: TapiConfig) extends TapiTxxCollector(instId, modelReg, config) {
-  import DataCollectManager._
+import javax.inject._
+class T700Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
+                              alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                              calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)(instId: String, modelReg: ModelReg, config: TapiConfig)
+  extends TapiTxxCollector(instrumentOp, monitorStatusOp,
+    alarmOp, system, monitorTypeOp,
+    calibrationOp, instrumentStatusOp)(instId, modelReg, config){
+
   import TapiTxx._
   import com.github.nscala_time.time.Imports._
 
@@ -26,7 +32,6 @@ class T700Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   override def reportData(regValue: ModelRegValue) = None
 
   import com.serotonin.modbus4j.locator.BaseLocator
-  import com.serotonin.modbus4j.code.DataType
   override def executeSeq(seq: Int, on: Boolean) {
     Logger.info(s"T700 execute $seq sequence.")
     if ((seq == lastSeqNo && lastSeqOp == on) && (DateTime.now() < lastSeqTime + 5.second)) {

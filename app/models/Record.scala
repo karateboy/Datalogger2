@@ -8,7 +8,9 @@ import org.mongodb.scala._
 
 case class Record(time: DateTime, value: Double, status: String)
 
-object Record {
+import javax.inject._
+@Singleton
+class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp) {
   import play.api.libs.json._
   import play.api.libs.functional.syntax._
 
@@ -20,23 +22,23 @@ object Record {
 
   def init(colNames: Seq[String]) {
     if (!colNames.contains(HourCollection)) {
-      val f = MongoDB.database.createCollection(HourCollection).toFuture()
+      val f = mongoDB.database.createCollection(HourCollection).toFuture()
       f.onFailure(errorHandler)
     }
 
     if (!colNames.contains(MinCollection)) {
-      val f = MongoDB.database.createCollection(MinCollection).toFuture()
+      val f = mongoDB.database.createCollection(MinCollection).toFuture()
       f.onFailure(errorHandler)
     }
 
     if (!colNames.contains(SecCollection)) {
-      val f = MongoDB.database.createCollection(SecCollection).toFuture()
+      val f = mongoDB.database.createCollection(SecCollection).toFuture()
       f.onFailure(errorHandler)
     }
 
   }
 
-  def toDocument(dt: DateTime, dataList: List[(MonitorType.Value, (Double, String))]) = {
+  def toDocument(dt: DateTime, dataList: List[(String, (Double, String))]) = {
     import org.mongodb.scala.bson._
     val bdt: BsonDateTime = dt
     var doc = Document("_id" -> bdt)
@@ -45,14 +47,14 @@ object Record {
       mt = data._1
       (v, s) = data._2
     } {
-      doc = doc ++ Document(MonitorType.BFName(mt) -> Document("v" -> v, "s" -> s))
+      doc = doc ++ Document(monitorTypeOp.BFName(mt) -> Document("v" -> v, "s" -> s))
     }
 
     doc
   }
 
   def insertRecord(doc: Document)(colName: String) = {
-    val col = MongoDB.database.getCollection(colName)
+    val col = mongoDB.database.getCollection(colName)
     val f = col.insertOne(doc).toFuture()
     f.onFailure({
       case ex: Exception => Logger.error(ex.getMessage, ex)
@@ -61,7 +63,7 @@ object Record {
   }
 
   def insertManyRecord(docs: Seq[Document])(colName: String) = {
-    val col = MongoDB.database.getCollection(colName)
+    val col = mongoDB.database.getCollection(colName)
     val f = col.insertMany(docs).toFuture()
     f.onFailure({
       case ex: Exception => Logger.error(ex.getMessage, ex)
@@ -69,7 +71,7 @@ object Record {
     f
   }
 
-  def findAndUpdate(dt: DateTime, dataList: List[(MonitorType.Value, (Double, String))])(colName: String) = {
+  def findAndUpdate(dt: DateTime, dataList: List[(String, (Double, String))])(colName: String) = {
     import org.mongodb.scala.bson._
     import org.mongodb.scala.model._
 
@@ -81,11 +83,11 @@ object Record {
         mt = data._1
         (v, s) = data._2
       } yield {
-        Updates.set(MonitorType.BFName(mt), Document("v" -> v, "s" -> s))
+        Updates.set(monitorTypeOp.BFName(mt), Document("v" -> v, "s" -> s))
       }
     Updates.combine(updates: _*)
 
-    val col = MongoDB.database.getCollection(colName)
+    val col = mongoDB.database.getCollection(colName)
     val f = col.findOneAndUpdate(Filters.equal("_id", bdt), Updates.combine(updates: _*),
       FindOneAndUpdateOptions().upsert(true)).toFuture()
     f.onFailure(errorHandler)
@@ -96,7 +98,7 @@ object Record {
   def upsertRecord(doc: Document)(colName: String) = {
     import org.mongodb.scala.model.ReplaceOptions
 
-    val col = MongoDB.database.getCollection(colName)
+    val col = mongoDB.database.getCollection(colName)
 
     val f = col.replaceOne(equal("_id", doc("_id")), doc, ReplaceOptions().upsert(true)).toFuture()
     f.onFailure({
@@ -105,14 +107,14 @@ object Record {
     f
   }
 
-  def updateRecordStatus(dt: Long, mt: MonitorType.Value, status: String)(colName: String) = {
+  def updateRecordStatus(dt: Long, mt: String, status: String)(colName: String) = {
     import org.mongodb.scala.bson._
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Updates._
 
-    val col = MongoDB.database.getCollection(colName)
+    val col = mongoDB.database.getCollection(colName)
     val bdt = new BsonDateTime(dt)
-    val fieldName = s"${MonitorType.BFName(mt)}.s"
+    val fieldName = s"${monitorTypeOp.BFName(mt)}.s"
 
     val f = col.updateOne(equal("_id", bdt), set(fieldName, status)).toFuture()
     f.onFailure({
@@ -121,7 +123,7 @@ object Record {
     f
   }
 
-  def getRecordMap(colName: String)(mtList: List[MonitorType.Value], startTime: DateTime, endTime: DateTime) = {
+  def getRecordMap(colName: String)(mtList: List[String], startTime: DateTime, endTime: DateTime) = {
     import org.mongodb.scala.bson._
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Projections._
@@ -129,15 +131,15 @@ object Record {
     import scala.concurrent._
     import scala.concurrent.duration._
 
-    val col = MongoDB.database.getCollection(colName)
-    val proj = include(mtList.map { MonitorType.BFName(_) }: _*)
+    val col = mongoDB.database.getCollection(colName)
+    val proj = include(mtList.map { monitorTypeOp.BFName(_) }: _*)
     val f = col.find(and(gte("_id", startTime.toDate()), lt("_id", endTime.toDate()))).projection(proj).sort(ascending("_id")).toFuture()
     val docs = waitReadyResult(f)
 
     val pairs =
       for {
         mt <- mtList
-        mtBFName = MonitorType.BFName(mt)
+        mtBFName = monitorTypeOp.BFName(mt)
       } yield {
         val list =
           for {
@@ -170,9 +172,9 @@ object Record {
     import scala.concurrent._
     import scala.concurrent.duration._
 
-    val mtList = MonitorType.activeMtvList
-    val col = MongoDB.database.getCollection(colName)
-    val proj = include(mtList.map { MonitorType.BFName(_) }: _*)
+    val mtList = monitorTypeOp.activeMtvList
+    val col = mongoDB.database.getCollection(colName)
+    val proj = include(mtList.map { monitorTypeOp.BFName(_) }: _*)
     val f = col.find(and(gte("_id", startTime.toDate()), lt("_id", endTime.toDate()))).projection(proj).sort(ascending("_id")).toFuture()
 
     for {
@@ -186,7 +188,7 @@ object Record {
         val mtDataList =
           for {
             mt <- mtList
-            mtBFName = MonitorType.BFName(mt)
+            mtBFName = monitorTypeOp.BFName(mt)
 
             mtDocOpt = doc.get(mtBFName) if mtDocOpt.isDefined && mtDocOpt.get.isDocument()
             mtDoc = mtDocOpt.get.asDocument()
@@ -208,9 +210,9 @@ object Record {
     import scala.concurrent._
     import scala.concurrent.duration._
 
-    val mtList = MonitorType.activeMtvList
-    val col = MongoDB.database.getCollection(colName)
-    val proj = include(mtList.map { MonitorType.BFName(_) }: _*)
+    val mtList = monitorTypeOp.activeMtvList
+    val col = mongoDB.database.getCollection(colName)
+    val proj = include(mtList.map { monitorTypeOp.BFName(_) }: _*)
     val f = col.find(and(gte("_id", startTime.toDate()), lt("_id", endTime.toDate()))).limit(limit).projection(proj).sort(ascending("_id")).toFuture()
 
     for {
@@ -224,7 +226,7 @@ object Record {
         val mtDataList =
           for {
             mt <- mtList
-            mtBFName = MonitorType.BFName(mt)
+            mtBFName = monitorTypeOp.BFName(mt)
 
             mtDocOpt = doc.get(mtBFName) if mtDocOpt.isDefined && mtDocOpt.get.isDocument()
             mtDoc = mtDocOpt.get.asDocument()
@@ -238,10 +240,10 @@ object Record {
     }
   }
 
-  def updateMtRecord(colName: String)(mt: MonitorType.Value, updateList: Seq[(DateTime, Double)]) = {
+  def updateMtRecord(colName: String)(mt: String, updateList: Seq[(DateTime, Double)]) = {
     import org.mongodb.scala.model._
     import org.mongodb.scala.bson._
-    val col = MongoDB.database.getCollection(colName)
+    val col = mongoDB.database.getCollection(colName)
     val mtName = mt.toString()
     val seqF =
       for (update <- updateList) yield {

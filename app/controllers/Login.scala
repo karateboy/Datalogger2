@@ -5,13 +5,16 @@ import play.api.mvc._
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import play.api.Logger
-import models.User
+import models.{User, UserOp}
 case class Credential(account: String, password: String)
+import javax.inject._
 
 /**
  * @author user
  */
-object Login extends Controller {
+class Login @Inject()
+(userOp: UserOp)
+  extends Controller {
   implicit val credentialReads = Json.reads[Credential]    
         
   def authenticate = Action(BodyParsers.parse.json){
@@ -22,7 +25,7 @@ object Login extends Controller {
             BadRequest(Json.obj("ok"->false, "msg"->JsError.toJson(error)))
           }, 
           crd=>{
-            val user = User.getUserByEmail(crd.account)
+            val user = userOp.getUserByEmail(crd.account)
             if(user.password != crd.password)
               Ok(Json.obj("ok"->false, "msg"->"密碼或帳戶錯誤"))
             else {
@@ -32,12 +35,8 @@ object Login extends Controller {
             }              
           })
   }
-  
-  def prompt = Action{
-    Ok(views.html.login())
-  }
-  
+
   def logout = Action{
-    Redirect(routes.Login.prompt()).withNewSession
+    Ok("").withNewSession
   }
 }

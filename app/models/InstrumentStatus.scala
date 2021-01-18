@@ -7,10 +7,12 @@ import play.api.libs.json._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.implicitConversions
 
-object InstrumentStatus {
+import javax.inject._
+@Singleton
+class InstrumentStatusOp @Inject()(mongoDB: MongoDB) {
   import org.mongodb.scala._
   val collectionName = "instrumentStatus"
-  val collection = MongoDB.database.getCollection(collectionName)
+  val collection = mongoDB.database.getCollection(collectionName)
 
   case class Status(key: String, value: Double)
   case class InstrumentStatusJSON(time:Long, instID: String, statusList: List[Status])
@@ -34,7 +36,7 @@ object InstrumentStatus {
   def init(colNames: Seq[String]) {
     import org.mongodb.scala.model.Indexes._
     if (!colNames.contains(collectionName)) {
-      val f = MongoDB.database.createCollection(collectionName).toFuture()
+      val f = mongoDB.database.createCollection(collectionName).toFuture()
       f.onFailure(errorHandler)
       f.onSuccess({
         case _ =>

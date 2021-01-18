@@ -1,26 +1,25 @@
 package models
-import scala.concurrent.ExecutionContext.Implicits.global
-import com.github.nscala_time.time.Imports.DateTime
-import akka.actor.Actor
-import akka.actor.actorRef2Scala
+import akka.actor.{Actor, actorRef2Scala}
 import play.api.Logger
-import play.api.Play.current
-import play.api.libs.json.JsError
-import play.api.libs.json.Json
-import play.api.libs.ws.WS
+import play.api.libs.json.{JsError, Json}
+import play.api.libs.ws.{WS, WSClient}
+
+import javax.inject._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 case class InstrumentStatusTypeMap(instrumentId: String, statusTypeSeq: Seq[InstrumentStatusType])
 
-class InstrumentStatusTypeForwarder(server: String, monitor: String) extends Actor {
+class InstrumentStatusTypeForwarder @Inject()
+(instrumentOp: InstrumentOp, ws:WSClient)
+(server: String, monitor: String) extends Actor {
   import ForwardManager._
-  import Instrument._
   def receive = handler(None)
   def handler(instrumentStatusTypeIdOpt: Option[String]): Receive = {
     case UpdateInstrumentStatusType =>
       try {
         if (instrumentStatusTypeIdOpt.isEmpty) {
           val url = s"http://$server/InstrumentStatusTypeIds/$monitor"
-          val f = WS.url(url).get().map {
+          val f = ws.url(url).get().map {
             response =>
               val result = response.json.validate[String]
               result.fold(
@@ -37,7 +36,7 @@ class InstrumentStatusTypeForwarder(server: String, monitor: String) extends Act
               ModelHelper.logException(ex)
           }
         } else {
-          val recordFuture = Instrument.getAllInstrumentFuture
+          val recordFuture = instrumentOp.getAllInstrumentFuture
           for (records <- recordFuture) {
             val withStatusType = records.filter { _.statusType.isDefined }
             if (!withStatusType.isEmpty) {
@@ -51,8 +50,9 @@ class InstrumentStatusTypeForwarder(server: String, monitor: String) extends Act
                   InstrumentStatusTypeMap(inst._id, inst.statusType.get)
                 }
                 val url = s"http://$server/InstrumentStatusTypeMap/$monitor"
+                import instrumentOp.ipWrite
                 implicit val writer = Json.writes[InstrumentStatusTypeMap]
-                val f = WS.url(url).put(Json.toJson(istMaps))
+                val f = ws.url(url).put(Json.toJson(istMaps))
                 f onSuccess {
                   case response =>
                     context become handler(Some(myIds))

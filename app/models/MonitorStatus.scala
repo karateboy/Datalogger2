@@ -1,9 +1,8 @@
 package models
 
-import play.api.Logger
 import models.ModelHelper._
 import play.api.libs.json._
-import play.api.libs.functional.syntax._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object StatusType extends Enumeration {
@@ -14,7 +13,22 @@ object StatusType extends Enumeration {
 }
 
 case class MonitorStatus(_id: String, desp: String) {
-  val info = MonitorStatus.getTagInfo(_id)
+  def getTagInfo(tag: String) = {
+    val id = tag.substring(1)
+    val t = tag.charAt(0)
+    if (t == '0')
+      TagInfo(StatusType.Internal, None, id)
+    else if (t == 'm' || t == 'M') {
+      TagInfo(StatusType.Manual, Some(t), id)
+    } else if (t.isLetter)
+      TagInfo(StatusType.Auto, Some(t), id)
+    else
+      throw new Exception("Unknown type:" + t)
+  }
+
+  val info = getTagInfo(_id)
+
+
 }
 
 case class TagInfo(statusType: StatusType.Value, auditRule: Option[Char], id: String) {
@@ -28,11 +42,6 @@ case class TagInfo(statusType: StatusType.Value, auditRule: Option[Char], id: St
 }
 
 object MonitorStatus {
-  implicit val reads = Json.reads[MonitorStatus]
-  implicit val writes = Json.writes[MonitorStatus]
-  val collectionName = "status"
-  val collection = MongoDB.database.getCollection(collectionName)
-
   val NormalStat = "010"
   val OverNormalStat = "011"
   val BelowNormalStat = "012"
@@ -43,6 +52,102 @@ object MonitorStatus {
   val InvalidDataStat = "030"
   val MaintainStat = "031"
   val ExceedRangeStat = "032"
+
+  def getTagInfo(tag: String) = {
+    val id = tag.substring(1)
+    val t = tag.charAt(0)
+    if (t == '0')
+      TagInfo(StatusType.Internal, None, id)
+    else if (t == 'm' || t == 'M') {
+      TagInfo(StatusType.Manual, Some(t), id)
+    } else if (t.isLetter)
+      TagInfo(StatusType.Auto, Some(t), id)
+    else
+      throw new Exception("Unknown type:" + t)
+  }
+
+  def getCssClassStr(tag: String, overInternal: Boolean = false, overLaw: Boolean = false) = {
+    val info = getTagInfo(tag)
+    val statClass =
+      info.statusType match {
+        case StatusType.Internal =>
+        {
+          if (isValid(tag))
+            ""
+          else if (isCalbration(tag))
+            "calibration_status"
+          else if (isMaintenance(tag))
+            "maintain_status"
+          else
+            "abnormal_status"
+        }
+        case StatusType.Auto =>
+          "auto_audit_status"
+        case StatusType.Manual =>
+          "manual_audit_status"
+      }
+
+    val fgClass =
+      if (overLaw)
+        "over_law_std"
+      else if (overInternal)
+        "over_internal_std"
+      else
+        "normal"
+
+    s"$statClass $fgClass"
+  }
+
+  def switchTagToInternal(tag: String) = {
+    val info = getTagInfo(tag)
+    '0' + info.id
+  }
+
+  def isValid(s: String) = {
+    val tagInfo = getTagInfo(s)
+    val VALID_STATS = List(NormalStat, OverNormalStat, BelowNormalStat).map(getTagInfo)
+
+    tagInfo.statusType match {
+      case StatusType.Internal =>
+        VALID_STATS.contains(getTagInfo(s))
+      case StatusType.Auto =>
+        if (tagInfo.auditRule.isDefined && tagInfo.auditRule.get.isLower)
+          true
+        else
+          false
+      case StatusType.Manual =>
+        if (tagInfo.auditRule.isDefined && tagInfo.auditRule.get.isLower)
+          true
+        else
+          false
+    }
+  }
+
+  def isCalbration(s: String) = {
+    val CALBRATION_STATS = List(ZeroCalibrationStat, SpanCalibrationStat,
+      CalibrationDeviation,CalibrationResume).map(getTagInfo)
+
+    CALBRATION_STATS.contains(getTagInfo(s))
+  }
+
+  def isMaintenance(s: String) = {
+    getTagInfo(MaintainStat) == getTagInfo(s)
+  }
+
+  def isError(s: String) = {
+    !(isValid(s) || isCalbration(s) || isMaintenance(s))
+  }
+
+}
+import javax.inject._
+@Singleton
+class MonitorStatusOp @Inject()(mongoDB: MongoDB){
+  implicit val reads = Json.reads[MonitorStatus]
+  implicit val writes = Json.writes[MonitorStatus]
+  val collectionName = "status"
+  val collection = mongoDB.database.getCollection(collectionName)
+
+  import MonitorStatus._
 
   val defaultStatus = List(
     MonitorStatus(NormalStat, "正常"),
@@ -75,7 +180,7 @@ object MonitorStatus {
     }
 
     if (!colNames.contains(collectionName)) {
-      val f = MongoDB.database.createCollection(collectionName).toFuture()
+      val f = mongoDB.database.createCollection(collectionName).toFuture()
       f.onFailure(errorHandler)
       f.onSuccess({
         case _ =>
@@ -84,108 +189,12 @@ object MonitorStatus {
     }
   }
 
-  def getTagInfo(tag: String) = {
-    val id = tag.substring(1)
-    val t = tag.charAt(0)
-    if (t == '0')
-      TagInfo(StatusType.Internal, None, id)
-    else if (t == 'm' || t == 'M') {
-      TagInfo(StatusType.Manual, Some(t), id)
-    } else if (t.isLetter)
-      TagInfo(StatusType.Auto, Some(t), id)
-    else
-      throw new Exception("Unknown type:" + t)
-  }
-
   def msList = {
     val f = collection.find().toFuture()
     f.onFailure(errorHandler)
     waitReadyResult(f).map { toMonitorStatus }
   }
 
-  def switchTagToInternal(tag: String) = {
-    val info = getTagInfo(tag)
-    '0' + info.id
-  }
-
-  def getExplainStr(tag: String) = {
-    val tagInfo = getTagInfo(tag)
-    if (tagInfo.statusType == StatusType.Auto) {
-      val t = tagInfo.auditRule.get
-      "自動註記"
-    } else {
-      val ms = map(tag)
-      ms.desp
-    }
-  }
-
-  def isValid(s: String) = {
-    val tagInfo = getTagInfo(s)
-    val VALID_STATS = List(NormalStat, OverNormalStat, BelowNormalStat).map(getTagInfo)
-
-    tagInfo.statusType match {
-      case StatusType.Internal =>
-        VALID_STATS.contains(getTagInfo(s))
-      case StatusType.Auto =>
-        if (tagInfo.auditRule.isDefined && tagInfo.auditRule.get.isLower)
-          true
-        else
-          false
-      case StatusType.Manual =>
-        if (tagInfo.auditRule.isDefined && tagInfo.auditRule.get.isLower)
-          true
-        else
-          false
-    }
-  }
-
-  def isCalbration(s: String) = {
-    val CALBRATION_STATS = List(ZeroCalibrationStat, SpanCalibrationStat, 
-        CalibrationDeviation,CalibrationResume).map(getTagInfo)
-        
-    CALBRATION_STATS.contains(getTagInfo(s))
-  }
-
-  def isMaintenance(s: String) = {
-    getTagInfo(MaintainStat) == getTagInfo(s)
-  }
-
-  def isError(s: String) = {
-    !(isValid(s) || isCalbration(s) || isMaintenance(s))
-  }
-
-  def getCssClassStr(tag: String, overInternal: Boolean = false, overLaw: Boolean = false) = {
-    val info = getTagInfo(tag)
-    val statClass =
-      info.statusType match {
-        case StatusType.Internal =>
-          {
-            if (isValid(tag))
-              ""
-            else if (isCalbration(tag))
-              "calibration_status"
-            else if (isMaintenance(tag))
-              "maintain_status"
-            else
-              "abnormal_status"
-          }
-        case StatusType.Auto =>
-          "auto_audit_status"
-        case StatusType.Manual =>
-          "manual_audit_status"
-      }
-
-    val fgClass =
-      if (overLaw)
-        "over_law_std"
-      else if (overInternal)
-        "over_internal_std"
-      else
-        "normal"
-
-    s"$statClass $fgClass"
-  }
-  
   def update(tag: String, desp: String) = {
     refreshMap
   }
@@ -210,4 +219,16 @@ object MonitorStatus {
       }
     })
   }
+
+  def getExplainStr(tag: String) = {
+    val tagInfo = getTagInfo(tag)
+    if (tagInfo.statusType == StatusType.Auto) {
+      val t = tagInfo.auditRule.get
+      "自動註記"
+    } else {
+      val ms = map(tag)
+      ms.desp
+    }
+  }
+
 }

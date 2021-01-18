@@ -1,5 +1,5 @@
 package models
-import play.api._
+import akka.actor.ActorSystem
 
 object TapiT300 extends TapiTxx(ModelConfig("T300", List("CO"))) {
   lazy val modelReg = readModelSetting
@@ -15,11 +15,15 @@ object TapiT300 extends TapiTxx(ModelConfig("T300", List("CO"))) {
   var vCO: Option[Double] = None
 }
 
-import TapiTxx._
-class T300Collector(instId: String, modelReg: ModelReg, config: TapiConfig) extends TapiTxxCollector(instId, modelReg, config) {
-  import DataCollectManager._
-  import TapiTxx._
-  val CO = MonitorType.withName("CO")
+import javax.inject._
+
+class T300Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
+                              alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                              calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)(instId: String, modelReg: ModelReg, config: TapiConfig)
+  extends TapiTxxCollector(instrumentOp, monitorStatusOp,
+    alarmOp, system, monitorTypeOp,
+    calibrationOp, instrumentStatusOp)(instId, modelReg, config){
+  val CO = ("CO")
 
   override def reportData(regValue: ModelRegValue) = {
 
@@ -39,7 +43,6 @@ class T300Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
   }
 
   import com.serotonin.modbus4j.locator.BaseLocator
-  import com.serotonin.modbus4j.code.DataType
 
   override def triggerZeroCalibration(v: Boolean) {
     try {

@@ -4,17 +4,21 @@ import ModelHelper._
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import akka.actor._
+import javax.inject._
 
-object MoxaE1212 extends DriverOps {
-  case class ChannelCfg(enable: Boolean, mt: Option[MonitorType.Value], scale: Option[Double], repairMode: Option[Boolean])
-  case class MoxaE1212Param(addr:Int, ch: Seq[ChannelCfg])
+case class E1212ChannelCfg(enable: Boolean, mt: Option[String], scale: Option[Double], repairMode: Option[Boolean])
+case class MoxaE1212Param(addr:Int, ch: Seq[E1212ChannelCfg])
 
-  implicit val cfgReads = Json.reads[ChannelCfg]
+class MoxaE1212 @Inject()
+(monitorTypeOp: MonitorTypeOp)
+  extends DriverOps {
+
+  implicit val cfgReads = Json.reads[E1212ChannelCfg]
   implicit val reads = Json.reads[MoxaE1212Param]
 
   override def getMonitorTypes(param: String) = {
-    val e1212Param = MoxaE1212.validateParam(param)
-    e1212Param.ch.filter { _.enable }.flatMap { _.mt }.toList.filter { mt => MonitorType.allMtvList.contains(mt) }
+    val e1212Param = validateParam(param)
+    e1212Param.ch.filter { _.enable }.flatMap { _.mt }.toList.filter { mt => monitorTypeOp.allMtvList.contains(mt) }
   }
 
   override def verifyParam(json: String) = {
@@ -41,7 +45,7 @@ object MoxaE1212 extends DriverOps {
   import Protocol.ProtocolParam
 
   override def start(id: String, protocolParam: ProtocolParam, param: String)(implicit context: ActorContext) = {
-    val driverParam = MoxaE1212.validateParam(param)
+    val driverParam = validateParam(param)
 
     MoxaE1212Collector.start(id, protocolParam, driverParam)
   }

@@ -13,7 +13,7 @@ object Adam4068 extends DriverOps {
   implicit val reads = Json.reads[Adam4068Param]
 
   override def getMonitorTypes(param: String) = {
-    List.empty[MonitorType.Value]
+    List.empty[String]
   }
 
   override def verifyParam(json: String) = {

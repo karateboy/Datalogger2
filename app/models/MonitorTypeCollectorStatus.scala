@@ -1,5 +1,5 @@
 package models
 
 object MonitorTypeCollectorStatus {
-  var map = Map.empty[MonitorType.Value, String]
+  var map = Map.empty[String, String]
 }

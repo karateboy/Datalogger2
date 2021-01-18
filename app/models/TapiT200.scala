@@ -1,4 +1,6 @@
 package models
+
+import akka.actor.ActorSystem
 import play.api._
 
 object TapiT200 extends TapiTxx(ModelConfig("T200", List("NOx", "NO", "NO2"))) {
@@ -6,6 +8,7 @@ object TapiT200 extends TapiTxx(ModelConfig("T200", List("NOx", "NO", "NO2"))) {
 
   import Protocol.ProtocolParam
   import akka.actor._
+
   def start(id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext) = {
     val config = validateParam(param)
     val props = Props(classOf[T200Collector], id, modelReg, config)
@@ -14,12 +17,21 @@ object TapiT200 extends TapiTxx(ModelConfig("T200", List("NOx", "NO", "NO2"))) {
 }
 
 import TapiTxx._
-class T200Collector(instId: String, modelReg: ModelReg, config: TapiConfig) extends TapiTxxCollector(instId, modelReg, config) {
-  import DataCollectManager._
+import javax.inject._
+
+class T200Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
+                              alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                              calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
+                             (instId: String, modelReg: ModelReg, config: TapiConfig)
+  extends TapiTxxCollector(instrumentOp, monitorStatusOp,
+    alarmOp, system, monitorTypeOp,
+    calibrationOp, instrumentStatusOp)(instId, modelReg, config) {
+
   import TapiTxx._
-  val NO = MonitorType.withName("NO")
-  val NO2 = MonitorType.withName("NO2")
-  val NOx = MonitorType.withName("NOx")
+
+  val NO = ("NO")
+  val NO2 = ("NO2")
+  val NOx = ("NOx")
 
   override def reportData(regValue: ModelRegValue) =
     for {

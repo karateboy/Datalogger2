@@ -5,31 +5,36 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.implicitConversions
 import org.mongodb.scala.model._
 import org.mongodb.scala.bson._
+import javax.inject._
 
-object SysConfig extends Enumeration {
+@Singleton
+class SysConfig @Inject()(mongoDB: MongoDB){
   val ColName = "sysConfig"
-  val collection = MongoDB.database.getCollection(ColName)
+  val collection = mongoDB.database.getCollection(ColName)
 
   val valueKey = "value"
-  val MonitorTypeVer = Value
+  val MonitorTypeVer = "Version"
+
 
   val defaultConfig = Map(
     MonitorTypeVer -> Document(valueKey -> 1))
 
   def init(colNames: Seq[String]) {
     if (!colNames.contains(ColName)) {
-      val f = MongoDB.database.createCollection(ColName).toFuture()
+      val f = mongoDB.database.createCollection(ColName).toFuture()
       f.onFailure(errorHandler)
     }
 
-    val idSet = values map { _.toString() }
+    val values = Seq.empty[String]
+    val idSet = values
+
     //Clean up unused
     val f1 = collection.deleteMany(Filters.not(Filters.in("_id", idSet.toList: _*))).toFuture()
     f1.onFailure(errorHandler)
     val updateModels =
       for ((k, defaultDoc) <- defaultConfig) yield {
         UpdateOneModel(
-          Filters.eq("_id", k.toString()),
+          Filters.eq("_id", k),
           Updates.setOnInsert(valueKey, defaultDoc(valueKey)), UpdateOptions().upsert(true))
       }
 
@@ -40,14 +45,14 @@ object SysConfig extends Enumeration {
     waitReadyResult(f)
   }
 
-  def upsert(_id: SysConfig.Value, doc: Document) = {
+  def upsert(_id: String, doc: Document) = {
     val uo = new ReplaceOptions().upsert(true)
-    val f = collection.replaceOne(Filters.equal("_id", _id.toString()), doc, uo).toFuture()
+    val f = collection.replaceOne(Filters.equal("_id", _id), doc, uo).toFuture()
     f.onFailure(errorHandler)
     f
   }
 
-  def get(_id: SysConfig.Value) = {
+  def get(_id: String) = {
     val f = collection.find(Filters.eq("_id", _id.toString())).headOption()
     f.onFailure(errorHandler)
     for (ret <- f) yield {
@@ -56,5 +61,5 @@ object SysConfig extends Enumeration {
     }
   }
 
-  def set(_id: SysConfig.Value, v: BsonValue) = upsert(_id, Document(valueKey -> v))
+  def set(_id: String, v: BsonValue) = upsert(_id, Document(valueKey -> v))
 }

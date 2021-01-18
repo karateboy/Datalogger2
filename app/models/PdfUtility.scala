@@ -1,27 +1,20 @@
 package models
-import play.api._
-import play.api.mvc._
-import play.api.Play.current
-import com.itextpdf.text.Document
+import com.itextpdf.text.{Document, PageSize}
 import com.itextpdf.text.pdf.PdfWriter
-import com.itextpdf.text.PageSize
-import com.itextpdf.tool.xml.XMLWorker
-import com.itextpdf.tool.xml.XMLWorkerFontProvider
-import com.itextpdf.tool.xml.XMLWorkerHelper
-import com.itextpdf.tool.xml.net._
-import com.itextpdf.tool.xml.html.CssAppliersImpl
-import com.itextpdf.tool.xml.html.Tags
+import com.itextpdf.tool.xml.{XMLWorker, XMLWorkerFontProvider, XMLWorkerHelper}
+import com.itextpdf.tool.xml.html.{CssAppliersImpl, Tags}
 import com.itextpdf.tool.xml.parser.XMLParser
 import com.itextpdf.tool.xml.pipeline.css.CssResolverPipeline
 import com.itextpdf.tool.xml.pipeline.end.PdfWriterPipeline
-import com.itextpdf.tool.xml.pipeline.html.HtmlPipeline
-import com.itextpdf.tool.xml.pipeline.html.HtmlPipelineContext
-import com.itextpdf.tool.xml.XMLWorkerHelper;
+import com.itextpdf.tool.xml.pipeline.html.{HtmlPipeline, HtmlPipelineContext}
+import play.api.Application
+import play.api.Play.current
 
+import javax.inject._
 /**
  * @author user
  */
-object PdfUtility {
+class PdfUtility @Inject()(app:Application){
   val CSS_ROOT = "/public/"
   
   def creatPdfWithReportHeader(title:String, content:play.twirl.api.HtmlFormat.Appendable)={
@@ -38,7 +31,6 @@ object PdfUtility {
 
     //debug
     import java.io.FileOutputStream
-    import java.nio.charset.Charset
     //val outs = new FileOutputStream("D:/temp/output.html")
     //outs.write(htmlInput.getBytes(Charset.forName("UTF-8")))
     //outs.close()
@@ -65,13 +57,13 @@ object PdfUtility {
     // CSS
     val cssResolver =
                 XMLWorkerHelper.getInstance().getDefaultCssResolver(false);
-    val bootstrapCss = XMLWorkerHelper.getCSS(new FileInputStream(current.path + CSS_ROOT +"css/bootstrap.min.css"))
+    val bootstrapCss = XMLWorkerHelper.getCSS(new FileInputStream(app.path + CSS_ROOT +"css/bootstrap.min.css"))
     cssResolver.addCss(bootstrapCss)
     
     //val styleCss = XMLWorkerHelper.getCSS(new FileInputStream(current.path + CSS_ROOT +"css/style.css"))
     //cssResolver.addCss(styleCss)
 
-    val aqmCss = XMLWorkerHelper.getCSS(new FileInputStream(current.path + CSS_ROOT +"css/aqm.css"))
+    val aqmCss = XMLWorkerHelper.getCSS(new FileInputStream(app.path + CSS_ROOT +"css/aqm.css"))
     cssResolver.addCss(aqmCss)
 
     // HTML

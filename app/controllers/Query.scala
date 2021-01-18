@@ -1,19 +1,13 @@
 package controllers
-import play.api._
-import play.api.mvc._
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
-import play.api.libs.json.Json
-import play.api.Play.current
-import play.api.data._
-import play.api.data.Forms._
-import play.api.libs.ws._
-import play.api.libs.ws.ning.NingAsyncHttpClientConfigBuilder
-import scala.concurrent.Future
-import play.api.libs.json._
 import com.github.nscala_time.time.Imports._
-import Highchart._
+import controllers.Highchart._
 import models._
+import play.api._
+import play.api.libs.json.{Json, _}
+import play.api.mvc._
+import scala.concurrent.ExecutionContext.Implicits.global
+
+import javax.inject._
 
 case class Stat(
   avg:       Option[Double],
@@ -39,40 +33,11 @@ case class Stat(
       None
   }
 }
-
-object Query extends Controller {
-  def historyTrend = Security.Authenticated {
-    implicit request =>
-      Ok(views.html.historyTrend())
-  }
-
-  def windAvg(sum_sin: Double, sum_cos: Double) = {
-    val degree = Math.toDegrees(Math.atan2(sum_sin, sum_cos))
-    if (degree >= 0)
-      degree
-    else
-      degree + 360
-  }
-
-  def windAvg(windSpeed: Seq[Record], windDir: Seq[Record]): Double = {
-    if (windSpeed.length != windDir.length)
-      Logger.error(s"windSpeed #=${windSpeed.length} windDir #=${windDir.length}")
-
-    val windRecord = windSpeed.zip(windDir)
-    val wind_sin = windRecord.map(v => v._1.value * Math.sin(Math.toRadians(v._2.value))).sum
-    val wind_cos = windRecord.map(v => v._1.value * Math.cos(Math.toRadians(v._2.value))).sum
-    windAvg(wind_sin, wind_cos)
-  }
-
-  def windAvg(windSpeed: List[Double], windDir: List[Double]): Double = {
-    if (windSpeed.length != windDir.length)
-      Logger.error(s"windSpeed #=${windSpeed.length} windDir #=${windDir.length}")
-
-    val windRecord = windSpeed.zip(windDir)
-    val wind_sin = windRecord.map(v => v._1 * Math.sin(Math.toRadians(v._2))).sum
-    val wind_cos = windRecord.map(v => v._1 * Math.cos(Math.toRadians(v._2))).sum
-    windAvg(wind_sin, wind_cos)
-  }
+@Singleton
+class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
+                      instrumentStatusOp: InstrumentStatusOp, instrumentOp: InstrumentOp,
+                      alarmOp: AlarmOp, calibrationOp: CalibrationOp,
+                      manualAuditLogOp: ManualAuditLogOp, excelUtility: ExcelUtility) extends Controller {
 
   def getPeriods(start: DateTime, endTime: DateTime, d: Period): List[DateTime] = {
     import scala.collection.mutable.ListBuffer
@@ -98,9 +63,10 @@ object Query extends Controller {
     count
   }
 
-  def getPeriodReportMap(mt: MonitorType.Value, tabType: TableType.Value, period: Period,
+  import models.ModelHelper._
+  def getPeriodReportMap(mt: String, tabType: TableType.Value, period: Period,
                          statusFilter: MonitorStatusFilter.Value = MonitorStatusFilter.ValidData)(start: DateTime, end: DateTime) = {
-    val recordList = Record.getRecordMap(TableType.mapCollection(tabType))(List(mt), start, end)(mt)
+    val recordList = recordOp.getRecordMap(TableType.mapCollection(tabType))(List(mt), start, end)(mt)
     def periodSlice(period_start: DateTime, period_end: DateTime) = {
       recordList.dropWhile { _.time < period_start }.takeWhile { _.time < period_end }
     }
@@ -112,9 +78,9 @@ object Query extends Controller {
           period_start <- getPeriods(start, end, period)
           records = periodSlice(period_start, period_start + period) if records.length > 0
         } yield {
-          if (mt == MonitorType.WIN_DIRECTION) {
+          if (mt == monitorTypeOp.WIN_DIRECTION) {
             val windDir = records
-            val windSpeed = Record.getRecordMap(Record.HourCollection)(List(MonitorType.WIN_SPEED), period_start, period_start + period)(mt)
+            val windSpeed = recordOp.getRecordMap(recordOp.HourCollection)(List(monitorTypeOp.WIN_SPEED), period_start, period_start + period)(mt)
             period_start -> windAvg(windSpeed, windDir)
           } else {
             val values = records.map { r => r.value }
@@ -126,10 +92,10 @@ object Query extends Controller {
     Map(pairs: _*)
   }
 
-  def getPeriodStatReportMap(recordListMap: Map[MonitorType.Value, Seq[Record]], period: Period, statusFilter: List[String] = List("010"))(start: DateTime, end: DateTime) = {
+  def getPeriodStatReportMap(recordListMap: Map[String, Seq[Record]], period: Period, statusFilter: List[String] = List("010"))(start: DateTime, end: DateTime) = {
     val mTypes = recordListMap.keys.toList
-    if (mTypes.contains(MonitorType.WIN_DIRECTION)) {
-      if (!mTypes.contains(MonitorType.WIN_SPEED))
+    if (mTypes.contains(monitorTypeOp.WIN_DIRECTION)) {
+      if (!mTypes.contains(monitorTypeOp.WIN_SPEED))
         throw new Exception("風速和風向必須同時查詢")
     }
 
@@ -141,7 +107,7 @@ object Query extends Controller {
       recordList.dropWhile { _.time < period_start }.takeWhile { _.time < period_end }
     }
 
-    def getPeriodStat(records: Seq[Record], mt: MonitorType.Value, period_start: DateTime) = {
+    def getPeriodStat(records: Seq[Record], mt: String, period_start: DateTime) = {
       if (records.length == 0)
         Stat(None, None, None, 0, 0, 0)
       else {
@@ -151,14 +117,14 @@ object Query extends Controller {
         val sum = values.sum
         val count = records.length
         val total = new Duration(period_start, period_start + period).getStandardHours.toInt
-        val overCount = if (MonitorType.map(mt).std_law.isDefined) {
-          values.count { _ > MonitorType.map(mt).std_law.get }
+        val overCount = if (monitorTypeOp.map(mt).std_law.isDefined) {
+          values.count { _ > monitorTypeOp.map(mt).std_law.get }
         } else
           0
 
-        val avg = if (mt == MonitorType.WIN_DIRECTION) {
+        val avg = if (mt == monitorTypeOp.WIN_DIRECTION) {
           val windDir = records
-          val windSpeed = periodSlice(recordListMap(MonitorType.WIN_SPEED), period_start, period_start + period)
+          val windSpeed = periodSlice(recordListMap(monitorTypeOp.WIN_SPEED), period_start, period_start + period)
           windAvg(windSpeed, windDir)
         } else {
           sum / total
@@ -190,10 +156,10 @@ object Query extends Controller {
     Map(pairs: _*)
   }
 
-  def trendHelper(monitorTypes: Array[MonitorType.Value], tabType: TableType.Value,
+  def trendHelper(monitorTypes: Array[String], tabType: TableType.Value,
                   reportUnit: ReportUnit.Value, start: DateTime, end: DateTime)(statusFilter: MonitorStatusFilter.Value) = {
 
-    val windMtv = MonitorType.WIN_DIRECTION
+    val windMtv = monitorTypeOp.WIN_DIRECTION
     val period: Period =
       reportUnit match {
         case ReportUnit.Sec =>
@@ -245,11 +211,11 @@ object Query extends Controller {
       } yield {
         if (monitorTypes.length > 1 && monitorTypes.contains(windMtv)) {
           if (mt != windMtv)
-            seqData(MonitorType.map(mt).desp, timeData)
+            seqData(monitorTypeOp.map(mt).desp, timeData)
           else
-            seqData(MonitorType.map(mt).desp, timeData, 1, Some("scatter"))
+            seqData(monitorTypeOp.map(mt).desp, timeData, 1, Some("scatter"))
         } else {
-          seqData(MonitorType.map(mt).desp, timeData)
+          seqData(monitorTypeOp.map(mt).desp, timeData)
         }
       }
     }
@@ -258,7 +224,7 @@ object Query extends Controller {
 
     val downloadFileName = {
       val startName = start.toString("YYMMdd")
-      val mtNames = monitorTypes.map { MonitorType.map(_).desp }
+      val mtNames = monitorTypes.map { monitorTypeOp.map(_).desp }
       startName + mtNames.mkString
     }
 
@@ -288,8 +254,8 @@ object Query extends Controller {
           s"趨勢圖 (${start.toString("YYYY年")}~${end.toString("YYYY年")})"
       }
 
-    def getAxisLines(mt: MonitorType.Value) = {
-      val mtCase = MonitorType.map(mt)
+    def getAxisLines(mt: String) = {
+      val mtCase = monitorTypeOp.map(mt)
       val std_law_line =
         if (mtCase.std_law.isEmpty)
           None
@@ -311,7 +277,7 @@ object Query extends Controller {
         XAxis(None)
     }
 
-    val windMtCase = MonitorType.map(windMtv)
+    val windMtCase = monitorTypeOp.map(windMtv)
     val windYaxis = YAxis(None, AxisTitle(Some(Some(s"${windMtCase.desp} (${windMtCase.unit})"))), None,
       opposite = true,
       floor = Some(0),
@@ -325,7 +291,7 @@ object Query extends Controller {
     val chart =
       if (monitorTypes.length == 1) {
         val mt = monitorTypes(0)
-        val mtCase = MonitorType.map(monitorTypes(0))
+        val mtCase = monitorTypeOp.map(monitorTypes(0))
 
         HighchartData(
           Map("type" -> "line"),
@@ -342,7 +308,7 @@ object Query extends Controller {
           if (monitorTypes.contains(windMtv)) {
             if (monitorTypes.length == 2) {
               val mt = monitorTypes.filter { _ != windMtv }(0)
-              val mtCase = MonitorType.map(monitorTypes.filter { MonitorType.WIN_DIRECTION != _ }(0))
+              val mtCase = monitorTypeOp.map(monitorTypes.filter { monitorTypeOp.WIN_DIRECTION != _ }(0))
               Seq(
                 YAxis(
                   None,
@@ -374,9 +340,9 @@ object Query extends Controller {
   def historyTrendChart(monitorTypeStr: String, reportUnitStr: String, statusFilterStr: String,
                         startStr: String, endStr: String, outputTypeStr: String) = Security.Authenticated {
     implicit request =>
-      import scala.collection.JavaConverters._
+
       val monitorTypeStrArray = monitorTypeStr.split(':')
-      val monitorTypes = monitorTypeStrArray.map { MonitorType.withName }
+      val monitorTypes = monitorTypeStrArray
       val reportUnit = ReportUnit.withName(reportUnitStr)
       val statusFilter = MonitorStatusFilter.withName(statusFilterStr)
       
@@ -405,7 +371,7 @@ object Query extends Controller {
 
       if (outputType == OutputType.excel) {
         import java.nio.file.Files
-        val excelFile = ExcelUtility.exportChartData(chart, monitorTypes, reportUnit == ReportUnit.Sec)
+        val excelFile = excelUtility.exportChartData(chart, monitorTypes, reportUnit == ReportUnit.Sec)
         val downloadFileName =
           if (chart.downloadFileName.isDefined)
             chart.downloadFileName.get
@@ -420,17 +386,11 @@ object Query extends Controller {
       }
   }
 
-  def history = Security.Authenticated {
-    implicit request =>
-      Ok(views.html.history())
-  }
-
   def historyReport(monitorTypeStr: String, tabTypeStr: String,
                     startStr: String, endStr: String) = Security.Authenticated {
     implicit request =>
-      import scala.collection.JavaConverters._
-      val monitorTypeStrArray = monitorTypeStr.split(':')
-      val monitorTypes = monitorTypeStrArray.map { MonitorType.withName }
+
+      val monitorTypes = monitorTypeStr.split(':')
       val tabType = TableType.withName(tabTypeStr)
       val (start, end) =
         if (tabType == TableType.hour) {
@@ -464,7 +424,7 @@ object Query extends Controller {
           getPeriods(start, end, 1.second)
       }
 
-      val recordMap = Record.getRecordMap(TableType.mapCollection(tabType))(monitorTypes.toList, start, end)
+      val recordMap = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitorTypes.toList, start, end)
       val recordTimeMap = recordMap.map { p =>
         val recordSeq = p._2
         val timePair = recordSeq.map { r => r.time -> r }
@@ -472,35 +432,27 @@ object Query extends Controller {
       }
 
       val explain = monitorTypes.map { t =>
-        val mtCase = MonitorType.map(t)
+        val mtCase = monitorTypeOp.map(t)
         s"${mtCase.desp}(${mtCase.unit})"
       }.mkString(",")
-      val output =
-        if (tabType == TableType.second)
-          views.html.historyReport(monitorTypes, explain, start, end, timeList, recordTimeMap, true)
-        else
-          views.html.historyReport(monitorTypes, explain, start, end, timeList, recordTimeMap)
-      Ok(output)
-  }
 
-  def calibration() = Security.Authenticated {
-    Ok(views.html.calibration())
+      Ok("")
   }
 
   def calibrationReport(startStr: String, endStr: String) = Security.Authenticated {
     val (start, end) =
       (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
         DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")) + 1.day)
-    val report = Calibration.calibrationReport(start, end)
-    Ok(views.html.calibrationReport(report, "校正報表", start, end))
+    val report = calibrationOp.calibrationReport(start, end)
+    Ok("")
   }
 
   def alarmReport(level: Int, startStr: String, endStr: String) = Security.Authenticated {
     val (start, end) =
       (DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
         DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")) + 1.day)
-    val report = Alarm.getAlarms(level, start, end + 1.day)
-    Ok(views.html.alarmReport(start, end, report))
+    val report = alarmOp.getAlarms(level, start, end + 1.day)
+    Ok("")
   }
 
   def instrumentStatusReport(id: String, startStr: String, endStr: String) = Security.Authenticated {
@@ -509,7 +461,7 @@ object Query extends Controller {
         DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
         DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
 
-    val report = InstrumentStatus.query(id, start, end + 1.day)
+    val report = instrumentStatusOp.query(id, start, end + 1.day)
     val keyList = if (report.isEmpty)
       List.empty[String]
     else
@@ -522,20 +474,17 @@ object Query extends Controller {
       (time, record.statusList.map { s => (s.key -> s.value) }.toMap)
     }
 
-    val statusTypeMap = Instrument.getStatusTypeMap(id)
-    Ok(views.html.instrumentStatusReport(id, start, end, reportMap.toList, keyList, statusTypeMap))
+    val statusTypeMap = instrumentOp.getStatusTypeMap(id)
+    Ok("")
   }
 
-  def manualAudit() = Security.Authenticated {
-    Ok(views.html.manualAudit(""))
-  }
 
   def recordList(mtStr: String, startLong: Long, endLong: Long) = Security.Authenticated {
-    val monitorType = MonitorType.withName(mtStr)
-
+    val monitorType = (mtStr)
+    implicit val w = Json.writes[Record]
     val (start, end) = (new DateTime(startLong), new DateTime(endLong))
 
-    val recordMap = Record.getRecordMap(Record.HourCollection)(List(monitorType), start, end)
+    val recordMap = recordOp.getRecordMap(recordOp.HourCollection)(List(monitorType), start, end)
     Ok(Json.toJson(recordMap(monitorType)))
   }
 
@@ -548,7 +497,7 @@ object Query extends Controller {
       implicit val maParamRead = Json.reads[ManualAuditParam]
       val result = request.body.validate[ManualAuditParam]
 
-      val monitorType = MonitorType.withName(monitorTypeStr)
+      val monitorType = (monitorTypeStr)
 
       result.fold(
         err => {
@@ -557,26 +506,21 @@ object Query extends Controller {
         },
         maParam => {
           for (param <- maParam.updateList) {
-            Record.updateRecordStatus(param.time, monitorType, param.status)(Record.HourCollection)
+            recordOp.updateRecordStatus(param.time, monitorType, param.status)(recordOp.HourCollection)
             val log = ManualAuditLog(new DateTime(param.time), mt = monitorType, modifiedTime = DateTime.now(),
               operator = user.name, changedStatus = param.status, reason = maParam.reason)
             Logger.debug(log.toString)
-            ManualAuditLog.upsertLog(log)
+            manualAuditLogOp.upsertLog(log)
           }
         })
       Ok(Json.obj("ok" -> true))
   }
 
-  def manualAuditHistory = Security.Authenticated {
-    Ok(views.html.manualAuditHistory(""))
-  }
-
-  import scala.concurrent.ExecutionContext.Implicits.global
   def manualAuditHistoryReport(start: Long, end: Long) = Security.Authenticated.async {
     val startTime = new DateTime(start)
     val endTime = new DateTime(end)
-
-    val logFuture = ManualAuditLog.queryLog(startTime, endTime)
+    implicit val w = Json.writes[ManualAuditLog]
+    val logFuture = manualAuditLogOp.queryLog(startTime, endTime)
     val resultF =
       for {
         logList <- logFuture
@@ -590,9 +534,10 @@ object Query extends Controller {
   // FIXME Bypass security check
   def hourRecordList(start: Long, end: Long) = Action.async {
     implicit request =>
+      import recordOp.recordListWrite
       val startTime = new DateTime(start)
       val endTime = new DateTime(end)
-      val recordListF = Record.getRecordListFuture(Record.HourCollection)(startTime, endTime)
+      val recordListF = recordOp.getRecordListFuture(recordOp.HourCollection)(startTime, endTime)
       for (recordList <- recordListF) yield {
         Ok(Json.toJson(recordList))
       }
@@ -603,7 +548,8 @@ object Query extends Controller {
     implicit request =>
       val startTime = new DateTime(start)
       val endTime = new DateTime(end)
-      val recordListF = Record.getRecordListFuture(Record.MinCollection)(startTime, endTime)
+      val recordListF = recordOp.getRecordListFuture(recordOp.MinCollection)(startTime, endTime)
+      import recordOp.recordListWrite
       for (recordList <- recordListF) yield {
         Ok(Json.toJson(recordList))
       }
@@ -613,7 +559,8 @@ object Query extends Controller {
     implicit request =>
       val startTime = new DateTime(start)
       val endTime = new DateTime(end)
-      val recordListF = Calibration.calibrationReportFuture(startTime, endTime)
+      val recordListF = calibrationOp.calibrationReportFuture(startTime, endTime)
+      implicit val w = Json.writes[Calibration]
       for (recordList <- recordListF) yield {
         Ok(Json.toJson(recordList))
       }
@@ -623,8 +570,8 @@ object Query extends Controller {
     implicit request =>
       val startTime = new DateTime(start)
       val endTime = new DateTime(end)
-      val recordListF = Alarm.getAlarmsFuture(startTime, endTime)
-      for (recordList <- recordListF) yield {
+      for (recordList <- alarmOp.getAlarmsFuture(startTime, endTime)) yield {
+        implicit val w = Json.writes[Alarm]
         Ok(Json.toJson(recordList))
       }
   }
@@ -642,10 +589,10 @@ object Query extends Controller {
   //
   //  def windRoseReport(monitorStr: String, monitorTypeStr: String, nWay: Int, startStr: String, endStr: String) = Security.Authenticated {
   //    val monitor = EpaMonitor.withName(monitorStr)
-  //    val monitorType = MonitorType.withName(monitorTypeStr)
+  //    val monitorType = (monitorTypeStr)
   //    val start = DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
   //    val end = DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
-  //    val mtCase = MonitorType.map(monitorType)
+  //    val mtCase = monitorTypeOp.map(monitorType)
   //    assert(nWay == 8 || nWay == 16 || nWay == 32)
   //
   //    try {

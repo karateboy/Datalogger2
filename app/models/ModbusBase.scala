@@ -6,9 +6,9 @@ import play.api.libs.functional.syntax._
 import com.github.nscala_time.time.Imports._
 import com.typesafe.config.ConfigFactory
 
-case class ModbusConfig(slaveID: Option[Int], monitorTypes: Option[List[MonitorType.Value]])
+case class ModbusConfig(slaveID: Option[Int], monitorTypes: Option[List[String]])
 case class ModelConfig(model: String, monitorTypeIDs: List[String])
-case class ModbusModelConfig(model: String, mtAddrMap: Map[MonitorType.Value, Int])
+case class ModbusModelConfig(model: String, mtAddrMap: Map[String, Int])
 case class InputReg(addr: Int, desc: String, unit: String)
 case class HoldingReg(addr: Int, desc: String, unit: String)
 case class DiscreteInputReg(addr: Int, desc: String)
@@ -97,12 +97,12 @@ abstract class ModbusBase(modelConfig: ModbusModelConfig) extends DriverOps {
     Json.toJson(newParam).toString()
   }
 
-  override def getMonitorTypes(param: String): List[MonitorType.Value] = {
+  override def getMonitorTypes(param: String): List[String] = {
     val config = validateParam(param)
     if (config.monitorTypes.isDefined)
       config.monitorTypes.get
     else
-      List.empty[MonitorType.Value]
+      List.empty[String]
   }
 
   def validateParam(json: String) = {

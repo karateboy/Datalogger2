@@ -8,7 +8,6 @@ import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object Adam4017Collector {
-  import Adam4017._
   import Protocol.ProtocolParam
 
   case class PrepareCollect(id: String, com: Int, param: List[Adam4017Param])
@@ -25,9 +24,10 @@ object Adam4017Collector {
   }
 }
 
-class Adam4017Collector extends Actor {
+import javax.inject._
+@Singleton
+class Adam4017Collector @Inject()(monitorTypeOp: MonitorTypeOp, system: ActorSystem, instrumentOp: InstrumentOp) extends Actor {
   import Adam4017Collector._
-  import Adam4017._
   import java.io.BufferedReader
   import java.io._
 
@@ -41,7 +41,6 @@ class Adam4017Collector extends Actor {
     if (ch.length != 8)
       throw new Exception("unexpected format:" + str)
 
-    import DataCollectManager._
     import java.lang._
     val values = ch.map { Double.valueOf(_) }
     val dataPairList =
@@ -64,14 +63,13 @@ class Adam4017Collector extends Actor {
           else
             collectorState
         }
-        val rawMt = MonitorType.getRawMonitorType(mt)
+        val rawMt = monitorTypeOp.getRawMonitorType(mt)
         List(MonitorTypeData(mt, v, status), MonitorTypeData(rawMt, rawValue, status))
       }
     val dataList = dataPairList.flatMap { x => x }
     context.parent ! ReportData(dataList.toList)
   }
 
-  import DataCollectManager._
   import scala.concurrent.Future
   import scala.concurrent.blocking
 
@@ -84,13 +82,13 @@ class Adam4017Collector extends Actor {
             instId = id
             paramList = param
             comm = SerialComm.open(com)
-            cancelable = Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
+            cancelable = system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)
               Logger.info("Try again 1 min later...")
               //Try again
-              cancelable = Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, PrepareCollect(id, com, param))
+              cancelable = system.scheduler.scheduleOnce(Duration(1, MINUTES), self, PrepareCollect(id, com, param))
           }
 
         }
@@ -123,14 +121,14 @@ class Adam4017Collector extends Actor {
 
           } catch (errorHandler)
           finally {
-            cancelable = Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
+            cancelable = system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
           }
         }
       } onFailure errorHandler
 
     case SetState(id, state) =>
       Logger.info(s"$self => $state")
-      Instrument.setState(id, state)
+      instrumentOp.setState(id, state)
       collectorState = state
   }
 

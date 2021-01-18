@@ -16,17 +16,24 @@ import play.api.libs.json.Reads._
 //alarm src format: 'T':"MonitorType"
 //                  'I':"Instrument"
 //                  'S':"System"
+import javax.inject._
+case class Alarm2JSON(time: Long, src: String, level: Int, info: String)
 
-object Alarm {
+case class Alarm(time: DateTime, src: String, level: Int, desc: String) {
+  def toJson = Alarm2JSON(time.getMillis, src, level, desc)
+}
+
+@Singleton
+class AlarmOp @Inject()(mongoDB: MongoDB) {
   object Level {
     val INFO = 1
     val WARN = 2
     val ERR = 3
     val map = Map(INFO -> "資訊", WARN -> "警告", ERR -> "嚴重")
   }
-  val alarmLevelList = Level.INFO to Level.ERR
+  val alarmLevelList: Seq[Int] = Level.INFO to Level.ERR
 
-  def Src(mt: MonitorType.Value) = s"T:${mt.toString}"
+  def Src(mt: String) = s"T:${mt.toString}"
   def Src(inst: Instrument) = s"I:${inst._id}"
   def instStr(id: String) = s"I:$id"
   def Src() = "S:System"
@@ -40,7 +47,7 @@ object Alarm {
         case "I" =>
           "設備:" + part(1)
         case "T" =>
-          "測項:" + MonitorType.map(MonitorType.withName(part(1))).desp
+          "測項:" + part(1)
       }
       srcType
     }else{
@@ -49,18 +56,12 @@ object Alarm {
     }
   }
 
-  case class Alarm2JSON(time: Long, src: String, level: Int, info: String)
-
-  case class Alarm(time: DateTime, src: String, level: Int, desc: String) {
-    def toJson = Alarm2JSON(time.getMillis, src, level, desc)
-  }
-
   implicit val write = Json.writes[Alarm]
   implicit val jsonWrite = Json.writes[Alarm2JSON]
   //implicit val format = Json.format[Alarm]
 
   val collectionName = "alarms"
-  val collection = MongoDB.database.getCollection(collectionName)
+  val collection = mongoDB.database.getCollection(collectionName)
   def toDocument(ar: Alarm) = {
     import org.mongodb.scala.bson._
     Document("time" -> (ar.time: BsonDateTime), "src" -> ar.src, "level" -> ar.level, "desc" -> ar.desc)
@@ -77,7 +78,7 @@ object Alarm {
   def init(colNames: Seq[String]) {
     import org.mongodb.scala.model.Indexes._
     if (!colNames.contains(collectionName)) {
-      val f = MongoDB.database.createCollection(collectionName).toFuture()
+      val f = mongoDB.database.createCollection(collectionName).toFuture()
       f.onFailure(errorHandler)
       f.onSuccess({
         case _ =>

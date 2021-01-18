@@ -1,11 +1,11 @@
 package models
-import play.api._
 
 object TapiT201 extends TapiTxx(ModelConfig("T201", List("TNX", "NH3", "NOx", "NO", "NO2"))) {
   lazy val modelReg = readModelSetting
 
   import Protocol.ProtocolParam
   import akka.actor._
+
   def start(id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext) = {
     val config = validateParam(param)
     val props = Props(classOf[T201Collector], id, modelReg, config)
@@ -13,15 +13,21 @@ object TapiT201 extends TapiTxx(ModelConfig("T201", List("TNX", "NH3", "NOx", "N
   }
 }
 
-import TapiTxx._
-class T201Collector(instId: String, modelReg: ModelReg, config: TapiConfig) extends TapiTxxCollector(instId, modelReg, config) {
-  import DataCollectManager._
-  import TapiTxx._
-  val TNX = MonitorType.withName("TNX")
-  val NH3 = MonitorType.withName("NH3")
-  val NO = MonitorType.withName("NO")
-  val NO2 = MonitorType.withName("NO2")
-  val NOx = MonitorType.withName("NOx")
+import akka.actor.ActorSystem
+
+import javax.inject._
+
+class T201Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
+                              alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                              calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)(instId: String, modelReg: ModelReg, config: TapiConfig)
+  extends TapiTxxCollector(instrumentOp, monitorStatusOp,
+    alarmOp, system, monitorTypeOp,
+    calibrationOp, instrumentStatusOp)(instId, modelReg, config) {
+  val TNX = ("TNX")
+  val NH3 = ("NH3")
+  val NO = ("NO")
+  val NO2 = ("NO2")
+  val NOx = ("NOx")
 
   def findIdx(regValue: ModelRegValue, addr: Int) = {
     val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
@@ -59,7 +65,6 @@ class T201Collector(instId: String, modelReg: ModelReg, config: TapiConfig) exte
     }
 
   import com.serotonin.modbus4j.locator.BaseLocator
-  import com.serotonin.modbus4j.code.DataType
 
   override def triggerZeroCalibration(v: Boolean) {
     try {

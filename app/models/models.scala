@@ -1,14 +1,14 @@
 package models
 import com.github.nscala_time.time.Imports._
-import scala.language.implicitConversions
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
-import scala.util.parsing.json.JSONFormat
 import play.api._
+import play.api.libs.json._
+
+import scala.language.implicitConversions
 
 /**
  * @author user
  */
+import javax.inject._
 
 object ModelHelper {
   implicit def getSqlTimestamp(t: DateTime) = {
@@ -31,16 +31,14 @@ object ModelHelper {
   def logException(ex: Throwable) = {
     Logger.error(ex.getMessage, ex)
   }
-
-  import Alarm._
   def logInstrumentError(id: String, msg: String, ex: Throwable) = {
     Logger.error(msg, ex)
-    log(instStr(id), Level.ERR, msg)
+    //log(instStr(id), Level.ERR, msg)
   }
 
   def logInstrumentInfo(id: String, msg: String) = {
     Logger.info(msg)
-    log(instStr(id), Level.INFO, msg)
+    //log(instStr(id), Level.INFO, msg)
   }
 
   def errorHandler: PartialFunction[Throwable, Any] = {
@@ -53,6 +51,34 @@ object ModelHelper {
     case ex: Throwable =>
       Logger.error(prompt, ex)
       throw ex
+  }
+
+  def windAvg(sum_sin: Double, sum_cos: Double) = {
+    val degree = Math.toDegrees(Math.atan2(sum_sin, sum_cos))
+    if (degree >= 0)
+      degree
+    else
+      degree + 360
+  }
+
+  def windAvg(windSpeed: Seq[Record], windDir: Seq[Record]): Double = {
+    if (windSpeed.length != windDir.length)
+      Logger.error(s"windSpeed #=${windSpeed.length} windDir #=${windDir.length}")
+
+    val windRecord = windSpeed.zip(windDir)
+    val wind_sin = windRecord.map(v => v._1.value * Math.sin(Math.toRadians(v._2.value))).sum
+    val wind_cos = windRecord.map(v => v._1.value * Math.cos(Math.toRadians(v._2.value))).sum
+    windAvg(wind_sin, wind_cos)
+  }
+
+  def windAvg(windSpeed: List[Double], windDir: List[Double]): Double = {
+    if (windSpeed.length != windDir.length)
+      Logger.error(s"windSpeed #=${windSpeed.length} windDir #=${windDir.length}")
+
+    val windRecord = windSpeed.zip(windDir)
+    val wind_sin = windRecord.map(v => v._1 * Math.sin(Math.toRadians(v._2))).sum
+    val wind_cos = windRecord.map(v => v._1 * Math.cos(Math.toRadians(v._2))).sum
+    windAvg(wind_sin, wind_cos)
   }
 
   import scala.concurrent._

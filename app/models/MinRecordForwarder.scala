@@ -1,20 +1,20 @@
 package models
-import scala.concurrent.ExecutionContext.Implicits.global
-import com.github.nscala_time.time.Imports._
 import akka.actor.Actor
-import akka.actor.actorRef2Scala
-import play.api.Logger
-import play.api.Play.current
-import play.api.libs.json.JsError
-import play.api.libs.json.Json
-import play.api.libs.ws.WS
+import com.github.nscala_time.time.Imports._
+import play.api.libs.json.{JsError, Json}
+import play.api.libs.ws.WSClient
+import play.api.{Application, Logger}
 
-class MinRecordForwarder(server: String, monitor: String) extends Actor {
+import javax.inject._
+import scala.concurrent.ExecutionContext.Implicits.global
+
+class MinRecordForwarder @Inject()
+(ws:WSClient, recordOp: RecordOp, app:Application)(server: String, monitor: String) extends Actor {
   import ForwardManager._
   def receive = handler(None)
   def checkLatest = {
     val url = s"http://$server/MinRecordRange/$monitor"
-    val f = WS.url(url).get().map {
+    val f = ws.url(url).get().map {
       response =>
         val result = response.json.validate[LatestRecordTime]
         result.fold(
@@ -43,12 +43,13 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
   def uploadRecord(latestRecordTime: Long) {
     val serverRecordStart = new DateTime(latestRecordTime + 1)
     val recordFuture =
-      Record.getRecordWithLimitFuture(Record.MinCollection)(serverRecordStart, DateTime.now, 60)
+      recordOp.getRecordWithLimitFuture(recordOp.MinCollection)(serverRecordStart, DateTime.now, 60)
 
     for (record <- recordFuture) {
+      import recordOp.recordListWrite
       if (!record.isEmpty) {
         val url = s"http://$server/MinRecord/$monitor"
-        val f = WS.url(url).put(Json.toJson(record))
+        val f = ws.url(url).put(Json.toJson(record))
 
         f onSuccess {
           case response =>
@@ -73,14 +74,14 @@ class MinRecordForwarder(server: String, monitor: String) extends Actor {
   def uploadRecord(start: DateTime, end: DateTime) = {
     Logger.info(s"upload min ${start.toString()} => ${end.toString}")
 
-    val recordFuture = Record.getRecordListFuture(Record.MinCollection)(start, end)
+    val recordFuture = recordOp.getRecordListFuture(recordOp.MinCollection)(start, end)
     for (record <- recordFuture) {
       if (!record.isEmpty) {
         Logger.info(s"Total ${record.length} records")
-
+        import recordOp.recordListWrite
         for (chunk <- record.grouped(60)) {
           val url = s"http://$server/MinRecord/$monitor"
-          val f = WS.url(url).put(Json.toJson(chunk))
+          val f = ws.url(url).put(Json.toJson(chunk))
 
           f onSuccess {
             case response =>

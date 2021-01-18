@@ -1,13 +1,13 @@
 package models
-import play.api._
 import akka.actor._
+import models.ModelHelper._
+import models.Protocol.ProtocolParam
 import play.api.Play.current
+import play.api._
 import play.api.libs.concurrent.Akka
-import ModelHelper._
-import scala.concurrent.duration._
+
 import scala.concurrent.ExecutionContext.Implicits.global
-import MoxaE1240._
-import Protocol.ProtocolParam
+import scala.concurrent.duration._
 
 object MoxaE1240Collector {
 
@@ -20,23 +20,22 @@ object MoxaE1240Collector {
     val collector = context.actorOf(prop, name = "MoxaE1240Collector" + count)
     count += 1
     assert(protocolParam.protocol == Protocol.tcp)
-    val host = protocolParam.host.get
     collector ! ConnectHost
     collector
 
   }
 }
 
-import MoxaE1240._
-class MoxaE1240Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1240Param) extends Actor with ActorLogging {
+import javax.inject._
+
+class MoxaE1240Collector @Inject()
+(monitorTypeOp: MonitorTypeOp, instrumentOp: InstrumentOp, system: ActorSystem)
+(id: String, protocolParam: ProtocolParam, param: MoxaE1240Param) extends Actor with ActorLogging {
   import MoxaE1240Collector._
-  import java.io.BufferedReader
-  import java.io._
 
   var cancelable: Cancellable = _
 
   def decode(values: Seq[Float], collectorState: String) = {
-    import DataCollectManager._
     val dataPairList =
       for {
         cfg <- param.ch.zipWithIndex
@@ -58,18 +57,17 @@ class MoxaE1240Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
           else
             collectorState
         }
-        val rawMt = MonitorType.getRawMonitorType(mt)
+        val rawMt = monitorTypeOp.getRawMonitorType(mt)
         List(MonitorTypeData(mt, v, status), MonitorTypeData(rawMt, rawValue, status))
       }
     val dataList = dataPairList.flatMap { x => x }
     context.parent ! ReportData(dataList.toList)
   }
 
-  import DataCollectManager._
-  import scala.concurrent.Future
-  import scala.concurrent.blocking
   import com.serotonin.modbus4j._
   import com.serotonin.modbus4j.ip.IpParameters
+
+  import scala.concurrent.{Future, blocking}
 
   def receive = handler(MonitorStatus.NormalStat, None)
 
@@ -90,13 +88,13 @@ class MoxaE1240Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
             master.setConnected(true)
             master.init();
             context become handler(collectorState, Some(master))
-            cancelable = Akka.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
+            cancelable = system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)
               Logger.info("Try again 1 min later...")
               //Try again
-              cancelable = Akka.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
+              cancelable = system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
           }
 
         }
@@ -109,8 +107,8 @@ class MoxaE1240Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
             import com.serotonin.modbus4j.BatchRead
             val batch = new BatchRead[Integer]
 
-            import com.serotonin.modbus4j.locator.BaseLocator
             import com.serotonin.modbus4j.code.DataType
+            import com.serotonin.modbus4j.locator.BaseLocator
 
             for (idx <- 0 to 7)
               batch.addLocator(idx, BaseLocator.inputRegister(1, 8 + 2 * idx, DataType.FOUR_BYTE_FLOAT_SWAPPED))
@@ -124,7 +122,7 @@ class MoxaE1240Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
               for (idx <- 0 to 7) yield rawResult.getFloatValue(idx).toFloat
 
             decode(result.toSeq, collectorState)
-            cancelable = Akka.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
+            cancelable = system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Throwable =>
               Logger.error("Read reg failed", ex)
@@ -137,7 +135,7 @@ class MoxaE1240Collector(id: String, protocolParam: ProtocolParam, param: MoxaE1
 
     case SetState(id, state) =>
       Logger.info(s"$self => $state")
-      Instrument.setState(id, state)
+      instrumentOp.setState(id, state)
       context become handler(state, masterOpt)
   }
 

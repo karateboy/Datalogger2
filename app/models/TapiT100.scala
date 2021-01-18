@@ -1,11 +1,11 @@
 package models
-import play.api._
-import TapiTxx._
+
 object TapiT100 extends TapiTxx(ModelConfig("T100", List("SO2"))) {
   lazy val modelReg = readModelSetting
 
   import Protocol.ProtocolParam
   import akka.actor._
+
   def start(id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext) = {
     val config = validateParam(param)
     val props = Props(classOf[T100Collector], id, modelReg, config)
@@ -13,16 +13,24 @@ object TapiT100 extends TapiTxx(ModelConfig("T100", List("SO2"))) {
   }
 }
 
-class T100Collector(instId: String, modelReg: ModelReg, config: TapiConfig) extends TapiTxxCollector(instId, modelReg, config) {
-  import DataCollectManager._
-  import TapiTxx._
+import akka.actor.ActorSystem
+
+import javax.inject._
+
+class T100Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
+                              alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                              calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
+                             (instId: String, modelReg: ModelReg, config: TapiConfig)
+  extends TapiTxxCollector(instrumentOp, monitorStatusOp,
+    alarmOp, system, monitorTypeOp,
+    calibrationOp, instrumentStatusOp)(instId, modelReg, config) {
+
   import com.serotonin.modbus4j.locator.BaseLocator
-  import com.serotonin.modbus4j.code.DataType
 
   override def reportData(regValue: ModelRegValue) =
     for (idx <- findDataRegIdx(regValue)(22)) yield {
       val v = regValue.inputRegs(idx)
-      ReportData(List(MonitorTypeData(MonitorType.withName("SO2"), v._2.toDouble, collectorState)))
+      ReportData(List(MonitorTypeData(("SO2"), v._2.toDouble, collectorState)))
     }
 
   override def triggerZeroCalibration(v: Boolean) {

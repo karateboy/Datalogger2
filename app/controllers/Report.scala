@@ -1,13 +1,11 @@
 package controllers
 
-import play.api._
-import play.api.mvc._
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
-import play.api.Play.current
 import com.github.nscala_time.time.Imports._
+import models.ModelHelper._
 import models._
-import PdfUtility._
+import play.api.mvc._
+
+import javax.inject._
 
 object PeriodReport extends Enumeration {
   val DailyReport = Value("daily")
@@ -17,15 +15,10 @@ object PeriodReport extends Enumeration {
     YearlyReport -> "年報")
 
 }
+@Singleton
+class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: Query) extends Controller {
 
-object Report extends Controller {
-
-  def monitorReport() = Security.Authenticated { implicit request =>
-    Ok(views.html.monitorReport(""))
-  }
-
-
-  def getOverallStatMap(statMap: Map[MonitorType.Value, Map[DateTime, Stat]]) = {
+  def getOverallStatMap(statMap: Map[String, Map[DateTime, Stat]]) = {
     val mTypes = statMap.keys.toList
     statMap.map { pair =>
       val mt = pair._1
@@ -37,18 +30,18 @@ object Report extends Controller {
       val max = values.map { _.avg }.max
       val min = values.map { _.avg }.min
       val avg =
-        if (mt != MonitorType.WIN_DIRECTION) {
+        if (mt != monitorTypeOp.WIN_DIRECTION) {
           if (total == 0 || count == 0)
             None
           else {
             Some(values.filter { _.avg.isDefined }.map { s => s.avg.get * s.total }.sum / (values.map(_.total).sum))
           }
         } else {
-          val winSpeedMap = statMap(MonitorType.WIN_SPEED)
+          val winSpeedMap = statMap(monitorTypeOp.WIN_SPEED)
           val dates = dateMap.keys.toList
           val windDir = dates.map { dateMap }
           val windSpeed = dates.map { winSpeedMap }
-          def windAvg(): Option[Double] = {
+          def windAvg1(): Option[Double] = {
             val windRecord = windSpeed.zip(windDir).filter(w => w._1.avg.isDefined && w._2.avg.isDefined)
             if (windRecord.length == 0)
               None
@@ -58,10 +51,10 @@ object Report extends Controller {
               }.sum
 
               val wind_cos = windRecord.map(v => v._1.avg.get * Math.cos(Math.toRadians(v._2.avg.get))).sum
-              Some(Query.windAvg(wind_sin, wind_cos))
+              Some(windAvg(wind_sin, wind_cos))
             }
           }
-          windAvg()
+          windAvg1()
         }
 
       mt -> Stat(
@@ -84,27 +77,27 @@ object Report extends Controller {
         val (title, output) =
           reportType match {
             case PeriodReport.DailyReport =>
-              val periodMap = Record.getRecordMap(Record.HourCollection)(MonitorType.mtvList, start, start + 1.day)
+              val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(monitorTypeOp.mtvList, start, start + 1.day)
               val mtTimeMap = periodMap.map { pair =>
                 val k = pair._1
                 val v = pair._2
                 k -> Map(v.map { r => r.time -> r }: _*)
               }
-              val statMap = Query.getPeriodStatReportMap(periodMap, 1.day)(start, start + 1.day)
+              val statMap = query.getPeriodStatReportMap(periodMap, 1.day)(start, start + 1.day)
 
-              ("日報", views.html.dailyReport(start, MonitorType.activeMtvList, mtTimeMap, statMap))
+              ("日報", "")
 
             case PeriodReport.MonthlyReport =>
-              val periodMap = Record.getRecordMap(Record.HourCollection)(MonitorType.activeMtvList, start, start + 1.month)
-              val statMap = Query.getPeriodStatReportMap(periodMap, 1.day)(start, start + 1.month)
+              val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(monitorTypeOp.activeMtvList, start, start + 1.month)
+              val statMap = query.getPeriodStatReportMap(periodMap, 1.day)(start, start + 1.month)
               val overallStatMap = getOverallStatMap(statMap)
-              ("月報", views.html.monthlyReport(start, MonitorType.activeMtvList, statMap, overallStatMap))
+              ("月報", "")
 
             case PeriodReport.YearlyReport =>
-              val periodMap = Record.getRecordMap(Record.HourCollection)(MonitorType.activeMtvList, start, start + 1.year)
-              val statMap = Query.getPeriodStatReportMap(periodMap, 1.month)(start, start + 1.year)
+              val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(monitorTypeOp.activeMtvList, start, start + 1.year)
+              val statMap = query.getPeriodStatReportMap(periodMap, 1.month)(start, start + 1.year)
               val overallStatMap = getOverallStatMap(statMap)
-              ("年報", views.html.yearlyReport(start, MonitorType.activeMtvList, statMap, overallStatMap))
+              ("年報", "")
 
             //case PeriodReport.MonthlyReport =>
             //val nDays = monthlyReport.typeArray(0).dataList.length
@@ -114,14 +107,8 @@ object Report extends Controller {
         outputType match {
           case OutputType.html =>
             Ok(output)
-          case OutputType.pdf =>
-            Ok.sendFile(creatPdfWithReportHeader(title, output),
-              fileName = _ =>
-                play.utils.UriEncoding.encodePathSegment(title + start.toString("YYYYMM") + ".pdf", "UTF-8"))
         }
       } else {
-        import java.io.File
-        import java.nio.file.Files
         Ok("")
         //                val (title, excelFile) =
         //                  reportType match {
@@ -144,17 +131,13 @@ object Report extends Controller {
       }
   }
 
-  def monitorMonthlyHourReport = Security.Authenticated {
-    Ok(views.html.monitorMonthlyHourReport())
-  }
-
   def monthlyHourReport(monitorTypeStr: String, startDateStr: String, outputTypeStr: String) = Security.Authenticated {
-    val mt = MonitorType.withName(monitorTypeStr)
+    val mt = (monitorTypeStr)
     val start = DateTime.parse(startDateStr)
     val outputType = OutputType.withName(outputTypeStr)
     val title = "月份時報表"
     if (outputType == OutputType.html || outputType == OutputType.pdf) {
-      val recordList = Record.getRecordMap(Record.HourCollection)(List(mt), start, start + 1.month)(mt)
+      val recordList = recordOp.getRecordMap(recordOp.HourCollection)(List(mt), start, start + 1.month)(mt)
       val timePair = recordList.map { r => r.time -> r }
       val timeMap = Map(timePair: _*)
 
@@ -168,15 +151,15 @@ object Report extends Controller {
           val sum = values.sum
           val count = records.length
           val total = new Duration(start, start + 1.month).getStandardDays.toInt
-          val overCount = if (MonitorType.map(mt).std_law.isDefined) {
-            values.count { _ > MonitorType.map(mt).std_law.get }
+          val overCount = if (monitorTypeOp.map(mt).std_law.isDefined) {
+            values.count { _ > monitorTypeOp.map(mt).std_law.get }
           } else
             0
 
-          val avg = if (mt == MonitorType.WIN_DIRECTION) {
+          val avg = if (mt == monitorTypeOp.WIN_DIRECTION) {
             val windDir = records
             val windSpeed = hourList.map(timeMap)
-            Query.windAvg(windSpeed, windDir)
+            windAvg(windSpeed, windDir)
           } else {
             sum / total
           }
@@ -193,17 +176,15 @@ object Report extends Controller {
       val hourValues =
         for {
           h <- 0 to 23
-          hourList = Query.getPeriods(start + h.hour, start + 1.month, 1.day)
+          hourList = query.getPeriods(start + h.hour, start + 1.month, 1.day)
         } yield {
           h -> getHourPeriodStat(hourList.flatMap { timeMap.get }, hourList)
         }
       val hourStatMap = Map(hourValues: _*)
-      val dayStatMap = Query.getPeriodStatReportMap(Map(mt -> recordList), 1.day)(start, start + 1.month)
-      val overallStat = Query.getPeriodStatReportMap(Map(mt -> recordList), 1.day)(start, start + 1.month)(mt)(start)
-      Ok(views.html.monthlyHourReport(mt, start, timeMap, hourStatMap, dayStatMap(mt), overallStat))
+      val dayStatMap = query.getPeriodStatReportMap(Map(mt -> recordList), 1.day)(start, start + 1.month)
+      val overallStat = query.getPeriodStatReportMap(Map(mt -> recordList), 1.day)(start, start + 1.month)(mt)(start)
+      Ok("")
     } else {
-      import java.io.File
-      import java.nio.file.Files
       Ok("")
     }
   }
