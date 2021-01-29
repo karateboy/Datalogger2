@@ -15,24 +15,42 @@ const router = new VueRouter({
       name: 'home',
       component: () => import('@/views/Home.vue'),
       meta: {
-        pageTitle: 'Home',
+        pageTitle: '儀表板',
         breadcrumb: [
           {
-            text: 'Home',
+            text: '儀表板',
             active: true,
           },
         ],
       },
     },
     {
-      path: '/second-page',
-      name: 'second-page',
-      component: () => import('@/views/SecondPage.vue'),
+      path: '/realtime-data',
+      name: 'realtime-data',
+      component: () => import('@/views/RealtimeData.vue'),
       meta: {
-        pageTitle: 'Second Page',
+        pageTitle: '即時資料',
         breadcrumb: [
           {
-            text: 'Second Page',
+            text: '即時資料',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
+      path: '/history-data',
+      name: 'history-data',
+      component: () => import('@/views/HistoryData.vue'),
+      meta: {
+        pageTitle: '歷史資料',
+        breadcrumb: [
+          {
+            text: '數據查詢',
+            active: true,
+          },
+          {
+            text: '歷史資料查詢',
             active: true,
           },
         ],

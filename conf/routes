@@ -12,7 +12,8 @@ GET      /dist/*file                                                           c
 
 
 GET      /logout                                                                  controllers.Login.logout
-POST     /authenticate                                                            controllers.Login.authenticate
+POST     /login                                                                   controllers.Login.authenticate
+GET      /login                                                                   controllers.Login.isLogin
 
 PUT      /User                                                                    controllers.HomeController.newUser
 GET      /User                                                                    controllers.HomeController.getAllUsers
@@ -70,6 +71,7 @@ GET      /MonthlyHourReport/:monitorType/:reportDate                            
 
 
 #JSON
+GET      /MonitorType                                                             controllers.HomeController.monitorTypeList
 POST     /MonitorType/:id                                                         controllers.HomeController.upsertMonitorType(id)
 PUT      /MonitorType/:id                                                         controllers.HomeController.upsertMonitorType(id)
 

@@ -1,8 +1,5 @@
 const path = require('path')
 
-console.log(process.env.NODE_ENV)
-console.log(process.env.NODE_ENV === 'production')
-
 module.exports = {
   publicPath: process.env.NODE_ENV === 'production' ? '/dist/' : '/',
   css: {

@@ -412,7 +412,8 @@ class HomeController @Inject() (environment: play.api.Environment, recordOp: Rec
   }
 
   def monitorTypeList = Security.Authenticated {
-    val mtList = monitorTypeOp.mtvList
+    implicit val writes = Json.writes[MonitorType]
+    val mtList = monitorTypeOp.mtvList map monitorTypeOp.map
     Ok(Json.toJson(mtList))
   }
 

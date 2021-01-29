@@ -1,69 +1,46 @@
 package models
-import play.api._
-import com.github.nscala_time.time.Imports._
+
 import models.ModelHelper._
-import models._
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
-import play.api.libs.json.Json
+import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
+import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
+import org.mongodb.scala.bson.codecs.Macros._
+import play.api._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.implicitConversions
 
-case class User(email: String, password: String, name: String, phone: String, isAdmin: Boolean,
+
+case class User(_id: String, password: String, name: String, phone: String, isAdmin: Boolean,
                 alarmConfig: Option[AlarmConfig] = Some(AlarmConfig.defaultConfig), widgets: Option[List[String]] = Some(List.empty[String]))
 
 import javax.inject._
+
 @Singleton
 class UserOp @Inject()(mongoDB: MongoDB) {
+
   import org.mongodb.scala._
-  import scala.concurrent._
-  import scala.concurrent.duration._
 
   val ColName = "users"
-  val collection = mongoDB.database.getCollection(ColName)
-  def toDocument(user: User) = Document("_id" -> user.email, "password" -> user.password,
-    "name" -> user.name, "phone" -> user.phone, "isAdmin" -> user.isAdmin,
-    "alarmConfig" -> user.alarmConfig, "widgets" -> user.widgets)
+  val codecRegistry = fromRegistries(fromProviders(classOf[User], classOf[AlarmConfig], DEFAULT_CODEC_REGISTRY))
+  val collection: MongoCollection[User] = mongoDB.database.withCodecRegistry(codecRegistry).getCollection(ColName)
 
-  def init(colNames:Seq[String]){
-    if(!colNames.contains(ColName)){
+  def init(colNames: Seq[String]) {
+    if (!colNames.contains(ColName)) {
       val f = mongoDB.database.createCollection(ColName).toFuture()
       f.onFailure(errorHandler)
-    }  
+    }
     val f = collection.countDocuments().toFuture()
     f.onSuccess({
-      case count:Long=>
-        if(count == 0){
+      case count: Long =>
+        if (count == 0) {
           val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn", "02-2219-2886", true)
           Logger.info("Create default user:" + defaultUser.toString())
           newUser(defaultUser)
         }
     })
     f.onFailure(errorHandler)
-  }  
-  
-  def toUser(doc: Document) = {
-    import scala.collection.JavaConversions._
-    import models.AlarmConfig._
-    val widgetArray = if (doc("widgets").isArray())
-      Some(doc("widgets").asArray().getValues.map { w => (w.asString().getValue) }.toList)
-    else
-      None
-
-    val alarmConfigOpt =
-      if(doc("alarmConfig").isDocument())
-        AlarmConfig.toAlarmConfig(doc("alarmConfig").asDocument())
-      else
-        None
-    User(
-      email = doc("_id").asString().getValue,
-      password = doc("password").asString().getValue,
-      name = doc("name").asString.getValue,
-      phone = doc("phone").asString().getValue,
-      isAdmin = doc("isAdmin").asBoolean().getValue,
-      alarmConfig = alarmConfigOpt,
-      widgets = widgetArray)
   }
+
 
   def createDefaultUser = {
     val f = collection.countDocuments().toFuture()
@@ -74,41 +51,50 @@ class UserOp @Inject()(mongoDB: MongoDB) {
       newUser(defaultUser)
     }
   }
+
   def newUser(user: User) = {
-    val f = collection.insertOne(toDocument(user)).toFuture()
+    val f = collection.insertOne(user).toFuture()
     waitReadyResult(f)
   }
 
   import org.mongodb.scala.model.Filters._
+
   def deleteUser(email: String) = {
     val f = collection.deleteOne(equal("_id", email)).toFuture()
     waitReadyResult(f)
   }
 
   def updateUser(user: User) = {
-    val f = collection.replaceOne(equal("_id", user.email), toDocument(user)).toFuture()
+    val f = collection.replaceOne(equal("_id", user._id), user).toFuture()
     waitReadyResult(f)
   }
 
   def getUserByEmail(email: String) = {
     val f = collection.find(equal("_id", email)).first().toFuture()
-    f.onFailure { errorHandler }
-    val ret = waitReadyResult(f)
-    toUser(ret)
+    f.onFailure {
+      errorHandler
+    }
+    val user = waitReadyResult(f)
+    if(user != null)
+      Some(user)
+    else
+      None
   }
 
   def getAllUsers() = {
     val f = collection.find().toFuture()
-    f.onFailure { errorHandler }
-    val ret = waitReadyResult(f)
-    ret.map { toUser }
+    f.onFailure {
+      errorHandler
+    }
+    waitReadyResult(f)
   }
 
   def getAdminUsers() = {
     val f = collection.find(equal("isAdmin", true)).toFuture()
-    f.onFailure { errorHandler }
-    val ret = waitReadyResult(f)
-    ret.map { toUser }
+    f.onFailure {
+      errorHandler
+    }
+    waitReadyResult(f)
   }
 
 }
