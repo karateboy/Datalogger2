@@ -35,6 +35,8 @@
               v-model="range"
               :range="true"
               type="datetime"
+              format="YYYY-MM-DD HH:mm"
+              value-type="YYYY-MM-DD HH:mm"
               :show-second="false"
             />
           </b-form-group>
@@ -73,7 +75,7 @@ import 'vue2-datepicker/index.css'
 import 'vue2-datepicker/locale/zh-tw'
 import Ripple from 'vue-ripple-directive'
 import { mapState, mapActions } from 'vuex'
-// import moment from 'moment'
+import moment from 'moment-timezone'
 
 export default Vue.extend({
   components: {
@@ -85,6 +87,14 @@ export default Vue.extend({
   },
 
   data() {
+    const range = [
+      moment()
+        .subtract(1, 'days')
+        .format('YYYY-MM-DD HH:mm'),
+      moment().format('YYYY-MM-DD HH:mm'),
+    ]
+    console.log(range)
+    console.log(moment().toArray())
     return {
       selectedMonitorTypes: '',
       dataTypes: [
@@ -93,7 +103,7 @@ export default Vue.extend({
         { txt: '秒資料', id: 'second' },
       ],
       dataType: 'hour',
-      range: [],
+      range,
     }
   },
   computed: {
