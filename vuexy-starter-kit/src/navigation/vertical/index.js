@@ -23,7 +23,7 @@ export default [
       },
       {
         title: "歷史趨勢圖",
-        route: null,
+        route: 'history-trend',
       },
       {
         title: "校正資料查詢",

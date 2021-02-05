@@ -1,5 +1,5 @@
 import com.google.inject.AbstractModule
-import models.{DataCollectManager, MongoDB, MonitorTypeOp}
+import models.{Adam4017Collector, Adam4068Collector, Baseline9000Collector, DataCollectManager, GpsCollector, Horiba370Collector, MongoDB, MonitorTypeOp, MoxaE1212Collector, MoxaE1240Collector, T100Collector, T200Collector, T201Collector, T300Collector, T360Collector, T400Collector, T700Collector, VerewaF701Collector}
 import play.api._
 import play.api.libs.concurrent.AkkaGuiceSupport
 /**
@@ -18,6 +18,22 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bind(classOf[MongoDB])
     bind(classOf[MonitorTypeOp])
     bindActor[DataCollectManager]("dataCollectManager")
+    bindActorFactory[Adam4017Collector, Adam4017Collector.Factory]
+    bindActorFactory[Adam4068Collector, Adam4068Collector.Factory]
+    bindActorFactory[Baseline9000Collector, Baseline9000Collector.Factory]
+    bindActorFactory[GpsCollector, GpsCollector.Factory]
+    bindActorFactory[Horiba370Collector, Horiba370Collector.Factory]
+    bindActorFactory[MoxaE1212Collector, MoxaE1212Collector.Factory]
+    bindActorFactory[MoxaE1240Collector, MoxaE1240Collector.Factory]
+    bindActorFactory[T100Collector, T100Collector.Factory]
+    bindActorFactory[T200Collector, T200Collector.Factory]
+    bindActorFactory[T201Collector, T201Collector.Factory]
+    bindActorFactory[T300Collector, T300Collector.Factory]
+    bindActorFactory[T360Collector, T360Collector.Factory]
+    bindActorFactory[T400Collector, T400Collector.Factory]
+    bindActorFactory[T700Collector, T700Collector.Factory]
+    bindActorFactory[VerewaF701Collector, VerewaF701Collector.Factory]
+
     //bind(classOf[ForwardManager])
     // Use the system clock as the default implementation of Clock
     //bind(classOf[Clock]).toInstance(Clock.systemDefaultZone)

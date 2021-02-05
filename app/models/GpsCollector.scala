@@ -4,17 +4,34 @@ import akka.actor._
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import ModelHelper._
-import scala.concurrent.ExecutionContext.Implicits.global
-import GPS._
-import Protocol.ProtocolParam
 
-object GpsCollector {
+import scala.concurrent.ExecutionContext.Implicits.global
+import Protocol.ProtocolParam
+import com.google.inject.assistedinject.Assisted
+
+object GpsCollector extends DriverOps {
+  override def getMonitorTypes(param: String) = {
+    val lat = ("LAT")
+    val lng = ("LNG")
+    List(lat, lng)
+  }
+
+  override def verifyParam(json: String) = {
+    json
+  }
+
+  override def getCalibrationTime(param: String) = None
+
   var count = 0
-  def start(id: String, protocolParam: ProtocolParam)(implicit context: ActorContext) = {
-    val prop = Props(classOf[GpsCollector], id, protocolParam)
-    val collector = context.actorOf(prop, name = "Gps_" + count)
-    count += 1
-    collector
+
+  trait Factory {
+    def apply(id: String, protocolParam: ProtocolParam): Actor
+  }
+
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor ={
+    assert(f.isInstanceOf[Factory])
+    val f2 = f.asInstanceOf[Factory]
+    f2(id, protocol)
   }
 }
 
@@ -29,8 +46,8 @@ import net.sf.marineapi.nmea.io.SentenceReader;
 import net.sf.marineapi.nmea.sentence.SentenceValidator;
 
 import javax.inject._
-@Singleton
-class GpsCollector @Inject()(monitorTypeOp: MonitorTypeOp)(id: String, protocolParam: ProtocolParam) extends Actor
+
+class GpsCollector @Inject()(monitorTypeOp: MonitorTypeOp)(@Assisted id: String, @Assisted protocolParam: ProtocolParam) extends Actor
     with ActorLogging with SentenceListener with ExceptionListener with PositionListener {
   val comm: SerialComm = SerialComm.open(protocolParam.comPort.get)
   var reader: SentenceReader = _

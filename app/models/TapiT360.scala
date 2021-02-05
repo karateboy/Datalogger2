@@ -1,23 +1,36 @@
 package models
+
 import akka.actor.ActorSystem
-object TapiT360 extends TapiTxx(ModelConfig("T360", List("CO2"))) {
+import com.google.inject.assistedinject.Assisted
+import models.Protocol.ProtocolParam
+
+object T360Collector extends TapiTxx(ModelConfig("T360", List("CO2"))) {
   lazy val modelReg = readModelSetting
 
-  import Protocol.ProtocolParam
   import akka.actor._
-  def start(id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext) = {
-    val config = validateParam(param)
-    val props = Props(classOf[T360Collector], id, modelReg, config)
-    TapiTxxCollector.start(protocol, props)
+
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+    assert(f.isInstanceOf[Factory])
+    val f2 = f.asInstanceOf[Factory]
+    val driverParam = validateParam(param)
+    f2(id, modelReg, driverParam, protocol.host.get)
+  }
+
+  trait Factory {
+    def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, host:String): Actor
   }
 }
+
 import javax.inject._
+
 class T360Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
                               alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
-                              calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)(instId: String, modelReg: ModelReg, config: TapiConfig)
+                              calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
+                             (@Assisted("instId") instId: String, @Assisted modelReg: ModelReg,
+                              @Assisted config: TapiConfig, @Assisted host:String)
   extends TapiTxxCollector(instrumentOp, monitorStatusOp,
     alarmOp, system, monitorTypeOp,
-    calibrationOp, instrumentStatusOp)(instId, modelReg, config){
+    calibrationOp, instrumentStatusOp)(instId, modelReg, config, host) {
 
   import com.serotonin.modbus4j.locator.BaseLocator
 

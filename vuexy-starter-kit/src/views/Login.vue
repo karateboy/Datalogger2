@@ -172,7 +172,7 @@ export default {
                 })
               }
             })
-            .catch(err => {
+            .catch(() => {
               this.$toast({
                 component: ToastificationContent,
                 props: {
@@ -180,7 +180,6 @@ export default {
                   icon: 'UserIcon',
                 },
               })
-              console.log(err)
             })
         }
       })

@@ -1,24 +1,33 @@
 package models
 
-import play.api._
-import akka.actor._
-import play.api.libs.concurrent.Akka
-import Protocol.ProtocolParam
-import scala.concurrent.ExecutionContext.Implicits.global
-import akka.actor.{Actor, ActorRef, Props}
-import akka.io.{IO, Tcp}
+import akka.actor.{Actor, ActorRef, Props, _}
 import akka.util.ByteString
+import com.github.nscala_time.time.Imports.LocalTime
+import com.google.inject.assistedinject.Assisted
+import models.Protocol.ProtocolParam
+import play.api._
+import play.api.libs.json.{JsError, Json}
 
-object Horiba370Collector {
+import scala.concurrent.ExecutionContext.Implicits.global
+
+case class Horiba370Config(calibrationTime: LocalTime,
+                           raiseTime: Int, downTime: Int, holdTime: Int,
+                           calibrateZeoSeq: Option[Int], calibrateSpanSeq: Option[Int],
+                           calibratorPurgeSeq: Option[Int], calibratorPurgeTime: Option[Int])
+
+object Horiba370Collector extends DriverOps{
 
   case object ReadData
-
   case object CheckStatus
 
   var count = 0
 
+  trait Factory {
+    def apply(id: String, protocol: ProtocolParam, param: Horiba370Config): Actor
+  }
+
+
   def start(id: String, protocolParam: ProtocolParam, config: Horiba370Config)(implicit context: ActorContext) = {
-    import Protocol.ProtocolParam
     val actorName = s"Horiba_${count}"
     count += 1
     val collector = context.actorOf(Props(classOf[Horiba370Collector], id, protocolParam.host.get, config), name = actorName)
@@ -44,6 +53,87 @@ object Horiba370Collector {
     //Logger.debug(s"$instId next logging time= $nextTime")
     nextTime
   }
+
+  implicit val cfgRead = Json.reads[Horiba370Config]
+  implicit val cfgWrite = Json.writes[Horiba370Config]
+
+  override def verifyParam(json: String) = {
+    val ret = Json.parse(json).validate[Horiba370Config]
+    ret.fold(
+      error => {
+        Logger.error(JsError.toJson(error).toString())
+        throw new Exception(JsError.toJson(error).toString())
+      },
+      param => {
+        Json.toJson(param).toString()
+      })
+  }
+
+  override def getMonitorTypes(param: String): List[String] = {
+    List(("CH4"), ("NMHC"), ("THC"))
+  }
+
+  def validateParam(json: String) = {
+    val ret = Json.parse(json).validate[Horiba370Config]
+    ret.fold(
+      error => {
+        Logger.error(JsError.toJson(error).toString())
+        throw new Exception(JsError.toJson(error).toString())
+      },
+      param => param)
+  }
+
+  override def getCalibrationTime(param: String) = {
+    val config = validateParam(param)
+    Some(config.calibrationTime)
+  }
+
+
+  import Protocol.ProtocolParam
+  import akka.actor._
+
+  def start(id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext): ActorRef = {
+    val config = validateParam(param)
+    Horiba370Collector.start(id, protocol, config)
+  }
+
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor ={
+    assert(f.isInstanceOf[Horiba370Collector.Factory])
+    val f2 = f.asInstanceOf[Horiba370Collector.Factory]
+    val driverParam = validateParam(param)
+    f2(id, protocol, driverParam)
+  }
+
+  val FlameStatus = "FlameStatus"
+  val Press = "Press"
+  val Flow = "Flow"
+  val Temp = "Temp"
+
+  val InstrumentStatusTypeList = List(
+    InstrumentStatusType(FlameStatus, 10, "Flame Status", "0:Extinguishing/1:Ignition sequence/2:Ignition"),
+    InstrumentStatusType(Press + 0, 37, "Presssure 0", "kPa"),
+    InstrumentStatusType(Press + 1, 37, "Presssure 1", "kPa"),
+    InstrumentStatusType(Press + 2, 37, "Presssure 2", "kPa"),
+    InstrumentStatusType(Flow + 0, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 1, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 2, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 3, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 4, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 5, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 6, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 7, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 8, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Flow + 9, 38, "Flow 0", "L/min"),
+    InstrumentStatusType(Temp + 0, 39, "Temperature 0", "C"),
+    InstrumentStatusType(Temp + 1, 39, "Temperature 1", "C"),
+    InstrumentStatusType(Temp + 2, 39, "Temperature 2", "C"),
+    InstrumentStatusType(Temp + 3, 39, "Temperature 3", "C"),
+    InstrumentStatusType(Temp + 4, 39, "Temperature 4", "C"),
+    InstrumentStatusType(Temp + 5, 39, "Temperature 5", "C"),
+    InstrumentStatusType(Temp + 6, 39, "Temperature 6", "C"),
+    InstrumentStatusType(Temp + 7, 39, "Temperature 7", "C"),
+    InstrumentStatusType(Temp + 8, 39, "Temperature 8", "C"),
+    InstrumentStatusType(Temp + 9, 39, "Temperature 9", "C"))
 }
 
 import javax.inject._
@@ -51,15 +141,13 @@ import javax.inject._
 class Horiba370Collector @Inject()
 (instrumentOp: InstrumentOp, instrumentStatusOp: InstrumentStatusOp,
  calibrationOp: CalibrationOp, monitorTypeOp: MonitorTypeOp, actorSystem: ActorSystem)
-(id: String, targetAddr: String, config: Horiba370Config) extends Actor {
+(@Assisted id: String, @Assisted targetAddr: String, @Assisted config: Horiba370Config) extends Actor {
 
   import Horiba370Collector._
-  import scala.concurrent.duration._
-  import scala.concurrent.Future
-  import scala.concurrent.blocking
-  import ModelHelper._
-
   import TapiTxx._
+
+  import scala.concurrent.{Future, blocking}
+  import scala.concurrent.duration._
 
   var (collectorState, instrumentStatusTypesOpt) = {
     val instrument = instrumentOp.getInstrument(id)
@@ -87,12 +175,12 @@ class Horiba370Collector @Inject()
   }
 
   if (instrumentStatusTypesOpt.isEmpty) {
-    instrumentStatusTypesOpt = Some(Horiba370.InstrumentStatusTypeList)
-    instrumentOp.updateStatusType(id, Horiba370.InstrumentStatusTypeList)
+    instrumentStatusTypesOpt = Some(InstrumentStatusTypeList)
+    instrumentOp.updateStatusType(id, InstrumentStatusTypeList)
   } else {
     val instrumentStatusTypes = instrumentStatusTypesOpt.get
-    if (instrumentStatusTypes.length != Horiba370.InstrumentStatusTypeList.length) {
-      instrumentOp.updateStatusType(id, Horiba370.InstrumentStatusTypeList)
+    if (instrumentStatusTypes.length != InstrumentStatusTypeList.length) {
+      instrumentOp.updateStatusType(id, InstrumentStatusTypeList)
     }
   }
 
@@ -152,7 +240,7 @@ class Horiba370Collector @Inject()
       case "R010" =>
         val result = prmStr.split(",")
         val value = result(1).toDouble
-        statusMap += (Horiba370.FlameStatus -> value)
+        statusMap += (FlameStatus -> value)
 
       case "R037" =>
         val ret = prmStr.split(",")
@@ -161,7 +249,7 @@ class Horiba370Collector @Inject()
             val cc = ret(1 + idx * 3)
             val dp = ret(1 + idx * 3 + 1)
             val value = ret(1 + idx * 3 + 2).toDouble
-            statusMap += (Horiba370.Press + idx -> value)
+            statusMap += (Press + idx -> value)
           }
         }
 
@@ -181,10 +269,9 @@ class Horiba370Collector @Inject()
 
   case object CalibrateEnd
 
+  import akka.io._
   import context.system
 
-  import akka.io._
-  import akka.io.Udp._
   import java.net._
 
   IO(UdpConnected) ! UdpConnected.Connect(self, new InetSocketAddress(targetAddr, 53700))

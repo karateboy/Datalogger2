@@ -4,10 +4,14 @@ import akka.actor._
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import Protocol.ProtocolParam
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import ModelHelper._
+import com.google.inject.assistedinject.Assisted
+import play.api.libs.json.{JsError, Json}
 
-object VerewaF701Collector {
+case class F701_20Config(monitorType: String)
+object VerewaF701Collector extends DriverOps{
   case object OpenComPort
   case object ReadData
 
@@ -22,12 +26,66 @@ object VerewaF701Collector {
     collector
   }
 
+  lazy val supportedMonitorTypes = List(("PM25"), ("PM10"))
+  implicit val configRead = Json.reads[F701_20Config]
+  implicit val configWrite = Json.writes[F701_20Config]
+
+  override def verifyParam(json: String) = {
+    val ret = Json.parse(json).validate[F701_20Config]
+    ret.fold(
+      error => {
+        Logger.error(JsError.toJson(error).toString())
+        throw new Exception(JsError.toJson(error).toString())
+      },
+      param => {
+        Json.toJson(param).toString()
+      })
+  }
+
+  override def getCalibrationTime(param: String) = {
+    None
+  }
+
+  /*
+  def start(id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext): ActorRef = {
+    val mtList = getMonitorTypes(param)
+    assert(mtList.length == 1)
+    VerewaF701Collector.start(id, protocol, mtList(0))
+  }*/
+
+  override def getMonitorTypes(param: String): List[String] = {
+    val config = validateParam(param)
+    List(config.monitorType)
+  }
+
+  import akka.actor._
+
+  def validateParam(json: String) = {
+    val ret = Json.parse(json).validate[F701_20Config]
+    ret.fold(
+      error => {
+        Logger.error(JsError.toJson(error).toString())
+        throw new Exception(JsError.toJson(error).toString())
+      },
+      param => param)
+  }
+
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+    assert(f.isInstanceOf[Factory])
+    val f2 = f.asInstanceOf[Factory]
+    val driverParam = validateParam(param)
+    f2(id, protocol, driverParam)
+  }
+
+  trait Factory {
+    def apply(id: String, protocol: ProtocolParam, param: F701_20Config): Actor
+  }
 }
 
 import javax.inject._
 class VerewaF701Collector @Inject()
 (alarmOp: AlarmOp, monitorStatusOp: MonitorStatusOp, instrumentOp: InstrumentOp, system: ActorSystem)
-(id: String, protocolParam: ProtocolParam, mt: String) extends Actor {
+(@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted mt: String) extends Actor {
   import VerewaF701Collector._
   import scala.concurrent.duration._
   var cancelable = system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort)

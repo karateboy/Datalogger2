@@ -29,9 +29,11 @@ object Adam4068 extends DriverOps {
 
   import Protocol.ProtocolParam
 
-  override def start(id: String, protocolParam: ProtocolParam, param: String)(implicit context: ActorContext) = {
-    val driverParam = Adam4068.validateParam(param)
-    Adam4068Collector.start(id, protocolParam, driverParam)
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor ={
+    assert(f.isInstanceOf[Adam4068Collector.Factory])
+    val f2 = f.asInstanceOf[Adam4068Collector.Factory]
+    val driverParam = validateParam(param)
+    f2(id, protocol, driverParam)
   }
 
   def validateParam(json: String) = {

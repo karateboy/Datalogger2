@@ -57,6 +57,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/history-trend',
+      name: 'history-trend',
+      component: () => import('@/views/HistoryTrend.vue'),
+      meta: {
+        pageTitle: '歷史趨勢圖',
+        breadcrumb: [
+          {
+            text: '數據查詢',
+            active: true,
+          },
+          {
+            text: '歷史趨勢圖',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/Login.vue'),

@@ -1,12 +1,13 @@
 package controllers
+import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import controllers.Highchart._
 import models._
 import play.api._
 import play.api.libs.json.{Json, _}
 import play.api.mvc._
-import scala.concurrent.ExecutionContext.Implicits.global
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import javax.inject._
 
 case class Stat(
@@ -338,14 +339,13 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
   }
 
   def historyTrendChart(monitorTypeStr: String, reportUnitStr: String, statusFilterStr: String,
-                        startStr: String, endStr: String, outputTypeStr: String) = Security.Authenticated {
+                        startNum: Long, endNum: Long, outputTypeStr: String) = Security.Authenticated {
     implicit request =>
 
       val monitorTypeStrArray = monitorTypeStr.split(':')
       val monitorTypes = monitorTypeStrArray
       val reportUnit = ReportUnit.withName(reportUnitStr)
       val statusFilter = MonitorStatusFilter.withName(statusFilterStr)
-      
       val (tabType, start, end) =
         if (reportUnit.id <= ReportUnit.Hour.id) {
           val tab = if (reportUnit == ReportUnit.Hour)
@@ -355,18 +355,16 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
           else
             TableType.min
 
-          (tab, DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")),
-            DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm")))
+          (tab, new DateTime(startNum).withMillisOfDay(0), new DateTime(endNum).withMillisOfDay(0))
         } else if (reportUnit.id <= ReportUnit.Day.id) {
-          (TableType.hour, DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
-            DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
+          (TableType.hour, new DateTime(startNum), new DateTime(endNum))
         } else {
-          (TableType.hour, DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-M")),
-            DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-M")))
+          (TableType.hour, new DateTime(startNum), new DateTime(endNum))
         }
 
-      val outputType = OutputType.withName(outputTypeStr)
 
+      val outputType = OutputType.withName(outputTypeStr)
+      Logger.info(tabType.toString)
       val chart = trendHelper(monitorTypes, tabType, reportUnit, start, end)(statusFilter)
 
       if (outputType == OutputType.excel) {
@@ -386,21 +384,81 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
       }
   }
 
+  case class CellData(v: String, cellClassName: String)
+  case class RowData(date: Long, cellData: Seq[CellData])
+  case class DataTab(columnNames: Seq[String], rows: Seq[RowData])
+  def historyData(monitorTypeStr: String, tabTypeStr: String,
+                  startNum: Long, endNum: Long) = Security.Authenticated.async {
+    implicit request =>
+      val monitorTypes = monitorTypeStr.split(':')
+      val tabType = TableType.withName(tabTypeStr)
+      val (start, end) =
+        if (tabType == TableType.hour) {
+          val orignal_start = new DateTime(startNum)
+          val orignal_end = new DateTime(endNum)
+
+          (orignal_start.withMinuteOfHour(0), orignal_end.withMinute(0) + 1.hour)
+        } else {
+          val timeStart = new DateTime(startNum)
+          val timeEnd = new DateTime(endNum)
+          val timeDuration = new Duration(timeStart, timeEnd)
+          tabType match {
+            case TableType.min =>
+              if (timeDuration.getStandardMinutes > 60 * 12)
+                (timeStart, timeStart + 12.hour)
+              else
+                (timeStart, timeEnd)
+            case TableType.second =>
+              if (timeDuration.getStandardSeconds > 60 * 60)
+                (timeStart, timeStart + 1.hour)
+              else
+                (timeStart, timeEnd)
+          }
+        }
+
+      implicit val cdWrite = Json.writes[CellData]
+      implicit val rdWrite = Json.writes[RowData]
+      implicit val dtWrite = Json.writes[DataTab]
+
+      val resultFuture = recordOp.getRecordListFuture(TableType.mapCollection(tabType))(start, end, monitorTypes.toList)
+
+      for (recordList <- resultFuture) yield {
+        val rows = recordList map {
+          r =>
+            val mtCellData = monitorTypes.toSeq map { mt =>
+              val mtDataOpt = r.mtDataList.find(mtdt => mtdt.mtName == mt)
+              if (mtDataOpt.isDefined) {
+                val mtData = mtDataOpt.get
+                val mt = mtData.mtName
+                CellData(monitorTypeOp.format(mt, Some(mtData.value)), mtData.status)
+              } else {
+                CellData("-", "")
+              }
+            }
+
+            RowData(r.time, mtCellData)
+        }
+
+        val columnNames = monitorTypes.toSeq map { monitorTypeOp.map(_).desp }
+        Ok(Json.toJson(DataTab(columnNames, rows)))
+      }
+  }
+
   def historyReport(monitorTypeStr: String, tabTypeStr: String,
-                    startStr: String, endStr: String) = Security.Authenticated {
+                    startNum: Long, endNum: Long) = Security.Authenticated.async {
     implicit request =>
 
       val monitorTypes = monitorTypeStr.split(':')
       val tabType = TableType.withName(tabTypeStr)
       val (start, end) =
         if (tabType == TableType.hour) {
-          val orignal_start = DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
-          val orignal_end = DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
+          val orignal_start = new DateTime(startNum)
+          val orignal_end = new DateTime(endNum)
 
           (orignal_start.withMinuteOfHour(0), orignal_end.withMinute(0) + 1.hour)
         } else {
-          val timeStart = DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
-          val timeEnd = DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
+          val timeStart = new DateTime(startNum)
+          val timeEnd = new DateTime(endNum)
           val timeDuration = new Duration(timeStart, timeEnd)
           tabType match {
             case TableType.min =>
@@ -424,19 +482,13 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
           getPeriods(start, end, 1.second)
       }
 
-      val recordMap = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitorTypes.toList, start, end)
-      val recordTimeMap = recordMap.map { p =>
-        val recordSeq = p._2
-        val timePair = recordSeq.map { r => r.time -> r }
-        p._1 -> Map(timePair: _*)
-      }
+      Logger.info(start.toString())
+      Logger.info(end.toString())
 
-      val explain = monitorTypes.map { t =>
-        val mtCase = monitorTypeOp.map(t)
-        s"${mtCase.desp}(${mtCase.unit})"
-      }.mkString(",")
-
-      Ok("")
+      val f = recordOp.getRecordListFuture(TableType.mapCollection(tabType))(start, end, monitorTypes.toList)
+      import recordOp.recordListWrite
+      for(recordList <-f) yield
+      Ok(Json.toJson(recordList))
   }
 
   def calibrationReport(startStr: String, endStr: String) = Security.Authenticated {

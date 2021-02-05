@@ -4,8 +4,11 @@ import akka.actor._
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
 import ModelHelper._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import Protocol.ProtocolParam
+import com.google.inject.assistedinject.Assisted
+
 import javax.inject._
 
 object MoxaE1212Collector {
@@ -24,11 +27,15 @@ object MoxaE1212Collector {
     collector
 
   }
+
+  trait Factory {
+    def apply(id: String, protocol: ProtocolParam, param: MoxaE1212Param): Actor
+  }
 }
 
 class MoxaE1212Collector @Inject()
 (instrumentOp: InstrumentOp, monitorTypeOp: MonitorTypeOp, system: ActorSystem)
-(id: String, protocolParam: ProtocolParam, param: MoxaE1212Param) extends Actor with ActorLogging {
+(@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: MoxaE1212Param) extends Actor with ActorLogging {
   import MoxaE1212Collector._
   import java.io.BufferedReader
   import java.io._

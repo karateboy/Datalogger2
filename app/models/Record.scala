@@ -1,10 +1,10 @@
 package models
-import play.api._
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
-import models._
-import scala.concurrent.ExecutionContext.Implicits.global
 import org.mongodb.scala._
+import play.api._
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 case class Record(time: DateTime, value: Double, status: String)
 
@@ -12,7 +12,6 @@ import javax.inject._
 @Singleton
 class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp) {
   import play.api.libs.json._
-  import play.api.libs.functional.syntax._
 
   implicit val writer = Json.writes[Record]
 
@@ -124,12 +123,9 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp) {
   }
 
   def getRecordMap(colName: String)(mtList: List[String], startTime: DateTime, endTime: DateTime) = {
-    import org.mongodb.scala.bson._
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Projections._
     import org.mongodb.scala.model.Sorts._
-    import scala.concurrent._
-    import scala.concurrent.duration._
 
     val col = mongoDB.database.getCollection(colName)
     val proj = include(mtList.map { monitorTypeOp.BFName(_) }: _*)
@@ -164,17 +160,16 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp) {
   implicit val mtRecordWrite = Json.writes[MtRecord]
   implicit val recordListWrite = Json.writes[RecordList]
 
-  def getRecordListFuture(colName: String)(startTime: DateTime, endTime: DateTime) = {
-    import org.mongodb.scala.bson._
+  def getRecordListFuture(colName: String)(startTime: DateTime, endTime: DateTime, mtList: List[String] = List.empty[String]) = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Projections._
     import org.mongodb.scala.model.Sorts._
-    import scala.concurrent._
-    import scala.concurrent.duration._
 
-    val mtList = monitorTypeOp.activeMtvList
     val col = mongoDB.database.getCollection(colName)
-    val proj = include(mtList.map { monitorTypeOp.BFName(_) }: _*)
+    val proj = if(mtList.isEmpty)
+      include(monitorTypeOp.activeMtvList.map { monitorTypeOp.BFName(_) }: _*)
+    else
+      include(mtList.map { monitorTypeOp.BFName(_) }: _*)
     val f = col.find(and(gte("_id", startTime.toDate()), lt("_id", endTime.toDate()))).projection(proj).sort(ascending("_id")).toFuture()
 
     for {
@@ -203,12 +198,9 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp) {
   }
 
   def getRecordWithLimitFuture(colName: String)(startTime: DateTime, endTime: DateTime, limit: Int) = {
-    import org.mongodb.scala.bson._
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Projections._
     import org.mongodb.scala.model.Sorts._
-    import scala.concurrent._
-    import scala.concurrent.duration._
 
     val mtList = monitorTypeOp.activeMtvList
     val col = mongoDB.database.getCollection(colName)
@@ -241,8 +233,8 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp) {
   }
 
   def updateMtRecord(colName: String)(mt: String, updateList: Seq[(DateTime, Double)]) = {
-    import org.mongodb.scala.model._
     import org.mongodb.scala.bson._
+    import org.mongodb.scala.model._
     val col = mongoDB.database.getCollection(colName)
     val mtName = mt.toString()
     val seqF =

@@ -1,28 +1,37 @@
 package models
 import akka.actor.ActorSystem
+import com.google.inject.assistedinject.Assisted
+import models.Protocol.ProtocolParam
 
-object TapiT300 extends TapiTxx(ModelConfig("T300", List("CO"))) {
+object T300Collector extends TapiTxx(ModelConfig("T300", List("CO"))) {
   lazy val modelReg = readModelSetting
 
-  import Protocol.ProtocolParam
   import akka.actor._
-  def start(id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext) = {
-    val config = validateParam(param)
-    val props = Props(classOf[T300Collector], id, modelReg, config)
-    TapiTxxCollector.start(protocol, props)
-  }
 
   var vCO: Option[Double] = None
+
+  trait Factory {
+    def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, host:String): Actor
+  }
+
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor ={
+    assert(f.isInstanceOf[Factory])
+    val f2 = f.asInstanceOf[Factory]
+    val driverParam = validateParam(param)
+    f2(id, modelReg, driverParam, protocol.host.get)
+  }
 }
 
 import javax.inject._
 
 class T300Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
                               alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
-                              calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)(instId: String, modelReg: ModelReg, config: TapiConfig)
+                              calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
+                             (@Assisted("instId") instId: String, @Assisted modelReg: ModelReg,
+                              @Assisted config: TapiConfig, @Assisted host:String)
   extends TapiTxxCollector(instrumentOp, monitorStatusOp,
     alarmOp, system, monitorTypeOp,
-    calibrationOp, instrumentStatusOp)(instId, modelReg, config){
+    calibrationOp, instrumentStatusOp)(instId, modelReg, config, host){
   val CO = ("CO")
 
   override def reportData(regValue: ModelRegValue) = {
@@ -35,8 +44,8 @@ class T300Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Monit
         MonitorTypeCollectorStatus.map = MonitorTypeCollectorStatus.map + (CO -> collectorState)
       }
 
-      if (TapiT300.vCO.isDefined)
-        ReportData(List(MonitorTypeData(CO, TapiT300.vCO.get, collectorState)))
+      if (T300Collector.vCO.isDefined)
+        ReportData(List(MonitorTypeData(CO, T300Collector.vCO.get, collectorState)))
       else
         ReportData(List(MonitorTypeData(CO, measure, collectorState)))
     }

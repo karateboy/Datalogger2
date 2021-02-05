@@ -1,21 +1,52 @@
 package models
-import play.api._
-import akka.actor._
-import play.api.Play.current
-import play.api.libs.concurrent.Akka
-import Protocol.ProtocolParam
-import scala.concurrent.ExecutionContext.Implicits.global
-import akka.actor.{ Actor, ActorRef, Props }
-import akka.io.{ IO, Tcp }
-import akka.util.ByteString
 
-object Baseline9000Collector {
-  case object OpenComPort
-  case object ReadData
+import akka.actor.{Actor, Props, _}
+import com.github.nscala_time.time.Imports.LocalTime
+import com.google.inject.assistedinject.Assisted
+import models.Protocol.ProtocolParam
+import play.api._
+import play.api.libs.json.{JsError, Json}
+
+import scala.concurrent.ExecutionContext.Implicits.global
+
+case class Baseline9000Config(calibrationTime: LocalTime,
+                              raiseTime: Int, downTime: Int, holdTime: Int, calibrateZeoSeq: Option[Int], calibrateSpanSeq: Option[Int])
+
+object Baseline9000Collector extends DriverOps {
 
   var count = 0
+
+  override def verifyParam(json: String) = {
+    val ret = Json.parse(json).validate[Baseline9000Config]
+    ret.fold(
+      error => {
+        Logger.error(JsError.toJson(error).toString())
+        throw new Exception(JsError.toJson(error).toString())
+      },
+      param => {
+        Json.toJson(param).toString()
+      })
+  }
+
+  override def getMonitorTypes(param: String): List[String] = {
+    List(("CH4"), ("NMHC"), ("THC"))
+  }
+
+  override def getCalibrationTime(param: String) = {
+    val config = validateParam(param)
+    Some(config.calibrationTime)
+  }
+
+  def start(id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext): ActorRef = {
+    val config = validateParam(param)
+
+    Baseline9000Collector.start(id, protocol, config)
+  }
+
+  implicit val cfgRead = Json.reads[Baseline9000Config]
+  implicit val cfgWrite = Json.writes[Baseline9000Config]
+
   def start(id: String, protocolParam: ProtocolParam, config: Baseline9000Config)(implicit context: ActorContext) = {
-    import Protocol.ProtocolParam
     val actorName = s"Baseline_${count}"
     count += 1
     val collector = context.actorOf(Props(classOf[Baseline9000Collector], id, protocolParam, config), name = actorName)
@@ -24,35 +55,46 @@ object Baseline9000Collector {
     collector
   }
 
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+    assert(f.isInstanceOf[Baseline9000Collector.Factory])
+    val f2 = f.asInstanceOf[Baseline9000Collector.Factory]
+    val driverParam = validateParam(param)
+    f2(id, protocol, driverParam)
+  }
+
+  def validateParam(json: String) = {
+    val ret = Json.parse(json).validate[Baseline9000Config]
+    ret.fold(
+      error => {
+        Logger.error(JsError.toJson(error).toString())
+        throw new Exception(JsError.toJson(error).toString())
+      },
+      param => param)
+  }
+
+  trait Factory {
+    def apply(id: String, protocol: ProtocolParam, param: Baseline9000Config): Actor
+  }
+
+  import Protocol.ProtocolParam
+  import akka.actor._
+
+  case object OpenComPort
+
+  case object ReadData
 }
 
 import javax.inject._
 
 class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp: CalibrationOp,
-                                      monitorTypeOp: MonitorTypeOp, system: ActorSystem)(id: String, protocolParam: ProtocolParam, config: Baseline9000Config) extends Actor {
+                                      monitorTypeOp: MonitorTypeOp, system: ActorSystem)(@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: Baseline9000Config) extends Actor {
+
   import Baseline9000Collector._
-  import scala.concurrent.duration._
-  import scala.concurrent.Future
-  import scala.concurrent.blocking
   import ModelHelper._
   import TapiTxx._
 
-  var collectorState = {
-    val instrument = instrumentOp.getInstrument(id)
-    instrument(0).state
-  }
-
-  var serialCommOpt: Option[SerialComm] = None
-  var timerOpt: Option[Cancellable] = None
-
-  override def preStart() = {
-    timerOpt = Some(system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort))
-  }
-
-  // override postRestart so we don't call preStart and schedule a new message
-  override def postRestart(reason: Throwable) = {}
-
-  def receive = openComPort
+  import scala.concurrent.duration._
+  import scala.concurrent.{Future, blocking}
 
   val StartShippingDataByte: Byte = 0x11
   val StopShippingDataByte: Byte = 0x13
@@ -62,6 +104,26 @@ class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp:
   val ActivateMethaneSpanByte: Byte = 0x0C
   val ActivateNonMethaneZeroByte: Byte = 0xE
   val ActivateNonMethaneSpanByte: Byte = 0xF
+  val mtCH4 = ("CH4")
+  val mtNMHC = ("NMHC")
+  val mtTHC = ("THC")
+  var collectorState = {
+    val instrument = instrumentOp.getInstrument(id)
+    instrument(0).state
+  }
+  var serialCommOpt: Option[SerialComm] = None
+  var timerOpt: Option[Cancellable] = None
+  var calibrateRecordStart = false
+  var calibrateTimerOpt: Option[Cancellable] = None
+
+  override def preStart() = {
+    timerOpt = Some(system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort))
+  }
+
+  // override postRestart so we don't call preStart and schedule a new message
+  override def postRestart(reason: Throwable) = {}
+
+  def receive = openComPort
 
   def openComPort: Receive = {
     case OpenComPort =>
@@ -93,12 +155,6 @@ class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp:
       timerOpt = Some(system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort))
   }
 
-  val mtCH4 = ("CH4")
-  val mtNMHC = ("NMHC")
-  val mtTHC = ("THC")
-
-  var calibrateRecordStart = false
-
   def readData = {
     Future {
       blocking {
@@ -124,11 +180,6 @@ class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp:
       }
     } onFailure serialErrorHandler
   }
-
-  case object RaiseStart
-  case object HoldStart
-  case object DownStart
-  case object CalibrateEnd
 
   def comPortOpened: Receive = {
     case ReadData =>
@@ -170,8 +221,6 @@ class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp:
       context become calibrationHandler(ManualSpan, mtCH4, com.github.nscala_time.time.Imports.DateTime.now, List.empty[MonitorTypeData], None)
       self ! RaiseStart
   }
-
-  var calibrateTimerOpt: Option[Cancellable] = None
 
   def calibrationHandler(calibrationType: CalibrationType, mt: String, startTime: com.github.nscala_time.time.Imports.DateTime,
                          calibrationDataList: List[MonitorTypeData], zeroValue: Option[Double]): Receive = {
@@ -253,7 +302,9 @@ class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp:
       } onFailure serialErrorHandler
 
     case CalibrateEnd =>
-      val values = calibrationDataList.map { _.value }
+      val values = calibrationDataList.map {
+        _.value
+      }
       val avg = if (values.length == 0)
         None
       else
@@ -338,4 +389,13 @@ class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp:
       serialCommOpt = None
     }
   }
+
+  case object RaiseStart
+
+  case object HoldStart
+
+  case object DownStart
+
+  case object CalibrateEnd
+
 }

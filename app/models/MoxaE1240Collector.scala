@@ -1,5 +1,6 @@
 package models
 import akka.actor._
+import com.google.inject.assistedinject.Assisted
 import models.ModelHelper._
 import models.Protocol.ProtocolParam
 import play.api.Play.current
@@ -22,15 +23,19 @@ object MoxaE1240Collector {
     assert(protocolParam.protocol == Protocol.tcp)
     collector ! ConnectHost
     collector
-
   }
+
+  trait Factory {
+    def apply(id: String, protocol: ProtocolParam, param: MoxaE1240Param): Actor
+  }
+
 }
 
 import javax.inject._
 
 class MoxaE1240Collector @Inject()
 (monitorTypeOp: MonitorTypeOp, instrumentOp: InstrumentOp, system: ActorSystem)
-(id: String, protocolParam: ProtocolParam, param: MoxaE1240Param) extends Actor with ActorLogging {
+(@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: MoxaE1240Param) extends Actor with ActorLogging {
   import MoxaE1240Collector._
 
   var cancelable: Cancellable = _

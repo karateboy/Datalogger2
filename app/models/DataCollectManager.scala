@@ -4,6 +4,7 @@ import akka.actor._
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import play.api._
+import play.api.libs.concurrent.InjectedActorSupport
 
 import javax.inject._
 import scala.collection.mutable.ListBuffer
@@ -263,9 +264,10 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
   }
 }
 
+@Singleton
 class DataCollectManager @Inject()
-(config:Configuration, system: ActorSystem, recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
- instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmOp, instrumentOp: InstrumentOp) extends Actor {
+(config: Configuration, system: ActorSystem, recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
+ instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmOp, instrumentOp: InstrumentOp) extends Actor with InjectedActorSupport {
   val effectivRatio = 0.75
   val storeSecondData = config.getBoolean("storeSecondData").getOrElse(false)
   Logger.info(s"store second data = $storeSecondData")
@@ -462,7 +464,7 @@ class DataCollectManager @Inject()
                mtDataList: List[(DateTime, String, List[MonitorTypeData])]): Receive = {
     case AddInstrument(inst) =>
       val instType = instrumentTypeOp.map(inst.instType)
-      val collector = instType.driver.start(inst._id, inst.protocol, inst.param)
+      val collector = instrumentTypeOp.start(inst.instType, inst._id, inst.protocol, inst.param)
       val monitorTypes = instType.driver.getMonitorTypes(inst.param)
       val calibrateTimeOpt = instType.driver.getCalibrationTime(inst.param)
       val timerOpt = calibrateTimeOpt.map { localtime =>
@@ -479,9 +481,9 @@ class DataCollectManager @Inject()
       }
 
       val instrumentParam = InstrumentParam(collector, monitorTypes, timerOpt)
-      if (inst.instType == instrumentTypeOp.t700) {
+      if (inst.instType == instrumentTypeOp.T700) {
         calibratorOpt = Some(collector)
-      } else if (inst.instType == instrumentTypeOp.moxaE1212 || inst.instType == instrumentTypeOp.adam4068) {
+      } else if (inst.instType == instrumentTypeOp.MOXAE1212 || inst.instType == instrumentTypeOp.ADAM4068) {
         digitalOutputOpt = Some(collector)
       }
 
@@ -536,7 +538,7 @@ class DataCollectManager @Inject()
       def flushSecData(recordMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]]) {
         import scala.collection.mutable.Map
 
-        if (!recordMap.isEmpty) {
+        if (recordMap.nonEmpty) {
           val secRecordMap = Map.empty[DateTime, ListBuffer[(String, (Double, String))]]
           for {
             mt_pair <- recordMap
@@ -550,12 +552,12 @@ class DataCollectManager @Inject()
                 tail.head._1.getSecondOfMinute
 
               val sameDataList =
-                for (s <- head._1.getSecondOfMinute to secondEnd - 1) yield {
+                for (s <- head._1.getSecondOfMinute until secondEnd) yield {
                   val minPart = head._1.withSecond(0)
                   (minPart + s.second, head._2, head._3)
                 }
 
-              if (!tail.isEmpty)
+              if (tail.nonEmpty)
                 sameDataList.toList ++ fillList(tail.head, tail.tail)
               else
                 sameDataList.toList
@@ -588,7 +590,7 @@ class DataCollectManager @Inject()
           val docs = secRecordMap map { r => r._1 -> recordOp.toDocument(r._1, r._2.toList) }
 
           val sortedDocs = docs.toSeq.sortBy { x => x._1 } map (_._2)
-          if (!sortedDocs.isEmpty)
+          if (sortedDocs.nonEmpty)
             recordOp.insertManyRecord(sortedDocs)(recordOp.SecCollection)
         }
       }

@@ -1,6 +1,8 @@
 package models
+import akka.actor.{ActorContext, Props}
 import com.github.nscala_time.time.Imports._
 import com.typesafe.config.ConfigFactory
+import models.Protocol.ProtocolParam
 import play.api._
 import play.api.libs.json._
 
@@ -127,4 +129,11 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
     val config = validateParam(param)
     config.calibrationTime
   }
+
+  /*
+  def start(id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext) = {
+    val config = validateParam(param)
+    val props = Props(classOf[TapiTxxCollector], id, config)
+    // TapiTxxCollector.start(protocol, props)
+  }*/
 }

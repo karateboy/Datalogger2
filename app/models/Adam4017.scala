@@ -51,14 +51,14 @@ class Adam4017 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
 
   import Protocol.ProtocolParam
 
-  override def start(id: String, protocolParam: ProtocolParam, param: String)(implicit context: ActorContext) = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor ={
+    assert(f.isInstanceOf[Adam4017Collector.Factory])
+    val f2 = f.asInstanceOf[Adam4017Collector.Factory]
     val driverParam = validateParam(param)
-    Adam4017Collector.start(id, protocolParam, driverParam)
+    f2(id, protocol, driverParam)
   }
 
-  def stop = {
-
-  }
+  def stop = {}
 
   def validateParam(json: String) = {
     val ret = Json.parse(json).validate[List[Adam4017Param]]
@@ -73,4 +73,5 @@ class Adam4017 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
   }
 
   override def getCalibrationTime(param: String) = None
+
 }

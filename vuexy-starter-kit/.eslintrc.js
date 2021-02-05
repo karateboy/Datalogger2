@@ -26,5 +26,8 @@ module.exports = {
       },
     }],
     'object-curly-newline': 'off',
+    "no-restricted-syntax": 'off',
+    "vue/max-attributes-per-line": 'off',
+    "no-underscore-dangle": 'off'
   },
 }

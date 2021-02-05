@@ -1,43 +1,27 @@
 package models
-import play.api._
 import akka.actor._
-import play.api.Play.current
-import play.api.libs.concurrent.Akka
-import ModelHelper._
+import models.ModelHelper._
+import play.api._
+import play.api.libs.concurrent.InjectedActorSupport
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
-object TapiTxxCollector {
-  import TapiTxx._
-  case class ConnectHost(host: String)
+object TapiTxxCollector extends InjectedActorSupport{
+  case object ConnectHost
   case object RaiseStart
   case object HoldStart
   case object DownStart
   case object CalibrateEnd
   case object ReadRegister
-  import Protocol.ProtocolParam
-
-  var count = 0
-  def start(protocolParam: ProtocolParam, props: Props)(implicit context: ActorContext) = {
-
-    val model = props.actorClass().getName.split('.')
-    val actorName = s"${model(model.length - 1)}_${count}"
-    count += 1
-    val collector = context.actorOf(props, name = actorName)
-    Logger.info(s"$actorName is created.")
-
-    val host = protocolParam.host.get
-    collector ! ConnectHost(host)
-    collector
-  }
-
 }
 
-import TapiTxx._
+import models.TapiTxx._
+
 import javax.inject._
 abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
                                           alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
                                           calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
-                                         (instId: String, modelReg: ModelReg, tapiConfig: TapiConfig) extends Actor {
+                                         (instId: String, modelReg: ModelReg, tapiConfig: TapiConfig, host:String) extends Actor {
   var timerOpt: Option[Cancellable] = None
   import TapiTxxCollector._
   import com.serotonin.modbus4j._
@@ -53,7 +37,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentOp, monitorSta
       (MonitorStatus.NormalStat, None)
   }
 
-  Logger.info(s"$self state=${monitorStatusOp.map(collectorState).desp}")
+  self ! ConnectHost
 
   val InputKey = "Input"
   val HoldingKey = "Holding"
@@ -62,8 +46,8 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentOp, monitorSta
 
   def probeInstrumentStatusType = {
     Logger.info("Probing supported modbus registers...")
-    import com.serotonin.modbus4j.locator.BaseLocator
     import com.serotonin.modbus4j.code.DataType
+    import com.serotonin.modbus4j.locator.BaseLocator
 
     def probeInputReg(addr: Int, desc: String) = {
       try {
@@ -146,8 +130,8 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentOp, monitorSta
     import com.serotonin.modbus4j.BatchRead
     val batch = new BatchRead[Integer]
 
-    import com.serotonin.modbus4j.locator.BaseLocator
     import com.serotonin.modbus4j.code.DataType
+    import com.serotonin.modbus4j.locator.BaseLocator
 
     for {
       st_idx <- statusTypeList.zipWithIndex
@@ -200,8 +184,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentOp, monitorSta
 
   def receive = normalReceive
 
-  import scala.concurrent.Future
-  import scala.concurrent.blocking
+  import scala.concurrent.{Future, blocking}
   def readRegFuture(recordCalibration: Boolean) =
     Future {
       blocking {
@@ -243,7 +226,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentOp, monitorSta
   }
 
   def normalReceive(): Receive = {
-    case ConnectHost(host) =>
+    case ConnectHost =>
       Logger.info(s"${self.toString()}: connect $host")
       Future {
         blocking {
@@ -273,7 +256,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentOp, monitorSta
               alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
-              system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost(host))
+              system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
           }
         }
       }
@@ -336,7 +319,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentOp, monitorSta
   def calibration(calibrationType: CalibrationType, startTime: DateTime, recordCalibration: Boolean, calibrationReadingList: List[ReportData],
                   zeroReading: List[(String, Double)],
                   endState: String, timer: Cancellable): Receive = {
-    case ConnectHost(host) =>
+    case ConnectHost =>
       Logger.error("unexpected ConnectHost msg")
 
     case ReadRegister =>

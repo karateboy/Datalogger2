@@ -1,11 +1,10 @@
 package models
-import play.api._
 import akka.actor._
-import play.api.Play.current
-import play.api.libs.concurrent.Akka
-import ModelHelper._
-import scala.concurrent.duration._
+import com.google.inject.assistedinject.Assisted
+import play.api._
+
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 
 object Adam4068Collector {
   import Adam4068._
@@ -20,21 +19,24 @@ object Adam4068Collector {
     count += 1
     collector
   }
+
+  trait Factory {
+    def apply(id: String, protocol: ProtocolParam, param:  Adam4068Param): Actor
+  }
+
 }
 
-import Adam4068._
-import Protocol.ProtocolParam
+import models.Adam4068._
+import models.Protocol.ProtocolParam
+
 import javax.inject._
 
 class Adam4068Collector @Inject()
-(id: String, protocolParam: ProtocolParam, param: Adam4068Param, system:ActorSystem) extends Actor with ActorLogging {
+(@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: Adam4068Param, system:ActorSystem) extends Actor with ActorLogging {
   var comm: SerialComm = SerialComm.open(protocolParam.comPort.get)
   var handleEvtOperation = false
 
   import Adam4068Collector._
-
-  import scala.concurrent.Future
-  import scala.concurrent.blocking
 
   def receive = handler(MonitorStatus.NormalStat)
 

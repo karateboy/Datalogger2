@@ -22,10 +22,13 @@ object Adam4017Collector {
     collector ! PrepareCollect(id, com, param)
     collector
   }
+
+  trait Factory {
+    def apply(id: String, protocol: ProtocolParam, param:  List[Adam4017Param]): Actor
+  }
 }
 
 import javax.inject._
-@Singleton
 class Adam4017Collector @Inject()(monitorTypeOp: MonitorTypeOp, system: ActorSystem, instrumentOp: InstrumentOp) extends Actor {
   import Adam4017Collector._
   import java.io.BufferedReader

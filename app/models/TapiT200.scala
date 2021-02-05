@@ -1,33 +1,36 @@
 package models
 
 import akka.actor.ActorSystem
-import play.api._
+import com.google.inject.assistedinject.Assisted
+import models.Protocol.ProtocolParam
 
-object TapiT200 extends TapiTxx(ModelConfig("T200", List("NOx", "NO", "NO2"))) {
+object T200Collector extends TapiTxx(ModelConfig("T200", List("NOx", "NO", "NO2"))) {
   lazy val modelReg = readModelSetting
 
-  import Protocol.ProtocolParam
   import akka.actor._
 
-  def start(id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext) = {
-    val config = validateParam(param)
-    val props = Props(classOf[T200Collector], id, modelReg, config)
-    TapiTxxCollector.start(protocol, props)
+  trait Factory {
+    def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, host:String): Actor
+  }
+
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor ={
+    assert(f.isInstanceOf[Factory])
+    val f2 = f.asInstanceOf[Factory]
+    val driverParam = validateParam(param)
+    f2(id, modelReg, driverParam, protocol.host.get)
   }
 }
 
-import TapiTxx._
 import javax.inject._
 
 class T200Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
                               alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
                               calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
-                             (instId: String, modelReg: ModelReg, config: TapiConfig)
+                             (@Assisted("instId") instId: String, @Assisted modelReg: ModelReg,
+                              @Assisted config: TapiConfig, @Assisted host:String)
   extends TapiTxxCollector(instrumentOp, monitorStatusOp,
     alarmOp, system, monitorTypeOp,
-    calibrationOp, instrumentStatusOp)(instId, modelReg, config) {
-
-  import TapiTxx._
+    calibrationOp, instrumentStatusOp)(instId, modelReg, config, host) {
 
   val NO = ("NO")
   val NO2 = ("NO2")
@@ -50,7 +53,6 @@ class T200Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Monit
     }
 
   import com.serotonin.modbus4j.locator.BaseLocator
-  import com.serotonin.modbus4j.code.DataType
 
   override def triggerZeroCalibration(v: Boolean) {
     try {

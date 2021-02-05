@@ -1,24 +1,59 @@
 <template>
   <b-card title="asdf">
-    <b-table striped hover :items="items" />
+    <b-table striped hover :fields="fields" :items="items" />
   </b-card>
 </template>
 
 <script>
-import { BCard, BTable } from 'bootstrap-vue'
+import axios from 'axios'
 
 export default {
-  components: {
-    BCard,
-    BTable
-  },
   data() {
     return {
-      items: [
-        { 測項: '二氧化硫', 測值: 1.23, 單位: 'ppb', 設備: 'T100', 狀態: "正常" },
-        { 測項: '二氧化硫', 測值: 18.02, 單位: 'ppb', 設備: 'T200', 狀態: "正常" },
+      fields: [
+        {
+          key: 'desp',
+          label: '測項',
+          sortable: true,
+        },
+        {
+          key: 'value',
+          label: '測值',
+          sortable: true,
+        },
+        {
+          key: 'unit',
+          label: '單位',
+          sortable: true,
+        },
+        {
+          key: 'instrument',
+          label: '設備',
+          sortable: true,
+        },
+        {
+          key: 'status',
+          label: '狀態',
+          sortable: true,
+        },
       ],
+      items: [],
+      timer: 0,
     }
+  },
+  mounted() {
+    this.getRealtimeData()
+    this.timer = setInterval(this.getRealtimeData, 3000)
+  },
+  beforeDestroy() {
+    clearInterval(this.timer)
+  },
+  methods: {
+    async getRealtimeData() {
+      const ret = await axios.get('/MonitorTypeStatusList')
+      this.items.splice(0, this.items.length)
+      this.items = ret.data
+    },
   },
 }
 </script>

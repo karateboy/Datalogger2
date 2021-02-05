@@ -20,10 +20,10 @@ GET      /User                                                                  
 POST     /User/:id                                                                controllers.HomeController.updateUser(id)
 DELETE   /User/:id                                                                controllers.HomeController.deleteUser(id)	
 
-GET      /JSON/HistoryTrend/:monitorType/:reportUnit/:statusFilter/:start/:end    controllers.Query.historyTrendChart(monitorType, reportUnit, statusFilter, start, end, outputTypeStr="html")
-GET      /Excel/HistoryTrend/:monitorType/:reportUnit/:statusFilter/:start/:end   controllers.Query.historyTrendChart(monitorType, reportUnit, statusFilter, start, end, outputTypeStr="excel")
+GET      /HistoryTrend/:monitorType/:reportUnit/:statusFilter/:start/:end         controllers.Query.historyTrendChart(monitorType, reportUnit, statusFilter, start:Long, end:Long, outputTypeStr="html")
+GET      /HistoryTrend/excel/:monitorType/:reportUnit/:statusFilter/:start/:end   controllers.Query.historyTrendChart(monitorType, reportUnit, statusFilter, start:Long, end:Long, outputTypeStr="excel")
 
-GET      /HistoryReport/:monitorType/:tabType/:start/:end                         controllers.Query.historyReport(monitorType, tabType, start, end)
+GET      /HistoryReport/:monitorType/:tabType/:start/:end                         controllers.Query.historyData(monitorType, tabType, start: Long, end: Long)
 
 GET      /CalibrationReport/:start/:end                                           controllers.Query.calibrationReport(start, end)
 

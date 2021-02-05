@@ -52,14 +52,11 @@ class MoxaE1240 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
 
   import Protocol.ProtocolParam
 
-  override def start(id: String, protocolParam: ProtocolParam, param: String)(implicit context: ActorContext) = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+    assert(f.isInstanceOf[MoxaE1240Collector.Factory])
+    val f2 = f.asInstanceOf[MoxaE1240Collector.Factory]
     val driverParam = validateParam(param)
-
-    MoxaE1240Collector.start(id, protocolParam, driverParam)
-  }
-
-  def stop = {
-
+    f2(id, protocol, driverParam)
   }
 
   def validateParam(json: String) = {
@@ -76,5 +73,10 @@ class MoxaE1240 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
       })
   }
 
+  def stop = {
+
+  }
+
   override def getCalibrationTime(param: String) = None
+
 }

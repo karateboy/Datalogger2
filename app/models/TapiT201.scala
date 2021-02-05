@@ -1,28 +1,37 @@
 package models
 
-object TapiT201 extends TapiTxx(ModelConfig("T201", List("TNX", "NH3", "NOx", "NO", "NO2"))) {
+import models.Protocol.ProtocolParam
+import com.google.inject.assistedinject.Assisted
+object T201Collector extends TapiTxx(ModelConfig("T201", List("TNX", "NH3", "NOx", "NO", "NO2"))) {
   lazy val modelReg = readModelSetting
 
-  import Protocol.ProtocolParam
   import akka.actor._
 
-  def start(id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext) = {
-    val config = validateParam(param)
-    val props = Props(classOf[T201Collector], id, modelReg, config)
-    TapiTxxCollector.start(protocol, props)
+  trait Factory {
+    def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, host:String): Actor
+  }
+
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+    assert(f.isInstanceOf[Factory])
+    val f2 = f.asInstanceOf[Factory]
+    val driverParam = validateParam(param)
+    f2(id, modelReg, driverParam, protocol.host.get)
   }
 }
 
 import akka.actor.ActorSystem
 
+
 import javax.inject._
 
 class T201Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
                               alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
-                              calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)(instId: String, modelReg: ModelReg, config: TapiConfig)
+                              calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
+                             (@Assisted("instId") instId: String, @Assisted modelReg: ModelReg,
+                              @Assisted config: TapiConfig, @Assisted host:String)
   extends TapiTxxCollector(instrumentOp, monitorStatusOp,
     alarmOp, system, monitorTypeOp,
-    calibrationOp, instrumentStatusOp)(instId, modelReg, config) {
+    calibrationOp, instrumentStatusOp)(instId, modelReg, config, host) {
   val TNX = ("TNX")
   val NH3 = ("NH3")
   val NO = ("NO")
