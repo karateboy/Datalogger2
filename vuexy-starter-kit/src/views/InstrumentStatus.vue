@@ -5,16 +5,16 @@
         <b-row>
           <b-col cols="12">
             <b-form-group
-              label="報表種類"
-              label-for="reportType"
+              label="儀器"
+              label-for="monitorType"
               label-cols-md="3"
             >
               <v-select
-                id="reportType"
-                v-model="form.reportType"
-                label="txt"
-                :reduce="dt => dt.id"
-                :options="reportTypes"
+                id="monitorType"
+                v-model="form.instrument"
+                label="_id"
+                :reduce="inst => inst._id"
+                :options="instruments"
               />
             </b-form-group>
           </b-col>
@@ -22,14 +22,16 @@
         <b-row>
           <b-col cols="12">
             <b-form-group
-              label="查詢日期"
+              label="資料區間"
               label-for="dataRange"
               label-cols-md="3"
             >
               <date-picker
                 id="dataRange"
-                v-model="form.date"
-                :type="pickerType"
+                v-model="form.range"
+                :range="true"
+                type="date"
+                format="YYYY-MM-DD"
                 value-type="timestamp"
                 :show-second="false"
               />
@@ -87,8 +89,8 @@
 </style>
 <script lang="ts">
 import Vue from 'vue'
-import vSelect from 'vue-select'
 import DatePicker from 'vue2-datepicker'
+import vSelect from 'vue-select'
 import 'vue2-datepicker/index.css'
 import 'vue2-datepicker/locale/zh-tw'
 import Ripple from 'vue-ripple-directive'
@@ -104,64 +106,64 @@ export default Vue.extend({
     Ripple,
   },
   data() {
-    const date = moment().valueOf()
+    const range = [
+      moment()
+        .subtract(1, 'days')
+        .valueOf(),
+      moment().valueOf(),
+    ]
     return {
       display: false,
-      reportTypes: [
-        { id: 'daily', txt: '日報' },
-        { id: 'monthly', txt: '月報' },
-      ],
       columns: [],
       statRows: [],
       rows: [],
+      instruments: [],
       form: {
-        date,
-        reportType: 'daily',
+        instrument: undefined,
+        range,
       },
     }
   },
-  computed: {
-    pickerType() {
-      if (this.form.reportType === 'daily') return 'date'
-      return 'month'
-    },
+  mounted() {
+    this.getInstruments()
   },
   methods: {
+    getInstruments() {
+      axios.get('/Instrument').then(res => {
+        const ret = res.data
+        this.instruments = ret
+        if (this.instruments.length !== 0) {
+          this.form.instrument = this.instruments[0]._id
+        }
+      })
+    },
     async query() {
       this.display = true
-      const url = `/monitorReport/${this.form.reportType}/${this.form.date}`
+      const url = `/InstrumentStatusReport/${this.form.instrument}/${this.form.range[0]}/${this.form.range[1]}`
       const res = await axios.get(url)
       this.handleReport(res.data)
     },
     handleReport(report) {
       this.columns.splice(0, this.columns.length)
-      if (this.form.reportType === 'daily') {
-        this.columns.push({
-          key: 'time',
-          label: '時間',
-          sortable: true,
-        })
-      } else {
-        this.columns.push({
-          key: 'time',
-          label: '日期',
-          sortable: true,
-        })
-      }
+
+      this.columns.push({
+        key: 'time',
+        label: '時間',
+        sortable: true,
+      })
+
       for (let i = 0; i < report.columnNames.length; i++) {
         this.columns.push({
           key: `cellData[${i}].v`,
           label: `${report.columnNames[i]}`,
           sortable: true,
+          stickyColumn: true,
         })
       }
-      for (const row of report.hourRows) {
-        row.time =
-          this.form.reportType === 'daily'
-            ? moment(row.time).format('HH:mm')
-            : moment(row.time).format('MM/DD')
+      for (const row of report.rows) {
+        row.time = moment(row.time).format('lll')
       }
-      this.rows = report.hourRows
+      this.rows = report.rows
       this.statRows = report.statRows
     },
   },

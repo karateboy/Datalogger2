@@ -51,7 +51,7 @@ GET      /ExecuteSeq/:ids/:seq                                                  
 PUT      /ExecuteSeq/:ids/:seq                                                    controllers.HomeController.executeSeq(ids, seq:Int)
 
 
-GET      /InstrumentStatusReport/:id/:start/:end                                  controllers.Query.instrumentStatusReport(id, start, end)
+GET      /InstrumentStatusReport/:id/:start/:end                                  controllers.Query.instrumentStatusReport(id, start:Long, end:Long)
 GET      /ManualAuditHistory/:start/:end                                          controllers.Query.manualAuditHistoryReport(start:Long, end:Long)
 
 #Data Management
@@ -67,7 +67,7 @@ GET      /monitorReport/:reportType/:reportDate                                 
 GET      /PDF/monitorReport/:reportType/:reportDate                               controllers.Report.getMonitorReport(reportType, reportDate:Long, outputTypeStr="pdf")
 GET      /Excel/monitorReport/:reportType/:reportDate                             controllers.Report.getMonitorReport(reportType, reportDate:Long, outputTypeStr="excel")
 
-GET      /MonthlyHourReport/:monitorType/:reportDate                              controllers.Report.monthlyHourReport(monitorType, reportDate, outputTypeStr="html")
+GET      /MonthlyHourReport/:monitorType/:reportDate                              controllers.Report.monthlyHourReport(monitorType, reportDate:Long, outputTypeStr="html")
 
 
 #JSON

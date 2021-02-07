@@ -81,6 +81,19 @@ object ModelHelper {
     windAvg(wind_sin, wind_cos)
   }
 
+  def getPeriods(start: DateTime, endTime: DateTime, d: Period): List[DateTime] = {
+    import scala.collection.mutable.ListBuffer
+
+    val buf = ListBuffer[DateTime]()
+    var current = start
+    while (current < endTime) {
+      buf.append(current)
+      current += d
+    }
+
+    buf.toList
+  }
+
   import scala.concurrent._
 
   def waitReadyResult[T](f: Future[T]) = {

@@ -29,6 +29,9 @@ module.exports = {
     "no-restricted-syntax": 'off',
     "vue/max-attributes-per-line": 'off',
     "no-underscore-dangle": 'off',
-    "prefer-destructuring":'off'
+    "prefer-destructuring": 'off',
+    "no-plusplus": "off",
+    "operator-linebreak": "off",
+    "nonblock-statement-body-position": "off"
   },
 }

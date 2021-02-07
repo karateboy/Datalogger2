@@ -129,6 +129,42 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/monthly-hour-report',
+      name: 'monthly-hour-report',
+      component: () => import('@/views/MonthlyHourReportQuery.vue'),
+      meta: {
+        pageTitle: '月份時報表',
+        breadcrumb: [
+          {
+            text: '報表查詢',
+            active: true,
+          },
+          {
+            text: '月份時報表',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
+      path: '/instrument-status',
+      name: 'instrument-status',
+      component: () => import('@/views/InstrumentStatus.vue'),
+      meta: {
+        pageTitle: '儀器狀態查詢',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '儀器狀態查詢',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/Login.vue'),

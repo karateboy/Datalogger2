@@ -36,11 +36,20 @@ case class Stat(
   }
 }
 
+case class CellData(v: String, cellClassName: String)
+case class RowData(date: Long, cellData: Seq[CellData])
+
+
+
 @Singleton
 class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
                       instrumentStatusOp: InstrumentStatusOp, instrumentOp: InstrumentOp,
                       alarmOp: AlarmOp, calibrationOp: CalibrationOp,
                       manualAuditLogOp: ManualAuditLogOp, excelUtility: ExcelUtility) extends Controller {
+
+  implicit val cdWrite = Json.writes[CellData]
+  implicit val rdWrite = Json.writes[RowData]
+  implicit val dtWrite = Json.writes[DataTab]
 
   def getPeriodCount(start: DateTime, endTime: DateTime, p: Period) = {
     var count = 0
@@ -428,10 +437,6 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
           }
         }
 
-      implicit val cdWrite = Json.writes[CellData]
-      implicit val rdWrite = Json.writes[RowData]
-      implicit val dtWrite = Json.writes[DataTab]
-
       val resultFuture = recordOp.getRecordListFuture(TableType.mapCollection(tabType))(start, end, monitorTypes.toList)
 
       for (recordList <- resultFuture) yield {
@@ -534,18 +539,20 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
       (new DateTime(startNum),
         new DateTime(endNum))
     val report: Seq[Alarm] = alarmOp.getAlarms(level, start, end + 1.day)
-    val jsonReport = report map { _.toJson}
+    val jsonReport = report map {
+      _.toJson
+    }
     Ok(Json.toJson(jsonReport))
   }
 
-  def instrumentStatusReport(id: String, startStr: String, endStr: String) = Security.Authenticated {
-    val (start, end) =
-      (
-        DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd")),
-        DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd")))
+  case class InstrumentReport(columnNames: Seq[String], rows: Seq[RowData])
+  implicit val write = Json.writes[InstrumentReport]
+  def instrumentStatusReport(id: String, startNum: Long, endNum: Long) = Security.Authenticated {
+    val (start, end) = (new DateTime(startNum).withMillisOfDay(0),
+      new DateTime(endNum).withMillisOfDay(0))
 
     val report = instrumentStatusOp.query(id, start, end + 1.day)
-    val keyList = if (report.isEmpty)
+    val keyList: Seq[String] = if (report.isEmpty)
       List.empty[String]
     else
       report.map {
@@ -564,7 +571,18 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
     }
 
     val statusTypeMap = instrumentOp.getStatusTypeMap(id)
-    Ok("")
+
+    val columnNames = keyList map statusTypeMap
+    val rows = for(report <- reportMap) yield {
+      val cellData = for(key<-keyList) yield
+        if(report._2.contains(key))
+          CellData(instrumentStatusOp.formatValue(report._2(key)), "")
+        else
+          CellData("-", "")
+      RowData(report._1.getMillis, cellData )
+    }
+
+    Ok(Json.toJson(InstrumentReport(columnNames, rows)))
   }
 
   def recordList(mtStr: String, startLong: Long, endLong: Long) = Security.Authenticated {
@@ -661,10 +679,6 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
         Ok(Json.toJson(recordList))
       }
   }
-
-  case class CellData(v: String, cellClassName: String)
-
-  case class RowData(date: Long, cellData: Seq[CellData])
 
   case class DataTab(columnNames: Seq[String], rows: Seq[RowData])
 

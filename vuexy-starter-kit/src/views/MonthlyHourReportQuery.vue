@@ -5,16 +5,16 @@
         <b-row>
           <b-col cols="12">
             <b-form-group
-              label="報表種類"
-              label-for="reportType"
+              label="測項"
+              label-for="monitorType"
               label-cols-md="3"
             >
               <v-select
-                id="reportType"
-                v-model="form.reportType"
-                label="txt"
-                :reduce="dt => dt.id"
-                :options="reportTypes"
+                id="monitorType"
+                v-model="form.monitorType"
+                label="desp"
+                :reduce="mt => mt._id"
+                :options="monitorTypes"
               />
             </b-form-group>
           </b-col>
@@ -22,14 +22,14 @@
         <b-row>
           <b-col cols="12">
             <b-form-group
-              label="查詢日期"
+              label="查詢月份"
               label-for="dataRange"
               label-cols-md="3"
             >
               <date-picker
                 id="dataRange"
                 v-model="form.date"
-                :type="pickerType"
+                type="month"
                 value-type="timestamp"
                 :show-second="false"
               />
@@ -87,11 +87,12 @@
 </style>
 <script lang="ts">
 import Vue from 'vue'
-import vSelect from 'vue-select'
 import DatePicker from 'vue2-datepicker'
+import vSelect from 'vue-select'
 import 'vue2-datepicker/index.css'
 import 'vue2-datepicker/locale/zh-tw'
 import Ripple from 'vue-ripple-directive'
+import { mapState, mapActions } from 'vuex'
 import moment from 'moment'
 import axios from 'axios'
 
@@ -107,61 +108,55 @@ export default Vue.extend({
     const date = moment().valueOf()
     return {
       display: false,
-      reportTypes: [
-        { id: 'daily', txt: '日報' },
-        { id: 'monthly', txt: '月報' },
-      ],
       columns: [],
       statRows: [],
       rows: [],
       form: {
         date,
-        reportType: 'daily',
+        monitorType: undefined,
       },
     }
   },
   computed: {
-    pickerType() {
-      if (this.form.reportType === 'daily') return 'date'
-      return 'month'
-    },
+    ...mapState('monitorTypes', ['monitorTypes']),
+  },
+  mounted() {
+    this.fetchMonitorTypes().then(() => {
+      if (this.monitorTypes.length !== 0) {
+        this.form.monitorType = this.monitorTypes[0]._id
+      }
+    })
   },
   methods: {
+    ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     async query() {
       this.display = true
-      const url = `/monitorReport/${this.form.reportType}/${this.form.date}`
+      const url = `/MonthlyHourReport/${this.form.monitorType}/${this.form.date}`
       const res = await axios.get(url)
+      console.log(res.data)
       this.handleReport(res.data)
     },
     handleReport(report) {
       this.columns.splice(0, this.columns.length)
-      if (this.form.reportType === 'daily') {
-        this.columns.push({
-          key: 'time',
-          label: '時間',
-          sortable: true,
-        })
-      } else {
-        this.columns.push({
-          key: 'time',
-          label: '日期',
-          sortable: true,
-        })
-      }
+
+      this.columns.push({
+        key: 'time',
+        label: '日\\時間',
+        sortable: true,
+      })
+
       for (let i = 0; i < report.columnNames.length; i++) {
         this.columns.push({
           key: `cellData[${i}].v`,
           label: `${report.columnNames[i]}`,
           sortable: true,
+          stickyColumn: true,
         })
       }
-      for (const row of report.hourRows) {
-        row.time =
-          this.form.reportType === 'daily'
-            ? moment(row.time).format('HH:mm')
-            : moment(row.time).format('MM/DD')
+      for (const row of report.rows) {
+        row.time = moment(row.time).format('MM/DD')
       }
-      this.rows = report.hourRows
+      this.rows = report.rows
       this.statRows = report.statRows
     },
   },

@@ -45,7 +45,7 @@ export default [
       },
       {
         title: "月份時報表",
-        route: null,
+        route: 'monthly-hour-report',
       },
     ]
   },
@@ -59,7 +59,7 @@ export default [
       },
       {
         title: "儀器狀態查詢",
-        route: null,
+        route: 'instrument-status',
       },
       {
         title: "測項管理",

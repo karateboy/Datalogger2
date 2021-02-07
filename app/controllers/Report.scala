@@ -1,7 +1,5 @@
 package controllers
 
-import com.github.nscala_time.time
-import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import models._
@@ -20,10 +18,20 @@ object PeriodReport extends Enumeration {
     YearlyReport -> "年報")
 
 }
-case class DailyReport(mtTimeMap:Map[String, Map[Long, Record]], statMap:Map[String, Map[Long, Stat]])
-case class TestReport(map:Map[String, Map[String, Imports.DateTime]])
+
+case class StatRow(name: String, cellData: Seq[CellData])
+
+case class HourEntry(time: Long, cells: CellData)
+
+case class DailyReport(columnNames: Seq[String], hourRows: Seq[RowData], statRows: Seq[StatRow])
+
+case class MonthlyHourReport(columnNames: Seq[String], rows: Seq[RowData], statRows: Seq[StatRow])
 @Singleton
 class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: Query) extends Controller {
+  implicit val w3 = Json.writes[CellData]
+  implicit val w2 = Json.writes[StatRow]
+  implicit val w1 = Json.writes[RowData]
+  implicit val w = Json.writes[DailyReport]
 
   def getMonitorReport(reportTypeStr: String, startNum: Long, outputTypeStr: String) = Security.Authenticated {
     implicit request =>
@@ -33,29 +41,109 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
       if (outputType == OutputType.html || outputType == OutputType.pdf) {
         reportType match {
           case PeriodReport.DailyReport =>
-            val start = new DateTime(startNum)
-            val startDate = start.withMillisOfDay(0)
-            val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(monitorTypeOp.mtvList, startDate, startDate + 1.day)
+            val startDate = new DateTime(startNum).withMillisOfDay(0)
+            val mtList = monitorTypeOp.realtimeMtvList
+            val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(mtList, startDate, startDate + 1.day)
             val mtTimeMap: Map[String, Map[DateTime, Record]] = periodMap.map { pair =>
               val k = pair._1
               val v = pair._2
               k -> Map(v.map { r => r.time -> r }: _*)
             }
-            val statMap: Map[String, Map[DateTime, Stat]] = query.getPeriodStatReportMap(periodMap, 1.day)(start, start + 1.day)
+            val statMap: Map[String, Map[DateTime, Stat]] = query.getPeriodStatReportMap(periodMap, 1.day)(startDate, startDate + 1.day)
 
-            implicit val w2 = Json.writes[Record]
+            val avgRow = {
+              val avgData =
+                for (mt <- mtList) yield {
+                  CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).avg), "")
+                }
+              StatRow("平均", avgData)
+            }
+            val maxRow = {
+              val maxData =
+                for (mt <- mtList) yield {
+                  CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).max), "")
+                }
+              StatRow("最大", maxData)
+            }
+            val minRow = {
+              val minData =
+                for (mt <- mtList) yield {
+                  CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).min), "")
+                }
+              StatRow("最小", minData)
+            }
+            val effectiveRow = {
+              val effectiveData =
+                for (mt <- mtList) yield {
+                  CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).effectPercent), "")
+                }
+              StatRow("有效率(%)", effectiveData)
+            }
+            val statRows = Seq(avgRow, maxRow, minRow, effectiveRow)
 
+            val hourRows =
+              for(i <- 0 to 23) yield {
+                val recordTime = startDate + i.hour
+                val mtData =
+                  for (mt <- mtList) yield {
+                    CellData(monitorTypeOp.formatRecord(mt, mtTimeMap(mt).get(recordTime)),
+                      monitorTypeOp.getCssClassStr(mt, mtTimeMap(mt).get(recordTime)))
+                  }
+                RowData(recordTime.getMillis, mtData)
+              }
+            val columnNames = mtList map { monitorTypeOp.map(_).desp}
+            val dailyReport = DailyReport(columnNames, hourRows, statRows)
 
-            Ok("")
+            Ok(Json.toJson(dailyReport))
 
           case PeriodReport.MonthlyReport =>
-            val start = new DateTime(startNum)
-            val startDate = start.withMillisOfDay(0).withDayOfMonth(1)
-            Logger.info(startDate.toString)
+            val start = new DateTime(startNum).withMillisOfDay(0).withDayOfMonth(1)
+            val mtList = monitorTypeOp.realtimeMtvList
             val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(monitorTypeOp.activeMtvList, start, start + 1.month)
             val statMap = query.getPeriodStatReportMap(periodMap, 1.day)(start, start + 1.month)
             val overallStatMap = getOverallStatMap(statMap)
-            Ok("")
+            val avgRow = {
+              val avgData =
+                for (mt <- mtList) yield {
+                  CellData(monitorTypeOp.format(mt, statMap(mt)(start).avg), "")
+                }
+              StatRow("平均", avgData)
+            }
+            val maxRow = {
+              val maxData =
+                for (mt <- mtList) yield {
+                  CellData(monitorTypeOp.format(mt, statMap(mt)(start).max), "")
+                }
+              StatRow("最大", maxData)
+            }
+            val minRow = {
+              val minData =
+                for (mt <- mtList) yield {
+                  CellData(monitorTypeOp.format(mt, statMap(mt)(start).min), "")
+                }
+              StatRow("最小", minData)
+            }
+            val effectiveRow = {
+              val effectiveData =
+                for (mt <- mtList) yield {
+                  CellData(monitorTypeOp.format(mt, statMap(mt)(start).effectPercent), "")
+                }
+              StatRow("有效率(%)", effectiveData)
+            }
+            val statRows = Seq(avgRow, maxRow, minRow, effectiveRow)
+
+            val dayRows =
+              for(recordTime<-getPeriods(start, start + 1.month, 1.day)) yield {
+                val mtData =
+                  for (mt <- mtList) yield {
+                    CellData(monitorTypeOp.format(mt, statMap(mt)(recordTime).avg),
+                      statMap(mt)(recordTime).isEffective.toString)
+                  }
+                RowData(recordTime.getMillis, mtData)
+              }
+            val columnNames = mtList map { monitorTypeOp.map(_).desp}
+            val dailyReport = DailyReport(columnNames, dayRows, statRows)
+            Ok(Json.toJson(dailyReport))
 
           case PeriodReport.YearlyReport =>
             val start = new DateTime(startNum)
@@ -155,9 +243,9 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
     }
   }
 
-  def monthlyHourReport(monitorTypeStr: String, startDateStr: String, outputTypeStr: String) = Security.Authenticated {
+  def monthlyHourReport(monitorTypeStr: String, startDate: Long, outputTypeStr: String) = Security.Authenticated {
     val mt = (monitorTypeStr)
-    val start = DateTime.parse(startDateStr)
+    val start = new DateTime(startDate).withMillisOfDay(0).withDayOfMonth(1)
     val outputType = OutputType.withName(outputTypeStr)
     val title = "月份時報表"
     if (outputType == OutputType.html || outputType == OutputType.pdf) {
@@ -211,7 +299,60 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
       val hourStatMap = Map(hourValues: _*)
       val dayStatMap = query.getPeriodStatReportMap(Map(mt -> recordList), 1.day)(start, start + 1.month)
       val overallStat = query.getPeriodStatReportMap(Map(mt -> recordList), 1.day)(start, start + 1.month)(mt)(start)
-      Ok("")
+      var columns = Seq.empty[String]
+      for(i <- 0 to 23){
+        columns = columns.:+(s"$i:00")
+      }
+      columns= columns ++ Seq("平均", "最大", "最小", "有效筆數")
+
+      val avgRow = {
+        var avgData =
+          for (h <- 0 to 23) yield {
+            CellData(monitorTypeOp.format(mt, hourStatMap(h).avg), "")
+          }
+        avgData = avgData.:+(CellData("",""))
+        avgData = avgData.:+(CellData("",""))
+        avgData = avgData.:+(CellData("",""))
+        StatRow("平均", avgData)
+      }
+      val maxRow = {
+        var maxData =
+          for (h <- 0 to 23 ) yield {
+            CellData(monitorTypeOp.format(mt, hourStatMap(h).max), "")
+          }
+        maxData = maxData.:+(CellData("",""))
+        maxData = maxData.:+(CellData(monitorTypeOp.format(mt, overallStat.max),""))
+        maxData = maxData.:+(CellData("",""))
+        StatRow("最大", maxData)
+      }
+      val minRow = {
+        var minData =
+          for (h <- 0 to 23) yield {
+            CellData(monitorTypeOp.format(mt, hourStatMap(h).min), "")
+          }
+        minData = minData.:+(CellData("",""))
+        minData = minData.:+(CellData("",""))
+        minData = minData.:+(CellData(monitorTypeOp.format(mt, overallStat.min),""))
+        StatRow("最小", minData)
+      }
+
+      val statRows = Seq(avgRow, maxRow, minRow)
+
+      var rows = Seq.empty[RowData]
+        for(day<-getPeriods(start, start+1.month, 1.day)) yield{
+          val date = day.getMillis
+          var cellData = Seq.empty[CellData]
+          for(h<- 0 to 23){
+            cellData = cellData.:+(CellData(monitorTypeOp.formatRecord(mt, timeMap.get(day + h.hour)), ""))
+          }
+          cellData = cellData.:+(CellData(monitorTypeOp.format(mt, dayStatMap(mt)(day).avg), ""))
+          cellData = cellData.:+(CellData(monitorTypeOp.format(mt, dayStatMap(mt)(day).max), ""))
+          cellData = cellData.:+(CellData(monitorTypeOp.format(mt, dayStatMap(mt)(day).min), ""))
+          cellData = cellData.:+(CellData(dayStatMap(mt)(day).count.toString, ""))
+          rows = rows.:+(RowData(date, cellData))
+        }
+      implicit val write = Json.writes[MonthlyHourReport]
+      Ok(Json.toJson(MonthlyHourReport(columns, rows, statRows)))
     } else {
       Ok("")
     }

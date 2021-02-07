@@ -217,7 +217,7 @@ class HomeController @Inject() (environment: play.api.Environment, recordOp: Rec
 
     val ret2 = ret.map { inst =>
       def getMonitorTypes: List[String] = {
-        val instTypeCase = instrumentTypeOp.map(inst._id)
+        val instTypeCase = instrumentTypeOp.map(inst.instType)
         instTypeCase.driver.getMonitorTypes(inst.param)
       }
 
@@ -236,7 +236,7 @@ class HomeController @Inject() (environment: play.api.Environment, recordOp: Rec
       def getInfoClass = {
         val mtStr = getMonitorTypes.map { monitorTypeOp.map(_).desp }.mkString(",")
         val protocolParam =
-          inst.protocol match {
+          inst.protocol.protocol match {
             case Protocol.tcp =>
               inst.protocol.host.get
             case Protocol.serial =>

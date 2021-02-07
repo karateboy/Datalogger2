@@ -70,14 +70,14 @@
     <!--/ Content -->
 
     <!-- Footer -->
-    <footer
+    <!-- <footer
       class="footer footer-light"
       :class="[footerTypeClass]"
     >
       <slot name="footer">
         <app-footer />
       </slot>
-    </footer>
+    </footer> -->
     <!-- /Footer -->
 
     <slot name="customizer" />
