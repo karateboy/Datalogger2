@@ -75,6 +75,60 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/calibration-query',
+      name: 'calibration-query',
+      component: () => import('@/views/CalibrationQuery.vue'),
+      meta: {
+        pageTitle: '校正查詢',
+        breadcrumb: [
+          {
+            text: '數據查詢',
+            active: true,
+          },
+          {
+            text: '校正查詢',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
+      path: '/alarm-query',
+      name: 'alarm-query',
+      component: () => import('@/views/AlarmQuery.vue'),
+      meta: {
+        pageTitle: '警報查詢',
+        breadcrumb: [
+          {
+            text: '數據查詢',
+            active: true,
+          },
+          {
+            text: '警報查詢',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
+      path: '/report',
+      name: 'report',
+      component: () => import('@/views/ReportQuery.vue'),
+      meta: {
+        pageTitle: '監測報表',
+        breadcrumb: [
+          {
+            text: '報表查詢',
+            active: true,
+          },
+          {
+            text: '監測報表',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/Login.vue'),

@@ -154,6 +154,38 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp) {
     Map(pairs: _*)
   }
 
+  def getRecord2Map(colName: String)(mtList: List[String], startTime: DateTime, endTime: DateTime) = {
+    import org.mongodb.scala.model.Filters._
+    import org.mongodb.scala.model.Projections._
+    import org.mongodb.scala.model.Sorts._
+
+    val col = mongoDB.database.getCollection(colName)
+    val proj = include(mtList.map { monitorTypeOp.BFName(_) }: _*)
+    val f = col.find(and(gte("_id", startTime.toDate()), lt("_id", endTime.toDate()))).projection(proj).sort(ascending("_id")).toFuture()
+    val docs = waitReadyResult(f)
+
+    val pairs =
+      for {
+        mt <- mtList
+        mtBFName = monitorTypeOp.BFName(mt)
+      } yield {
+        val list =
+          for {
+            doc <- docs
+            time = doc("_id").asDateTime()
+            mtDocOpt = doc.get(mtBFName) if mtDocOpt.isDefined && mtDocOpt.get.isDocument()
+            mtDoc = mtDocOpt.get.asDocument()
+            v = mtDoc.get("v") if v.isDouble()
+            s = mtDoc.get("s") if s.isString()
+          } yield {
+            Record(time, v.asDouble().doubleValue(), s.asString().getValue)
+          }
+
+        mt -> list
+      }
+    Map(pairs: _*)
+  }
+
   case class MtRecord(mtName: String, value: Double, status: String)
   case class RecordList(time: Long, mtDataList: Seq[MtRecord])
 

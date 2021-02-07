@@ -25,9 +25,9 @@ GET      /HistoryTrend/excel/:monitorType/:reportUnit/:statusFilter/:start/:end 
 
 GET      /HistoryReport/:monitorType/:tabType/:start/:end                         controllers.Query.historyData(monitorType, tabType, start: Long, end: Long)
 
-GET      /CalibrationReport/:start/:end                                           controllers.Query.calibrationReport(start, end)
+GET      /CalibrationReport/:start/:end                                           controllers.Query.calibrationReport(start:Long, end:Long)
 
-GET      /AlarmReport/:level/:start/:end                                          controllers.Query.alarmReport(level:Int, start, end)
+GET      /AlarmReport/:level/:start/:end                                          controllers.Query.alarmReport(level:Int, start:Long, end:Long)
 
 POST     /SaveMonitorTypeConfig                                                   controllers.HomeController.saveMonitorTypeConfig
 
@@ -63,9 +63,9 @@ GET      /Upload/:tab/:start/:end                                               
 GET      /MonitorTypeStatusList                                                   controllers.Realtime.MonitorTypeStatusList()
 
 #Report
-GET      /monitorReport/:reportType/:reportDate                                   controllers.Report.getMonitorReport(reportType, reportDate, outputTypeStr="html")
-GET      /PDF/monitorReport/:reportType/:reportDate                               controllers.Report.getMonitorReport(reportType, reportDate, outputTypeStr="pdf")
-GET      /Excel/monitorReport/:reportType/:reportDate                             controllers.Report.getMonitorReport(reportType, reportDate, outputTypeStr="excel")
+GET      /monitorReport/:reportType/:reportDate                                   controllers.Report.getMonitorReport(reportType, reportDate:Long, outputTypeStr="html")
+GET      /PDF/monitorReport/:reportType/:reportDate                               controllers.Report.getMonitorReport(reportType, reportDate:Long, outputTypeStr="pdf")
+GET      /Excel/monitorReport/:reportType/:reportDate                             controllers.Report.getMonitorReport(reportType, reportDate:Long, outputTypeStr="excel")
 
 GET      /MonthlyHourReport/:monitorType/:reportDate                              controllers.Report.monthlyHourReport(monitorType, reportDate, outputTypeStr="html")
 

@@ -27,11 +27,11 @@ export default [
       },
       {
         title: "校正資料查詢",
-        route: null,
+        route: 'calibration-query',
       },
       {
         title: "警報記錄查詢",
-        route: null,
+        route: 'alarm-query',
       },
     ]
   },
@@ -40,8 +40,8 @@ export default [
     icon: 'BookOpenIcon',
     children: [
       {
-        title: "監測日報",
-        route: null,
+        title: "監測報表",
+        route: 'report',
       },
       {
         title: "月份時報表",
