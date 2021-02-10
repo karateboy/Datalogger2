@@ -118,7 +118,6 @@ export default Vue.extend({
     async query() {
       this.display = true
       const url = `/CalibrationReport/${this.form.range[0]}/${this.form.range[1]}`
-      console.log(url)
       const res = await axios.get(url)
       const ret = res.data
       this.rows = ret

@@ -9,6 +9,9 @@ import org.mongodb.scala._
 case class ManualAuditLog(dataTime: DateTime, mt: String, modifiedTime: DateTime,
                           operator: String, changedStatus: String, reason: String)
 
+case class ManualAuditLog2(dataTime: Long, mt: String, modifiedTime: Long,
+                          operator: String, changedStatus: String, reason: String)
+
 import javax.inject._
 
 @Singleton
@@ -34,6 +37,17 @@ class ManualAuditLogOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp)
     val reason = doc.get("reason").get.asString().getValue
 
     ManualAuditLog(dataTime = dataTime, mt = mt, modifiedTime = modifiedTime, operator = operator, changedStatus = changedStatus, reason = reason)
+  }
+
+  def toAuditLog2(doc: Document) = {
+    val dataTime = new DateTime(doc.get("dataTime").get.asDateTime().getValue)
+    val mt = (doc.get("mt").get.asString().getValue)
+    val modifiedTime = new DateTime(doc.get("modifiedTime").get.asDateTime().getValue)
+    val operator = doc.get("operator").get.asString().getValue
+    val changedStatus = doc.get("changedStatus").get.asString().getValue
+    val reason = doc.get("reason").get.asString().getValue
+
+    ManualAuditLog2(dataTime = dataTime.getMillis, mt = mt, modifiedTime = modifiedTime.getMillis, operator = operator, changedStatus = changedStatus, reason = reason)
   }
 
   def init(colNames: Seq[String]) {
@@ -71,4 +85,15 @@ class ManualAuditLogOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp)
     }
   }
 
+  def queryLog2(startTime: DateTime, endTime: DateTime) = {
+    import org.mongodb.scala.model.Filters._
+    import org.mongodb.scala.model.Projections._
+    import org.mongodb.scala.model.Sorts._
+    import org.mongodb.scala.bson.BsonDateTime
+
+    val future = collection.find(and(gte("dataTime", startTime:BsonDateTime), lt("dataTime", endTime:BsonDateTime))).sort(ascending("dataTime")).toFuture()
+    for (f <- future) yield {
+      f.map { toAuditLog2 }
+    }
+  }
 }

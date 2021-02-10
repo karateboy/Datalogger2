@@ -165,6 +165,60 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/monitor-type-config',
+      name: 'monitor-type-config',
+      component: () => import('@/views/MonitorTypeConfig.vue'),
+      meta: {
+        pageTitle: '測項管理',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '測項管理',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
+      path: '/manual-audit',
+      name: 'manual-audit',
+      component: () => import('@/views/ManualAudit.vue'),
+      meta: {
+        pageTitle: '人工註記',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '人工註記',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
+      path: '/audit-log-query',
+      name: 'audit-log-query',
+      component: () => import('@/views/AuditLogQuery.vue'),
+      meta: {
+        pageTitle: '人工註記查詢',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '人工註記查詢',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/Login.vue'),

@@ -7,7 +7,9 @@ import play.api.data.Forms._
 import play.api.data._
 import play.api.libs.json._
 import play.api.mvc._
+
 import javax.inject._
+import scala.concurrent.Future
 
 class HomeController @Inject() (environment: play.api.Environment, recordOp: RecordOp,
                              userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
@@ -417,9 +419,9 @@ class HomeController @Inject() (environment: play.api.Environment, recordOp: Rec
     Ok(Json.toJson(mtList))
   }
 
-  def upsertMonitorType(id: String) = Security.Authenticated(BodyParsers.parse.json) {
-    Logger.info(s"upsert Mt:$id")
+  def upsertMonitorType(id:String) = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
+      Logger.info(s"upsert Mt:${id}")
       implicit val read = Json.reads[MonitorType]
       val mtResult = request.body.validate[MonitorType]
 

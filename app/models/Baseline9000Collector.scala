@@ -15,6 +15,8 @@ case class Baseline9000Config(calibrationTime: LocalTime,
 object Baseline9000Collector extends DriverOps {
 
   var count = 0
+  implicit val cfgRead = Json.reads[Baseline9000Config]
+  implicit val cfgWrite = Json.writes[Baseline9000Config]
 
   override def verifyParam(json: String) = {
     val ret = Json.parse(json).validate[Baseline9000Config]
@@ -43,9 +45,6 @@ object Baseline9000Collector extends DriverOps {
     Baseline9000Collector.start(id, protocol, config)
   }
 
-  implicit val cfgRead = Json.reads[Baseline9000Config]
-  implicit val cfgWrite = Json.writes[Baseline9000Config]
-
   def start(id: String, protocolParam: ProtocolParam, config: Baseline9000Config)(implicit context: ActorContext) = {
     val actorName = s"Baseline_${count}"
     count += 1
@@ -53,13 +52,6 @@ object Baseline9000Collector extends DriverOps {
     Logger.info(s"$actorName is created.")
 
     collector
-  }
-
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
-    assert(f.isInstanceOf[Baseline9000Collector.Factory])
-    val f2 = f.asInstanceOf[Baseline9000Collector.Factory]
-    val driverParam = validateParam(param)
-    f2(id, protocol, driverParam)
   }
 
   def validateParam(json: String) = {
@@ -72,16 +64,21 @@ object Baseline9000Collector extends DriverOps {
       param => param)
   }
 
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+    assert(f.isInstanceOf[Baseline9000Collector.Factory])
+    val f2 = f.asInstanceOf[Baseline9000Collector.Factory]
+    val driverParam = validateParam(param)
+    f2(id, protocol, driverParam)
+  }
+
   trait Factory {
     def apply(id: String, protocol: ProtocolParam, param: Baseline9000Config): Actor
   }
 
-  import Protocol.ProtocolParam
-  import akka.actor._
-
   case object OpenComPort
 
   case object ReadData
+
 }
 
 import javax.inject._

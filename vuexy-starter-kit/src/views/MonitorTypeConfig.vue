@@ -1,86 +1,88 @@
 <template>
   <div>
-    <b-card>
-      <b-form @submit.prevent>
-        <b-row>
-          <b-col cols="12">
-            <b-form-group
-              label="儀器"
-              label-for="monitorType"
-              label-cols-md="3"
-            >
-              <v-select
-                id="monitorType"
-                v-model="form.instrument"
-                label="_id"
-                :reduce="inst => inst._id"
-                :options="instruments"
-              />
-            </b-form-group>
-          </b-col>
-        </b-row>
-        <b-row>
-          <b-col cols="12">
-            <b-form-group
-              label="資料區間"
-              label-for="dataRange"
-              label-cols-md="3"
-            >
-              <date-picker
-                id="dataRange"
-                v-model="form.range"
-                :range="true"
-                type="date"
-                format="YYYY-MM-DD"
-                value-type="timestamp"
-                :show-second="false"
-              />
-            </b-form-group>
-          </b-col>
-        </b-row>
-        <b-row>
-          <!-- submit and reset -->
-          <b-col offset-md="3">
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              type="submit"
-              variant="primary"
-              class="mr-1"
-              @click="query"
-            >
-              查詢
-            </b-button>
-            <b-button
-              v-ripple.400="'rgba(186, 191, 199, 0.15)'"
-              type="reset"
-              variant="outline-secondary"
-            >
-              取消
-            </b-button>
-          </b-col>
-        </b-row>
-      </b-form>
-    </b-card>
-    <b-card v-show="display">
-      <div>
-        <b-table
-          responsive
-          striped
-          hover
-          :fields="columns"
-          :items="rows"
-          bordered
-        >
-          <template v-slot:custom-foot>
-            <b-tr v-for="stat in statRows" :key="stat.name">
-              <b-th>{{ stat.name }}</b-th>
-              <th v-for="(cell, i) in stat.cellData" :key="i">
-                {{ cell.v }}
-              </th>
-            </b-tr>
-          </template>
-        </b-table>
-      </div>
+    <b-card title="測項管理" class="text-center">
+      <b-table
+        responsive
+        :fields="columns"
+        :items="monitorTypes"
+        bordered
+        sticky-header
+        style="max-height: 600px;"
+      >
+        <template v-slot:cell(desp)="row">
+          <b-form-input v-model="row.item.desp" @change="markDirty(row.item)" />
+        </template>
+        <template v-slot:cell(unit)="row">
+          <b-form-input
+            v-model="row.item.unit"
+            size="sm"
+            @change="markDirty(row.item)"
+          />
+        </template>
+        <template v-slot:cell(prec)="row">
+          <b-form-input
+            v-model.number="row.item.prec"
+            size="sm"
+            @change="markDirty(row.item)"
+          />
+        </template>
+        <template v-slot:cell(zd_internal)="row">
+          <b-form-input
+            v-model.number="row.item.zd_internal"
+            size="sm"
+            @change="markDirty(row.item)"
+          />
+        </template>
+        <template v-slot:cell(zd_law)="row">
+          <b-form-input
+            v-model.number="row.item.zd_law"
+            size="sm"
+            @change="markDirty(row.item)"
+          />
+        </template>
+        <template v-slot:cell(span)="row">
+          <b-form-input
+            v-model.number="row.item.span"
+            type="number"
+            size="sm"
+            @change="markDirty(row.item)"
+          />
+        </template>
+        <template v-slot:cell(span_dev_internal)="row">
+          <b-form-input
+            v-model.number="row.item.span_dev_internal"
+            size="sm"
+            @change="markDirty(row.item)"
+          />
+        </template>
+        <template v-slot:cell(span_dev_law)="row">
+          <b-form-input
+            v-model.number="row.item.span_dev_law"
+            size="sm"
+            @change="markDirty(row.item)"
+          />
+        </template>
+      </b-table>
+      <b-row>
+        <b-col offset-md="3">
+          <b-button
+            v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+            variant="primary"
+            class="mr-1"
+            @click="save"
+          >
+            儲存
+          </b-button>
+          <b-button
+            v-ripple.400="'rgba(186, 191, 199, 0.15)'"
+            type="reset"
+            variant="outline-secondary"
+            @click="getMonitorTypes"
+          >
+            取消
+          </b-button>
+        </b-col>
+      </b-row>
     </b-card>
   </div>
 </template>
@@ -88,86 +90,117 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue'
-import DatePicker from 'vue2-datepicker'
-import vSelect from 'vue-select'
-import 'vue2-datepicker/index.css'
-import 'vue2-datepicker/locale/zh-tw'
-import Ripple from 'vue-ripple-directive'
-import moment from 'moment'
-import axios from 'axios'
+import Vue from 'vue';
+import Ripple from 'vue-ripple-directive';
+import axios from 'axios';
+/*
+interface MonitorType {
+  _id: string;
+  desp: string;
+  unit: string;
+  prec: number;
+  order: number;
+  signalType: boolean;
+  std_law?: number;
+  std_internal?: number;
+  zd_internal?: number;
+  zd_law?: number;
+  span?: number;
+  span_dev_internal?: number;
+  span_dev_law?: number;
+  measuringBy?: Array<string>;
+} */
 
 export default Vue.extend({
-  components: {
-    DatePicker,
-    vSelect,
-  },
+  components: {},
   directives: {
     Ripple,
   },
   data() {
-    const range = [
-      moment()
-        .subtract(1, 'days')
-        .valueOf(),
-      moment().valueOf(),
-    ]
+    const columns = [
+      {
+        key: '_id',
+        label: '代碼',
+      },
+      {
+        key: 'desp',
+        label: '名稱',
+        sortable: true,
+      },
+      {
+        key: 'unit',
+        label: '單位',
+        sortable: true,
+      },
+      {
+        key: 'prec',
+        label: '小數點位數',
+        sortable: true,
+      },
+      {
+        key: 'zd_internal',
+        label: '零點偏移內控',
+      },
+      {
+        key: 'zd_law',
+        label: '零點偏移法規',
+      },
+      {
+        key: 'span',
+        label: '全幅值',
+      },
+      {
+        key: 'span_dev_internal',
+        label: '全幅偏移內控',
+      },
+      {
+        key: 'span_dev_law',
+        label: '全幅值偏移法規',
+      },
+    ];
+    const monitorTypes = [];
+
     return {
       display: false,
-      columns: [],
-      statRows: [],
-      rows: [],
-      instruments: [],
-      form: {
-        instrument: undefined,
-        range,
-      },
-    }
+      columns,
+      monitorTypes,
+    };
   },
   mounted() {
-    this.getInstruments()
+    this.getMonitorTypes();
   },
   methods: {
-    getInstruments() {
-      axios.get('/Instrument').then(res => {
-        const ret = res.data
-        this.instruments = ret
-        if (this.instruments.length !== 0) {
-          this.form.instrument = this.instruments[0]._id
+    getMonitorTypes() {
+      axios.get('/MonitorType').then(res => {
+        this.monitorTypes = res.data;
+      });
+    },
+    justify(mt) {
+      if (mt.span === '') mt.span = null;
+      if (mt.span_dev_internal === '') mt.span_dev_internal = null;
+      if (mt.span_dev_law === '') mt.span_dev_law = null;
+      if (mt.zd_internal === '') mt.zd_internal = null;
+      if (mt.zd_law === '') mt.zd_law = null;
+    },
+    save() {
+      const all = [];
+      for (const mt of this.monitorTypes) {
+        if (mt.dirty) {
+          this.justify(mt);
+          all.push(axios.put(`/MonitorType/${mt._id}`, mt));
         }
-      })
-    },
-    async query() {
-      this.display = true
-      const url = `/InstrumentStatusReport/${this.form.instrument}/${this.form.range[0]}/${this.form.range[1]}`
-      const res = await axios.get(url)
-      this.handleReport(res.data)
-    },
-    handleReport(report) {
-      this.columns.splice(0, this.columns.length)
-
-      this.columns.push({
-        key: 'time',
-        label: '時間',
-        sortable: true,
-      })
-
-      for (let i = 0; i < report.columnNames.length; i++) {
-        this.columns.push({
-          key: `cellData[${i}].v`,
-          label: `${report.columnNames[i]}`,
-          sortable: true,
-          stickyColumn: true,
-        })
       }
-      for (const row of report.rows) {
-        row.time = moment(row.time).format('lll')
-      }
-      this.rows = report.rows
-      this.statRows = report.statRows
+
+      Promise.all(all).then(() => {
+        this.getMonitorTypes();
+        this.$bvModal.msgBoxOk('成功');
+      });
+    },
+    markDirty(item) {
+      item.dirty = true;
     },
   },
-})
+});
 </script>
 
 <style></style>

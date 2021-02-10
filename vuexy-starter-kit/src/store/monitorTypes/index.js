@@ -5,7 +5,15 @@ export default {
   state: {
     monitorTypes: []
   },
-  getters: {},
+  getters: {
+    mtMap(state) {
+      const map = new Map();
+      for (const mt of state.monitorTypes) {
+        map.set(mt._id, mt);
+      }
+      return map;
+    },
+  },
   mutations: {
     updateMonitorTypes(state, val) {
       state.monitorTypes = val

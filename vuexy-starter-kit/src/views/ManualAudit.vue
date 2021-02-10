@@ -74,14 +74,59 @@
       </b-form>
     </b-card>
     <b-card v-show="display">
-      <b-table striped hover :fields="columns" :items="rows" show-empty />
+      <b-form @submit.prevent>
+        <b-row>
+          <b-col cols="12">
+            <b-form-group label="註記理由" label-for="reason" label-cols-md="3">
+              <b-form-input v-model="form2.reason" />
+            </b-form-group>
+          </b-col>
+          <b-col cols="12">
+            <b-form-group
+              label="註記代碼"
+              label-for="statusCode"
+              label-cols-md="3"
+            >
+              <v-select
+                id="statusCode"
+                v-model="form2.statusCode"
+                label="txt"
+                :reduce="dt => dt.id"
+                :options="statusCodes"
+              />
+            </b-form-group>
+          </b-col>
+          <!-- submit and reset -->
+          <b-col offset-md="3">
+            <b-button
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              type="submit"
+              variant="primary"
+              class="mr-1"
+              :disabled="!canAudit"
+              @click="audit"
+            >
+              註記
+            </b-button>
+          </b-col>
+        </b-row>
+      </b-form>
+      <br />
+      <b-table striped hover :fields="columns" :items="rows" show-empty>
+        <template v-slot:cell(include)="data">
+          <b-form-checkbox
+            v-model="data.item.include"
+            :disabled="!canInclude(data.item)"
+          />
+        </template>
+      </b-table>
     </b-card>
   </div>
 </template>
 <style lang="scss">
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
-<script lang="ts">
+<script>
 import Vue from 'vue';
 import vSelect from 'vue-select';
 import DatePicker from 'vue2-datepicker';
@@ -119,6 +164,24 @@ export default Vue.extend({
         dataType: 'hour',
         range,
       },
+      form2: {
+        statusCode: '0',
+        reason: '',
+      },
+      statusCodes: [
+        {
+          id: '0',
+          txt: '復原註記',
+        },
+        {
+          id: 'm',
+          txt: '有效資料',
+        },
+        {
+          id: 'M',
+          txt: '無效資料',
+        },
+      ],
       display: false,
       columns: [],
       rows: [],
@@ -127,6 +190,19 @@ export default Vue.extend({
   computed: {
     ...mapState('monitorTypes', ['monitorTypes', 'mtMap']),
     ...mapGetters('monitorTypes', ['mtMap']),
+    canAudit() {
+      let auditCount = 0;
+      for (const item of this.rows) {
+        if (item.include) {
+          auditCount++;
+        }
+      }
+      if (auditCount === 0) return false;
+
+      if (this.form2.reason === '') return false;
+
+      return true;
+    },
   },
   mounted() {
     if (this.monitorTypes.length !== 0) {
@@ -143,22 +219,26 @@ export default Vue.extend({
         this.form.dataType
       }/${this.form.range[0]}/${this.form.range[1]}`;
       const ret = await axios.get(url);
-      for (const row of ret.data.rows) {
-        row.date = moment(row.date).format('lll');
-      }
-
       this.rows = ret.data.rows;
-      // console.log(this.rows);
     },
     cellDataTd(i) {
       return (_value, _key, item) => item.cellData[i].cellClassName;
     },
+    dateFormatter(value) {
+      return moment(value).format('lll');
+    },
     getColumns() {
-      const ret = [];
-      ret.push({
-        key: 'date',
-        label: '時間',
-      });
+      const ret = [
+        {
+          key: 'include',
+          label: '',
+        },
+        {
+          key: 'date',
+          label: '時間',
+          formatter: this.dateFormatter,
+        },
+      ];
       for (let i = 0; i < this.form.monitorTypes.length; i += 1) {
         const mtCase = this.mtMap.get(this.form.monitorTypes[i]);
         ret.push({
@@ -168,6 +248,44 @@ export default Vue.extend({
         });
       }
       return ret;
+    },
+    audit() {
+      // case class ManualAuditParam(reason: String, updateList: Seq[UpdateRecordParam])
+      // case class UpdateRecordParam(time: Long, mt:String, status: String)
+      const updateList = [];
+      for (const item of this.rows) {
+        if (item.include) {
+          for (let i = 0; i < item.cellData.length; i++) {
+            const cellData = item.cellData[i];
+            if (cellData.v !== '-') {
+              const status = this.form2.statusCode + cellData.status.substr(1);
+              updateList.push({
+                time: item.date,
+                mt: this.form.monitorTypes[i],
+                status,
+              });
+            }
+          }
+        }
+      }
+      const param = {
+        reason: this.form2.reason,
+        updateList,
+      };
+      axios.put(`/Record/${this.form.dataType}`, param).then(res => {
+        const ret = res.data;
+        if (ret.ok) {
+          this.$bvModal.msgBoxOk('成功');
+          this.query();
+        }
+      });
+    },
+    canInclude(item) {
+      for (const cellData of item.cellData) {
+        if (cellData.v !== '-') return true;
+      }
+
+      return false;
     },
   },
 });

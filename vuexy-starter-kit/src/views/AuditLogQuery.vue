@@ -5,23 +5,6 @@
         <b-row>
           <b-col cols="12">
             <b-form-group
-              label="警報等級"
-              label-for="alarmLevel"
-              label-cols-md="3"
-            >
-              <v-select
-                id="alarmLevel"
-                v-model="form.alarmLevel"
-                label="txt"
-                :reduce="dt => dt.id"
-                :options="alarmLevels"
-              />
-            </b-form-group>
-          </b-col>
-        </b-row>
-        <b-row>
-          <b-col cols="12">
-            <b-form-group
               label="資料區間"
               label-for="dataRange"
               label-cols-md="3"
@@ -37,8 +20,7 @@
               />
             </b-form-group>
           </b-col>
-        </b-row>
-        <b-row>
+          <!-- submit and reset -->
           <b-col offset-md="3">
             <b-button
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
@@ -61,7 +43,14 @@
       </b-form>
     </b-card>
     <b-card v-show="display">
-      <b-table striped hover :fields="columns" :items="rows" />
+      <b-table
+        striped
+        hover
+        :fields="columns"
+        :items="rows"
+        empty-text="無資料"
+        show-empty
+      />
     </b-card>
   </div>
 </template>
@@ -69,81 +58,92 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue'
-import vSelect from 'vue-select'
-import DatePicker from 'vue2-datepicker'
-import 'vue2-datepicker/index.css'
-import 'vue2-datepicker/locale/zh-tw'
-import Ripple from 'vue-ripple-directive'
-import moment from 'moment'
-import axios from 'axios'
+import Vue from 'vue';
+import DatePicker from 'vue2-datepicker';
+import 'vue2-datepicker/index.css';
+import 'vue2-datepicker/locale/zh-tw';
+import Ripple from 'vue-ripple-directive';
+import moment from 'moment';
+import { mapState, mapGetters } from 'vuex';
+import axios from 'axios';
 
 export default Vue.extend({
   components: {
     DatePicker,
-    vSelect,
   },
   directives: {
     Ripple,
   },
+
   data() {
     const range = [
       moment()
         .subtract(1, 'days')
         .valueOf(),
       moment().valueOf(),
-    ]
+    ];
     return {
       display: false,
-      alarmLevels: [
-        { id: 1, txt: '資訊' },
-        { id: 2, txt: '警告' },
-        { id: 3, txt: '嚴重' },
-      ],
       columns: [
         {
-          key: 'time',
-          label: '時間',
+          key: 'dataTime',
+          label: '資料時間',
           sortable: true,
         },
         {
-          key: 'level',
-          label: '等級',
+          key: 'mt',
+          label: '測項',
           sortable: true,
         },
         {
-          key: 'src',
-          label: '來源',
+          key: 'modifiedTime',
+          label: '修改時間',
           sortable: true,
         },
         {
-          key: 'info',
-          label: '詳細資訊',
+          key: 'operator',
+          label: '註記人員',
+          sortable: true,
+        },
+        {
+          key: 'changedStatus',
+          label: '註記內容',
+          sortable: true,
+        },
+        {
+          key: 'reason',
+          label: '註記理由',
           sortable: true,
         },
       ],
       rows: [],
       form: {
         range,
-        alarmLevel: 1,
       },
-    }
+    };
+  },
+  computed: {
+    ...mapState('monitorTypes', ['monitorTypes']),
+    ...mapGetters('monitorTypes', ['mtMap']),
   },
   methods: {
-    async query() {
-      this.display = true
-      const url = `/AlarmReport/${this.form.alarmLevel}/${this.form.range[0]}/${this.form.range[1]}`
-      const res = await axios.get(url)
-      const ret = res.data
-      for (const alarm of ret) {
-        alarm.time = moment(alarm.time).format('lll')
-        const src = alarm.src.split(':')
-        alarm.src = src[1]
+    handleReport(data) {
+      for (const log of data) {
+        log.dataTime = moment(log.dataTime).format('lll');
+        log.modifiedTime = moment(log.modifiedTime).format('lll');
+        log.mt = this.mtMap.get(log.mt).desp;
       }
-      this.rows = ret
+    },
+    async query() {
+      this.display = true;
+      const url = `/ManualAuditHistory/${this.form.range[0]}/${this.form.range[1]}`;
+      const res = await axios.get(url);
+      this.handleReport(res.data);
+      const ret = res.data;
+      this.rows = ret;
     },
   },
-})
+});
 </script>
 
 <style></style>

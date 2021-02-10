@@ -11,7 +11,7 @@ module.exports = {
     'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',
     'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
     quotes: 'off',
-    semi: ['error', 'never'],
+    semi: 'off',
     'max-len': 'off',
     'linebreak-style': 'off',
     'comma-dangle': "off",
@@ -27,11 +27,14 @@ module.exports = {
     }],
     'object-curly-newline': 'off',
     "no-restricted-syntax": 'off',
-    "vue/max-attributes-per-line": 'off',
     "no-underscore-dangle": 'off',
     "prefer-destructuring": 'off',
     "no-plusplus": "off",
     "operator-linebreak": "off",
-    "nonblock-statement-body-position": "off"
+    "nonblock-statement-body-position": "off",
+    "no-extra-semi": "off",
+    "no-param-reassign": ["error", { props: false }],
+    'vue/singleline-html-element-content-newline': 'off',
+    "vue/html-self-closing": 'off'
   },
 }

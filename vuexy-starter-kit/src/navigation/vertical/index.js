@@ -63,15 +63,15 @@ export default [
       },
       {
         title: "測項管理",
-        route: null,
+        route: 'monitor-type-config',
       },
       {
         title: "人工資料註記",
-        route: null,
+        route: 'manual-audit',
       },
       {
         title: "人工註記查詢",
-        route: null,
+        route: 'audit-log-query',
       },
       {
         title: "使用者管理",

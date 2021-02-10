@@ -133,7 +133,6 @@ export default Vue.extend({
       this.display = true
       const url = `/MonthlyHourReport/${this.form.monitorType}/${this.form.date}`
       const res = await axios.get(url)
-      console.log(res.data)
       this.handleReport(res.data)
     },
     handleReport(report) {

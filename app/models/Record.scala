@@ -5,6 +5,8 @@ import org.mongodb.scala._
 import play.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
+case class MtRecord(mtName: String, value: Double, status: String)
+case class RecordList(time: Long, mtDataList: Seq[MtRecord])
 
 case class Record(time: DateTime, value: Double, status: String)
 
@@ -185,9 +187,6 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp) {
       }
     Map(pairs: _*)
   }
-
-  case class MtRecord(mtName: String, value: Double, status: String)
-  case class RecordList(time: Long, mtDataList: Seq[MtRecord])
 
   implicit val mtRecordWrite = Json.writes[MtRecord]
   implicit val recordListWrite = Json.writes[RecordList]

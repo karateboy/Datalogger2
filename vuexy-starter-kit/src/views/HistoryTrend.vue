@@ -219,7 +219,6 @@ export default Vue.extend({
       const url = `/HistoryTrend/${this.form.monitorTypes.join(':')}/${
         this.form.reportUnit
       }/${this.form.statusFilter}/${this.form.range[0]}/${this.form.range[1]}`
-      console.log(url)
       const res = await axios.get(url)
       const ret = res.data
       if (this.form.chartType !== 'boxplot') {

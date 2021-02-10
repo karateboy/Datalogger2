@@ -5,6 +5,7 @@ import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import models.ModelHelper._
 import com.github.nscala_time.time.Imports._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.mongodb.scala.model._
 import org.mongodb.scala.bson._
@@ -307,6 +308,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
 
     val f = collection.replaceOne(equal("_id", mt._id), mt, ReplaceOptions().upsert(true)).toFuture()
     waitReadyResult(f)
+    map = map + (mt._id -> mt)
     true
   }
 
@@ -415,9 +417,14 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     }
   }
 
+  def getCssClassStr(record:MtRecord) = {
+      val (overInternal, overLaw) = overStd(record.mtName, record.value)
+      MonitorStatus.getCssClassStr(record.status, overInternal, overLaw)
+  }
+
   def getCssClassStr(mt: String, r: Option[Record]) = {
     if (r.isEmpty)
-      ""
+      Seq.empty[String]
     else {
       val v = r.get.value
       val (overInternal, overLaw) = overStd(mt, v)

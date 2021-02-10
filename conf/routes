@@ -76,7 +76,7 @@ POST     /MonitorType/:id                                                       
 PUT      /MonitorType/:id                                                         controllers.HomeController.upsertMonitorType(id)
 
 GET      /Record/:monitorType/:start/:end                                         controllers.Query.recordList(monitorType, start:Long, end:Long)
-PUT      /Record/:monitorType                                                     controllers.Query.updateRecord(monitorType)
+PUT      /Record/:tabType                                                         controllers.Query.updateRecord(tabType)
 
 GET      /HourRecord/:start/:end                                                  controllers.Query.hourRecordList(start:Long, end:Long)
 GET      /MinRecord/:start/:end                                                   controllers.Query.minRecordList(start:Long, end:Long)

@@ -36,10 +36,11 @@ case class Stat(
   }
 }
 
-case class CellData(v: String, cellClassName: String)
+case class CellData(v: String, cellClassName: Seq[String], status:Option[String] = None)
 case class RowData(date: Long, cellData: Seq[CellData])
-
-
+case class DataTab(columnNames: Seq[String], rows: Seq[RowData])
+case class ManualAuditParam(reason: String, updateList: Seq[UpdateRecordParam])
+case class UpdateRecordParam(time: Long, mt:String, status: String)
 
 @Singleton
 class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
@@ -447,9 +448,10 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
               if (mtDataOpt.isDefined) {
                 val mtData = mtDataOpt.get
                 val mt = mtData.mtName
-                CellData(monitorTypeOp.format(mt, Some(mtData.value)), mtData.status)
+                CellData(monitorTypeOp.format(mt, Some(mtData.value)),
+                  monitorTypeOp.getCssClassStr(mtData), Some(mtData.status))
               } else {
-                CellData("-", "")
+                CellData("-", Seq.empty[String])
               }
             }
 
@@ -576,9 +578,9 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
     val rows = for(report <- reportMap) yield {
       val cellData = for(key<-keyList) yield
         if(report._2.contains(key))
-          CellData(instrumentStatusOp.formatValue(report._2(key)), "")
+          CellData(instrumentStatusOp.formatValue(report._2(key)), Seq.empty[String])
         else
-          CellData("-", "")
+          CellData("-", Seq.empty[String])
       RowData(report._1.getMillis, cellData )
     }
 
@@ -594,15 +596,13 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
     Ok(Json.toJson(recordMap(monitorType)))
   }
 
-  def updateRecord(monitorTypeStr: String) = Security.Authenticated(BodyParsers.parse.json) {
+  def updateRecord(tabTypeStr: String) = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
       val user = request.user
       implicit val read = Json.reads[UpdateRecordParam]
       implicit val maParamRead = Json.reads[ManualAuditParam]
       val result = request.body.validate[ManualAuditParam]
-
-      val monitorType = (monitorTypeStr)
-
+      val tabType = TableType.withName(tabTypeStr)
       result.fold(
         err => {
           Logger.error(JsError.toJson(err).toString())
@@ -610,10 +610,9 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
         },
         maParam => {
           for (param <- maParam.updateList) {
-            recordOp.updateRecordStatus(param.time, monitorType, param.status)(recordOp.HourCollection)
-            val log = ManualAuditLog(new DateTime(param.time), mt = monitorType, modifiedTime = DateTime.now(),
+            recordOp.updateRecordStatus(param.time, param.mt, param.status)(TableType.mapCollection(tabType))
+            val log = ManualAuditLog(new DateTime(param.time), mt = param.mt, modifiedTime = DateTime.now(),
               operator = user.name, changedStatus = param.status, reason = maParam.reason)
-            Logger.debug(log.toString)
             manualAuditLogOp.upsertLog(log)
           }
         })
@@ -623,8 +622,8 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
   def manualAuditHistoryReport(start: Long, end: Long) = Security.Authenticated.async {
     val startTime = new DateTime(start)
     val endTime = new DateTime(end)
-    implicit val w = Json.writes[ManualAuditLog]
-    val logFuture = manualAuditLogOp.queryLog(startTime, endTime)
+    implicit val w = Json.writes[ManualAuditLog2]
+    val logFuture = manualAuditLogOp.queryLog2(startTime, endTime)
     val resultF =
       for {
         logList <- logFuture
@@ -679,12 +678,6 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
         Ok(Json.toJson(recordList))
       }
   }
-
-  case class DataTab(columnNames: Seq[String], rows: Seq[RowData])
-
-  case class ManualAuditParam(reason: String, updateList: Seq[UpdateRecordParam])
-
-  case class UpdateRecordParam(time: Long, status: String)
 
   //
   //  def windRose() = Security.Authenticated {

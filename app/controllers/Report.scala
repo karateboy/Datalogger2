@@ -54,28 +54,28 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
             val avgRow = {
               val avgData =
                 for (mt <- mtList) yield {
-                  CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).avg), "")
+                  CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).avg), Seq.empty[String])
                 }
               StatRow("平均", avgData)
             }
             val maxRow = {
               val maxData =
                 for (mt <- mtList) yield {
-                  CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).max), "")
+                  CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).max), Seq.empty[String])
                 }
               StatRow("最大", maxData)
             }
             val minRow = {
               val minData =
                 for (mt <- mtList) yield {
-                  CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).min), "")
+                  CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).min), Seq.empty[String])
                 }
               StatRow("最小", minData)
             }
             val effectiveRow = {
               val effectiveData =
                 for (mt <- mtList) yield {
-                  CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).effectPercent), "")
+                  CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).effectPercent), Seq.empty[String])
                 }
               StatRow("有效率(%)", effectiveData)
             }
@@ -105,28 +105,28 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
             val avgRow = {
               val avgData =
                 for (mt <- mtList) yield {
-                  CellData(monitorTypeOp.format(mt, statMap(mt)(start).avg), "")
+                  CellData(monitorTypeOp.format(mt, statMap(mt)(start).avg), Seq.empty[String])
                 }
               StatRow("平均", avgData)
             }
             val maxRow = {
               val maxData =
                 for (mt <- mtList) yield {
-                  CellData(monitorTypeOp.format(mt, statMap(mt)(start).max), "")
+                  CellData(monitorTypeOp.format(mt, statMap(mt)(start).max), Seq.empty[String])
                 }
               StatRow("最大", maxData)
             }
             val minRow = {
               val minData =
                 for (mt <- mtList) yield {
-                  CellData(monitorTypeOp.format(mt, statMap(mt)(start).min), "")
+                  CellData(monitorTypeOp.format(mt, statMap(mt)(start).min), Seq.empty[String])
                 }
               StatRow("最小", minData)
             }
             val effectiveRow = {
               val effectiveData =
                 for (mt <- mtList) yield {
-                  CellData(monitorTypeOp.format(mt, statMap(mt)(start).effectPercent), "")
+                  CellData(monitorTypeOp.format(mt, statMap(mt)(start).effectPercent), Seq.empty[String])
                 }
               StatRow("有效率(%)", effectiveData)
             }
@@ -137,7 +137,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
                 val mtData =
                   for (mt <- mtList) yield {
                     CellData(monitorTypeOp.format(mt, statMap(mt)(recordTime).avg),
-                      statMap(mt)(recordTime).isEffective.toString)
+                      Seq(statMap(mt)(recordTime).isEffective.toString))
                   }
                 RowData(recordTime.getMillis, mtData)
               }
@@ -308,31 +308,31 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
       val avgRow = {
         var avgData =
           for (h <- 0 to 23) yield {
-            CellData(monitorTypeOp.format(mt, hourStatMap(h).avg), "")
+            CellData(monitorTypeOp.format(mt, hourStatMap(h).avg), Seq.empty[String])
           }
-        avgData = avgData.:+(CellData("",""))
-        avgData = avgData.:+(CellData("",""))
-        avgData = avgData.:+(CellData("",""))
+        avgData = avgData.:+(CellData("",Seq.empty[String]))
+        avgData = avgData.:+(CellData("",Seq.empty[String]))
+        avgData = avgData.:+(CellData("",Seq.empty[String]))
         StatRow("平均", avgData)
       }
       val maxRow = {
         var maxData =
           for (h <- 0 to 23 ) yield {
-            CellData(monitorTypeOp.format(mt, hourStatMap(h).max), "")
+            CellData(monitorTypeOp.format(mt, hourStatMap(h).max), Seq.empty[String])
           }
-        maxData = maxData.:+(CellData("",""))
-        maxData = maxData.:+(CellData(monitorTypeOp.format(mt, overallStat.max),""))
-        maxData = maxData.:+(CellData("",""))
+        maxData = maxData.:+(CellData("",Seq.empty[String]))
+        maxData = maxData.:+(CellData(monitorTypeOp.format(mt, overallStat.max),Seq.empty[String]))
+        maxData = maxData.:+(CellData("",Seq.empty[String]))
         StatRow("最大", maxData)
       }
       val minRow = {
         var minData =
           for (h <- 0 to 23) yield {
-            CellData(monitorTypeOp.format(mt, hourStatMap(h).min), "")
+            CellData(monitorTypeOp.format(mt, hourStatMap(h).min), Seq.empty[String])
           }
-        minData = minData.:+(CellData("",""))
-        minData = minData.:+(CellData("",""))
-        minData = minData.:+(CellData(monitorTypeOp.format(mt, overallStat.min),""))
+        minData = minData.:+(CellData("",Seq.empty[String]))
+        minData = minData.:+(CellData("",Seq.empty[String]))
+        minData = minData.:+(CellData(monitorTypeOp.format(mt, overallStat.min),Seq.empty[String]))
         StatRow("最小", minData)
       }
 
@@ -343,12 +343,12 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
           val date = day.getMillis
           var cellData = Seq.empty[CellData]
           for(h<- 0 to 23){
-            cellData = cellData.:+(CellData(monitorTypeOp.formatRecord(mt, timeMap.get(day + h.hour)), ""))
+            cellData = cellData.:+(CellData(monitorTypeOp.formatRecord(mt, timeMap.get(day + h.hour)), Seq.empty[String]))
           }
-          cellData = cellData.:+(CellData(monitorTypeOp.format(mt, dayStatMap(mt)(day).avg), ""))
-          cellData = cellData.:+(CellData(monitorTypeOp.format(mt, dayStatMap(mt)(day).max), ""))
-          cellData = cellData.:+(CellData(monitorTypeOp.format(mt, dayStatMap(mt)(day).min), ""))
-          cellData = cellData.:+(CellData(dayStatMap(mt)(day).count.toString, ""))
+          cellData = cellData.:+(CellData(monitorTypeOp.format(mt, dayStatMap(mt)(day).avg), Seq.empty[String]))
+          cellData = cellData.:+(CellData(monitorTypeOp.format(mt, dayStatMap(mt)(day).max), Seq.empty[String]))
+          cellData = cellData.:+(CellData(monitorTypeOp.format(mt, dayStatMap(mt)(day).min), Seq.empty[String]))
+          cellData = cellData.:+(CellData(dayStatMap(mt)(day).count.toString, Seq.empty[String]))
           rows = rows.:+(RowData(date, cellData))
         }
       implicit val write = Json.writes[MonthlyHourReport]

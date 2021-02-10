@@ -95,7 +95,10 @@ object MonitorStatus {
       else
         "normal"
 
-    s"$statClass $fgClass"
+    if(statClass != "")
+      Seq(statClass, fgClass)
+    else
+      Seq(fgClass)
   }
 
   def switchTagToInternal(tag: String) = {
