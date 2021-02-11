@@ -25,9 +25,9 @@
         <template #button-content>
           <div class="d-sm-flex d-none user-nav">
             <p class="user-name font-weight-bolder mb-0">
-              系統管理員
+              {{ userInfo.name }}
             </p>
-            <span class="user-status">管理員</span>
+            <span class="user-status">{{ role }}</span>
           </div>
           <b-avatar
             size="40"
@@ -71,9 +71,10 @@
 </template>
 
 <script>
-import DarkToggler from '@core/layouts/components/app-navbar/components/DarkToggler.vue'
-import axios from 'axios'
-import jscookie from 'js-cookie'
+import DarkToggler from '@core/layouts/components/app-navbar/components/DarkToggler.vue';
+import axios from 'axios';
+import { mapState } from 'vuex';
+import jscookie from 'js-cookie';
 
 export default {
   components: {
@@ -86,13 +87,21 @@ export default {
       default: () => {},
     },
   },
+  computed: {
+    ...mapState('user', ['userInfo']),
+    role() {
+      if (this.userInfo.isAdmin) return '系統管理員';
+
+      return '使用者';
+    },
+  },
   methods: {
     logout() {
       axios.get('/logout').then(() => {
-        jscookie.remove('authentication')
-        this.$router.push('/login')
-      })
+        jscookie.remove('authentication');
+        this.$router.push('/login');
+      });
     },
   },
-}
+};
 </script>

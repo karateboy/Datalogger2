@@ -109,15 +109,16 @@
 
 <script>
 /* eslint-disable global-require */
-import { ValidationProvider, ValidationObserver } from 'vee-validate'
-import VuexyLogo from '@core/layouts/components/Logo.vue'
-import jscookie from 'js-cookie'
+import { ValidationProvider, ValidationObserver } from 'vee-validate';
+import VuexyLogo from '@core/layouts/components/Logo.vue';
+import jscookie from 'js-cookie';
 
-import { required, email } from '@validations'
-import { togglePasswordVisibility } from '@core/mixins/ui/forms'
-import axios from 'axios'
-import store from '@/store/index'
-import ToastificationContent from '@core/components/toastification/ToastificationContent.vue'
+import { required, email } from '@validations';
+import { togglePasswordVisibility } from '@core/mixins/ui/forms';
+import axios from 'axios';
+import store from '@/store/index';
+import { mapMutations } from 'vuex';
+import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
 
 export default {
   components: {
@@ -135,33 +136,35 @@ export default {
       // validation rulesimport store from '@/store/index'
       required,
       email,
-    }
+    };
   },
   computed: {
     passwordToggleIcon() {
-      return this.passwordFieldType === 'password' ? 'EyeIcon' : 'EyeOffIcon'
+      return this.passwordFieldType === 'password' ? 'EyeIcon' : 'EyeOffIcon';
     },
     imgUrl() {
       if (store.state.appConfig.layout.skin === 'dark') {
         // eslint-disable-next-line vue/no-side-effects-in-computed-properties
-        this.sideImg = require('@/assets/images/pages/login-v2-dark.svg')
-        return this.sideImg
+        this.sideImg = require('@/assets/images/pages/login-v2-dark.svg');
+        return this.sideImg;
       }
-      return this.sideImg
+      return this.sideImg;
     },
   },
   methods: {
+    ...mapMutations('user', ['setUserInfo']),
     validationForm() {
       this.$refs.loginValidation.validate().then(success => {
         if (success) {
-          const cred = { user: this.userEmail, password: this.password }
+          const cred = { user: this.userEmail, password: this.password };
           axios
             .post('/login', cred)
             .then(res => {
-              const ret = res.data
+              const ret = res.data;
               if (ret.ok) {
-                jscookie.set('authenticated', true)
-                this.$router.push('/')
+                this.setUserInfo(ret.userInfo);
+                jscookie.set('authenticated', true);
+                this.$router.push('/');
               } else {
                 this.$toast({
                   component: ToastificationContent,
@@ -169,7 +172,7 @@ export default {
                     title: '帳號或密碼錯誤',
                     icon: 'UserIcon',
                   },
-                })
+                });
               }
             })
             .catch(() => {
@@ -179,13 +182,13 @@ export default {
                   title: '帳號或密碼錯誤',
                   icon: 'UserIcon',
                 },
-              })
-            })
+              });
+            });
         }
-      })
+      });
     },
   },
-}
+};
 </script>
 
 <style lang="scss">

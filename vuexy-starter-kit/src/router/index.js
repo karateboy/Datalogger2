@@ -219,6 +219,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/user-management',
+      name: 'user-management',
+      component: () => import('@/views/UserManagement.vue'),
+      meta: {
+        pageTitle: '使用者管理',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '使用者管理',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/Login.vue'),

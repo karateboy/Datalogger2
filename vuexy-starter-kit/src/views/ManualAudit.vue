@@ -175,11 +175,11 @@ export default Vue.extend({
         },
         {
           id: 'm',
-          txt: '有效資料',
+          txt: '人工註記:有效資料',
         },
         {
           id: 'M',
-          txt: '無效資料',
+          txt: '人工註記:無效資料',
         },
       ],
       display: false,
@@ -199,7 +199,9 @@ export default Vue.extend({
       }
       if (auditCount === 0) return false;
 
-      if (this.form2.reason === '') return false;
+      if (this.form2.reason === '' && this.form2.statusCode !== '0') {
+        return false;
+      }
 
       return true;
     },

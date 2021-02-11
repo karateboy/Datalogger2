@@ -6,6 +6,7 @@ import app from './app'
 import appConfig from './app-config'
 import verticalMenu from './vertical-menu'
 import monitorTypes from "./monitorTypes"
+import user from "./user"
 
 Vue.use(Vuex)
 
@@ -14,7 +15,8 @@ export default new Vuex.Store({
     app,
     appConfig,
     verticalMenu,
-    monitorTypes
+    monitorTypes,
+    user
   },
   strict: process.env.DEV,
 })

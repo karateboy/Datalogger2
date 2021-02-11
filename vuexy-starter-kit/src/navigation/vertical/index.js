@@ -75,7 +75,7 @@ export default [
       },
       {
         title: "使用者管理",
-        route: null,
+        route: 'user-management',
       },
       {
         title: "資料管理",

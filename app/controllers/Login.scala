@@ -30,9 +30,10 @@ class Login @Inject()
               Results.Unauthorized(Json.obj("ok"->false, "msg"->"密碼或帳戶錯誤"))
             } else {
               import Security._
+              implicit val writes = Json.writes[User]
               val user = userOpt.get
               val userInfo = UserInfo(user._id, user.name, user.isAdmin)
-              Ok(Json.obj("ok"->true)).withSession(Security.setUserinfo(request, userInfo))              
+              Ok(Json.obj("ok"->true, "userInfo"->user)).withSession(Security.setUserinfo(request, userInfo))
             }              
           })
   }
