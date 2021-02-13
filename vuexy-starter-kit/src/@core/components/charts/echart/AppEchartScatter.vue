@@ -1,20 +1,15 @@
 <template>
-  <e-charts
-    ref="line"
-    :options="option"
-    theme="theme-color"
-    auto-resize
-  />
+  <e-charts ref="line" :options="option" theme="theme-color" auto-resize />
 </template>
 
 <script>
-import ECharts from 'vue-echarts'
-import 'echarts/lib/component/tooltip'
-import 'echarts/lib/component/legend'
-import 'echarts/lib/chart/scatter'
-import theme from './theme.json'
+import ECharts from 'vue-echarts';
+import 'echarts/lib/component/tooltip';
+import 'echarts/lib/component/legend';
+import 'echarts/lib/chart/scatter';
+import theme from './theme.json';
 
-ECharts.registerTheme('theme-color', theme)
+ECharts.registerTheme('theme-color', theme);
 
 export default {
   components: {
@@ -60,7 +55,7 @@ export default {
         },
         series: this.optionData.series,
       },
-    }
+    };
   },
-}
+};
 </script>

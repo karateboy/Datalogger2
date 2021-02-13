@@ -69,7 +69,7 @@
           :items="rows"
           bordered
         >
-          <template v-slot:custom-foot>
+          <template #custom-foot>
             <b-tr v-for="stat in statRows" :key="stat.name">
               <b-th>{{ stat.name }}</b-th>
               <th v-for="(cell, i) in stat.cellData" :key="i">
@@ -86,15 +86,15 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue'
-import DatePicker from 'vue2-datepicker'
-import vSelect from 'vue-select'
-import 'vue2-datepicker/index.css'
-import 'vue2-datepicker/locale/zh-tw'
-import Ripple from 'vue-ripple-directive'
-import { mapState, mapActions } from 'vuex'
-import moment from 'moment'
-import axios from 'axios'
+import Vue from 'vue';
+import DatePicker from 'vue2-datepicker';
+import vSelect from 'vue-select';
+import 'vue2-datepicker/index.css';
+import 'vue2-datepicker/locale/zh-tw';
+import Ripple from 'vue-ripple-directive';
+import { mapState, mapActions } from 'vuex';
+import moment from 'moment';
+import axios from 'axios';
 
 export default Vue.extend({
   components: {
@@ -105,7 +105,7 @@ export default Vue.extend({
     Ripple,
   },
   data() {
-    const date = moment().valueOf()
+    const date = moment().valueOf();
     return {
       display: false,
       columns: [],
@@ -115,7 +115,7 @@ export default Vue.extend({
         date,
         monitorType: undefined,
       },
-    }
+    };
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
@@ -123,26 +123,26 @@ export default Vue.extend({
   mounted() {
     this.fetchMonitorTypes().then(() => {
       if (this.monitorTypes.length !== 0) {
-        this.form.monitorType = this.monitorTypes[0]._id
+        this.form.monitorType = this.monitorTypes[0]._id;
       }
-    })
+    });
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     async query() {
-      this.display = true
-      const url = `/MonthlyHourReport/${this.form.monitorType}/${this.form.date}`
-      const res = await axios.get(url)
-      this.handleReport(res.data)
+      this.display = true;
+      const url = `/MonthlyHourReport/${this.form.monitorType}/${this.form.date}`;
+      const res = await axios.get(url);
+      this.handleReport(res.data);
     },
     handleReport(report) {
-      this.columns.splice(0, this.columns.length)
+      this.columns.splice(0, this.columns.length);
 
       this.columns.push({
         key: 'time',
         label: '日\\時間',
         sortable: true,
-      })
+      });
 
       for (let i = 0; i < report.columnNames.length; i++) {
         this.columns.push({
@@ -150,16 +150,16 @@ export default Vue.extend({
           label: `${report.columnNames[i]}`,
           sortable: true,
           stickyColumn: true,
-        })
+        });
       }
       for (const row of report.rows) {
-        row.time = moment(row.time).format('MM/DD')
+        row.time = moment(row.time).format('MM/DD');
       }
-      this.rows = report.rows
-      this.statRows = report.statRows
+      this.rows = report.rows;
+      this.statRows = report.statRows;
     },
   },
-})
+});
 </script>
 
 <style></style>

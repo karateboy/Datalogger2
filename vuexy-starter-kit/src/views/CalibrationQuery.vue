@@ -51,13 +51,13 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue'
-import DatePicker from 'vue2-datepicker'
-import 'vue2-datepicker/index.css'
-import 'vue2-datepicker/locale/zh-tw'
-import Ripple from 'vue-ripple-directive'
-import moment from 'moment'
-import axios from 'axios'
+import Vue from 'vue';
+import DatePicker from 'vue2-datepicker';
+import 'vue2-datepicker/index.css';
+import 'vue2-datepicker/locale/zh-tw';
+import Ripple from 'vue-ripple-directive';
+import moment from 'moment';
+import axios from 'axios';
 
 export default Vue.extend({
   components: {
@@ -68,12 +68,7 @@ export default Vue.extend({
   },
 
   data() {
-    const range = [
-      moment()
-        .subtract(1, 'days')
-        .valueOf(),
-      moment().valueOf(),
-    ]
+    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
     return {
       display: false,
       columns: [
@@ -112,18 +107,18 @@ export default Vue.extend({
       form: {
         range,
       },
-    }
+    };
   },
   methods: {
     async query() {
-      this.display = true
-      const url = `/CalibrationReport/${this.form.range[0]}/${this.form.range[1]}`
-      const res = await axios.get(url)
-      const ret = res.data
-      this.rows = ret
+      this.display = true;
+      const url = `/CalibrationReport/${this.form.range[0]}/${this.form.range[1]}`;
+      const res = await axios.get(url);
+      const ret = res.data;
+      this.rows = ret;
     },
   },
-})
+});
 </script>
 
 <style></style>

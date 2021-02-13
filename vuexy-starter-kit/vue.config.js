@@ -1,4 +1,4 @@
-const path = require('path')
+const path = require('path');
 
 module.exports = {
   publicPath: process.env.NODE_ENV === 'production' ? '/dist/' : '/',
@@ -16,7 +16,10 @@ module.exports = {
       alias: {
         '@themeConfig': path.resolve(__dirname, 'themeConfig.js'),
         '@core': path.resolve(__dirname, 'src/@core'),
-        '@validations': path.resolve(__dirname, 'src/@core/utils/validations/validations.js'),
+        '@validations': path.resolve(
+          __dirname,
+          'src/@core/utils/validations/validations.js',
+        ),
         '@axios': path.resolve(__dirname, 'src/libs/axios'),
       },
     },
@@ -39,9 +42,9 @@ module.exports = {
           'b-card-img-lazy': ['src', 'blank-src'],
           'b-carousel-slide': 'img-src',
           'b-embed': 'src',
-        }
-        return options
-      })
+        };
+        return options;
+      });
   },
   transpileDependencies: ['vue-echarts', 'resize-detector'],
-}
+};

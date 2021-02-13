@@ -113,7 +113,7 @@
       </b-form>
       <br />
       <b-table striped hover :fields="columns" :items="rows" show-empty>
-        <template v-slot:cell(include)="data">
+        <template #cell(include)="data">
           <b-form-checkbox
             v-model="data.item.include"
             :disabled="!canInclude(data.item)"
@@ -147,12 +147,7 @@ export default Vue.extend({
   },
 
   data() {
-    const range = [
-      moment()
-        .subtract(1, 'days')
-        .valueOf(),
-      moment().valueOf(),
-    ];
+    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
     return {
       dataTypes: [
         { txt: '小時資料', id: 'hour' },

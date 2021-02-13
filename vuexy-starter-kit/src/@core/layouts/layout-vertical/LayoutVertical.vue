@@ -15,9 +15,14 @@
         name="navbar"
         :toggleVerticalMenuActive="toggleVerticalMenuActive"
         :navbarBackgroundColor="navbarBackgroundColor"
-        :navbarTypeClass="[...navbarTypeClass, 'header-navbar navbar navbar-shadow align-items-center']"
+        :navbarTypeClass="[
+          ...navbarTypeClass,
+          'header-navbar navbar navbar-shadow align-items-center',
+        ]"
       >
-        <app-navbar-vertical-layout :toggle-vertical-menu-active="toggleVerticalMenuActive" />
+        <app-navbar-vertical-layout
+          :toggle-vertical-menu-active="toggleVerticalMenuActive"
+        />
       </slot>
     </b-navbar>
     <!--/ Navbar -->
@@ -29,10 +34,7 @@
       :toggle-vertical-menu-active="toggleVerticalMenuActive"
     >
       <template #header="slotProps">
-        <slot
-          name="vertical-menu-header"
-          v-bind="slotProps"
-        />
+        <slot name="vertical-menu-header" v-bind="slotProps" />
       </template>
     </vertical-nav-menu>
     <!-- /Vertical Nav Menu -->
@@ -48,22 +50,17 @@
     <!-- Content -->
 
     <!-- CONTENT TYPE: Left -->
-    <transition
-      :name="routerTransition"
-      mode="out-in"
-    >
+    <transition :name="routerTransition" mode="out-in">
       <component
         :is="layoutContentRenderer"
-        :key="layoutContentRenderer === 'layout-content-renderer-left' ? $route.meta.navActiveLink || $route.name : null"
+        :key="
+          layoutContentRenderer === 'layout-content-renderer-left'
+            ? $route.meta.navActiveLink || $route.name
+            : null
+        "
       >
-        <template
-          v-for="(index, name) in $scopedSlots"
-          v-slot:[name]="data"
-        >
-          <slot
-            :name="name"
-            v-bind="data"
-          />
+        <template v-for="(index, name) in $scopedSlots" #[name]="data">
+          <slot :name="name" v-bind="data" />
         </template>
       </component>
     </transition>
@@ -85,17 +82,17 @@
 </template>
 
 <script>
-import { onUnmounted } from '@vue/composition-api'
-import AppNavbarVerticalLayout from '@core/layouts/components/app-navbar/AppNavbarVerticalLayout.vue'
-import AppFooter from '@core/layouts/components/AppFooter.vue'
-import useAppConfig from '@core/app-config/useAppConfig'
-import { BNavbar } from 'bootstrap-vue'
-import LayoutContentRendererDefault from '@core/layouts/components/layout-content-renderer/LayoutContentRendererDefault.vue'
-import LayoutContentRendererLeft from '@core/layouts/components/layout-content-renderer/LayoutContentRendererLeft.vue'
-import LayoutContentRendererLeftDetached from '@core/layouts/components/layout-content-renderer/LayoutContentRendererLeftDetached.vue'
-import VerticalNavMenu from './components/vertical-nav-menu/VerticalNavMenu.vue'
-import useVerticalLayout from './useVerticalLayout'
-import mixinVerticalLayout from './mixinVerticalLayout'
+import { onUnmounted } from '@vue/composition-api';
+import AppNavbarVerticalLayout from '@core/layouts/components/app-navbar/AppNavbarVerticalLayout.vue';
+import AppFooter from '@core/layouts/components/AppFooter.vue';
+import useAppConfig from '@core/app-config/useAppConfig';
+import { BNavbar } from 'bootstrap-vue';
+import LayoutContentRendererDefault from '@core/layouts/components/layout-content-renderer/LayoutContentRendererDefault.vue';
+import LayoutContentRendererLeft from '@core/layouts/components/layout-content-renderer/LayoutContentRendererLeft.vue';
+import LayoutContentRendererLeftDetached from '@core/layouts/components/layout-content-renderer/LayoutContentRendererLeftDetached.vue';
+import VerticalNavMenu from './components/vertical-nav-menu/VerticalNavMenu.vue';
+import useVerticalLayout from './useVerticalLayout';
+import mixinVerticalLayout from './mixinVerticalLayout';
 
 export default {
   components: {
@@ -109,18 +106,14 @@ export default {
     LayoutContentRendererDefault,
   },
   mixins: [mixinVerticalLayout],
-  computed: {
-    layoutContentRenderer() {
-      const rendererType = this.$route.meta.contentRenderer
-      if (rendererType === 'sidebar-left') return 'layout-content-renderer-left'
-      if (rendererType === 'sidebar-left-detached') return 'layout-content-renderer-left-detached'
-      return 'layout-content-renderer-default'
-    },
-  },
   setup() {
     const {
-      routerTransition, navbarBackgroundColor, navbarType, footerType, isNavMenuHidden,
-    } = useAppConfig()
+      routerTransition,
+      navbarBackgroundColor,
+      navbarType,
+      footerType,
+      isNavMenuHidden,
+    } = useAppConfig();
 
     const {
       isVerticalMenuActive,
@@ -131,14 +124,14 @@ export default {
       resizeHandler,
       navbarTypeClass,
       footerTypeClass,
-    } = useVerticalLayout(navbarType, footerType)
+    } = useVerticalLayout(navbarType, footerType);
 
     // Resize handler
-    resizeHandler()
-    window.addEventListener('resize', resizeHandler)
+    resizeHandler();
+    window.addEventListener('resize', resizeHandler);
     onUnmounted(() => {
-      window.removeEventListener('resize', resizeHandler)
-    })
+      window.removeEventListener('resize', resizeHandler);
+    });
 
     return {
       isVerticalMenuActive,
@@ -153,11 +146,21 @@ export default {
       routerTransition,
       navbarBackgroundColor,
       isNavMenuHidden,
-    }
+    };
   },
-}
+  computed: {
+    layoutContentRenderer() {
+      const rendererType = this.$route.meta.contentRenderer;
+      if (rendererType === 'sidebar-left')
+        return 'layout-content-renderer-left';
+      if (rendererType === 'sidebar-left-detached')
+        return 'layout-content-renderer-left-detached';
+      return 'layout-content-renderer-default';
+    },
+  },
+};
 </script>
 
 <style lang="scss">
-@import "~@core/scss/base/themes/bordered-layout.scss";
+@import '~@core/scss/base/themes/bordered-layout.scss';
 </style>

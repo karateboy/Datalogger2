@@ -1,7 +1,6 @@
 <template>
   <b-card v-if="data">
     <b-row class="pb-50">
-
       <!-- text and button -->
       <b-col
         sm="6"
@@ -50,10 +49,7 @@
             no-caret
             size="sm"
           >
-            <b-dropdown-item
-              v-for="day in data.lastDays"
-              :key="day"
-            >
+            <b-dropdown-item v-for="day in data.lastDays" :key="day">
               {{ day }}
             </b-dropdown-item>
           </b-dropdown>
@@ -68,36 +64,19 @@
         />
       </b-col>
     </b-row>
-    <hr>
+    <hr />
 
     <!-- progress bar -->
     <b-row class="avg-sessions pt-50">
-      <b-col
-        cols="6"
-        class="mb-2"
-      >
-        <b-card-text class="mb-50">
-          Goal: ${{ data.goal }}
-        </b-card-text>
-        <b-progress
-          value="50"
-          max="100"
-          height="6px"
-        />
+      <b-col cols="6" class="mb-2">
+        <b-card-text class="mb-50"> Goal: ${{ data.goal }} </b-card-text>
+        <b-progress value="50" max="100" height="6px" />
       </b-col>
-      <b-col
-        cols="6"
-        class="mb-2"
-      >
+      <b-col cols="6" class="mb-2">
         <b-card-text class="mb-50">
           Users: {{ kFormatter(data.users) }}
         </b-card-text>
-        <b-progress
-          value="60"
-          max="100"
-          height="6px"
-          variant="warning"
-        />
+        <b-progress value="60" max="100" height="6px" variant="warning" />
       </b-col>
       <b-col cols="6">
         <b-card-text class="mb-50">
@@ -129,12 +108,19 @@
 
 <script>
 import {
-  BCard, BRow, BCol, BButton, BDropdown, BDropdownItem, BProgress, BCardText,
-} from 'bootstrap-vue'
-import VueApexCharts from 'vue-apexcharts'
-import Ripple from 'vue-ripple-directive'
-import { $themeColors } from '@themeConfig'
-import { kFormatter } from '@core/utils/filter'
+  BCard,
+  BRow,
+  BCol,
+  BButton,
+  BDropdown,
+  BDropdownItem,
+  BProgress,
+  BCardText,
+} from 'bootstrap-vue';
+import VueApexCharts from 'vue-apexcharts';
+import Ripple from 'vue-ripple-directive';
+import { $themeColors } from '@themeConfig';
+import { kFormatter } from '@core/utils/filter';
 
 export default {
   components: {
@@ -200,10 +186,10 @@ export default {
           },
         },
       },
-    }
+    };
   },
   methods: {
     kFormatter,
   },
-}
+};
 </script>

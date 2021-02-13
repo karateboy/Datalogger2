@@ -102,12 +102,7 @@ export default Vue.extend({
   },
 
   data() {
-    const range = [
-      moment()
-        .subtract(1, 'days')
-        .valueOf(),
-      moment().valueOf(),
-    ];
+    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
     return {
       dataTypes: [
         { txt: '小時資料', id: 'hour' },

@@ -4,9 +4,7 @@
       <!-- Brand logo-->
       <b-link class="brand-logo">
         <vuexy-logo />
-        <h2 class="brand-text text-primary ml-1">
-          Vuexy
-        </h2>
+        <h2 class="brand-text text-primary ml-1">Vuexy</h2>
       </b-link>
       <!-- /Brand logo-->
 
@@ -26,9 +24,7 @@
           <b-card-title title-tag="h2" class="font-weight-bold mb-1">
             歡迎使用資料蒐集器👋
           </b-card-title>
-          <b-card-text class="mb-2">
-            請登入您的帳號
-          </b-card-text>
+          <b-card-text class="mb-2"> 請登入您的帳號 </b-card-text>
 
           <!-- form -->
           <validation-observer ref="loginValidation">
@@ -36,7 +32,7 @@
               <!-- email -->
               <b-form-group label="Email" label-for="login-email">
                 <validation-provider
-                  #default="{ errors }"
+                  v-slot="{ errors }"
                   name="Email"
                   rules="required|email"
                 >
@@ -60,7 +56,7 @@
                   </b-link>
                 </div>
                 <validation-provider
-                  #default="{ errors }"
+                  v-slot="{ errors }"
                   name="Password"
                   rules="required"
                 >

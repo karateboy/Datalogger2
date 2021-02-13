@@ -6,14 +6,14 @@ import play.api.libs.functional.syntax._
 import akka.actor._
 import javax.inject._
 
-case class ChannelCfg(enable: Boolean, mt: Option[String], max: Option[Double], mtMax: Option[Double],
-                      min: Option[Double], mtMin: Option[Double], repairMode: Option[Boolean])
-case class Adam4017Param(addr: String, ch: Seq[ChannelCfg])
+case class AiChannelCfg(enable: Boolean, mt: Option[String], max: Option[Double], mtMax: Option[Double],
+                        min: Option[Double], mtMin: Option[Double], repairMode: Option[Boolean])
+case class Adam4017Param(addr: String, ch: Seq[AiChannelCfg])
 
 @Singleton
 class Adam4017 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
 
-  implicit val cfgReads = Json.reads[ChannelCfg]
+  implicit val cfgReads = Json.reads[AiChannelCfg]
   implicit val reads = Json.reads[Adam4017Param]
 
   override def getMonitorTypes(param: String) = {

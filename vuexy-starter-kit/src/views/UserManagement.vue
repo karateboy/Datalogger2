@@ -8,7 +8,7 @@
       responsive
       @row-selected="onUserSelected"
     >
-      <template v-slot:cell(selected)="{ rowSelected }">
+      <template #cell(selected)="{ rowSelected }">
         <template v-if="rowSelected">
           <span aria-hidden="true">&check;</span>
           <span class="sr-only">Selected</span>
@@ -18,9 +18,9 @@
           <span class="sr-only">Not selected</span>
         </template>
       </template>
-      <template v-slot:custom-foot>
+      <template #custom-foot>
         <b-tr>
-          <b-td colspan="3">
+          <b-td colspan="4">
             <b-button
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
               variant="primary"
@@ -33,6 +33,7 @@
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
               variant="primary"
               class="mr-1"
+              :disabled="selected.length === 0"
               @click="updateUser"
             >
               更新
@@ -41,6 +42,7 @@
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
               variant="primary"
               class="mr-1"
+              :disabled="selected.length === 0"
               @click="deleteUser"
             >
               刪除
@@ -60,7 +62,7 @@
       <user
         :is-new="isNew"
         :current-user="user"
-        @updated="onRefresh"
+        @updated="onUpdate"
         @created="onRefresh"
       ></user>
     </b-modal>
@@ -71,6 +73,7 @@ import Vue from 'vue';
 import axios from 'axios';
 import Ripple from 'vue-ripple-directive';
 import User from './User.vue';
+import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
 
 export default Vue.extend({
   components: {
@@ -138,7 +141,7 @@ export default Vue.extend({
         .msgBoxConfirm('是否要刪除使用者?')
         .then(ret => {
           if (ret) {
-            this.delUser(this.user.Id);
+            this.delUser(this.selected[0]._id);
           }
         })
         .catch(err => {
@@ -149,11 +152,7 @@ export default Vue.extend({
       axios
         .get('/User')
         .then(res => {
-          const ret = res.data;
-
-          for (const usr of ret) {
-            this.userList.push(usr);
-          }
+          this.userList = res.data;
         })
         .catch(err => {
           throw new Error(err);
@@ -165,15 +164,39 @@ export default Vue.extend({
     delUser(id) {
       axios
         .delete(`/User/${id}`)
-        .then(() => {
+        .then(res => {
+          const ret = res.data;
+          if (ret.ok) {
+            this.$toast({
+              component: ToastificationContent,
+              props: {
+                title: '成功',
+                icon: 'UserIcon',
+              },
+            });
+          } else {
+            this.$toast({
+              component: ToastificationContent,
+              props: {
+                title: '刪除失敗',
+                icon: 'UserIcon',
+              },
+            });
+          }
           this.getUserList();
         })
         .catch(err => {
           throw new Error(err);
         });
     },
-    onRefresh() {
+    onUpdate() {
       this.$bvModal.hide('userModal');
+      this.getUserList();
+    },
+    onRefresh() {
+      this.getUserList();
+    },
+    onDeleted() {
       this.getUserList();
     },
   },

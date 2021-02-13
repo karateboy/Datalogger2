@@ -1,13 +1,13 @@
-import Vue from 'vue'
-import VueRouter from 'vue-router'
+import Vue from 'vue';
+import VueRouter from 'vue-router';
 
-Vue.use(VueRouter)
+Vue.use(VueRouter);
 
 const router = new VueRouter({
   mode: 'history',
   base: process.env.BASE_URL,
   scrollBehavior() {
-    return { x: 0, y: 0 }
+    return { x: 0, y: 0 };
   },
   routes: [
     {
@@ -147,6 +147,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/instrument-management',
+      name: 'instrument-management',
+      component: () => import('@/views/InstrumentManagement.vue'),
+      meta: {
+        pageTitle: '儀器管理',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '儀器管理',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/instrument-status',
       name: 'instrument-status',
       component: () => import('@/views/InstrumentStatus.vue'),
@@ -257,6 +275,6 @@ const router = new VueRouter({
       redirect: 'error-404',
     },
   ],
-})
+});
 
-export default router
+export default router;

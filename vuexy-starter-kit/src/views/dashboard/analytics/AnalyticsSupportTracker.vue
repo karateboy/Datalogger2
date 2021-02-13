@@ -1,8 +1,5 @@
 <template>
-  <b-card
-    v-if="data"
-    no-body
-  >
+  <b-card v-if="data" no-body>
     <!-- title and dropdown -->
     <b-card-header class="pb-0">
       <b-card-title>{{ data.title }}</b-card-title>
@@ -15,10 +12,7 @@
         toggle-class="p-50"
         size="sm"
       >
-        <b-dropdown-item
-          v-for="day in data.lastDays"
-          :key="day"
-        >
+        <b-dropdown-item v-for="day in data.lastDays" :key="day">
           {{ day }}
         </b-dropdown-item>
       </b-dropdown>
@@ -27,10 +21,7 @@
 
     <b-card-body>
       <b-row>
-        <b-col
-          sm="2"
-          class="d-flex flex-column flex-wrap text-center"
-        >
+        <b-col sm="2" class="d-flex flex-column flex-wrap text-center">
           <h1 class="font-large-2 font-weight-bolder mt-2 mb-0">
             {{ data.totalTicket }}
           </h1>
@@ -38,11 +29,7 @@
         </b-col>
 
         <!-- chart -->
-        <b-col
-          sm="10"
-          class="d-flex justify-content-center"
-        >
-
+        <b-col sm="10" class="d-flex justify-content-center">
           <!-- apex chart -->
           <vue-apex-charts
             type="radialBar"
@@ -57,22 +44,22 @@
       <!-- chart info -->
       <div class="d-flex justify-content-between">
         <div class="text-center">
-          <b-card-text class="mb-50">
-            New Tickets
-          </b-card-text>
-          <span class="font-large-1 font-weight-bold">{{ data.newTicket }}</span>
+          <b-card-text class="mb-50"> New Tickets </b-card-text>
+          <span class="font-large-1 font-weight-bold">{{
+            data.newTicket
+          }}</span>
         </div>
         <div class="text-center">
-          <b-card-text class="mb-50">
-            Open Tickets
-          </b-card-text>
-          <span class="font-large-1 font-weight-bold">{{ data.openTicket }}</span>
+          <b-card-text class="mb-50"> Open Tickets </b-card-text>
+          <span class="font-large-1 font-weight-bold">{{
+            data.openTicket
+          }}</span>
         </div>
         <div class="text-center">
-          <b-card-text class="mb-50">
-            Response Time
-          </b-card-text>
-          <span class="font-large-1 font-weight-bold">{{ data.responseTime }}d</span>
+          <b-card-text class="mb-50"> Response Time </b-card-text>
+          <span class="font-large-1 font-weight-bold"
+            >{{ data.responseTime }}d</span
+          >
         </div>
       </div>
     </b-card-body>
@@ -81,10 +68,18 @@
 
 <script>
 import {
-  BCard, BCardHeader, BCardTitle, BDropdown, BDropdownItem, BCardBody, BRow, BCol, BCardText,
-} from 'bootstrap-vue'
-import VueApexCharts from 'vue-apexcharts'
-import { $themeColors } from '@themeConfig'
+  BCard,
+  BCardHeader,
+  BCardTitle,
+  BDropdown,
+  BDropdownItem,
+  BCardBody,
+  BRow,
+  BCol,
+  BCardText,
+} from 'bootstrap-vue';
+import VueApexCharts from 'vue-apexcharts';
+import { $themeColors } from '@themeConfig';
 
 export default {
   components: {
@@ -156,7 +151,7 @@ export default {
           labels: ['Completed Tickets'],
         },
       },
-    }
+    };
   },
-}
+};
 </script>

@@ -1,23 +1,16 @@
 <template>
   <li class="nav-item nav-search">
-
     <!-- Icon -->
     <a
       href="javascript:void(0)"
       class="nav-link nav-link-search"
       @click="showSearchBar = true"
     >
-      <feather-icon
-        icon="SearchIcon"
-        size="21"
-      />
+      <feather-icon icon="SearchIcon" size="21" />
     </a>
 
     <!-- Input -->
-    <div
-      class="search-input"
-      :class="{'open': showSearchBar}"
-    >
+    <div class="search-input" :class="{ open: showSearchBar }">
       <div class="search-input-icon">
         <feather-icon icon="SearchIcon" />
       </div>
@@ -32,13 +25,22 @@
         autocomplete="off"
         @keyup.up="increaseIndex(false)"
         @keyup.down="increaseIndex"
-        @keyup.esc="showSearchBar = false; resetsearchQuery()"
+        @keyup.esc="
+          showSearchBar = false;
+          resetsearchQuery();
+        "
         @keyup.enter="suggestionSelected"
-        @blur.stop="showSearchBar = false; resetsearchQuery()"
+        @blur.stop="
+          showSearchBar = false;
+          resetsearchQuery();
+        "
       />
       <div
         class="search-input-close"
-        @click="showSearchBar = false; resetsearchQuery()"
+        @click="
+          showSearchBar = false;
+          resetsearchQuery();
+        "
       >
         <feather-icon icon="XIcon" />
       </div>
@@ -47,7 +49,7 @@
       <vue-perfect-scrollbar
         :settings="perfectScrollbarSettings"
         class="search-list search-list-main scroll-area overflow-hidden"
-        :class="{'show': searchQuery}"
+        :class="{ show: searchQuery }"
         tagname="ul"
       >
         <li
@@ -55,7 +57,6 @@
           :key="grp_index"
           class="suggestions-groups-list"
         >
-
           <!-- Group Header -->
           <p class="suggestion-group-title">
             <span>
@@ -69,27 +70,20 @@
               v-for="(suggestion, index) in suggestion_list"
               :key="index"
               class="suggestion-group-suggestion cursor-pointer"
-              :class="{'suggestion-current-selected': currentSelected === `${grp_index}.${index}`}"
+              :class="{
+                'suggestion-current-selected':
+                  currentSelected === `${grp_index}.${index}`,
+              }"
               @mouseenter="currentSelected = `${grp_index}.${index}`"
               @mousedown.prevent="suggestionSelected(grp_name, suggestion)"
             >
-              <b-link
-                v-if="grp_name === 'pages'"
-                class="p-0"
-              >
-                <feather-icon
-                  :icon="suggestion.icon"
-                  class="mr-75"
-                />
+              <b-link v-if="grp_name === 'pages'" class="p-0">
+                <feather-icon :icon="suggestion.icon" class="mr-75" />
                 <span class="align-middle">{{ suggestion.title }}</span>
               </b-link>
               <template v-else-if="grp_name === 'files'">
                 <div class="d-flex align-items-center">
-                  <b-img
-                    :src="suggestion.icon"
-                    class="mr-1"
-                    height="32"
-                  />
+                  <b-img :src="suggestion.icon" class="mr-1" height="32" />
                   <div>
                     <p>{{ suggestion.file_name }}</p>
                     <small>by {{ suggestion.from }}</small>
@@ -99,11 +93,7 @@
               </template>
               <template v-else-if="grp_name === 'contacts'">
                 <div class="d-flex align-items-center">
-                  <b-avatar
-                    :src="suggestion.img"
-                    class="mr-1"
-                    size="32"
-                  />
+                  <b-avatar :src="suggestion.img" class="mr-1" size="32" />
                   <div>
                     <p>{{ suggestion.name }}</p>
                     <small>{{ suggestion.email }}</small>
@@ -127,16 +117,14 @@
 </template>
 
 <script>
-import {
-  BFormInput, BLink, BImg, BAvatar,
-} from 'bootstrap-vue'
-import { ref, watch } from '@vue/composition-api'
-import VuePerfectScrollbar from 'vue-perfect-scrollbar'
-import useAutoSuggest from '@core/components/app-auto-suggest/useAutoSuggest'
-import { title } from '@core/utils/filter'
-import router from '@/router'
-import store from '@/store'
-import searchAndBookmarkData from '../search-and-bookmark-data'
+import { BFormInput, BLink, BImg, BAvatar } from 'bootstrap-vue';
+import { ref, watch } from '@vue/composition-api';
+import VuePerfectScrollbar from 'vue-perfect-scrollbar';
+import useAutoSuggest from '@core/components/app-auto-suggest/useAutoSuggest';
+import { title } from '@core/utils/filter';
+import router from '@/router';
+import store from '@/store';
+import searchAndBookmarkData from '../search-and-bookmark-data';
 
 export default {
   components: {
@@ -147,11 +135,11 @@ export default {
     VuePerfectScrollbar,
   },
   setup() {
-    const showSearchBar = ref(false)
+    const showSearchBar = ref(false);
 
     const perfectScrollbarSettings = {
       maxScrollbarLength: 60,
-    }
+    };
 
     const suggestionSelected = (grpName, suggestion) => {
       // If parameter is not provided => Use current selected
@@ -160,92 +148,92 @@ export default {
         /* eslint-disable no-use-before-define, no-param-reassign */
         if (currentSelected.value !== -1) {
           /* eslint-disable no-use-before-define, no-param-reassign */
-          const [grpIndex, itemIndex] = currentSelected.value.split('.')
-          grpName = Object.keys(filteredData.value)[grpIndex]
-          suggestion = filteredData.value[grpName][itemIndex]
+          const [grpIndex, itemIndex] = currentSelected.value.split('.');
+          grpName = Object.keys(filteredData.value)[grpIndex];
+          suggestion = filteredData.value[grpName][itemIndex];
           /* eslint-enable */
         }
       }
-      if (grpName === 'pages') router.push(suggestion.route).catch(() => {})
+      if (grpName === 'pages') router.push(suggestion.route).catch(() => {});
       // eslint-disable-next-line no-use-before-define
-      resetsearchQuery()
-      showSearchBar.value = false
-    }
+      resetsearchQuery();
+      showSearchBar.value = false;
+    };
 
-    const {
-      searchQuery,
-      resetsearchQuery,
-      filteredData,
-    } = useAutoSuggest({ data: searchAndBookmarkData, searchLimit: 4 })
+    const { searchQuery, resetsearchQuery, filteredData } = useAutoSuggest({
+      data: searchAndBookmarkData,
+      searchLimit: 4,
+    });
 
     watch(searchQuery, val => {
-      store.commit('app/TOGGLE_OVERLAY', Boolean(val))
-    })
+      store.commit('app/TOGGLE_OVERLAY', Boolean(val));
+    });
 
-    const currentSelected = ref(-1)
+    const currentSelected = ref(-1);
     watch(filteredData, val => {
       if (!Object.values(val).some(obj => obj.length)) {
-        currentSelected.value = -1
+        currentSelected.value = -1;
       } else {
         // Auto Select first item if it's not item-404
-        let grpIndex = null
+        let grpIndex = null;
 
         // eslint-disable-next-line no-restricted-syntax
         for (const [index, grpSuggestions] of Object.values(val).entries()) {
           if (grpSuggestions.length) {
-            grpIndex = index
-            break
+            grpIndex = index;
+            break;
           }
         }
 
-        if (grpIndex !== null) currentSelected.value = `${grpIndex}.0`
+        if (grpIndex !== null) currentSelected.value = `${grpIndex}.0`;
       }
-    })
+    });
 
     const increaseIndex = (val = true) => {
       /* eslint-disable no-lonely-if, no-plusplus */
 
       // If there's no matching items
-      if (!Object.values(filteredData.value).some(grpItems => grpItems.length)) return
+      if (!Object.values(filteredData.value).some(grpItems => grpItems.length))
+        return;
 
-      const [grpIndex, itemIndex] = currentSelected.value.split('.')
+      const [grpIndex, itemIndex] = currentSelected.value.split('.');
 
-      const grpArr = Object.entries(filteredData.value)
-      const activeGrpTotalItems = grpArr[grpIndex][1].length
+      const grpArr = Object.entries(filteredData.value);
+      const activeGrpTotalItems = grpArr[grpIndex][1].length;
 
       if (val) {
         // If active item is not of last item in grp
         if (activeGrpTotalItems - 1 > itemIndex) {
-          currentSelected.value = `${grpIndex}.${Number(itemIndex) + 1}`
+          currentSelected.value = `${grpIndex}.${Number(itemIndex) + 1}`;
 
-        // If active item grp is not last in grp list
+          // If active item grp is not last in grp list
         } else if (grpIndex < grpArr.length - 1) {
           for (let i = Number(grpIndex) + 1; i < grpArr.length; i++) {
             // If navigating group have items => Then move in that group
             if (grpArr[i][1].length > 0) {
-              currentSelected.value = `${Number(i)}.0`
-              break
+              currentSelected.value = `${Number(i)}.0`;
+              break;
             }
           }
         }
       } else {
         // If active item is not of first item in grp
         if (Number(itemIndex)) {
-          currentSelected.value = `${grpIndex}.${Number(itemIndex) - 1}`
+          currentSelected.value = `${grpIndex}.${Number(itemIndex) - 1}`;
 
-        // If active item grp  is not first in grp list
+          // If active item grp  is not first in grp list
         } else if (Number(grpIndex)) {
           for (let i = Number(grpIndex) - 1; i >= 0; i--) {
             // If navigating group have items => Then move in that group
             if (grpArr[i][1].length > 0) {
-              currentSelected.value = `${i}.${grpArr[i][1].length - 1}`
-              break
+              currentSelected.value = `${i}.${grpArr[i][1].length - 1}`;
+              break;
             }
           }
         }
       }
       /* eslint-enable no-lonely-if, no-plusplus */
-    }
+    };
 
     return {
       showSearchBar,
@@ -260,17 +248,16 @@ export default {
       searchQuery,
       resetsearchQuery,
       filteredData,
-    }
+    };
   },
-}
+};
 </script>
 
 <style lang="scss" scoped>
 @import '~@core/scss/base/bootstrap-extended/include';
 @import '~@core/scss/base/components/variables-dark';
 
-ul
-{
+ul {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -294,11 +281,11 @@ p {
 
 .suggestion-group-title {
   font-weight: 500;
-  padding: .75rem 1rem .25rem;
+  padding: 0.75rem 1rem 0.25rem;
 }
 
 .suggestion-group-suggestion {
-  padding: .75rem 1rem
+  padding: 0.75rem 1rem;
 }
 
 .suggestion-current-selected {

@@ -1,12 +1,7 @@
 <template>
-  <b-card
-    v-if="data"
-    no-body
-  >
+  <b-card v-if="data" no-body>
     <b-card-header>
-      <h4 class="mb-0">
-        Goal Overview
-      </h4>
+      <h4 class="mb-0">Goal Overview</h4>
       <b-card-text class="font-medium-5 mb-0">
         <feather-icon
           icon="HelpCircleIcon"
@@ -29,9 +24,7 @@
         cols="6"
         class="border-top border-right d-flex align-items-between flex-column py-1"
       >
-        <b-card-text class="text-muted mb-0">
-          Completed
-        </b-card-text>
+        <b-card-text class="text-muted mb-0"> Completed </b-card-text>
         <h3 class="font-weight-bolder mb-0">
           {{ data.completed }}
         </h3>
@@ -41,9 +34,7 @@
         cols="6"
         class="border-top d-flex align-items-between flex-column py-1"
       >
-        <b-card-text class="text-muted mb-0">
-          In Progress
-        </b-card-text>
+        <b-card-text class="text-muted mb-0"> In Progress </b-card-text>
         <h3 class="font-weight-bolder mb-0">
           {{ data.inProgress }}
         </h3>
@@ -53,15 +44,13 @@
 </template>
 
 <script>
-import {
-  BCard, BCardHeader, BRow, BCol, BCardText,
-} from 'bootstrap-vue'
-import VueApexCharts from 'vue-apexcharts'
-import { $themeColors } from '@themeConfig'
+import { BCard, BCardHeader, BRow, BCol, BCardText } from 'bootstrap-vue';
+import VueApexCharts from 'vue-apexcharts';
+import { $themeColors } from '@themeConfig';
 
-const $strokeColor = '#ebe9f1'
-const $textHeadingColor = '#5e5873'
-const $goalStrokeColor2 = '#51e5a8'
+const $strokeColor = '#ebe9f1';
+const $textHeadingColor = '#5e5873';
+const $goalStrokeColor2 = '#51e5a8';
 export default {
   components: {
     VueApexCharts,
@@ -141,7 +130,7 @@ export default {
           },
         },
       },
-    }
+    };
   },
-}
+};
 </script>

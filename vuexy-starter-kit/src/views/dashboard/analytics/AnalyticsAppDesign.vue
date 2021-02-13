@@ -1,8 +1,5 @@
 <template>
-  <b-card
-    v-if="data"
-    class="card-app-design"
-  >
+  <b-card v-if="data" class="card-app-design">
     <b-badge variant="light-primary">
       {{ data.date }}
     </b-badge>
@@ -15,9 +12,7 @@
 
     <!-- design group -->
     <div class="design-group">
-      <h6 class="section-label">
-        Team
-      </h6>
+      <h6 class="section-label">Team</h6>
       <b-badge
         v-for="team in data.teams"
         :key="team.color"
@@ -28,11 +23,9 @@
       </b-badge>
     </div>
     <div class="design-group">
-      <h6 class="section-label">
-        Members
-      </h6>
+      <h6 class="section-label">Members</h6>
       <b-avatar
-        v-for="(member,index) in data.members"
+        v-for="(member, index) in data.members"
         :key="index"
         :variant="member.color"
         :text="member.text"
@@ -71,9 +64,14 @@
 
 <script>
 import {
-  BCard, BBadge, BCardTitle, BCardText, BAvatar, BButton,
-} from 'bootstrap-vue'
-import Ripple from 'vue-ripple-directive'
+  BCard,
+  BBadge,
+  BCardTitle,
+  BCardText,
+  BAvatar,
+  BButton,
+} from 'bootstrap-vue';
+import Ripple from 'vue-ripple-directive';
 
 export default {
   components: {
@@ -93,5 +91,5 @@ export default {
       default: () => {},
     },
   },
-}
+};
 </script>

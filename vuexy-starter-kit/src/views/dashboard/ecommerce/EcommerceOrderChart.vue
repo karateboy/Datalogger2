@@ -1,12 +1,7 @@
 <template>
-  <b-card
-    v-if="data"
-    body-class="pb-50"
-  >
+  <b-card v-if="data" body-class="pb-50">
     <h6>Orders</h6>
-    <h2 class="font-weight-bolder mb-1">
-      2,76k
-    </h2>
+    <h2 class="font-weight-bolder mb-1">2,76k</h2>
     <!-- chart -->
     <vue-apex-charts
       height="70"
@@ -17,11 +12,11 @@
 </template>
 
 <script>
-import { BCard } from 'bootstrap-vue'
-import VueApexCharts from 'vue-apexcharts'
-import { $themeColors } from '@themeConfig'
+import { BCard } from 'bootstrap-vue';
+import VueApexCharts from 'vue-apexcharts';
+import { $themeColors } from '@themeConfig';
 
-const $barColor = '#f3f3f3'
+const $barColor = '#f3f3f3';
 
 export default {
   components: {
@@ -60,7 +55,13 @@ export default {
               columnWidth: '20%',
               startingShape: 'rounded',
               colors: {
-                backgroundBarColors: [$barColor, $barColor, $barColor, $barColor, $barColor],
+                backgroundBarColors: [
+                  $barColor,
+                  $barColor,
+                  $barColor,
+                  $barColor,
+                  $barColor,
+                ],
                 backgroundBarRadius: 5,
               },
             },
@@ -94,7 +95,7 @@ export default {
           },
         },
       },
-    }
+    };
   },
-}
+};
 </script>

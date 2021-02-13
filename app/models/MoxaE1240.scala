@@ -6,7 +6,7 @@ import play.api.libs.json._
 
 import javax.inject._
 
-case class MoxaE1240Param(addr: Int, ch: Seq[ChannelCfg])
+case class MoxaE1240Param(addr: Int, ch: Seq[AiChannelCfg])
 
 @Singleton
 class MoxaE1240 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
@@ -25,7 +25,7 @@ class MoxaE1240 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
   }
 
   override def verifyParam(json: String) = {
-    implicit val cfgReads = Json.reads[ChannelCfg]
+    implicit val cfgReads = Json.reads[AiChannelCfg]
     implicit val reads = Json.reads[MoxaE1240Param]
 
     val ret = Json.parse(json).validate[MoxaE1240Param]
@@ -60,7 +60,7 @@ class MoxaE1240 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
   }
 
   def validateParam(json: String) = {
-    implicit val cfgReads = Json.reads[ChannelCfg]
+    implicit val cfgReads = Json.reads[AiChannelCfg]
     implicit val reads = Json.reads[MoxaE1240Param]
     val ret = Json.parse(json).validate[MoxaE1240Param]
     ret.fold(

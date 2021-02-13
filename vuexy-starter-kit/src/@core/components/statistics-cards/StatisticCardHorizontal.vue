@@ -7,21 +7,15 @@
         </h2>
         <span>{{ statisticTitle }}</span>
       </div>
-      <b-avatar
-        :variant="`light-${color}`"
-        size="45"
-      >
-        <feather-icon
-          size="21"
-          :icon="icon"
-        />
+      <b-avatar :variant="`light-${color}`" size="45">
+        <feather-icon size="21" :icon="icon" />
       </b-avatar>
     </b-card-body>
   </b-card>
 </template>
 
 <script>
-import { BCard, BCardBody, BAvatar } from 'bootstrap-vue'
+import { BCard, BCardBody, BAvatar } from 'bootstrap-vue';
 
 export default {
   components: {
@@ -47,5 +41,5 @@ export default {
       default: 'primary',
     },
   },
-}
+};
 </script>

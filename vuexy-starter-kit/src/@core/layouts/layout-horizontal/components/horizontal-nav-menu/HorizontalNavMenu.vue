@@ -5,8 +5,8 @@
 </template>
 
 <script>
-import navMenuItems from '@/navigation/horizontal'
-import HorizontalNavMenuItems from './components/horizontal-nav-menu-items/HorizontalNavMenuItems.vue'
+import navMenuItems from '@/navigation/horizontal';
+import HorizontalNavMenuItems from './components/horizontal-nav-menu-items/HorizontalNavMenuItems.vue';
 
 export default {
   components: {
@@ -15,11 +15,11 @@ export default {
   setup() {
     return {
       navMenuItems,
-    }
+    };
   },
-}
+};
 </script>
 
 <style lang="scss">
-@import "~@core/scss/base/core/menu/menu-types/horizontal-menu.scss";
+@import '~@core/scss/base/core/menu/menu-types/horizontal-menu.scss';
 </style>

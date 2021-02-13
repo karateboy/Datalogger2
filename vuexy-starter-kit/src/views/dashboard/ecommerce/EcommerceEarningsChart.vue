@@ -1,21 +1,13 @@
 <template>
-  <b-card
-    v-if="data"
-    class="earnings-card"
-  >
+  <b-card v-if="data" class="earnings-card">
     <b-row>
       <b-col cols="6">
-        <b-card-title class="mb-1">
-          Earnings
-        </b-card-title>
-        <div class="font-small-2">
-          This Month
-        </div>
-        <h5 class="mb-1">
-          $4055.56
-        </h5>
+        <b-card-title class="mb-1"> Earnings </b-card-title>
+        <div class="font-small-2">This Month</div>
+        <h5 class="mb-1">$4055.56</h5>
         <b-card-text class="text-muted font-small-2">
-          <span class="font-weight-bolder">68.2%</span><span> more earnings than last month.</span>
+          <span class="font-weight-bolder">68.2%</span
+          ><span> more earnings than last month.</span>
         </b-card-text>
       </b-col>
       <b-col cols="6">
@@ -31,14 +23,12 @@
 </template>
 
 <script>
-import {
-  BCard, BRow, BCol, BCardTitle, BCardText,
-} from 'bootstrap-vue'
-import VueApexCharts from 'vue-apexcharts'
-import { $themeColors } from '@themeConfig'
+import { BCard, BRow, BCol, BCardTitle, BCardText } from 'bootstrap-vue';
+import VueApexCharts from 'vue-apexcharts';
+import { $themeColors } from '@themeConfig';
 
-const $earningsStrokeColor2 = '#28c76f66'
-const $earningsStrokeColor3 = '#28c76f33'
+const $earningsStrokeColor2 = '#28c76f66';
+const $earningsStrokeColor3 = '#28c76f33';
 export default {
   components: {
     BCard,
@@ -71,7 +61,11 @@ export default {
           comparedResult: [2, -3, 8],
           labels: ['App', 'Service', 'Product'],
           stroke: { width: 0 },
-          colors: [$earningsStrokeColor2, $earningsStrokeColor3, $themeColors.success],
+          colors: [
+            $earningsStrokeColor2,
+            $earningsStrokeColor3,
+            $themeColors.success,
+          ],
           grid: {
             padding: {
               right: -20,
@@ -92,7 +86,7 @@ export default {
                     offsetY: -15,
                     formatter(val) {
                       // eslint-disable-next-line radix
-                      return `${parseInt(val)}%`
+                      return `${parseInt(val)}%`;
                     },
                   },
                   total: {
@@ -100,7 +94,7 @@ export default {
                     offsetY: 15,
                     label: 'App',
                     formatter() {
-                      return '53%'
+                      return '53%';
                     },
                   },
                 },
@@ -143,7 +137,7 @@ export default {
           ],
         },
       },
-    }
+    };
   },
-}
+};
 </script>

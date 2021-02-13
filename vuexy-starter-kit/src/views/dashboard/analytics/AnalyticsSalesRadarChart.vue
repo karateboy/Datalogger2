@@ -1,14 +1,9 @@
 <template>
-  <b-card
-    v-if="data"
-    no-body
-  >
+  <b-card v-if="data" no-body>
     <b-card-header class="align-items-baseline">
       <div>
         <b-card-title>Sales</b-card-title>
-        <b-card-text class="mb-0">
-          Last 6 months
-        </b-card-text>
+        <b-card-text class="mb-0"> Last 6 months </b-card-text>
       </div>
       <b-dropdown
         variant="link"
@@ -24,31 +19,19 @@
             class="text-body cursor-pointer"
           />
         </template>
-        <b-dropdown-item href="#">
-          Last 28 Days
-        </b-dropdown-item>
-        <b-dropdown-item href="#">
-          Last Month
-        </b-dropdown-item>
-        <b-dropdown-item href="#">
-          Last Year
-        </b-dropdown-item>
+        <b-dropdown-item href="#"> Last 28 Days </b-dropdown-item>
+        <b-dropdown-item href="#"> Last Month </b-dropdown-item>
+        <b-dropdown-item href="#"> Last Year </b-dropdown-item>
       </b-dropdown>
     </b-card-header>
 
     <b-card-body>
       <div class="d-inline-flex align-items-center mr-2">
-        <feather-icon
-          icon="CircleIcon"
-          class="text-primary mr-50"
-        />
+        <feather-icon icon="CircleIcon" class="text-primary mr-50" />
         <span>Sales</span>
       </div>
       <div class="d-inline-flex align-items-center">
-        <feather-icon
-          icon="CircleIcon"
-          class="text-info mr-50"
-        />
+        <feather-icon icon="CircleIcon" class="text-info mr-50" />
         <span>Visits</span>
       </div>
 
@@ -65,10 +48,16 @@
 
 <script>
 import {
-  BCard, BCardHeader, BCardTitle, BCardBody, BCardText, BDropdown, BDropdownItem,
-} from 'bootstrap-vue'
-import VueApexCharts from 'vue-apexcharts'
-import { $themeColors } from '@themeConfig'
+  BCard,
+  BCardHeader,
+  BCardTitle,
+  BCardBody,
+  BCardText,
+  BDropdown,
+  BDropdownItem,
+} from 'bootstrap-vue';
+import VueApexCharts from 'vue-apexcharts';
+import { $themeColors } from '@themeConfig';
 
 export default {
   components: {
@@ -119,7 +108,14 @@ export default {
           plotOptions: {
             radar: {
               polygons: {
-                strokeColors: ['#ebe9f1', 'transparent', 'transparent', 'transparent', 'transparent', 'transparent'],
+                strokeColors: [
+                  '#ebe9f1',
+                  'transparent',
+                  'transparent',
+                  'transparent',
+                  'transparent',
+                  'transparent',
+                ],
                 connectorColors: 'transparent',
               },
             },
@@ -151,7 +147,7 @@ export default {
           },
         },
       },
-    }
+    };
   },
-}
+};
 </script>

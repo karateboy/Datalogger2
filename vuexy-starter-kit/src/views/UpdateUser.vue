@@ -1,6 +1,6 @@
 <template>
   <div class="m-3 p-3 form_class">
-    <user :isNew="false" :currentUser="userinfo" />
+    <user :is-new="false" :current-user="userinfo" />
   </div>
 </template>
 <style scoped>
@@ -9,19 +9,19 @@
 }
 </style>
 <script lang="ts">
-import Vue from "vue";
-import { mapState } from "vuex";
-import User from "./User.vue";
+import Vue from 'vue';
+import { mapState } from 'vuex';
+import User from './User.vue';
 
 export default Vue.extend({
   components: {
-    User
+    User,
   },
   data() {
     return {};
   },
   computed: {
-    ...mapState(["userinfo"])
-  }
+    ...mapState(['userinfo']),
+  },
 });
 </script>

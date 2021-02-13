@@ -69,14 +69,14 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue'
-import vSelect from 'vue-select'
-import DatePicker from 'vue2-datepicker'
-import 'vue2-datepicker/index.css'
-import 'vue2-datepicker/locale/zh-tw'
-import Ripple from 'vue-ripple-directive'
-import moment from 'moment'
-import axios from 'axios'
+import Vue from 'vue';
+import vSelect from 'vue-select';
+import DatePicker from 'vue2-datepicker';
+import 'vue2-datepicker/index.css';
+import 'vue2-datepicker/locale/zh-tw';
+import Ripple from 'vue-ripple-directive';
+import moment from 'moment';
+import axios from 'axios';
 
 export default Vue.extend({
   components: {
@@ -87,12 +87,7 @@ export default Vue.extend({
     Ripple,
   },
   data() {
-    const range = [
-      moment()
-        .subtract(1, 'days')
-        .valueOf(),
-      moment().valueOf(),
-    ]
+    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
     return {
       display: false,
       alarmLevels: [
@@ -127,23 +122,23 @@ export default Vue.extend({
         range,
         alarmLevel: 1,
       },
-    }
+    };
   },
   methods: {
     async query() {
-      this.display = true
-      const url = `/AlarmReport/${this.form.alarmLevel}/${this.form.range[0]}/${this.form.range[1]}`
-      const res = await axios.get(url)
-      const ret = res.data
+      this.display = true;
+      const url = `/AlarmReport/${this.form.alarmLevel}/${this.form.range[0]}/${this.form.range[1]}`;
+      const res = await axios.get(url);
+      const ret = res.data;
       for (const alarm of ret) {
-        alarm.time = moment(alarm.time).format('lll')
-        const src = alarm.src.split(':')
-        alarm.src = src[1]
+        alarm.time = moment(alarm.time).format('lll');
+        const src = alarm.src.split(':');
+        alarm.src = src[1];
       }
-      this.rows = ret
+      this.rows = ret;
     },
   },
-})
+});
 </script>
 
 <style></style>

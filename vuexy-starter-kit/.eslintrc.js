@@ -3,7 +3,7 @@ module.exports = {
   env: {
     node: true,
   },
-  extends: ['plugin:vue/recommended', '@vue/airbnb'],
+  extends: ['plugin:vue/essential', 'plugin:vue/recommended', '@vue/prettier'],
   parserOptions: {
     parser: 'babel-eslint',
   },
@@ -14,27 +14,26 @@ module.exports = {
     semi: 'off',
     'max-len': 'off',
     'linebreak-style': 'off',
-    'comma-dangle': "off",
-    camelcase: ['error', { properties: 'never', ignoreDestructuring: true, ignoreImports: true }],
+    'comma-dangle': 'off',
+    camelcase: [
+      'error',
+      { properties: 'never', ignoreDestructuring: true, ignoreImports: true },
+    ],
     'arrow-parens': ['error', 'as-needed'],
     'vue/multiline-html-element-content-newline': 'off',
-    'vue/max-attributes-per-line': [2, {
-      singleline: 20,
-      multiline: {
-        max: 1,
-        allowFirstLine: false,
+    'vue/max-attributes-per-line': 'off',
+    'vue/component-tags-order': 'off',
+    /*
+    'vue/max-attributes-per-line': [
+      2,
+      {
+        singleline: 20,
+        multiline: {
+          max: 1,
+          allowFirstLine: false,
+        },
       },
-    }],
-    'object-curly-newline': 'off',
-    "no-restricted-syntax": 'off',
-    "no-underscore-dangle": 'off',
-    "prefer-destructuring": 'off',
-    "no-plusplus": "off",
-    "operator-linebreak": "off",
-    "nonblock-statement-body-position": "off",
-    "no-extra-semi": "off",
-    "no-param-reassign": ["error", { props: false }],
-    'vue/singleline-html-element-content-newline': 'off',
-    "vue/html-self-closing": 'off'
+    ],
+    */
   },
-}
+};

@@ -71,7 +71,7 @@
           :items="rows"
           bordered
         >
-          <template v-slot:custom-foot>
+          <template #custom-foot>
             <b-tr v-for="stat in statRows" :key="stat.name">
               <b-th>{{ stat.name }}</b-th>
               <th v-for="(cell, i) in stat.cellData" :key="i">
@@ -88,14 +88,14 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue'
-import DatePicker from 'vue2-datepicker'
-import vSelect from 'vue-select'
-import 'vue2-datepicker/index.css'
-import 'vue2-datepicker/locale/zh-tw'
-import Ripple from 'vue-ripple-directive'
-import moment from 'moment'
-import axios from 'axios'
+import Vue from 'vue';
+import DatePicker from 'vue2-datepicker';
+import vSelect from 'vue-select';
+import 'vue2-datepicker/index.css';
+import 'vue2-datepicker/locale/zh-tw';
+import Ripple from 'vue-ripple-directive';
+import moment from 'moment';
+import axios from 'axios';
 
 export default Vue.extend({
   components: {
@@ -106,12 +106,7 @@ export default Vue.extend({
     Ripple,
   },
   data() {
-    const range = [
-      moment()
-        .subtract(1, 'days')
-        .valueOf(),
-      moment().valueOf(),
-    ]
+    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
     return {
       display: false,
       columns: [],
@@ -122,35 +117,35 @@ export default Vue.extend({
         instrument: undefined,
         range,
       },
-    }
+    };
   },
   mounted() {
-    this.getInstruments()
+    this.getInstruments();
   },
   methods: {
     getInstruments() {
-      axios.get('/Instrument').then(res => {
-        const ret = res.data
-        this.instruments = ret
+      axios.get('/Instruments').then(res => {
+        const ret = res.data;
+        this.instruments = ret;
         if (this.instruments.length !== 0) {
-          this.form.instrument = this.instruments[0]._id
+          this.form.instrument = this.instruments[0]._id;
         }
-      })
+      });
     },
     async query() {
-      this.display = true
-      const url = `/InstrumentStatusReport/${this.form.instrument}/${this.form.range[0]}/${this.form.range[1]}`
-      const res = await axios.get(url)
-      this.handleReport(res.data)
+      this.display = true;
+      const url = `/InstrumentStatusReport/${this.form.instrument}/${this.form.range[0]}/${this.form.range[1]}`;
+      const res = await axios.get(url);
+      this.handleReport(res.data);
     },
     handleReport(report) {
-      this.columns.splice(0, this.columns.length)
+      this.columns.splice(0, this.columns.length);
 
       this.columns.push({
         key: 'time',
         label: '時間',
         sortable: true,
-      })
+      });
 
       for (let i = 0; i < report.columnNames.length; i++) {
         this.columns.push({
@@ -158,16 +153,16 @@ export default Vue.extend({
           label: `${report.columnNames[i]}`,
           sortable: true,
           stickyColumn: true,
-        })
+        });
       }
       for (const row of report.rows) {
-        row.time = moment(row.time).format('lll')
+        row.time = moment(row.time).format('lll');
       }
-      this.rows = report.rows
-      this.statRows = report.statRows
+      this.rows = report.rows;
+      this.statRows = report.statRows;
     },
   },
-})
+});
 </script>
 
 <style></style>

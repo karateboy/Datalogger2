@@ -69,7 +69,7 @@
           :items="rows"
           bordered
         >
-          <template v-slot:custom-foot>
+          <template #custom-foot>
             <b-tr v-for="stat in statRows" :key="stat.name">
               <b-th>{{ stat.name }}</b-th>
               <th v-for="(cell, i) in stat.cellData" :key="i">
@@ -86,14 +86,14 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue'
-import vSelect from 'vue-select'
-import DatePicker from 'vue2-datepicker'
-import 'vue2-datepicker/index.css'
-import 'vue2-datepicker/locale/zh-tw'
-import Ripple from 'vue-ripple-directive'
-import moment from 'moment'
-import axios from 'axios'
+import Vue from 'vue';
+import vSelect from 'vue-select';
+import DatePicker from 'vue2-datepicker';
+import 'vue2-datepicker/index.css';
+import 'vue2-datepicker/locale/zh-tw';
+import Ripple from 'vue-ripple-directive';
+import moment from 'moment';
+import axios from 'axios';
 
 export default Vue.extend({
   components: {
@@ -104,7 +104,7 @@ export default Vue.extend({
     Ripple,
   },
   data() {
-    const date = moment().valueOf()
+    const date = moment().valueOf();
     return {
       display: false,
       reportTypes: [
@@ -118,54 +118,54 @@ export default Vue.extend({
         date,
         reportType: 'daily',
       },
-    }
+    };
   },
   computed: {
     pickerType() {
-      if (this.form.reportType === 'daily') return 'date'
-      return 'month'
+      if (this.form.reportType === 'daily') return 'date';
+      return 'month';
     },
   },
   methods: {
     async query() {
-      this.display = true
-      const url = `/monitorReport/${this.form.reportType}/${this.form.date}`
-      const res = await axios.get(url)
-      this.handleReport(res.data)
+      this.display = true;
+      const url = `/monitorReport/${this.form.reportType}/${this.form.date}`;
+      const res = await axios.get(url);
+      this.handleReport(res.data);
     },
     handleReport(report) {
-      this.columns.splice(0, this.columns.length)
+      this.columns.splice(0, this.columns.length);
       if (this.form.reportType === 'daily') {
         this.columns.push({
           key: 'time',
           label: '時間',
           sortable: true,
-        })
+        });
       } else {
         this.columns.push({
           key: 'time',
           label: '日期',
           sortable: true,
-        })
+        });
       }
       for (let i = 0; i < report.columnNames.length; i++) {
         this.columns.push({
           key: `cellData[${i}].v`,
           label: `${report.columnNames[i]}`,
           sortable: true,
-        })
+        });
       }
       for (const row of report.hourRows) {
         row.time =
           this.form.reportType === 'daily'
             ? moment(row.time).format('HH:mm')
-            : moment(row.time).format('MM/DD')
+            : moment(row.time).format('MM/DD');
       }
-      this.rows = report.hourRows
-      this.statRows = report.statRows
+      this.rows = report.hourRows;
+      this.statRows = report.statRows;
     },
   },
-})
+});
 </script>
 
 <style></style>

@@ -35,7 +35,8 @@ import javax.inject._
 
 @Singleton
 class InstrumentTypeOp @Inject()
-(adam4017Drv: Adam4017, adam4017Factory: Adam4017Collector.Factory,
+(adam4017Drv: Adam4017, adam4017Factory: Adam4017Collector.Factory, adam4068Factory: Adam4068Collector.Factory,
+ adam6017Drv: Adam6017, adam6017Factory: Adam6017Collector.Factory,
  moxaE1240Drv: MoxaE1240, moxaE1240Factory: MoxaE1240Collector.Factory,
  verewaF701Factory: VerewaF701Collector.Factory,
  moxaE1212Drv: MoxaE1212, moxaE1212Factory: MoxaE1212Collector.Factory,
@@ -54,6 +55,7 @@ class InstrumentTypeOp @Inject()
   val ADAM4017 = "adam4017"
   val ADAM4068 = "adam4068"
   val ADAM5000 = "adam5000"
+  val ADAM6017 = "adam6017"
 
   val T100 = "t100"
   val T200 = "t200"
@@ -74,7 +76,8 @@ class InstrumentTypeOp @Inject()
   val GPS = "gps"
   val map = Map(
     InstrumentType(ADAM4017, "Adam 4017", List(serial), adam4017Drv, adam4017Factory, true).infoPair,
-    InstrumentType(ADAM4068, "Adam 4068", List(serial), Adam4068, moxaE1240Factory, true).infoPair,
+    InstrumentType(ADAM4068, "Adam 4068", List(serial), Adam4068, adam4068Factory, true).infoPair,
+    InstrumentType(ADAM6017, "Adam 6017", List(tcp), adam6017Drv, adam6017Factory, true).infoPair,
     InstrumentType(BASELINE9000, "Baseline 9000 MNME Analyzer", List(serial), Baseline9000Collector, baseline9000Factory).infoPair,
     InstrumentType(GPS, "GPS", List(serial), GpsCollector, gpsFactory).infoPair,
     InstrumentType(HORIBA370, "Horiba APXX-370", List(tcp), Horiba370Collector, horiba370Factory).infoPair,

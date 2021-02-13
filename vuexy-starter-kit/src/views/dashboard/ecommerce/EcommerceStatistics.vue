@@ -1,9 +1,5 @@
 <template>
-  <b-card
-    v-if="data"
-    no-body
-    class="card-statistics"
-  >
+  <b-card v-if="data" no-body class="card-statistics">
     <b-card-header>
       <b-card-title>Statistics</b-card-title>
       <b-card-text class="font-small-2 mr-25 mb-0">
@@ -20,18 +16,9 @@
           :class="item.customClass"
         >
           <b-media no-body>
-            <b-media-aside
-
-              class="mr-2"
-            >
-              <b-avatar
-                size="48"
-                :variant="item.color"
-              >
-                <feather-icon
-                  size="24"
-                  :icon="item.icon"
-                />
+            <b-media-aside class="mr-2">
+              <b-avatar size="48" :variant="item.color">
+                <feather-icon size="24" :icon="item.icon" />
               </b-avatar>
             </b-media-aside>
             <b-media-body class="my-auto">
@@ -51,8 +38,18 @@
 
 <script>
 import {
-  BCard, BCardHeader, BCardTitle, BCardText, BCardBody, BRow, BCol, BMedia, BMediaAside, BAvatar, BMediaBody,
-} from 'bootstrap-vue'
+  BCard,
+  BCardHeader,
+  BCardTitle,
+  BCardText,
+  BCardBody,
+  BRow,
+  BCol,
+  BMedia,
+  BMediaAside,
+  BAvatar,
+  BMediaBody,
+} from 'bootstrap-vue';
 
 export default {
   components: {
@@ -74,5 +71,5 @@ export default {
       default: () => [],
     },
   },
-}
+};
 </script>

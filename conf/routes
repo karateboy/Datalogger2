@@ -15,9 +15,9 @@ GET      /logout                                                                
 POST     /login                                                                   controllers.Login.authenticate
 GET      /login                                                                   controllers.Login.isLogin
 
-PUT      /User                                                                    controllers.HomeController.newUser
+POST     /User                                                                    controllers.HomeController.newUser
 GET      /User                                                                    controllers.HomeController.getAllUsers
-POST     /User/:id                                                                controllers.HomeController.updateUser(id)
+PUT      /User/:id                                                                controllers.HomeController.updateUser(id)
 DELETE   /User/:id                                                                controllers.HomeController.deleteUser(id)	
 
 GET      /HistoryTrend/:monitorType/:reportUnit/:statusFilter/:start/:end         controllers.Query.historyTrendChart(monitorType, reportUnit, statusFilter, start:Long, end:Long, outputTypeStr="html")
@@ -32,14 +32,15 @@ GET      /AlarmReport/:level/:start/:end                                        
 POST     /SaveMonitorTypeConfig                                                   controllers.HomeController.saveMonitorTypeConfig
 
 GET      /InstrumentTypes                                                         controllers.HomeController.getInstrumentTypes
-GET      /InstrumentTypeInfo                                                      controllers.HomeController.getInstrumentTypes
-GET      /InstrumentTypeInfo/:id                                                  controllers.HomeController.getInstrumentType(id)
+GET      /InstrumentType/:id                                                      controllers.HomeController.getInstrumentType(id)
 
 
-PUT      /Instrument                                                              controllers.HomeController.newInstrument
-GET      /Instrument                                                              controllers.HomeController.getInstrumentList
+GET      /InstrumentInfos                                                         controllers.HomeController.getInstrumentInfoList()
+POST     /Instrument                                                              controllers.HomeController.newInstrument
+GET      /Instruments                                                             controllers.HomeController.getInstrumentList
 GET      /Instrument/:id                                                          controllers.HomeController.getInstrument(id)
 DELETE   /Instrument/:ids                                                         controllers.HomeController.removeInstrument(ids)
+
 PUT      /DeactivateInstrument/:ids                                               controllers.HomeController.deactivateInstrument(ids)
 PUT      /ActivateInstrument/:ids                                                 controllers.HomeController.activateInstrument(ids)
 PUT      /ToggleMaintainInstrument/:ids                                           controllers.HomeController.toggleMaintainInstrument(ids)

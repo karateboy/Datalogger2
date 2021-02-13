@@ -7,40 +7,40 @@
         :items="monitorTypes"
         bordered
         sticky-header
-        style="max-height: 600px;"
+        style="max-height: 600px"
       >
-        <template v-slot:cell(desp)="row">
+        <template #cell(desp)="row">
           <b-form-input v-model="row.item.desp" @change="markDirty(row.item)" />
         </template>
-        <template v-slot:cell(unit)="row">
+        <template #cell(unit)="row">
           <b-form-input
             v-model="row.item.unit"
             size="sm"
             @change="markDirty(row.item)"
           />
         </template>
-        <template v-slot:cell(prec)="row">
+        <template #cell(prec)="row">
           <b-form-input
             v-model.number="row.item.prec"
             size="sm"
             @change="markDirty(row.item)"
           />
         </template>
-        <template v-slot:cell(zd_internal)="row">
+        <template #cell(zd_internal)="row">
           <b-form-input
             v-model.number="row.item.zd_internal"
             size="sm"
             @change="markDirty(row.item)"
           />
         </template>
-        <template v-slot:cell(zd_law)="row">
+        <template #cell(zd_law)="row">
           <b-form-input
             v-model.number="row.item.zd_law"
             size="sm"
             @change="markDirty(row.item)"
           />
         </template>
-        <template v-slot:cell(span)="row">
+        <template #cell(span)="row">
           <b-form-input
             v-model.number="row.item.span"
             type="number"
@@ -48,14 +48,14 @@
             @change="markDirty(row.item)"
           />
         </template>
-        <template v-slot:cell(span_dev_internal)="row">
+        <template #cell(span_dev_internal)="row">
           <b-form-input
             v-model.number="row.item.span_dev_internal"
             size="sm"
             @change="markDirty(row.item)"
           />
         </template>
-        <template v-slot:cell(span_dev_law)="row">
+        <template #cell(span_dev_law)="row">
           <b-form-input
             v-model.number="row.item.span_dev_law"
             size="sm"

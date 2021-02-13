@@ -9,12 +9,11 @@ import play.api.libs.json._
 import play.api.mvc._
 
 import javax.inject._
-import scala.concurrent.Future
 
-class HomeController @Inject() (environment: play.api.Environment, recordOp: RecordOp,
-                             userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
-                             monitorTypeOp: MonitorTypeOp, query: Query,
-                             instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp) extends Controller {
+class HomeController @Inject()(environment: play.api.Environment, recordOp: RecordOp,
+                               userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
+                               monitorTypeOp: MonitorTypeOp, query: Query,
+                               instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp) extends Controller {
 
   val title = "資料擷取器"
 
@@ -24,6 +23,7 @@ class HomeController @Inject() (environment: play.api.Environment, recordOp: Rec
     def listExcels(dir: String) = {
       new java.io.File(dir).listFiles.filter(_.getName.endsWith(".xlsx"))
     }
+
     val msgBuffer = new StringBuffer
 
     import java.io.File
@@ -129,7 +129,6 @@ class HomeController @Inject() (environment: play.api.Environment, recordOp: Rec
     Ok(Json.toJson(users))
   }
 
-  case class EditData(id: String, data: String)
   def saveMonitorTypeConfig() = Security.Authenticated {
     implicit request =>
       try {
@@ -155,25 +154,27 @@ class HomeController @Inject() (environment: play.api.Environment, recordOp: Rec
   def getInstrumentTypes = Security.Authenticated {
     implicit val w1 = Json.writes[ProtocolInfo]
     implicit val write = Json.writes[InstrumentTypeInfo]
-    val iTypes = instrumentTypeOp.map.values.map  { t =>
-      InstrumentTypeInfo(t.id, t.desp,
-        t.protocol.map { p => ProtocolInfo(p, Protocol.map(p)) })
-    }
-    Ok(Json.toJson(iTypes.toList))
+    val iTypes =
+      for (instType <- instrumentTypeOp.map.keys) yield {
+        val t = instrumentTypeOp.map(instType)
+        InstrumentTypeInfo(t.id, t.desp,
+          t.protocol.map { p => ProtocolInfo(p, Protocol.map(p)) })
+      }
+    val sorted = iTypes.toList.sortWith((a, b) => a.id < b.id)
+    Ok(Json.toJson(sorted.toList))
   }
 
   def getInstrumentType(id: String) = Security.Authenticated {
     implicit val w1 = Json.writes[ProtocolInfo]
     implicit val write = Json.writes[InstrumentTypeInfo]
-    val iTypes = instrumentTypeOp.map.values.filter(t=>t.id == id) map  { t =>
+    val iTypes = {
+      val t = instrumentTypeOp.map(id)
       InstrumentTypeInfo(t.id, t.desp,
         t.protocol.map { p => ProtocolInfo(p, Protocol.map(p)) })
     }
     Ok(Json.toJson(iTypes))
   }
 
-  implicit val w1 = Json.writes[InstrumentStatusType]
-  implicit val w = Json.writes[Instrument]
   def newInstrument = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
       implicit val r1 = Json.reads[InstrumentStatusType]
@@ -213,7 +214,10 @@ class HomeController @Inject() (environment: play.api.Environment, recordOp: Rec
         })
   }
 
-  def getInstrumentList = Security.Authenticated {
+  implicit val w1 = Json.writes[InstrumentStatusType]
+  implicit val w = Json.writes[Instrument]
+
+  def getInstrumentInfoList = Security.Authenticated {
     implicit val write = Json.writes[InstrumentInfo]
     val ret = instrumentOp.getInstrumentList()
 
@@ -224,9 +228,9 @@ class HomeController @Inject() (environment: play.api.Environment, recordOp: Rec
       }
 
       def getStateStr = {
-        if (inst.active){
+        if (inst.active) {
           monitorStatusOp.map(inst.state).desp
-        }else
+        } else
           "停用"
       }
 
@@ -236,7 +240,9 @@ class HomeController @Inject() (environment: play.api.Environment, recordOp: Rec
       }
 
       def getInfoClass = {
-        val mtStr = getMonitorTypes.map { monitorTypeOp.map(_).desp }.mkString(",")
+        val mtStr = getMonitorTypes.map {
+          monitorTypeOp.map(_).desp
+        }.mkString(",")
         val protocolParam =
           inst.protocol.protocol match {
             case Protocol.tcp =>
@@ -251,12 +257,19 @@ class HomeController @Inject() (environment: play.api.Environment, recordOp: Rec
         InstrumentInfo(inst._id, instrumentTypeOp.map(inst.instType).desp, state,
           Protocol.map(inst.protocol.protocol), protocolParam, mtStr, calibrationTime)
       }
-      getInfoClass }
+
+      getInfoClass
+    }
     Ok(Json.toJson(ret2))
   }
 
+  def getInstrumentList = Security.Authenticated {
+    val ret = instrumentOp.getInstrumentList()
+
+    Ok(Json.toJson(ret))
+  }
+
   def getInstrument(id: String) = Security.Authenticated {
-    implicit val w = Json.writes[Instrument]
     val ret = instrumentOp.getInstrument(id)
     if (ret.isEmpty)
       BadRequest(s"No such instrument: $id")
@@ -269,9 +282,15 @@ class HomeController @Inject() (environment: play.api.Environment, recordOp: Rec
   def removeInstrument(instruments: String) = Security.Authenticated {
     val ids = instruments.split(",")
     try {
-      ids.foreach { dataCollectManagerOp.stopCollect(_) }
-      ids.foreach { monitorTypeOp.stopMeasuring }
-      ids.map { instrumentOp.delete }
+      ids.foreach {
+        dataCollectManagerOp.stopCollect(_)
+      }
+      ids.foreach {
+        monitorTypeOp.stopMeasuring
+      }
+      ids.map {
+        instrumentOp.delete
+      }
     } catch {
       case ex: Exception =>
         Logger.error(ex.getMessage, ex)
@@ -284,8 +303,12 @@ class HomeController @Inject() (environment: play.api.Environment, recordOp: Rec
   def deactivateInstrument(instruments: String) = Security.Authenticated {
     val ids = instruments.split(",")
     try {
-      ids.foreach { dataCollectManagerOp.stopCollect(_) }
-      ids.map { instrumentOp.deactivate }
+      ids.foreach {
+        dataCollectManagerOp.stopCollect(_)
+      }
+      ids.map {
+        instrumentOp.deactivate
+      }
     } catch {
       case ex: Throwable =>
         Logger.error(ex.getMessage, ex)
@@ -298,8 +321,12 @@ class HomeController @Inject() (environment: play.api.Environment, recordOp: Rec
   def activateInstrument(instruments: String) = Security.Authenticated {
     val ids = instruments.split(",")
     try {
-      val f = ids.map { instrumentOp.activate }
-      ids.foreach { dataCollectManagerOp.startCollect(_) }
+      val f = ids.map {
+        instrumentOp.activate
+      }
+      ids.foreach {
+        dataCollectManagerOp.startCollect(_)
+      }
     } catch {
       case ex: Throwable =>
         Logger.error(ex.getMessage, ex)
@@ -419,7 +446,7 @@ class HomeController @Inject() (environment: play.api.Environment, recordOp: Rec
     Ok(Json.toJson(mtList))
   }
 
-  def upsertMonitorType(id:String) = Security.Authenticated(BodyParsers.parse.json) {
+  def upsertMonitorType(id: String) = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
       Logger.info(s"upsert Mt:${id}")
       implicit val read = Json.reads[MonitorType]
@@ -435,7 +462,6 @@ class HomeController @Inject() (environment: play.api.Environment, recordOp: Rec
           Ok(Json.obj("ok" -> true))
         })
   }
-
 
   def recalculateHour(startStr: String, endStr: String) = Security.Authenticated {
     val start = DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
@@ -466,4 +492,6 @@ class HomeController @Inject() (environment: play.api.Environment, recordOp: Rec
     dataCollectManagerOp.evtOperationHighThreshold
     Ok("ok")
   }
+
+  case class EditData(id: String, data: String)
 }

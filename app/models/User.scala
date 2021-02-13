@@ -10,8 +10,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.implicitConversions
 
 
-case class User(_id: String, password: String, name: String, phone: String, isAdmin: Boolean,
-                alarmConfig: Option[AlarmConfig] = Some(AlarmConfig.defaultConfig), widgets: Option[List[String]] = Some(List.empty[String]))
+case class User(_id: String, password: String, name: String, isAdmin: Boolean)
 
 import javax.inject._
 
@@ -33,7 +32,7 @@ class UserOp @Inject()(mongoDB: MongoDB) {
     f.onSuccess({
       case count: Long =>
         if (count == 0) {
-          val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn", "02-2219-2886", true)
+          val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn", true)
           Logger.info("Create default user:" + defaultUser.toString())
           newUser(defaultUser)
         }
@@ -46,7 +45,7 @@ class UserOp @Inject()(mongoDB: MongoDB) {
     val f = collection.countDocuments().toFuture()
     val ret = waitReadyResult(f)
     if (ret == 0) {
-      val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn", "02-2219-2886", true)
+      val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn",  true)
       Logger.info("Create default user:" + defaultUser.toString())
       newUser(defaultUser)
     }

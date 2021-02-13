@@ -112,16 +112,16 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue'
-import vSelect from 'vue-select'
-import DatePicker from 'vue2-datepicker'
-import 'vue2-datepicker/index.css'
-import 'vue2-datepicker/locale/zh-tw'
-import Ripple from 'vue-ripple-directive'
-import { mapState, mapActions } from 'vuex'
-import moment from 'moment'
-import axios from 'axios'
-import highcharts from 'highcharts'
+import Vue from 'vue';
+import vSelect from 'vue-select';
+import DatePicker from 'vue2-datepicker';
+import 'vue2-datepicker/index.css';
+import 'vue2-datepicker/locale/zh-tw';
+import Ripple from 'vue-ripple-directive';
+import { mapState, mapActions } from 'vuex';
+import moment from 'moment';
+import axios from 'axios';
+import highcharts from 'highcharts';
 
 export default Vue.extend({
   components: {
@@ -133,12 +133,7 @@ export default Vue.extend({
   },
 
   data() {
-    const range = [
-      moment()
-        .subtract(1, 'days')
-        .valueOf(),
-      moment().valueOf(),
-    ]
+    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
     return {
       statusFilters: [
         { id: 'all', txt: '全部' },
@@ -199,7 +194,7 @@ export default Vue.extend({
         chartType: 'line',
         range,
       },
-    }
+    };
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
@@ -208,19 +203,19 @@ export default Vue.extend({
     this.fetchMonitorTypes().then(() => {
       if (this.monitorTypes.length !== 0) {
         // eslint-disable-next-line no-underscore-dangle
-        this.form.monitorTypes.push(this.monitorTypes[0]._id)
+        this.form.monitorTypes.push(this.monitorTypes[0]._id);
       }
-    })
+    });
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     async query() {
-      this.display = true
+      this.display = true;
       const url = `/HistoryTrend/${this.form.monitorTypes.join(':')}/${
         this.form.reportUnit
-      }/${this.form.statusFilter}/${this.form.range[0]}/${this.form.range[1]}`
-      const res = await axios.get(url)
-      const ret = res.data
+      }/${this.form.statusFilter}/${this.form.range[0]}/${this.form.range[1]}`;
+      const res = await axios.get(url);
+      const ret = res.data;
       if (this.form.chartType !== 'boxplot') {
         ret.chart = {
           type: this.form.chartType,
@@ -228,12 +223,12 @@ export default Vue.extend({
           panning: true,
           panKey: 'shift',
           alignTicks: false,
-        }
+        };
 
         const pointFormatter = function pointFormatter() {
-          const d = new Date(this.x)
-          return `${d.toLocaleString()}:${Math.round(this.y)}度`
-        }
+          const d = new Date(this.x);
+          return `${d.toLocaleString()}:${Math.round(this.y)}度`;
+        };
 
         ret.colors = [
           '#7CB5EC',
@@ -249,20 +244,20 @@ export default Vue.extend({
           '#7CB5EC',
           '#80C535',
           '#969696',
-        ]
+        ];
 
-        ret.tooltip = { valueDecimals: 2 }
-        ret.legend = { enabled: true }
+        ret.tooltip = { valueDecimals: 2 };
+        ret.legend = { enabled: true };
         ret.credits = {
           enabled: false,
           href: 'http://www.wecc.com.tw/',
-        }
-        ret.xAxis.type = 'datetime'
+        };
+        ret.xAxis.type = 'datetime';
         ret.xAxis.dateTimeLabelFormats = {
           day: '%b%e日',
           week: '%b%e日',
           month: '%y年%b',
-        }
+        };
 
         ret.plotOptions = {
           scatter: {
@@ -270,12 +265,12 @@ export default Vue.extend({
               pointFormatter,
             },
           },
-        }
+        };
       }
-      highcharts.chart('chart_container', ret)
+      highcharts.chart('chart_container', ret);
     },
   },
-})
+});
 </script>
 
 <style></style>

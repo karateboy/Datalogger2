@@ -5,7 +5,7 @@
 </template>
 
 <script>
-import axios from 'axios'
+import axios from 'axios';
 
 export default {
   data() {
@@ -39,23 +39,23 @@ export default {
       ],
       items: [],
       timer: 0,
-    }
+    };
   },
   mounted() {
-    this.getRealtimeData()
-    this.timer = setInterval(this.getRealtimeData, 3000)
+    this.getRealtimeData();
+    this.timer = setInterval(this.getRealtimeData, 3000);
   },
   beforeDestroy() {
-    clearInterval(this.timer)
+    clearInterval(this.timer);
   },
   methods: {
     async getRealtimeData() {
-      const ret = await axios.get('/MonitorTypeStatusList')
-      this.items.splice(0, this.items.length)
-      this.items = ret.data
+      const ret = await axios.get('/MonitorTypeStatusList');
+      this.items.splice(0, this.items.length);
+      this.items = ret.data;
     },
   },
-}
+};
 </script>
 
 <style></style>

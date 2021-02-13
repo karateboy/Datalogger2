@@ -1,9 +1,5 @@
 <template>
-  <b-card
-    v-if="data"
-    class="card-transaction"
-    no-body
-  >
+  <b-card v-if="data" class="card-transaction" no-body>
     <b-card-header>
       <b-card-title>Transactions</b-card-title>
 
@@ -21,15 +17,9 @@
             class="text-body cursor-pointer"
           />
         </template>
-        <b-dropdown-item href="#">
-          Last 28 Days
-        </b-dropdown-item>
-        <b-dropdown-item href="#">
-          Last Month
-        </b-dropdown-item>
-        <b-dropdown-item href="#">
-          Last Year
-        </b-dropdown-item>
+        <b-dropdown-item href="#"> Last 28 Days </b-dropdown-item>
+        <b-dropdown-item href="#"> Last Month </b-dropdown-item>
+        <b-dropdown-item href="#"> Last Year </b-dropdown-item>
       </b-dropdown>
     </b-card-header>
 
@@ -41,15 +31,8 @@
       >
         <b-media no-body>
           <b-media-aside>
-            <b-avatar
-              rounded
-              size="42"
-              :variant="transaction.avatarVariant"
-            >
-              <feather-icon
-                size="18"
-                :icon="transaction.avatar"
-              />
+            <b-avatar rounded size="42" :variant="transaction.avatarVariant">
+              <feather-icon size="18" :icon="transaction.avatar" />
             </b-avatar>
           </b-media-aside>
           <b-media-body>
@@ -61,7 +44,7 @@
         </b-media>
         <div
           class="font-weight-bolder"
-          :class="transaction.deduction ? 'text-danger':'text-success'"
+          :class="transaction.deduction ? 'text-danger' : 'text-success'"
         >
           {{ transaction.payment }}
         </div>
@@ -72,8 +55,17 @@
 
 <script>
 import {
-  BCard, BCardHeader, BCardTitle, BCardBody, BMediaBody, BMedia, BMediaAside, BAvatar, BDropdown, BDropdownItem,
-} from 'bootstrap-vue'
+  BCard,
+  BCardHeader,
+  BCardTitle,
+  BCardBody,
+  BMediaBody,
+  BMedia,
+  BMediaAside,
+  BAvatar,
+  BDropdown,
+  BDropdownItem,
+} from 'bootstrap-vue';
 
 export default {
   components: {
@@ -94,5 +86,5 @@ export default {
       default: () => [],
     },
   },
-}
+};
 </script>
