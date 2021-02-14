@@ -119,7 +119,7 @@
       id="instModal"
       :title="modalTitle"
       hide-footer
-      size="lg"
+      size="xl"
       modal-class="modal-primary"
       no-close-on-backdrop
     >

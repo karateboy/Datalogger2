@@ -19,68 +19,6 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
 
   val epaReportPath: String = environment.rootPath + "/importEPA/"
 
-  def importEpa = Action {
-    def listExcels(dir: String) = {
-      new java.io.File(dir).listFiles.filter(_.getName.endsWith(".xlsx"))
-    }
-
-    val msgBuffer = new StringBuffer
-
-    import java.io.File
-    def importEpaData(f: File) {
-      import org.apache.poi.ss.usermodel._
-
-      import java.io.FileInputStream
-
-      val wb = WorkbookFactory.create(new FileInputStream(f));
-      val sheet = wb.getSheetAt(0)
-      val mtStr = sheet.getRow(1).getCell(2).getStringCellValue
-      try {
-        (mtStr)
-      } catch {
-        case _: Throwable =>
-          val msg = "未知的測項代碼:" + mtStr
-          msgBuffer.append(msg)
-          throw new Exception(msg)
-      }
-
-      import scala.collection.mutable.Queue
-      val updateQueue = Queue.empty[(DateTime, Double)]
-
-      var rowN = 2
-      var row = sheet.getRow(rowN)
-      while (row != null) {
-        val timeStr = row.getCell(0).getStringCellValue
-        val time = DateTime.parse(timeStr, DateTimeFormat.forPattern("YYYY/MM/dd hh:mm:ss"))
-
-        val mtValue = row.getCell(1).getNumericCellValue
-        updateQueue.enqueue((time, mtValue))
-        rowN += 1
-        row = sheet.getRow(rowN)
-      }
-      msgBuffer.append("共" + updateQueue.length + "筆資料\n")
-      wb.close()
-
-      {
-        val f = recordOp.updateMtRecord(recordOp.SecCollection)((mtStr), updateQueue)
-        import models.ModelHelper._
-        val ret = waitReadyResult(f)
-      }
-    }
-
-    try {
-      for (f <- listExcels(epaReportPath)) {
-        msgBuffer.append("匯入:" + f.getName + "\n")
-        importEpaData(f)
-        f.delete()
-      }
-      Ok(msgBuffer.toString())
-    } catch {
-      case ex: Throwable =>
-        Ok("匯入失敗:" + ex.getMessage)
-    }
-  }
-
   implicit val userParamRead: Reads[User] = Json.reads[User]
 
   def newUser = Security.Authenticated(BodyParsers.parse.json) {

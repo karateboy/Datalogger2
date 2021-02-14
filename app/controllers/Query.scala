@@ -455,7 +455,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
               }
             }
 
-            RowData(r.time, mtCellData)
+            RowData(r.time.getTime, mtCellData)
         }
 
         val columnNames = monitorTypes.toSeq map {

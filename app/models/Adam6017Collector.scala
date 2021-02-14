@@ -11,10 +11,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object Adam6017Collector {
 
-  case object ConnectHost
-  case object Collect
-
   var count = 0
+
   def start(id: String, protocolParam: ProtocolParam, param: Adam6017Param)(implicit context: ActorContext) = {
     val prop = Props(classOf[Adam6017Collector], id, protocolParam, param)
     val collector = context.actorOf(prop, name = "MoxaE1212Collector" + count)
@@ -28,30 +26,31 @@ object Adam6017Collector {
   trait Factory {
     def apply(id: String, protocol: ProtocolParam, param: Adam6017Param): Actor
   }
+
+  case object ConnectHost
+
+  case object Collect
+
 }
 
 
 class Adam6017Collector @Inject()
 (instrumentOp: InstrumentOp, monitorTypeOp: MonitorTypeOp, system: ActorSystem)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: Adam6017Param) extends Actor with ActorLogging {
+
   import MoxaE1212Collector._
 
+  self ! ConnectHost
   var cancelable: Cancellable = _
 
-  val resetTimer = {
-    import com.github.nscala_time.time.Imports._
-
-    val resetTime = DateTime.now().withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0) + 1.hour
-    val duration = new Duration(DateTime.now(), resetTime)
-    import scala.concurrent.duration._
-    system.scheduler.schedule(scala.concurrent.duration.Duration(duration.getStandardSeconds, SECONDS),
-      scala.concurrent.duration.Duration(1, HOURS), self, ResetCounter)
-  }
-
   def decodeAi(values: Seq[Double], collectorState: String)(param: Adam6017Param) = {
+    val ret = for (v <- values) yield
+      "%.5f".format(v)
+
+    // Logger.info(ret.toString())
     val dataPairList =
       for {
-        cfg <- param.ch.zipWithIndex
+        cfg <- param.chs.zipWithIndex
         (chCfg, idx) = cfg if chCfg.enable
         rawValue = values(idx)
         mt <- chCfg.mt
@@ -60,7 +59,7 @@ class Adam6017Collector @Inject()
         max <- chCfg.max
         min <- chCfg.min
       } yield {
-        val v = mtMin + (mtMax - mtMin) / (max - min) * (values(idx) - min)
+        val v = mtMin + (mtMax - mtMin) / (max - min) * (rawValue - min)
         val status = if (MonitorTypeCollectorStatus.map.contains(mt))
           MonitorTypeCollectorStatus.map(mt)
         else {
@@ -69,8 +68,9 @@ class Adam6017Collector @Inject()
           else
             collectorState
         }
-        val rawMt = monitorTypeOp.getRawMonitorType(mt)
-        List(MonitorTypeData(mt, v, status), MonitorTypeData(rawMt, rawValue, status))
+        // val rawMt = monitorTypeOp.getRawMonitorType(mt)
+        // List(MonitorTypeData(mt, v, status), MonitorTypeData(rawMt, rawValue, status))
+        List(MonitorTypeData(mt, v, status))
       }
     val dataList = dataPairList.flatMap { x => x }
     context.parent ! ReportData(dataList.toList)
@@ -86,7 +86,6 @@ class Adam6017Collector @Inject()
 
   def handler(collectorState: String, masterOpt: Option[ModbusMaster]): Receive = {
     case ConnectHost =>
-      log.info(s"connect to Adam6017")
       Future {
         blocking {
           try {
@@ -103,6 +102,7 @@ class Adam6017Collector @Inject()
             context become handler(collectorState, Some(master))
             import scala.concurrent.duration._
             cancelable = system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
+            self ! WriteDO(bit = 16, on = false)
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)
@@ -128,15 +128,17 @@ class Adam6017Collector @Inject()
               val batch = new BatchRead[Float]
 
               for (idx <- 0 to 7)
-                batch.addLocator(idx, BaseLocator.inputRegister(1, 1 + 2 * idx, DataType.FOUR_BYTE_FLOAT))
+                batch.addLocator(idx, BaseLocator.holdingRegister(1, 1 + idx, DataType.TWO_BYTE_INT_UNSIGNED))
 
               batch.setContiguousRequests(true)
 
               val rawResult = masterOpt.get.send(batch)
               val result =
-                for (idx <- 0 to 7) yield rawResult.getDoubleValue(idx).toDouble
+                for (idx <- 0 to 7) yield
+                  rawResult.getValue(idx).asInstanceOf[Integer]
 
-              decodeAi(result, collectorState)(param)
+              val actualResult = result map { v => -5.0 + 10 * v / 65535.0 }
+              decodeAi(actualResult, collectorState)(param)
             }
 
             import scala.concurrent.duration._
@@ -156,25 +158,6 @@ class Adam6017Collector @Inject()
       instrumentOp.setState(id, state)
       context become handler(state, masterOpt)
 
-    case ResetCounter =>
-      Logger.info("Reset counter to 0")
-      try {
-        import com.serotonin.modbus4j.locator.BaseLocator
-        val resetRegAddr = 272
-
-        for {
-          ch_idx <- param.ch.zipWithIndex if ch_idx._1.enable && ch_idx._1.mt == Some(monitorTypeOp.RAIN)
-          ch = ch_idx._1
-          idx = ch_idx._2
-        } {
-          val locator = BaseLocator.coilStatus(1, resetRegAddr + idx)
-          masterOpt.get.setValue(locator, true)
-        }
-      } catch {
-        case ex: Exception =>
-          ModelHelper.logException(ex)
-      }
-
     case WriteDO(bit, on) =>
       Logger.info(s"Output DO $bit to $on")
       try {
@@ -190,7 +173,5 @@ class Adam6017Collector @Inject()
   override def postStop(): Unit = {
     if (cancelable != null)
       cancelable.cancel()
-
-    resetTimer.cancel()
   }
 }

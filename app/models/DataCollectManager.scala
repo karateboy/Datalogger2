@@ -202,7 +202,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         }
         (avg, statusKV._1)
       }
-      mt -> minuteAvg
+      MtRecord(mt, minuteAvg._1, minuteAvg._2)
     }
   }
 
@@ -255,8 +255,9 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
       lb.append((r.time, r.value))
     }
 
-    val hourMtAvgList = calculateHourAvgMap(mtMap)
-    val f = recordOp.upsertRecord(recordOp.toDocument(current.minusHours(1), hourMtAvgList.toList))(recordOp.HourCollection)
+    val mtDataList = calculateHourAvgMap(mtMap)
+    val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, "")
+    val f = recordOp.upsertRecord(recordList)(recordOp.HourCollection)
     if (forward)
       f map { _ => ForwardManager.forwardHourData }
 
@@ -342,7 +343,7 @@ class DataCollectManager @Inject()
         }
         (avg, statusKV._1)
       }
-      mt -> minuteAvg
+      MtRecord(mt, minuteAvg._1, minuteAvg._2)
     }
   }
 
@@ -391,21 +392,22 @@ class DataCollectManager @Inject()
         }
         (avg, statusKV._1)
       }
-      mt -> minuteAvg
+      MtRecord(mt, minuteAvg._1, minuteAvg._2)
     }
   }
 
-  def checkMinDataAlarm(minMtAvgList: Iterable[(String, (Double, String))]) = {
+  def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord]) = {
     var overThreshold = false
     for {
       hourMtData <- minMtAvgList
-      mt = hourMtData._1
-      data = hourMtData._2
+      mt = hourMtData.mtName
+      value = hourMtData.value
+      status = hourMtData.status
     } {
       val mtCase = monitorTypeOp.map(mt)
-      if (mtCase.std_internal.isDefined && MonitorStatus.isValid(data._2)) {
-        if (data._1 > mtCase.std_internal.get) {
-          val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, Some(data._1))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
+      if (mtCase.std_internal.isDefined && MonitorStatus.isValid(status)) {
+        if (value > mtCase.std_internal.get) {
+          val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
           alarmOp.log(alarmOp.Src(mt), alarmOp.Level.INFO, msg)
           overThreshold = true
         }
@@ -444,8 +446,9 @@ class DataCollectManager @Inject()
       lb.append((r.time, r.value))
     }
 
-    val hourMtAvgList = calculateHourAvgMap(mtMap)
-    val f = recordOp.upsertRecord(recordOp.toDocument(current.minusHours(1), hourMtAvgList.toList))(recordOp.HourCollection)
+    val mtDataList = calculateHourAvgMap(mtMap)
+    val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, "")
+    val f = recordOp.upsertRecord(recordList)(recordOp.HourCollection)
     if (forward)
       f map { _ => ForwardManager.forwardHourData }
 
@@ -525,7 +528,7 @@ class DataCollectManager @Inject()
                 r.time >= DateTime.now() - 6.second
               }
 
-              (data.mt -> (filteredMap ++ Map(instId -> Record(now, data.value, data.status))))
+              (data.mt -> (filteredMap ++ Map(instId -> Record(now, data.value, data.status, ""))))
             }
 
           context become handler(instrumentMap, collectorInstrumentMap,
@@ -587,7 +590,7 @@ class DataCollectManager @Inject()
             }
           }
 
-          val docs = secRecordMap map { r => r._1 -> recordOp.toDocument(r._1, r._2.toList) }
+          val docs = secRecordMap map { r => r._1 -> recordOp.toRecordList(r._1, r._2.toList) }
 
           val sortedDocs = docs.toSeq.sortBy { x => x._1 } map (_._2)
           if (sortedDocs.nonEmpty)
@@ -661,7 +664,7 @@ class DataCollectManager @Inject()
         checkMinDataAlarm(minuteMtAvgList)
 
         context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData)
-        val f = recordOp.insertRecord(recordOp.toDocument(currentMintues.minusMinutes(1), minuteMtAvgList.toList))(recordOp.MinCollection)
+        val f = recordOp.insertRecord(RecordList(currentMintues.minusMinutes(1), minuteMtAvgList.toList, ""))(recordOp.MinCollection)
         f map { _ => ForwardManager.forwardMinData }
         f
       }

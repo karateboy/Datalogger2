@@ -1,5 +1,5 @@
 import com.google.inject.AbstractModule
-import models.{Adam4017Collector, Adam4068Collector, Adam6017Collector, Baseline9000Collector, DataCollectManager, GpsCollector, Horiba370Collector, MongoDB, MonitorTypeOp, MoxaE1212Collector, MoxaE1240Collector, T100Collector, T200Collector, T201Collector, T300Collector, T360Collector, T400Collector, T700Collector, VerewaF701Collector}
+import models.{Adam4017Collector, Adam4068Collector, Adam6017Collector, Baseline9000Collector, DataCollectManager, GpsCollector, Horiba370Collector, MongoDB, MonitorTypeOp, MoxaE1212Collector, MoxaE1240Collector, MqttCollector, T100Collector, T200Collector, T201Collector, T300Collector, T360Collector, T400Collector, T700Collector, VerewaF701Collector}
 import play.api._
 import play.api.libs.concurrent.AkkaGuiceSupport
 /**
@@ -17,6 +17,7 @@ class Module extends AbstractModule with AkkaGuiceSupport {
   override def configure() = {
     bind(classOf[MongoDB])
     bind(classOf[MonitorTypeOp])
+
     bindActor[DataCollectManager]("dataCollectManager")
     bindActorFactory[Adam4017Collector, Adam4017Collector.Factory]
     bindActorFactory[Adam4068Collector, Adam4068Collector.Factory]
@@ -26,6 +27,7 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bindActorFactory[Horiba370Collector, Horiba370Collector.Factory]
     bindActorFactory[MoxaE1212Collector, MoxaE1212Collector.Factory]
     bindActorFactory[MoxaE1240Collector, MoxaE1240Collector.Factory]
+    bindActorFactory[MqttCollector, MqttCollector.Factory]
     bindActorFactory[T100Collector, T100Collector.Factory]
     bindActorFactory[T200Collector, T200Collector.Factory]
     bindActorFactory[T201Collector, T201Collector.Factory]

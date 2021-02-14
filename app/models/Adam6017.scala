@@ -8,7 +8,7 @@ import javax.inject._
 
 // case class ChannelCfg(enable: Boolean, mt: Option[String], scale: Option[Double], repairMode: Option[Boolean])
 
-case class Adam6017Param(addr: Int, ch: Seq[AiChannelCfg])
+case class Adam6017Param(chs: Seq[AiChannelCfg])
 
 @Singleton
 class Adam6017 @Inject()
@@ -19,8 +19,8 @@ class Adam6017 @Inject()
   implicit val reads = Json.reads[Adam6017Param]
 
   override def getMonitorTypes(param: String) = {
-    val e1212Param = validateParam(param)
-    e1212Param.ch.filter {
+    val adam6017Param = validateParam(param)
+    adam6017Param.chs.filter {
       _.enable
     }.flatMap {
       _.mt
@@ -48,11 +48,11 @@ class Adam6017 @Inject()
         throw new Exception(JsError.toJson(error).toString())
       },
       param => {
-        if (param.ch.length != 8) {
+        if (param.chs.length != 8) {
           throw new Exception("ch # shall be 8")
         }
 
-        for (cfg <- param.ch) {
+        for (cfg <- param.chs) {
           if (cfg.enable) {
             // FIXME
             // assert(cfg.mt.isDefined)

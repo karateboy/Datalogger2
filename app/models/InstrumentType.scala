@@ -40,6 +40,7 @@ class InstrumentTypeOp @Inject()
  moxaE1240Drv: MoxaE1240, moxaE1240Factory: MoxaE1240Collector.Factory,
  verewaF701Factory: VerewaF701Collector.Factory,
  moxaE1212Drv: MoxaE1212, moxaE1212Factory: MoxaE1212Collector.Factory,
+ mqttFactory: MqttCollector.Factory,
  baseline9000Factory: Baseline9000Collector.Factory,
  horiba370Factory: Horiba370Collector.Factory,
  gpsFactory: GpsCollector.Factory,
@@ -74,6 +75,7 @@ class InstrumentTypeOp @Inject()
 
   val HORIBA370 = "horiba370"
   val GPS = "gps"
+  val MQTT_CLIENT = "mqtt_client"
   val map = Map(
     InstrumentType(ADAM4017, "Adam 4017", List(serial), adam4017Drv, adam4017Factory, true).infoPair,
     InstrumentType(ADAM4068, "Adam 4068", List(serial), Adam4068, adam4068Factory, true).infoPair,
@@ -83,6 +85,7 @@ class InstrumentTypeOp @Inject()
     InstrumentType(HORIBA370, "Horiba APXX-370", List(tcp), Horiba370Collector, horiba370Factory).infoPair,
     InstrumentType(MOXAE1240, "MOXA E1240", List(tcp), moxaE1240Drv, moxaE1240Factory).infoPair,
     InstrumentType(MOXAE1212, "MOXA E1212", List(tcp), moxaE1212Drv, moxaE1212Factory).infoPair,
+    InstrumentType(MQTT_CLIENT, "MQTT Client", List(tcp), MqttCollector, mqttFactory).infoPair,
     InstrumentType(T100, "TAPI T100", List(tcp), T100Collector, t100Factory).infoPair,
     InstrumentType(T200, "TAPI T200", List(tcp), T200Collector, t200Factory).infoPair,
     InstrumentType(T201, "TAPI T201", List(tcp), T201Collector, t201Factory).infoPair,

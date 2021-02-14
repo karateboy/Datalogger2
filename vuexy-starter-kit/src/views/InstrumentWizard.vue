@@ -135,6 +135,11 @@
             :param-str="form.param"
             @param-changed="onParamChange"
           />
+          <adam-6017-config-page
+            v-else-if="isAdam6017"
+            :param-str="form.param"
+            @param-changed="onParamChange"
+          />
           <div v-else>TBD {{ form.instType }}</div>
         </validation-observer>
       </tab-content>
@@ -163,6 +168,7 @@ import { required, email } from '@validations';
 import 'vue-form-wizard/dist/vue-form-wizard.min.css';
 import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
 import TapiConfigPage from './TapiConfigPage.vue';
+import Adam6017ConfigPage from './Adam6017ConfigPage.vue';
 
 export default {
   components: {
@@ -173,6 +179,7 @@ export default {
     ToastificationContent,
     ValidationObserver,
     TapiConfigPage,
+    Adam6017ConfigPage,
   },
   data() {
     return {
@@ -204,6 +211,9 @@ export default {
         if (this.form.instType === t) return true;
       }
       return false;
+    },
+    isAdam6017() {
+      return this.form.instType === 'adam6017';
     },
     instrumentSummary() {
       const formNewline = input => {
@@ -300,9 +310,9 @@ export default {
     },
     onParamChange(v) {
       this.form.param = v;
-      console.log(v);
     },
     async formSubmitted() {
+      console.log(this.form);
       const res = await axios.post('/Instrument', this.form);
       const ret = res.data;
       if (ret.ok) {

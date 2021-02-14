@@ -120,7 +120,7 @@ export default Vue.extend({
     };
   },
   computed: {
-    ...mapState('monitorTypes', ['monitorTypes', 'mtMap']),
+    ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap']),
   },
   mounted() {

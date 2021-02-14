@@ -19,6 +19,9 @@ libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "4.1.1"
 // https://mvnrepository.com/artifact/com.github.nscala-time/nscala-time
 libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "2.26.0"
 
+// https://mvnrepository.com/artifact/org.eclipse.paho/org.eclipse.paho.client.mqttv3
+libraryDependencies += "org.eclipse.paho" % "org.eclipse.paho.client.mqttv3" % "1.2.5"
+
 routesGenerator := StaticRoutesGenerator
 
 mappings in Universal ++=
