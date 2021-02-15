@@ -140,6 +140,11 @@
             :param-str="form.param"
             @param-changed="onParamChange"
           />
+          <mqtt-config-page
+            v-else-if="isMqtt"
+            :param-str="form.param"
+            @param-changed="onParamChange"
+          />
           <div v-else>TBD {{ form.instType }}</div>
         </validation-observer>
       </tab-content>
@@ -169,32 +174,47 @@ import 'vue-form-wizard/dist/vue-form-wizard.min.css';
 import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
 import TapiConfigPage from './TapiConfigPage.vue';
 import Adam6017ConfigPage from './Adam6017ConfigPage.vue';
+import MqttConfigPage from './MqttConfigPage.vue';
 
 export default {
   components: {
     FormWizard,
     TabContent,
     vSelect,
-    // eslint-disable-next-line vue/no-unused-components
-    ToastificationContent,
     ValidationObserver,
     TapiConfigPage,
     Adam6017ConfigPage,
+    MqttConfigPage,
+  },
+  props: {
+    isNew: {
+      type: Boolean,
+      default: true,
+    },
+    inst: {
+      type: Object,
+      default: () => {
+        return {};
+      },
+    },
   },
   data() {
-    return {
-      form: {
-        _id: '',
-        instType: '',
-        protocol: {
-          protocol: null,
-          host: null,
-          comPort: null,
-        },
-        param: '{}',
-        active: true,
-        state: '010',
+    const emptyForm = {
+      _id: '',
+      instType: '',
+      protocol: {
+        protocol: null,
+        host: null,
+        comPort: null,
       },
+      param: '',
+      active: true,
+      state: '010',
+    };
+
+    console.log(this.inst);
+    return {
+      form: this.isNew ? emptyForm : this.inst,
       instrumentTypes: [],
       instTypeMap: new Map(),
     };
@@ -214,6 +234,9 @@ export default {
     },
     isAdam6017() {
       return this.form.instType === 'adam6017';
+    },
+    isMqtt() {
+      return this.form.instType === 'mqtt_client';
     },
     instrumentSummary() {
       const formNewline = input => {
@@ -270,7 +293,7 @@ export default {
       }
     },
     getProtocolOptions() {
-      if (this.form.instType) {
+      if (this.form.instType && this.instTypeMap.get(this.form.instType)) {
         const info = this.instTypeMap.get(this.form.instType).protocolInfo;
         return this.instTypeMap.get(this.form.instType).protocolInfo;
       } else return [];

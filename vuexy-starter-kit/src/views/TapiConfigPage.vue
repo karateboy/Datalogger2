@@ -181,7 +181,7 @@ export default Vue.extend({
       calibrateSpanDO: null,
       skipInternalVault: null,
     };
-    if (this.paramStr) paramObj = JSON.parse(this.paramStr);
+    if (this.paramStr !== '') paramObj = JSON.parse(this.paramStr);
 
     return {
       paramObj,

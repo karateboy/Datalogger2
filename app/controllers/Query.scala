@@ -438,7 +438,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
           }
         }
 
-      val resultFuture = recordOp.getRecordListFuture(TableType.mapCollection(tabType))(start, end, monitorTypes.toList)
+      val resultFuture = recordOp.getRecordListFuture(TableType.mapCollection(tabType))(start, end)
 
       for (recordList <- resultFuture) yield {
         val rows = recordList map {
@@ -506,7 +506,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
       Logger.info(start.toString())
       Logger.info(end.toString())
 
-      val f = recordOp.getRecordListFuture(TableType.mapCollection(tabType))(start, end, monitorTypes.toList)
+      val f = recordOp.getRecordListFuture(TableType.mapCollection(tabType))(start, end)
       import recordOp.recordListWrite
       for (recordList <- f) yield
         Ok(Json.toJson(recordList))

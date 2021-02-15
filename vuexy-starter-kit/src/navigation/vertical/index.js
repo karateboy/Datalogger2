@@ -62,6 +62,10 @@ export default [
         route: 'instrument-status',
       },
       {
+        title: '測點管理',
+        route: 'monitor-config',
+      },
+      {
         title: '測項管理',
         route: 'monitor-type-config',
       },

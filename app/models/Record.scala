@@ -47,6 +47,10 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp) {
   import org.mongodb.scala.bson.codecs.Macros._
 
   val codecRegistry = fromRegistries(fromProviders(classOf[RecordList], classOf[MtRecord], classOf[RecordListID]), DEFAULT_CODEC_REGISTRY)
+  mongoDB.database.createCollection(HourCollection).toFuture()
+  mongoDB.database.createCollection(MinCollection).toFuture()
+  mongoDB.database.createCollection(SecCollection).toFuture()
+
   def getCollection(colName:String) = mongoDB.database.getCollection[RecordList](colName).withCodecRegistry(codecRegistry)
 
   getCollection(HourCollection).createIndex(Indexes.ascending("time", "monitor"), new IndexOptions().unique(true))
@@ -269,14 +273,14 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp) {
   implicit val idWrite = Json.writes[RecordListID]
   implicit val recordListWrite = Json.writes[RecordList]
 
-  def getRecordListFuture(colName: String)(startTime: DateTime, endTime: DateTime, mtList: List[String] = List.empty[String], monitor: String = "") = {
+  def getRecordListFuture(colName: String)(startTime: DateTime, endTime: DateTime, monitors: Seq[String] =Seq("") ) = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Projections._
     import org.mongodb.scala.model.Sorts._
 
     val col = getCollection(colName)
 
-    col.find(and(equal("monitor", monitor), gte("time", startTime.toDate()), lt("time", endTime.toDate())))
+    col.find(and(in("monitor", monitors:_*), gte("time", startTime.toDate()), lt("time", endTime.toDate())))
       .sort(ascending("time")).toFuture()
   }
 

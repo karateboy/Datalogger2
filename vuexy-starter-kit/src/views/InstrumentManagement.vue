@@ -123,7 +123,11 @@
       modal-class="modal-primary"
       no-close-on-backdrop
     >
-      <instrument-wizard @submit="onSubmit" />
+      <instrument-wizard
+        :is-new="isNew"
+        :inst="selectedInstrument"
+        @submit="onSubmit"
+      />
     </b-modal>
   </b-card>
 </template>
@@ -195,8 +199,9 @@ export default Vue.extend({
     modalTitle() {
       return this.isNew ? '新增儀器' : '更新儀器設定';
     },
-    inst() {
-      return this.selected[0];
+    selectedInstrument() {
+      if (!this.isNew && this.selected.length) return this.selected[0].inst;
+      else return {};
     },
   },
   mounted() {

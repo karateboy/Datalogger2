@@ -21,18 +21,12 @@ class MonitorOp @Inject()(mongoDB: MongoDB) {
   import org.mongodb.scala.bson.codecs.Macros._
 
   val colName = "monitors"
+  mongoDB.database.createCollection(colName).toFuture()
+
   val codecRegistry = fromRegistries(fromProviders(classOf[Monitor]), DEFAULT_CODEC_REGISTRY)
   val collection = mongoDB.database.getCollection[Monitor](colName).withCodecRegistry(codecRegistry)
 
-  def init(colNames: Seq[String]) = {
-    if (!colNames.contains(colName)) {
-      val f = mongoDB.database.createCollection(colName).toFuture()
-      f.onFailure(errorHandler)
-
-      waitReadyResult(f)
-    }
-    refresh
-  }
+  refresh
 
   def newMonitor(m: Monitor) = {
     Logger.debug(s"Create monitor value ${m._id}!")
@@ -53,26 +47,27 @@ class MonitorOp @Inject()(mongoDB: MongoDB) {
   }
 
   def refresh  {
-    //map = Map.empty[String, Monitor]
     val pairs =
     for (m <- mList) yield {
       m._id -> m
     }
     map = pairs.toMap
-
   }
 
-  var map: Map[String, Monitor] = Map.empty[String, Monitor]
+  var map: Map[String, Monitor] = {
+    val pairs =
+      for (m <- mList) yield {
+        m._id -> m
+      }
+    pairs.toMap
+  }
 
   def mvList = mList.map(_._id)
 
 
-  def getMonitorValueByName(_id: String) = {
-    try {
-      map(_id)
-    } catch {
-      case _: NoSuchElementException =>
-        newMonitor(Monitor(_id, _id))
+  def ensureMonitor(_id: String) = {
+    if(!map.contains(_id)){
+      newMonitor(Monitor(_id, _id))
     }
   }
 
@@ -86,6 +81,7 @@ class MonitorOp @Inject()(mongoDB: MongoDB) {
   def upsert(m: Monitor) = {
     val f = collection.replaceOne(Filters.equal("_id", m._id), m, ReplaceOptions().upsert(true)).toFuture()
     f.onFailure(errorHandler)
-    f
+    waitReadyResult(f)
+    refresh
   }
 }

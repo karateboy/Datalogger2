@@ -5,7 +5,8 @@ import play.api.libs.json._
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 case class InstrumentInfo(_id: String, instType: String, state: String,
-                          protocol: String, protocolParam: String, monitorTypes: String, calibrationTime: Option[String])
+                          protocol: String, protocolParam: String, monitorTypes: String,
+                          calibrationTime: Option[String], inst:Instrument)
 
 case class InstrumentStatusType(key:String, addr:Int, desc:String, unit:String)
 

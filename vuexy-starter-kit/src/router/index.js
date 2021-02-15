@@ -183,6 +183,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/monitor-config',
+      name: 'monitor-config',
+      component: () => import('@/views/MonitorConfig.vue'),
+      meta: {
+        pageTitle: '測點管理',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '測點管理',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/monitor-type-config',
       name: 'monitor-type-config',
       component: () => import('@/views/MonitorTypeConfig.vue'),

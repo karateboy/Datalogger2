@@ -12,7 +12,7 @@ import javax.inject._
 
 class HomeController @Inject()(environment: play.api.Environment, recordOp: RecordOp,
                                userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
-                               monitorTypeOp: MonitorTypeOp, query: Query,
+                               monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorOp,
                                instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp) extends Controller {
 
   val title = "資料擷取器"
@@ -142,7 +142,9 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
             for (mt <- mtList) {
               monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog)
             }
-            dataCollectManagerOp.startCollect(newInstrument)
+            if(newInstrument.active)
+              dataCollectManagerOp.startCollect(newInstrument)
+
             Ok(Json.obj("ok" -> true))
           } catch {
             case ex: Throwable =>
@@ -193,7 +195,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
         val state = getStateStr
 
         InstrumentInfo(inst._id, instrumentTypeOp.map(inst.instType).desp, state,
-          Protocol.map(inst.protocol.protocol), protocolParam, mtStr, calibrationTime)
+          Protocol.map(inst.protocol.protocol), protocolParam, mtStr, calibrationTime, inst)
       }
 
       getInfoClass
@@ -376,6 +378,27 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     }
 
     Ok(Json.obj("ok" -> true))
+  }
+
+  def monitorList = Security.Authenticated {
+    implicit val writes = Json.writes[Monitor]
+    val mtList = monitorOp.mvList map { m => monitorOp.map(m)}
+    Ok(Json.toJson(mtList))
+  }
+
+  def upsertMonitor(id: String) = Security.Authenticated(BodyParsers.parse.json) {
+    implicit request =>
+      implicit val read = Json.reads[Monitor]
+      val mResult = request.body.validate[Monitor]
+      mResult.fold(
+        error => {
+          Logger.error(JsError.toJson(error).toString())
+          BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+        },
+        m => {
+          monitorOp.upsert(m)
+          Ok(Json.obj("ok" -> true))
+        })
   }
 
   def monitorTypeList = Security.Authenticated {
