@@ -157,7 +157,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
 
   }
 
-  def init(colNames: Seq[String]): Future[Any] = {
+  def init(): Future[Any] = {
     def updateMt = {
       val updateModels =
         for (mt <- defaultMonitorTypes) yield {
@@ -176,14 +176,17 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
       f
     }
 
-    if (!colNames.contains(colName)) { // New
-      val f = mongoDB.database.createCollection(colName).toFuture()
-      f.onFailure(errorHandler)
-      waitReadyResult(f)
+    for(colNames <- mongoDB.database.listCollectionNames().toFuture()) {
+      if (!colNames.contains(colName)) { // New
+        val f = mongoDB.database.createCollection(colName).toFuture()
+        f.onFailure(errorHandler)
+        waitReadyResult(f)
+      }
     }
 
     updateMt
   }
+  init
 
   def BFName(mt: String) = {
     val mtCase = map(mt)

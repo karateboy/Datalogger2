@@ -75,17 +75,21 @@ class AlarmOp @Inject()(mongoDB: MongoDB) {
     Alarm(time, src, level, desc)
   }
 
-  def init(colNames: Seq[String]) {
+  def init() {
     import org.mongodb.scala.model.Indexes._
-    if (!colNames.contains(collectionName)) {
-      val f = mongoDB.database.createCollection(collectionName).toFuture()
-      f.onFailure(errorHandler)
-      f.onSuccess({
-        case _ =>
-          collection.createIndex(ascending("time", "level", "src"))
-      })
+    for(colNames <- mongoDB.database.listCollectionNames().toFuture()) {
+      if (!colNames.contains(collectionName)) {
+        val f = mongoDB.database.createCollection(collectionName).toFuture()
+        f.onFailure(errorHandler)
+        f.onSuccess({
+          case _ =>
+            collection.createIndex(ascending("time", "level", "src"))
+        })
+      }
     }
   }
+
+  init
 
   import org.mongodb.scala.model.Filters._
   import org.mongodb.scala.model.Projections._

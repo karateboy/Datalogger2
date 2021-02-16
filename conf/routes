@@ -20,10 +20,10 @@ GET      /User                                                                  
 PUT      /User/:id                                                                controllers.HomeController.updateUser(id)
 DELETE   /User/:id                                                                controllers.HomeController.deleteUser(id)	
 
-GET      /HistoryTrend/:monitorType/:reportUnit/:statusFilter/:start/:end         controllers.Query.historyTrendChart(monitorType, reportUnit, statusFilter, start:Long, end:Long, outputTypeStr="html")
-GET      /HistoryTrend/excel/:monitorType/:reportUnit/:statusFilter/:start/:end   controllers.Query.historyTrendChart(monitorType, reportUnit, statusFilter, start:Long, end:Long, outputTypeStr="excel")
+GET      /HistoryTrend/:monitor/:monitorType/:reportUnit/:statusFilter/:start/:end         controllers.Query.historyTrendChart(monitor, monitorType, reportUnit, statusFilter, start:Long, end:Long, outputTypeStr="html")
+GET      /HistoryTrend/excel/:monitorType/:reportUnit/:statusFilter/:start/:end            controllers.Query.historyTrendChart(monitor, monitorType, reportUnit, statusFilter, start:Long, end:Long, outputTypeStr="excel")
 
-GET      /HistoryReport/:monitorType/:tabType/:start/:end                         controllers.Query.historyData(monitorType, tabType, start: Long, end: Long)
+GET      /HistoryReport/:monitor/:monitorType/:tabType/:start/:end                controllers.Query.historyData(monitor, monitorType, tabType, start: Long, end: Long)
 
 GET      /CalibrationReport/:start/:end                                           controllers.Query.calibrationReport(start:Long, end:Long)
 
@@ -48,6 +48,7 @@ PUT      /CalibrateInstrumentZero/:ids                                          
 PUT      /CalibrateInstrumentSpan/:ids                                            controllers.HomeController.calibrateInstrument(ids, zeroCalibration="false")
 PUT      /CalibrateInstrument/:ids                                                controllers.HomeController.calibrateInstrumentFull(ids)
 PUT      /ResetInstrument/:ids                                                    controllers.HomeController.resetInstrument(ids)
+PUT      /WriteDO/:ids                                                            controllers.HomeController.writeDO(ids)
 GET      /ExecuteSeq/:ids/:seq                                                    controllers.HomeController.getExecuteSeq(ids, seq:Int)
 PUT      /ExecuteSeq/:ids/:seq                                                    controllers.HomeController.executeSeq(ids, seq:Int)
 

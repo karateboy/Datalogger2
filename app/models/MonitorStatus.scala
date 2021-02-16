@@ -172,7 +172,7 @@ class MonitorStatusOp @Inject()(mongoDB: MongoDB){
     Json.parse(doc.toJson()).validate[MonitorStatus].asOpt.get
   }
 
-  def init(colNames: Seq[String]) {
+  def init() {
     def insertDefaultStatus {
       val f = collection.insertMany(defaultStatus.map { toDocument }).toFuture()
       f.onFailure(errorHandler)
@@ -182,15 +182,18 @@ class MonitorStatusOp @Inject()(mongoDB: MongoDB){
       })
     }
 
-    if (!colNames.contains(collectionName)) {
-      val f = mongoDB.database.createCollection(collectionName).toFuture()
-      f.onFailure(errorHandler)
-      f.onSuccess({
-        case _ =>
-          insertDefaultStatus
-      })
+    for(colNames <- mongoDB.database.listCollectionNames().toFuture()) {
+      if (!colNames.contains(collectionName)) {
+        val f = mongoDB.database.createCollection(collectionName).toFuture()
+        f.onFailure(errorHandler)
+        f.onSuccess({
+          case _ =>
+            insertDefaultStatus
+        })
+      }
     }
   }
+  init
 
   def msList = {
     val f = collection.find().toFuture()

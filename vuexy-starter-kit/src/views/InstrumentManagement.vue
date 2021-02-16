@@ -110,11 +110,29 @@
             >
               中斷校正
             </b-button>
+            <b-button
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              variant="primary"
+              class="mr-1"
+              :disabled="selected.length === 0"
+              @click="showWriteDoDlg"
+            >
+              輸出DO
+            </b-button>
           </b-td>
         </b-tr>
       </template>
     </b-table>
-
+    <b-modal id="writeDoModal" @ok="writeDO">
+      <b-form @submit.prevent>
+        <b-form-group label="點位" label-for="bit" label-cols-md="3">
+          <b-form-input v-model="bit" />
+        </b-form-group>
+        <b-form-group label="輸出" label-for="bit" label-cols-md="3">
+          <b-form-checkbox v-model="on" />
+        </b-form-group>
+      </b-form>
+    </b-modal>
     <b-modal
       id="instModal"
       :title="modalTitle"
@@ -193,6 +211,8 @@ export default Vue.extend({
       instList,
       isNew: true,
       selected: [],
+      bit: 17,
+      on: true,
     };
   },
   computed: {
@@ -290,6 +310,16 @@ export default Vue.extend({
         `/ResetInstrument/${this.selected[0]._id}`,
         {},
       );
+      this.showResult(res.data.ok);
+    },
+    showWriteDoDlg() {
+      this.$bvModal.show('writeDoModal');
+    },
+    async writeDO() {
+      const res = await axios.put(`/WriteDO/${this.selected[0]._id}`, {
+        bit: this.bit,
+        on: this.on,
+      });
       this.showResult(res.data.ok);
     },
     newInst() {

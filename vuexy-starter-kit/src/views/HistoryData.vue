@@ -4,6 +4,18 @@
       <b-form @submit.prevent>
         <b-row>
           <b-col cols="12">
+            <b-form-group label="測點" label-for="monitor" label-cols-md="3">
+              <v-select
+                id="monitor"
+                v-model="form.monitors"
+                label="desc"
+                :reduce="mt => mt._id"
+                :options="monitors"
+                multiple
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="12">
             <b-form-group
               label="測項"
               label-for="monitorType"
@@ -110,6 +122,7 @@ export default Vue.extend({
         { txt: '秒資料', id: 'second' },
       ],
       form: {
+        monitors: [],
         monitorTypes: [],
         dataType: 'hour',
         range,
@@ -121,6 +134,7 @@ export default Vue.extend({
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
+    ...mapState('monitors', ['monitors']),
     ...mapGetters('monitorTypes', ['mtMap']),
   },
   mounted() {
@@ -128,22 +142,26 @@ export default Vue.extend({
       // eslint-disable-next-line no-underscore-dangle
       this.form.monitorTypes.push(this.monitorTypes[0]._id);
     }
+
+    if (this.monitors.length !== 0) {
+      this.form.monitors.push(this.monitors[0]._id);
+    }
   },
   methods: {
     async query() {
       this.display = true;
       this.rows = [];
       this.columns = this.getColumns();
-      const url = `/HistoryReport/${this.form.monitorTypes.join(':')}/${
-        this.form.dataType
-      }/${this.form.range[0]}/${this.form.range[1]}`;
+      const monitors = this.form.monitors.join(':');
+      const monitorTypes = this.form.monitorTypes.join(':');
+      const url = `/HistoryReport/${monitors}/${monitorTypes}/${this.form.dataType}/${this.form.range[0]}/${this.form.range[1]}`;
+
       const ret = await axios.get(url);
       for (const row of ret.data.rows) {
         row.date = moment(row.date).format('lll');
       }
 
       this.rows = ret.data.rows;
-      // console.log(this.rows);
     },
     cellDataTd(i) {
       return (_value, _key, item) => item.cellData[i].cellClassName;

@@ -44,6 +44,8 @@ object ManualZero extends CalibrationType(false, true)
 
 object ManualSpan extends CalibrationType(false, false)
 
+case class WriteTargetDO(instId:String, bit:Int, on:Boolean)
+
 case class WriteDO(bit: Int, on: Boolean)
 
 case object ResetCounter
@@ -84,6 +86,10 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 
   def spanCalibration(id: String) {
     manager ! ManualSpanCalibration(id)
+  }
+
+  def writeTargetDO(id:String, bit:Int, on:Boolean): Unit ={
+    manager ! WriteTargetDO(id, bit, on)
   }
 
   def executeSeq(seq: Int) {
@@ -696,6 +702,11 @@ class DataCollectManager @Inject()
     case ManualSpanCalibration(instId) =>
       instrumentMap.get(instId).map { param =>
         param.actor ! ManualSpanCalibration(instId)
+      }
+    case WriteTargetDO(instId, bit, on) =>
+      Logger.debug(s"WriteTargetDO($instId, $bit, $on)")
+      instrumentMap.get(instId).map { param =>
+        param.actor ! WriteDO(bit, on)
       }
 
     case msg: ExecuteSeq =>

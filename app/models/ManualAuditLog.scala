@@ -50,17 +50,20 @@ class ManualAuditLogOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp)
     ManualAuditLog2(dataTime = dataTime.getMillis, mt = mt, modifiedTime = modifiedTime.getMillis, operator = operator, changedStatus = changedStatus, reason = reason)
   }
 
-  def init(colNames: Seq[String]) {
+  def init() {
     import org.mongodb.scala.model.Indexes._
-    if (!colNames.contains(collectionName)) {
-      val f = mongoDB.database.createCollection(collectionName).toFuture()
-      f.onFailure(errorHandler)
-      f.onSuccess({
-        case _ =>
-          collection.createIndex(ascending("dataTime", "mt"))
-      })
+    for(colNames <- mongoDB.database.listCollectionNames().toFuture()) {
+      if (!colNames.contains(collectionName)) {
+        val f = mongoDB.database.createCollection(collectionName).toFuture()
+        f.onFailure(errorHandler)
+        f.onSuccess({
+          case _ =>
+            collection.createIndex(ascending("dataTime", "mt"))
+        })
+      }
     }
   }
+  init
 
   import org.mongodb.scala.model.Filters._
   def upsertLog(log: ManualAuditLog) = {

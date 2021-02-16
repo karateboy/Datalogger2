@@ -34,17 +34,20 @@ class CalibrationOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp) {
   val collection = mongoDB.database.getCollection(collectionName)
   import org.mongodb.scala._
   import org.mongodb.scala.model.Indexes._
-  def init(colNames: Seq[String]) {
-    if (!colNames.contains(collectionName)) {
-      val f = mongoDB.database.createCollection(collectionName).toFuture()
-      f.onFailure(errorHandler)
-      f.onSuccess({
-        case _ =>
-          val cf = collection.createIndex(ascending("monitorType", "startTime", "endTime")).toFuture()
-          cf.onFailure(errorHandler)
-      })
-    }
+  def init() {
+      for (colNames <- mongoDB.database.listCollectionNames().toFuture()) {
+        if (!colNames.contains(collectionName)) {
+          val f = mongoDB.database.createCollection(collectionName).toFuture()
+          f.onFailure(errorHandler)
+          f.onSuccess({
+            case _ =>
+              val cf = collection.createIndex(ascending("monitorType", "startTime", "endTime")).toFuture()
+              cf.onFailure(errorHandler)
+          })
+        }
+      }
   }
+  init
   implicit val reads = Json.reads[Calibration]
   implicit val writes = Json.writes[Calibration]
   implicit val jsonWrites = Json.writes[CalibrationJSON]

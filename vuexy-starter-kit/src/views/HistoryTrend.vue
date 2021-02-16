@@ -4,6 +4,18 @@
       <b-form @submit.prevent>
         <b-row>
           <b-col cols="12">
+            <b-form-group label="測點" label-for="monitor" label-cols-md="3">
+              <v-select
+                id="monitor"
+                v-model="form.monitors"
+                label="desc"
+                :reduce="mt => mt._id"
+                :options="monitors"
+                multiple
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="12">
             <b-form-group
               label="測項"
               label-for="monitorType"
@@ -188,6 +200,7 @@ export default Vue.extend({
         },
       ],
       form: {
+        monitors: [],
         monitorTypes: [],
         reportUnit: 'Hour',
         statusFilter: 'all',
@@ -198,22 +211,27 @@ export default Vue.extend({
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
+    ...mapState('monitors', ['monitors']),
   },
   mounted() {
-    this.fetchMonitorTypes().then(() => {
-      if (this.monitorTypes.length !== 0) {
-        // eslint-disable-next-line no-underscore-dangle
-        this.form.monitorTypes.push(this.monitorTypes[0]._id);
-      }
-    });
+    if (this.monitorTypes.length !== 0) {
+      // eslint-disable-next-line no-underscore-dangle
+      this.form.monitorTypes.push(this.monitorTypes[0]._id);
+    }
+    if (this.monitors.length !== 0) {
+      this.form.monitors.push(this.monitors[0]._id);
+    }
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     async query() {
       this.display = true;
-      const url = `/HistoryTrend/${this.form.monitorTypes.join(':')}/${
-        this.form.reportUnit
-      }/${this.form.statusFilter}/${this.form.range[0]}/${this.form.range[1]}`;
+      const monitors = this.form.monitors.join(':');
+      const url = `/HistoryTrend/${monitors}/${this.form.monitorTypes.join(
+        ':',
+      )}/${this.form.reportUnit}/${this.form.statusFilter}/${
+        this.form.range[0]
+      }/${this.form.range[1]}`;
       const res = await axios.get(url);
       const ret = res.data;
       if (this.form.chartType !== 'boxplot') {

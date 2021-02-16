@@ -23,11 +23,14 @@ class UserOp @Inject()(mongoDB: MongoDB) {
   val codecRegistry = fromRegistries(fromProviders(classOf[User], classOf[AlarmConfig], DEFAULT_CODEC_REGISTRY))
   val collection: MongoCollection[User] = mongoDB.database.withCodecRegistry(codecRegistry).getCollection(ColName)
 
-  def init(colNames: Seq[String]) {
-    if (!colNames.contains(ColName)) {
-      val f = mongoDB.database.createCollection(ColName).toFuture()
-      f.onFailure(errorHandler)
+  def init() {
+    for(colNames <- mongoDB.database.listCollectionNames().toFuture()){
+      if (!colNames.contains(ColName)) {
+        val f = mongoDB.database.createCollection(ColName).toFuture()
+        f.onFailure(errorHandler)
+      }
     }
+
     val f = collection.countDocuments().toFuture()
     f.onSuccess({
       case count: Long =>
@@ -40,6 +43,7 @@ class UserOp @Inject()(mongoDB: MongoDB) {
     f.onFailure(errorHandler)
   }
 
+  init
 
   def createDefaultUser = {
     val f = collection.countDocuments().toFuture()

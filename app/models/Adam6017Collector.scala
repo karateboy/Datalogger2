@@ -163,7 +163,9 @@ class Adam6017Collector @Inject()
       try {
         import com.serotonin.modbus4j.locator.BaseLocator
         val locator = BaseLocator.coilStatus(1, bit)
-        masterOpt.get.setValue(locator, on)
+        masterOpt map {
+          master => master.setValue(locator, on)
+        }
       } catch {
         case ex: Exception =>
           ModelHelper.logException(ex)

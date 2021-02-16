@@ -109,9 +109,11 @@ export default {
   },
   mounted() {
     this.fetchMonitorTypes();
+    this.fetchMonitors();
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
+    ...mapActions('monitors', ['fetchMonitors']),
   },
 };
 </script>

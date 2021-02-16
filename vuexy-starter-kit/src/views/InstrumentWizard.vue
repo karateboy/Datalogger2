@@ -212,7 +212,6 @@ export default {
       state: '010',
     };
 
-    console.log(this.inst);
     return {
       form: this.isNew ? emptyForm : this.inst,
       instrumentTypes: [],
@@ -335,7 +334,6 @@ export default {
       this.form.param = v;
     },
     async formSubmitted() {
-      console.log(this.form);
       const res = await axios.post('/Instrument', this.form);
       const ret = res.data;
       if (ret.ok) {

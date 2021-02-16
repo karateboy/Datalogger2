@@ -19,12 +19,14 @@ class SysConfig @Inject()(mongoDB: MongoDB){
   val defaultConfig = Map(
     MonitorTypeVer -> Document(valueKey -> 1))
 
-  def init(colNames: Seq[String]) {
-    if (!colNames.contains(ColName)) {
-      val f = mongoDB.database.createCollection(ColName).toFuture()
-      f.onFailure(errorHandler)
+  def init() {
+    for(colNames <- mongoDB.database.listCollectionNames().toFuture()) {
+      if (!colNames.contains(ColName)) {
+        val f = mongoDB.database.createCollection(ColName).toFuture()
+        f.onFailure(errorHandler)
+        waitReadyResult(f)
+      }
     }
-
     val values = Seq.empty[String]
     val idSet = values
 
@@ -44,6 +46,7 @@ class SysConfig @Inject()(mongoDB: MongoDB){
     val f = Future.sequence(List(f1, f2))
     waitReadyResult(f)
   }
+  init
 
   def upsert(_id: String, doc: Document) = {
     val uo = new ReplaceOptions().upsert(true)

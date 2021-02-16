@@ -42,6 +42,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import Ripple from 'vue-ripple-directive';
+import { mapActions, mapState } from 'vuex';
 import axios from 'axios';
 /*
 interface MonitorType {
@@ -78,18 +79,21 @@ export default Vue.extend({
         sortable: true,
       },
     ];
-    const monitors = [];
+    // const monitors = [];
 
     return {
       display: false,
       columns,
-      monitors,
     };
   },
+  computed: {
+    ...mapState('monitors', ['monitors']),
+  },
   mounted() {
-    this.getMonitors();
+    //this.getMonitors();
   },
   methods: {
+    ...mapActions('monitors', ['fetchMonitors']),
     getMonitors() {
       axios.get('/Monitors').then(res => {
         this.monitors = res.data;
@@ -105,6 +109,7 @@ export default Vue.extend({
 
       Promise.all(all).then(() => {
         this.getMonitors();
+        this.fetchMonitors();
         this.$bvModal.msgBoxOk('成功');
       });
     },

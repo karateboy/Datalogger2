@@ -86,12 +86,15 @@ class InstrumentOp @Inject() (mongoDB: MongoDB) {
       v => { v })
   }
 
-  def init(colNames: Seq[String]) {
-    if (!colNames.contains(collectionName)) {
-      val f = mongoDB.database.createCollection(collectionName).toFuture()
-      f.onFailure(errorHandler)
+  def init() {
+    for(colNames <- mongoDB.database.listCollectionNames().toFuture()) {
+      if (!colNames.contains(collectionName)) {
+        val f = mongoDB.database.createCollection(collectionName).toFuture()
+        f.onFailure(errorHandler)
+      }
     }
   }
+  init
 
   import org.mongodb.scala.model.Filters._
   def upsertInstrument(inst: Instrument) = {    

@@ -350,6 +350,30 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     Ok(Json.obj("ok" -> true))
   }
 
+  def writeDO(instruments: String) = Security.Authenticated(BodyParsers.parse.json) {
+    implicit request =>
+      implicit val read = Json.reads[WriteDO]
+      val mResult = request.body.validate[WriteDO]
+      mResult.fold(
+        error => {
+          Logger.error(JsError.toJson(error).toString())
+          BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+        },
+        writeDO => {
+          val ids = instruments.split(",")
+          try {
+            ids.map { id =>
+              dataCollectManagerOp.writeTargetDO(id, writeDO.bit, writeDO.on)
+            }
+            Ok(Json.obj("ok" -> true))
+          } catch {
+            case ex: Throwable =>
+              Logger.error(ex.getMessage, ex)
+              Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
+          }
+        })
+  }
+
   def getExecuteSeq(instruments: String, seq: Int) = Security.Authenticated {
     val ids = instruments.split(",")
     try {

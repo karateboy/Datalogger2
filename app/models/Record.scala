@@ -47,32 +47,31 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp) {
   import org.mongodb.scala.bson.codecs.Macros._
 
   val codecRegistry = fromRegistries(fromProviders(classOf[RecordList], classOf[MtRecord], classOf[RecordListID]), DEFAULT_CODEC_REGISTRY)
-  mongoDB.database.createCollection(HourCollection).toFuture()
-  mongoDB.database.createCollection(MinCollection).toFuture()
-  mongoDB.database.createCollection(SecCollection).toFuture()
-
   def getCollection(colName:String) = mongoDB.database.getCollection[RecordList](colName).withCodecRegistry(codecRegistry)
 
   getCollection(HourCollection).createIndex(Indexes.ascending("time", "monitor"), new IndexOptions().unique(true))
   getCollection(MinCollection).createIndex(Indexes.ascending("time", "monitor"), new IndexOptions().unique(true))
   getCollection(SecCollection).createIndex(Indexes.ascending("time", "monitor"), new IndexOptions().unique(true))
 
-  def init(colNames: Seq[String]) {
-    if (!colNames.contains(HourCollection)) {
-      val f = mongoDB.database.createCollection(HourCollection).toFuture()
-      f.onFailure(errorHandler)
-    }
+  def init() {
+    for(colNames <- mongoDB.database.listCollectionNames().toFuture()) {
+      if (!colNames.contains(HourCollection)) {
+        val f = mongoDB.database.createCollection(HourCollection).toFuture()
+        f.onFailure(errorHandler)
+      }
 
-    if (!colNames.contains(MinCollection)) {
-      val f = mongoDB.database.createCollection(MinCollection).toFuture()
-      f.onFailure(errorHandler)
-    }
+      if (!colNames.contains(MinCollection)) {
+        val f = mongoDB.database.createCollection(MinCollection).toFuture()
+        f.onFailure(errorHandler)
+      }
 
-    if (!colNames.contains(SecCollection)) {
-      val f = mongoDB.database.createCollection(SecCollection).toFuture()
-      f.onFailure(errorHandler)
+      if (!colNames.contains(SecCollection)) {
+        val f = mongoDB.database.createCollection(SecCollection).toFuture()
+        f.onFailure(errorHandler)
+      }
     }
   }
+  init
 
   def upgrade() = {
     Logger.info("upgrade record!")
@@ -221,7 +220,6 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp) {
     val f = col.find(and(equal("monitor", monitor), gte("time", startTime.toDate()), lt("time", endTime.toDate())))
       .sort(ascending("time")).toFuture()
     val docs = waitReadyResult(f)
-
     val pairs =
       for {
         mt <- mtList

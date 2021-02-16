@@ -33,17 +33,20 @@ class InstrumentStatusOp @Inject()(mongoDB: MongoDB) {
   implicit val isWrite = Json.writes[InstrumentStatus]
   implicit val jsonWrite = Json.writes[InstrumentStatusJSON]
 
-  def init(colNames: Seq[String]) {
+  def init() {
     import org.mongodb.scala.model.Indexes._
-    if (!colNames.contains(collectionName)) {
-      val f = mongoDB.database.createCollection(collectionName).toFuture()
-      f.onFailure(errorHandler)
-      f.onSuccess({
-        case _ =>
-          collection.createIndex(ascending("time", "instID"))
-      })
+    for(colNames <- mongoDB.database.listCollectionNames().toFuture()) {
+      if (!colNames.contains(collectionName)) {
+        val f = mongoDB.database.createCollection(collectionName).toFuture()
+        f.onFailure(errorHandler)
+        f.onSuccess({
+          case _ =>
+            collection.createIndex(ascending("time", "instID"))
+        })
+      }
     }
   }
+  init
 
   def toDocument(is: InstrumentStatus) = {
     import org.mongodb.scala.bson._
