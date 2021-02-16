@@ -393,24 +393,9 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
         if (tabType == TableType.hour) {
           val orignal_start = new DateTime(startNum)
           val orignal_end = new DateTime(endNum)
-
           (orignal_start.withMinuteOfHour(0), orignal_end.withMinute(0) + 1.hour)
         } else {
-          val timeStart = new DateTime(startNum)
-          val timeEnd = new DateTime(endNum)
-          val timeDuration = new Duration(timeStart, timeEnd)
-          tabType match {
-            case TableType.min =>
-              if (timeDuration.getStandardMinutes > 60 * 12)
-                (timeStart, timeStart + 12.hour)
-              else
-                (timeStart, timeEnd)
-            case TableType.second =>
-              if (timeDuration.getStandardSeconds > 60 * 60)
-                (timeStart, timeStart + 1.hour)
-              else
-                (timeStart, timeEnd)
-          }
+          ( new DateTime(startNum), new DateTime(endNum))
         }
 
       val resultFuture = recordOp.getRecordListFuture(TableType.mapCollection(tabType))(start, end, monitors)

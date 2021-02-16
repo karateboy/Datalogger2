@@ -47,7 +47,7 @@ class Adam6017Collector @Inject()
     val ret = for (v <- values) yield
       "%.5f".format(v)
 
-    // Logger.info(ret.toString())
+    Logger.info(ret.toString())
     val dataPairList =
       for {
         cfg <- param.chs.zipWithIndex
@@ -128,17 +128,17 @@ class Adam6017Collector @Inject()
               val batch = new BatchRead[Float]
 
               for (idx <- 0 to 7)
-                batch.addLocator(idx, BaseLocator.holdingRegister(1, 1 + idx, DataType.TWO_BYTE_INT_UNSIGNED))
+                batch.addLocator(idx, BaseLocator.holdingRegister(1, 30 + 2*idx, DataType.FOUR_BYTE_FLOAT_SWAPPED))
 
               batch.setContiguousRequests(true)
 
               val rawResult = masterOpt.get.send(batch)
               val result =
                 for (idx <- 0 to 7) yield
-                  rawResult.getValue(idx).asInstanceOf[Integer]
+                  rawResult.getFloatValue(idx).toDouble
 
-              val actualResult = result map { v => -5.0 + 10 * v / 65535.0 }
-              decodeAi(actualResult, collectorState)(param)
+              //val actualResult = result map { v => -5.0 + 10 * v / 65535.0 }
+              decodeAi(result, collectorState)(param)
             }
 
             import scala.concurrent.duration._
