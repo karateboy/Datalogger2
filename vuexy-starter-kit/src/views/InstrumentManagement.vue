@@ -126,7 +126,7 @@
     <b-modal id="writeDoModal" @ok="writeDO">
       <b-form @submit.prevent>
         <b-form-group label="點位" label-for="bit" label-cols-md="3">
-          <b-form-input v-model="bit" />
+          <b-form-input v-model.number="bit" />
         </b-form-group>
         <b-form-group label="輸出" label-for="bit" label-cols-md="3">
           <b-form-checkbox v-model="on" />

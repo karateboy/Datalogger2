@@ -114,8 +114,7 @@ require('@core/assets/fonts/feather/iconfont.css');
 Vue.config.productionTip = false;
 
 router.beforeEach((to, from, next) => {
-  const isAuthenticated = jscookie.get('authenticated');
-  if (isAuthenticated || to.name === 'login') {
+  if (store.state.user.login || to.name === 'login') {
     next();
   } else {
     next({ name: 'login' });

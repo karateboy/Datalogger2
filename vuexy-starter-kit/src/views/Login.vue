@@ -113,7 +113,7 @@ import { required, email } from '@validations';
 import { togglePasswordVisibility } from '@core/mixins/ui/forms';
 import axios from 'axios';
 import store from '@/store/index';
-import { mapMutations } from 'vuex';
+import { mapMutations, mapActions } from 'vuex';
 import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
 
 export default {
@@ -148,7 +148,7 @@ export default {
     },
   },
   methods: {
-    ...mapMutations('user', ['setUserInfo']),
+    ...mapMutations('user', ['setUserInfo', 'setLogin']),
     validationForm() {
       this.$refs.loginValidation.validate().then(success => {
         if (success) {
@@ -159,7 +159,7 @@ export default {
               const ret = res.data;
               if (ret.ok) {
                 this.setUserInfo(ret.userInfo);
-                jscookie.set('authenticated', true);
+                this.setLogin(true);
                 this.$router.push('/');
               } else {
                 this.$toast({
