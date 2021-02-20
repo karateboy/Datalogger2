@@ -132,13 +132,15 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     /////////////////////////////////////////////////////
     signalType("DOOR", "門禁"),
     signalType("SMOKE", "煙霧"),
-    signalType("FLOW", "採樣流量"))
+    signalType("FLOW", "採樣流量"),
+    signalType("SPRAY", "灑水"))
+
   val DOOR = "DOOR"
   val SMOKE = "SMOKE"
   val FLOW = "FLOW"
   var rangeOrder = 0
   var signalOrder = 1000
-  var signalMtOldValue = Map.empty[MonitorType, Boolean]
+
   var (mtvList, signalMtvList, map) = refreshMtv
 
   def signalType(_id: String, desp: String) = {
@@ -146,13 +148,18 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     MonitorType(_id, desp, "N/A", 0, signalOrder, true)
   }
 
+  var diValueMap = Map.empty[String, Boolean]
+
   def logDiMonitorType(mt: String, v: Boolean) = {
     if (!signalMtvList.contains(mt))
       Logger.warn(s"${mt} is not DI monitor type!")
 
+    diValueMap = diValueMap + (mt -> v)
+    val mtCase = map(mt)
     if (v) {
-      val mtCase = map(mt)
       alarmOp.log(alarmOp.Src(), alarmOp.Level.WARN, s"${mtCase.desp}=>觸發", 1)
+    }else{
+      alarmOp.log(alarmOp.Src(), alarmOp.Level.INFO, s"${mtCase.desp}=>解除", 1)
     }
 
   }

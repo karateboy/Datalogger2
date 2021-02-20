@@ -145,6 +145,11 @@
             :param-str="form.param"
             @param-changed="onParamChange"
           />
+          <adam-6066-config-page
+            v-else-if="isAdam6066"
+            :param-str="form.param"
+            @param-changed="onParamChange"
+          ></adam-6066-config-page>
           <div v-else>TBD {{ form.instType }}</div>
         </validation-observer>
       </tab-content>
@@ -175,6 +180,7 @@ import ToastificationContent from '@core/components/toastification/Toastificatio
 import TapiConfigPage from './TapiConfigPage.vue';
 import Adam6017ConfigPage from './Adam6017ConfigPage.vue';
 import MqttConfigPage from './MqttConfigPage.vue';
+import Adam6066ConfigPage from './Adam6066ConfigPage.vue';
 
 export default {
   components: {
@@ -185,6 +191,7 @@ export default {
     TapiConfigPage,
     Adam6017ConfigPage,
     MqttConfigPage,
+    Adam6066ConfigPage,
   },
   props: {
     isNew: {
@@ -236,6 +243,9 @@ export default {
     },
     isMqtt() {
       return this.form.instType === 'mqtt_client';
+    },
+    isAdam6066() {
+      return this.form.instType === 'adam6066';
     },
     instrumentSummary() {
       const formNewline = input => {

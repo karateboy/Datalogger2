@@ -1,5 +1,8 @@
 <template>
   <b-table :fields="fields" :items="paramObj.chs">
+    <template #cell(index)="data">
+      {{ data.index }}
+    </template>
     <template #cell(enable)="row">
       <b-form-checkbox v-model="row.item.enable" @change="onChange" />
     </template>
@@ -12,21 +15,9 @@
         v-model="row.item.mt"
         label="desp"
         :reduce="mt => mt._id"
-        :options="monitorTypes"
+        :options="signalTypes"
         @input="onChange"
       />
-    </template>
-    <template #cell(max)="row">
-      <b-form-input v-model.number="row.item.max" @change="onChange" />
-    </template>
-    <template #cell(min)="row">
-      <b-form-input v-model.number="row.item.min" @change="onChange" />
-    </template>
-    <template #cell(mtMax)="row">
-      <b-form-input v-model.number="row.item.mtMax" @change="onChange" />
-    </template>
-    <template #cell(mtMin)="row">
-      <b-form-input v-model.number="row.item.mtMin" @change="onChange" />
     </template>
   </b-table>
 </template>
@@ -37,6 +28,7 @@
 import Vue from 'vue';
 import { mapState, mapGetters } from 'vuex';
 import vSelect from 'vue-select';
+import axios from 'axios';
 
 export default Vue.extend({
   components: {
@@ -50,22 +42,19 @@ export default Vue.extend({
   },
   data() {
     let chs = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 6; i++) {
       chs.push({
         enable: false,
         mt: undefined,
-        max: undefined,
-        mtMax: undefined,
-        min: undefined,
-        mtMin: undefined,
         repairMode: false,
       });
     }
     let paramObj = { chs };
 
-    //if (this.paramStr) paramObj = JSON.parse(this.paramStr);
+    if (this.paramStr !== '') paramObj = JSON.parse(this.paramStr);
 
     const fields = [
+      'index',
       {
         key: 'enable',
         label: '啟用',
@@ -78,42 +67,23 @@ export default Vue.extend({
         key: 'mt',
         label: '測項',
       },
-      {
-        key: 'min',
-        label: '電壓最小值',
-      },
-      {
-        key: 'max',
-        label: '電壓最大值',
-      },
-      {
-        key: 'mtMin',
-        label: '測項最小值',
-      },
-      {
-        key: 'mtMax',
-        label: '測項最大值',
-      },
     ];
 
     return {
       paramObj,
       fields,
+      signalTypes: [],
     };
   },
-  computed: {
-    ...mapState('monitorTypes', ['monitorTypes']),
-    ...mapGetters('monitorTypes', ['mtMap']),
+  mounted() {
+    this.getSignalTypes();
   },
   methods: {
-    justify() {
-      for (const ch of this.paramObj.chs) {
-        if (ch.min === '') ch.min = undefined;
-        if (ch.max === '') ch.max = undefined;
-        if (ch.mtMin === '') ch.mtMin = undefined;
-        if (ch.mtMax === '') ch.mtMax = undefined;
-      }
+    async getSignalTypes() {
+      const res = await axios.get('/SignalTypes');
+      this.signalTypes = res.data;
     },
+    justify() {},
     onChange(evt) {
       this.justify();
       this.$emit('param-changed', JSON.stringify(this.paramObj));

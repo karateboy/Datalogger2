@@ -9,7 +9,9 @@ import play.api.libs.json.{Json, _}
 import play.api.mvc._
 
 import javax.inject._
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 case class Stat(
                  avg: Option[Double],
@@ -371,7 +373,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
         } yield {
           if (mt == monitorTypeOp.WIN_DIRECTION) {
             val windDir = records
-            val windSpeed = recordOp.getRecordMap(recordOp.HourCollection)(List(monitorTypeOp.WIN_SPEED), period_start, period_start + period)(mt)
+            val windSpeed = recordOp.getRecordMap(TableType.mapCollection(tabType))(List(monitorTypeOp.WIN_SPEED), period_start, period_start + period, monitor)(mt)
             period_start -> windAvg(windSpeed, windDir)
           } else {
             val values = records.map { r => r.value }
@@ -399,29 +401,121 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
         }
 
       val resultFuture = recordOp.getRecordListFuture(TableType.mapCollection(tabType))(start, end, monitors)
-
+      val emtpyCell = CellData("-", Seq.empty[String])
       for (recordList <- resultFuture) yield {
-        val rows = recordList map {
+        import scala.collection.mutable.Map
+        val timeMtMonitorMap = Map.empty[DateTime, Map[String, Map[String, CellData]]]
+        recordList map {
           r =>
-            val mtCellData = monitorTypes.toSeq map { mt =>
-              val mtDataOpt = r.mtDataList.find(mtdt => mtdt.mtName == mt)
-              if (mtDataOpt.isDefined) {
-                val mtData = mtDataOpt.get
-                val mt = mtData.mtName
-                CellData(monitorTypeOp.format(mt, Some(mtData.value)),
-                  monitorTypeOp.getCssClassStr(mtData), Some(mtData.status))
-              } else {
-                CellData("-", Seq.empty[String])
-              }
-            }
+            val stripedTime = new DateTime(r.time).withSecondOfMinute(0).withMillisOfSecond(0)
+            val mtMonitorMap = timeMtMonitorMap.getOrElseUpdate(stripedTime, Map.empty[String, Map[String, CellData]])
+            for(mt <- monitorTypes.toSeq){
+              val monitorMap = mtMonitorMap.getOrElseUpdate(mt, Map.empty[String, CellData])
+              val cellData = if(r.mtMap.contains(mt)){
+                val mtRecord = r.mtMap(mt)
+                CellData(monitorTypeOp.format(mt, Some(mtRecord.value)),
+                  monitorTypeOp.getCssClassStr(mtRecord), Some(mtRecord.status))
+              }else
+                emtpyCell
 
-            RowData(r.time.getTime, mtCellData)
+              monitorMap.update(r.monitor, cellData)
+            }
+        }
+        val timeList = timeMtMonitorMap.keys.toList.sorted
+        val timeRows: Seq[RowData] = for(time<-timeList) yield {
+          val mtMonitorMap = timeMtMonitorMap(time)
+          var cellDataList = Seq.empty[CellData]
+          for{
+            mt <- monitorTypes
+            m <- monitors
+                             } {
+            val monitorMap = mtMonitorMap(mt)
+            if(monitorMap.contains(m))
+              cellDataList = cellDataList.+:(mtMonitorMap(mt)(m))
+            else
+              cellDataList = cellDataList.+:(emtpyCell)
+          }
+          RowData(time.getMillis, cellDataList)
         }
 
         val columnNames = monitorTypes.toSeq map {
           monitorTypeOp.map(_).desp
         }
-        Ok(Json.toJson(DataTab(columnNames, rows)))
+        Ok(Json.toJson(DataTab(columnNames, timeRows)))
+      }
+  }
+
+  def latestData(monitorStr: String, monitorTypeStr: String, tabTypeStr: String) = Security.Authenticated.async {
+    implicit request =>
+      val monitors = monitorStr.split(":")
+      val monitorTypes = monitorTypeStr.split(':')
+      val tabType = TableType.withName(tabTypeStr)
+
+      val futures = for(m <- monitors.toSeq) yield
+        recordOp.getLatestRecordFuture(TableType.mapCollection(tabType))(m)
+
+      val allFutures = Future.sequence(futures)
+
+      val emtpyCell = CellData("-", Seq.empty[String])
+      for (allRecordlist <- allFutures) yield {
+        val recordList = allRecordlist.fold(Seq.empty[RecordList])((a,b)=>{ a ++ b})
+        import scala.collection.mutable.Map
+        val timeMtMonitorMap = Map.empty[DateTime, Map[String, Map[String, CellData]]]
+        recordList map {
+          r =>
+            val stripedTime = new DateTime(r.time).withSecondOfMinute(0).withMillisOfSecond(0)
+            val mtMonitorMap = timeMtMonitorMap.getOrElseUpdate(stripedTime, Map.empty[String, Map[String, CellData]])
+            for(mt <- monitorTypes.toSeq){
+              val monitorMap = mtMonitorMap.getOrElseUpdate(mt, Map.empty[String, CellData])
+              val cellData = if(r.mtMap.contains(mt)){
+                val mtRecord = r.mtMap(mt)
+                CellData(monitorTypeOp.format(mt, Some(mtRecord.value)),
+                  monitorTypeOp.getCssClassStr(mtRecord), Some(mtRecord.status))
+              }else
+                emtpyCell
+
+              monitorMap.update(r.monitor, cellData)
+            }
+        }
+        val timeList = timeMtMonitorMap.keys.toList.sorted
+        val timeRows: Seq[RowData] = for(time<-timeList) yield {
+          val mtMonitorMap = timeMtMonitorMap(time)
+          var cellDataList = Seq.empty[CellData]
+          for{
+            mt <- monitorTypes
+            m <- monitors
+          } {
+            val monitorMap = mtMonitorMap(mt)
+            if(monitorMap.contains(m))
+              cellDataList = cellDataList.+:(mtMonitorMap(mt)(m))
+            else
+              cellDataList = cellDataList.+:(emtpyCell)
+          }
+          RowData(time.getMillis, cellDataList)
+        }
+
+        val columnNames = monitorTypes.toSeq map {
+          monitorTypeOp.map(_).desp
+        }
+        Ok(Json.toJson(DataTab(columnNames, timeRows)))
+      }
+  }
+
+  def realtimeStatus() = Security.Authenticated.async {
+    implicit request =>
+      import recordOp.recordListWrite
+      val monitors = monitorOp.mvList
+      val tabType = TableType.min
+
+      val futures = for(m <- monitors.toSeq) yield
+        recordOp.getLatestRecordFuture(TableType.mapCollection(tabType))(m)
+
+      val allFutures = Future.sequence(futures)
+
+      for (allRecordlist <- allFutures) yield {
+        val recordList = allRecordlist.fold(Seq.empty[RecordList])((a,b)=>{ a ++ b})
+
+        Ok(Json.toJson(recordList))
       }
   }
 
@@ -462,9 +556,6 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
         case TableType.second =>
           getPeriods(start, end, 1.second)
       }
-
-      Logger.info(start.toString())
-      Logger.info(end.toString())
 
       val f = recordOp.getRecordListFuture(TableType.mapCollection(tabType))(start, end)
       import recordOp.recordListWrite

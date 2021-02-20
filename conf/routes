@@ -24,6 +24,8 @@ GET      /HistoryTrend/:monitor/:monitorType/:reportUnit/:statusFilter/:start/:e
 GET      /HistoryTrend/excel/:monitorType/:reportUnit/:statusFilter/:start/:end            controllers.Query.historyTrendChart(monitor, monitorType, reportUnit, statusFilter, start:Long, end:Long, outputTypeStr="excel")
 
 GET      /HistoryReport/:monitor/:monitorType/:tabType/:start/:end                controllers.Query.historyData(monitor, monitorType, tabType, start: Long, end: Long)
+GET      /LatestData/:monitor/:monitorType/:tabType                               controllers.Query.latestData(monitor, monitorType, tabType)
+GET      /RealtimeStatus                                                          controllers.Query.realtimeStatus()
 
 GET      /CalibrationReport/:start/:end                                           controllers.Query.calibrationReport(start:Long, end:Long)
 
@@ -38,8 +40,11 @@ GET      /InstrumentType/:id                                                    
 GET      /InstrumentInfos                                                         controllers.HomeController.getInstrumentInfoList()
 POST     /Instrument                                                              controllers.HomeController.newInstrument
 GET      /Instruments                                                             controllers.HomeController.getInstrumentList
+GET      /Instruments/DO                                                          controllers.HomeController.getDoInstrumentList
 GET      /Instrument/:id                                                          controllers.HomeController.getInstrument(id)
 DELETE   /Instrument/:ids                                                         controllers.HomeController.removeInstrument(ids)
+
+
 
 PUT      /DeactivateInstrument/:ids                                               controllers.HomeController.deactivateInstrument(ids)
 PUT      /ActivateInstrument/:ids                                                 controllers.HomeController.activateInstrument(ids)
@@ -76,9 +81,12 @@ GET      /MonthlyHourReport/:monitorType/:reportDate                            
 GET      /MonitorType                                                             controllers.HomeController.monitorTypeList
 POST     /MonitorType/:id                                                         controllers.HomeController.upsertMonitorType(id)
 PUT      /MonitorType/:id                                                         controllers.HomeController.upsertMonitorType(id)
+GET      /SignalTypes                                                             controllers.HomeController.signalTypeList
+GET      /SignalValues                                                            controllers.HomeController.signalValues
 
 GET      /Monitors                                                                controllers.HomeController.monitorList
 PUT      /Monitor/:id                                                             controllers.HomeController.upsertMonitor(id)
+
 
 GET      /Record/:monitorType/:start/:end                                         controllers.Query.recordList(monitorType, start:Long, end:Long)
 PUT      /Record/:tabType                                                         controllers.Query.updateRecord(tabType)
@@ -90,6 +98,7 @@ GET      /AlertRecord/:start/end                                                
 	
 	
 GET      /EvtOptHigh                                                              controllers.HomeController.testEvtOptHigh
+GET      /TestSpray                                                               controllers.HomeController.testSpray
 #GET		/WindRose				controllers.Query.windRose
 #GET		/MonitorTypeRose		controllers.Query.monitorTypeRose
 #GET		/WindRoseReport/:monitor/:monitorType/:nWays/:start/:end	controllers.Query.windRoseReport(monitor, monitorType, nWays:Int, start, end)

@@ -209,6 +209,12 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     Ok(Json.toJson(ret))
   }
 
+  def getDoInstrumentList = Security.Authenticated {
+    val ret = instrumentOp.getInstrumentList().filter(p=> instrumentTypeOp.DoInstruments.contains(p.instType))
+
+    Ok(Json.toJson(ret))
+  }
+
   def getInstrument(id: String) = Security.Authenticated {
     val ret = instrumentOp.getInstrument(id)
     if (ret.isEmpty)
@@ -426,8 +432,17 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
   }
 
   def monitorTypeList = Security.Authenticated {
+    implicit request =>
+      val userInfo = Security.getUserinfo(request).get
+
     implicit val writes = Json.writes[MonitorType]
-    val mtList = monitorTypeOp.mtvList map monitorTypeOp.map
+    val mtList = if(userInfo.isAdmin)
+      monitorTypeOp.mtvList map monitorTypeOp.map
+    else {
+      val pm25 = monitorTypeOp.mtvList.filter(p => p == "PM25")
+      pm25 map monitorTypeOp.map
+    }
+
     Ok(Json.toJson(mtList))
   }
 
@@ -443,9 +458,24 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
           BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
         },
         mt => {
+          Logger.info(mt.toString)
           monitorTypeOp.upsertMonitorType(mt)
           Ok(Json.obj("ok" -> true))
         })
+  }
+
+  def signalTypeList = Security.Authenticated {
+    implicit request =>
+
+      implicit val writes = Json.writes[MonitorType]
+      val mtList = monitorTypeOp.signalMtvList map monitorTypeOp.map
+
+      Ok(Json.toJson(mtList))
+  }
+
+  def signalValues = Security.Authenticated {
+    implicit request =>
+      Ok(Json.toJson(monitorTypeOp.diValueMap))
   }
 
   def recalculateHour(startStr: String, endStr: String) = Security.Authenticated {
@@ -478,5 +508,15 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     Ok("ok")
   }
 
+  def testSpray = Security.Authenticated {
+    Logger.info("testSpray")
+    val ret: Seq[Instrument] = instrumentOp.getInstrumentList().filter(p=> p.instType == instrumentTypeOp.ADAM6066)
+    ret map {
+      inst =>
+        dataCollectManagerOp.toggleTargetDO(inst._id, 17, 10)
+    }
+
+    Ok("ok")
+  }
   case class EditData(id: String, data: String)
 }

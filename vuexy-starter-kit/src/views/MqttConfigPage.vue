@@ -27,7 +27,13 @@
           label-for="instrument"
           label-cols-md="3"
         >
-          <b-form-input v-model="paramObj.eventConfig.instId"></b-form-input>
+          <v-select
+            v-model="paramObj.eventConfig.instId"
+            label="_id"
+            :reduce="inst => inst._id"
+            :options="doInstruments"
+            @input="onChange"
+          />
         </b-form-group>
       </b-col>
       <b-col cols="12">
@@ -37,6 +43,7 @@
             label="txt"
             :reduce="bit => bit.value"
             :options="bits"
+            @input="onChange"
           />
         </b-form-group>
       </b-col>
@@ -50,6 +57,7 @@
 import Vue from 'vue';
 import { mapState, mapGetters } from 'vuex';
 import vSelect from 'vue-select';
+import axios from 'axios';
 
 export default Vue.extend({
   components: {
@@ -85,13 +93,21 @@ export default Vue.extend({
           value: 17,
         },
       ],
+      doInstruments: [],
     };
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap']),
   },
+  mounted() {
+    this.getDoInstruments();
+  },
   methods: {
+    async getDoInstruments() {
+      const res = await axios.get('/Instruments/DO');
+      this.doInstruments = res.data;
+    },
     justify() {},
     onChange(evt) {
       this.justify();

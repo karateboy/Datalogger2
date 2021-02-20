@@ -37,6 +37,7 @@ import javax.inject._
 class InstrumentTypeOp @Inject()
 (adam4017Drv: Adam4017, adam4017Factory: Adam4017Collector.Factory, adam4068Factory: Adam4068Collector.Factory,
  adam6017Drv: Adam6017, adam6017Factory: Adam6017Collector.Factory,
+ adam6066Drv: Adam6066, adam6066Factory: Adam6066Collector.Factory,
  moxaE1240Drv: MoxaE1240, moxaE1240Factory: MoxaE1240Collector.Factory,
  verewaF701Factory: VerewaF701Collector.Factory,
  moxaE1212Drv: MoxaE1212, moxaE1212Factory: MoxaE1212Collector.Factory,
@@ -57,6 +58,7 @@ class InstrumentTypeOp @Inject()
   val ADAM4068 = "adam4068"
   val ADAM5000 = "adam5000"
   val ADAM6017 = "adam6017"
+  val ADAM6066 = "adam6066"
 
   val T100 = "t100"
   val T200 = "t200"
@@ -80,6 +82,7 @@ class InstrumentTypeOp @Inject()
     InstrumentType(ADAM4017, "Adam 4017", List(serial), adam4017Drv, adam4017Factory, true).infoPair,
     InstrumentType(ADAM4068, "Adam 4068", List(serial), Adam4068, adam4068Factory, true).infoPair,
     InstrumentType(ADAM6017, "Adam 6017", List(tcp), adam6017Drv, adam6017Factory, true).infoPair,
+    InstrumentType(ADAM6066, "Adam 6066", List(tcp), adam6066Drv, adam6066Factory, true).infoPair,
     InstrumentType(BASELINE9000, "Baseline 9000 MNME Analyzer", List(serial), Baseline9000Collector, baseline9000Factory).infoPair,
     InstrumentType(GPS, "GPS", List(serial), GpsCollector, gpsFactory).infoPair,
     InstrumentType(HORIBA370, "Horiba APXX-370", List(tcp), Horiba370Collector, horiba370Factory).infoPair,
@@ -96,6 +99,7 @@ class InstrumentTypeOp @Inject()
     InstrumentType(VEREWA_F701, "Verewa F701-20", List(serial), VerewaF701Collector, verewaF701Factory).infoPair
   )
 
+  val DoInstruments = Seq(ADAM6017, ADAM6066, MOXAE1212)
   var count = 0
 
   def getInstInfoPair(instType: InstrumentType) = {

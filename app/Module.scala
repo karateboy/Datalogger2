@@ -1,5 +1,5 @@
 import com.google.inject.AbstractModule
-import models.{Adam4017Collector, Adam4068Collector, Adam6017Collector, Baseline9000Collector, DataCollectManager, GpsCollector, Horiba370Collector, MongoDB, MonitorTypeOp, MoxaE1212Collector, MoxaE1240Collector, MqttCollector, T100Collector, T200Collector, T201Collector, T300Collector, T360Collector, T400Collector, T700Collector, VerewaF701Collector}
+import models.{Adam4017Collector, Adam4068Collector, Adam6017Collector, Adam6066Collector, Baseline9000Collector, DataCollectManager, GpsCollector, Horiba370Collector, MongoDB, MonitorTypeOp, MoxaE1212Collector, MoxaE1240Collector, MqttCollector, T100Collector, T200Collector, T201Collector, T300Collector, T360Collector, T400Collector, T700Collector, VerewaF701Collector}
 import play.api._
 import play.api.libs.concurrent.AkkaGuiceSupport
 /**
@@ -22,6 +22,7 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bindActorFactory[Adam4017Collector, Adam4017Collector.Factory]
     bindActorFactory[Adam4068Collector, Adam4068Collector.Factory]
     bindActorFactory[Adam6017Collector, Adam6017Collector.Factory]
+    bindActorFactory[Adam6066Collector, Adam6066Collector.Factory]
     bindActorFactory[Baseline9000Collector, Baseline9000Collector.Factory]
     bindActorFactory[GpsCollector, GpsCollector.Factory]
     bindActorFactory[Horiba370Collector, Horiba370Collector.Factory]

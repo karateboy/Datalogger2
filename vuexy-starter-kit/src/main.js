@@ -18,11 +18,13 @@ import router from './router';
 import store from './store';
 import App from './App.vue';
 import { ValidationProvider } from 'vee-validate';
+import * as VueGoogleMas from 'gmap-vue';
 
 // Global Components
 import './global-components';
 
 // 3rd party plugins
+import '@/libs/acl';
 import '@/libs/portal-vue';
 import '@/libs/toastification';
 
@@ -121,6 +123,13 @@ router.beforeEach((to, from, next) => {
   }
 });
 
+Vue.use(VueGoogleMas, {
+  load: {
+    key: 'AIzaSyDiE_K-p1_3V-lff9yXfD6KkC1SGpXVcKc',
+    libraries: 'places', // This is required if you use the Autocomplete plugin
+  },
+  installComponents: true,
+});
 new Vue({
   router,
   store,

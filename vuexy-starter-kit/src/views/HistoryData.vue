@@ -86,7 +86,20 @@
       </b-form>
     </b-card>
     <b-card v-show="display">
-      <b-table striped hover :fields="columns" :items="rows" show-empty />
+      <b-table striped hover :fields="columns" :items="rows" show-empty>
+        <template #thead-top>
+          <b-tr>
+            <b-th></b-th>
+            <b-th
+              v-for="mt in form.monitorTypes"
+              :key="mt"
+              :colspan="form.monitors.length"
+              class="text-center"
+              >{{ getMtDesc(mt) }}</b-th
+            >
+          </b-tr>
+        </template>
+      </b-table>
     </b-card>
   </div>
 </template>
@@ -100,7 +113,7 @@ import DatePicker from 'vue2-datepicker';
 import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
 import Ripple from 'vue-ripple-directive';
-import { mapState, mapGetters } from 'vuex';
+import { mapState, mapGetters, mapActions } from 'vuex';
 import moment from 'moment';
 import axios from 'axios';
 
@@ -117,14 +130,14 @@ export default Vue.extend({
     const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
     return {
       dataTypes: [
-        { txt: '小時資料', id: 'hour' },
+        // { txt: '小時資料', id: 'hour' },
         { txt: '分鐘資料', id: 'min' },
-        { txt: '秒資料', id: 'second' },
+        // { txt: '秒資料', id: 'second' },
       ],
       form: {
         monitors: [],
         monitorTypes: [],
-        dataType: 'hour',
+        dataType: 'min',
         range,
       },
       display: false,
@@ -136,18 +149,24 @@ export default Vue.extend({
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapState('monitors', ['monitors']),
     ...mapGetters('monitorTypes', ['mtMap']),
+    ...mapGetters('monitors', ['mMap']),
   },
   mounted() {
-    if (this.monitorTypes.length !== 0) {
-      // eslint-disable-next-line no-underscore-dangle
-      this.form.monitorTypes.push(this.monitorTypes[0]._id);
-    }
+    this.fetchMonitorTypes().then(() => {
+      if (this.monitorTypes.length !== 0) {
+        this.form.monitorTypes.push(this.monitorTypes[0]._id);
+      }
+    });
 
-    if (this.monitors.length !== 0) {
-      this.form.monitors.push(this.monitors[0]._id);
-    }
+    this.fetchMonitors().then(() => {
+      if (this.monitors.length !== 0) {
+        for (const m of this.monitors) this.form.monitors.push(m._id);
+      }
+    });
   },
   methods: {
+    ...mapActions('monitorTypes', ['fetchMonitorTypes']),
+    ...mapActions('monitors', ['fetchMonitors']),
     async query() {
       this.display = true;
       this.rows = [];
@@ -166,20 +185,31 @@ export default Vue.extend({
     cellDataTd(i) {
       return (_value, _key, item) => item.cellData[i].cellClassName;
     },
+    getMtDesc(mt) {
+      const mtCase = this.mtMap.get(mt);
+      return `${mtCase.desp}(${mtCase.unit})`;
+    },
     getColumns() {
       const ret = [];
       ret.push({
         key: 'date',
         label: '時間',
       });
-      for (let i = 0; i < this.form.monitorTypes.length; i += 1) {
-        const mtCase = this.mtMap.get(this.form.monitorTypes[i]);
-        ret.push({
-          key: `cellData[${i}].v`,
-          label: `${mtCase.desp}(${mtCase.unit})`,
-          tdClass: this.cellDataTd(i),
-        });
+      let i = 0;
+      for (const mt of this.form.monitorTypes) {
+        const mtCase = this.mtMap.get(mt);
+        for (const m of this.form.monitors) {
+          // emtpyCell  ${mtCase.desp}(${mtCase.unit})
+          const mCase = this.mMap.get(m);
+          ret.push({
+            key: `cellData[${i}].v`,
+            label: `${mCase.desc}`,
+            tdClass: this.cellDataTd(i),
+          });
+          i++;
+        }
       }
+
       return ret;
     },
   },

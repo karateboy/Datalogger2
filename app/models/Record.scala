@@ -294,6 +294,15 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp) {
 
   }
 
+  def getLatestRecordFuture(colName: String)(monitor: String) = {
+    import org.mongodb.scala.model.Filters._
+    import org.mongodb.scala.model.Projections._
+    import org.mongodb.scala.model.Sorts._
+
+    val col = getCollection(colName)
+    col.find(equal("monitor", monitor))
+      .sort(descending("time")).limit(1).toFuture()
+  }
   /*
   def updateMtRecord(colName: String)(mtName: String, updateList: Seq[(DateTime, Double)], monitor: String = "") = {
     import org.mongodb.scala.bson._

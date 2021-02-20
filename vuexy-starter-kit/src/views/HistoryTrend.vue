@@ -202,7 +202,7 @@ export default Vue.extend({
       form: {
         monitors: [],
         monitorTypes: [],
-        reportUnit: 'Hour',
+        reportUnit: 'Min',
         statusFilter: 'all',
         chartType: 'line',
         range,
@@ -214,16 +214,21 @@ export default Vue.extend({
     ...mapState('monitors', ['monitors']),
   },
   mounted() {
-    if (this.monitorTypes.length !== 0) {
-      // eslint-disable-next-line no-underscore-dangle
-      this.form.monitorTypes.push(this.monitorTypes[0]._id);
-    }
-    if (this.monitors.length !== 0) {
-      this.form.monitors.push(this.monitors[0]._id);
-    }
+    this.fetchMonitorTypes().then(() => {
+      if (this.monitorTypes.length !== 0) {
+        this.form.monitorTypes.push(this.monitorTypes[0]._id);
+      }
+    });
+
+    this.fetchMonitors().then(() => {
+      if (this.monitors.length !== 0) {
+        for (const m of this.monitors) this.form.monitors.push(m._id);
+      }
+    });
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
+    ...mapActions('monitors', ['fetchMonitors']),
     async query() {
       this.display = true;
       const monitors = this.form.monitors.join(':');

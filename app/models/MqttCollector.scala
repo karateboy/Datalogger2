@@ -10,7 +10,7 @@ import play.api._
 import play.api.libs.json.{JsError, Json, _}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{Duration, MINUTES}
+import scala.concurrent.duration.{Duration, MINUTES, SECONDS}
 
 case class EventConfig(instId: String, bit: Int)
 
@@ -73,7 +73,7 @@ object MqttCollector extends DriverOps {
 import javax.inject._
 
 class MqttCollector @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, system: ActorSystem,
-                              recordOp: RecordOp, monitorOp: MonitorOp)
+                              recordOp: RecordOp, monitorOp: MonitorOp, dataCollectManager: DataCollectManager)
                              (@Assisted id: String,
                               @Assisted protocolParam: ProtocolParam,
                               @Assisted config: MqttConfig) extends Actor with MqttCallback {
@@ -135,6 +135,11 @@ class MqttCollector @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, sy
         val recordList = RecordList(time.toDate, mtDataList, config.monitor)
         val f = recordOp.upsertRecord(recordList)(recordOp.MinCollection)
         f.onFailure(ModelHelper.errorHandler)
+
+        if(dataCollectManager.checkMinDataAlarm(recordList.mtDataList)){
+          context.parent ! WriteTargetDO(config.eventConfig.instId, config.eventConfig.bit, true)
+          system.scheduler.scheduleOnce(Duration(30, SECONDS), context.parent, WriteTargetDO(config.eventConfig.instId, config.eventConfig.bit, false))
+        }
       })
   }
 

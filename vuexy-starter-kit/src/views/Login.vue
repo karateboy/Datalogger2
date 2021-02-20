@@ -158,8 +158,28 @@ export default {
             .then(res => {
               const ret = res.data;
               if (ret.ok) {
+                const userInfo = ret.userInfo;
                 this.setUserInfo(ret.userInfo);
                 this.setLogin(true);
+                if (userInfo.isAdmin) {
+                  this.$ability.update([
+                    {
+                      action: 'manage',
+                      subject: 'all',
+                    },
+                  ]);
+                } else {
+                  this.$ability.update([
+                    {
+                      action: 'read',
+                      subject: 'Data',
+                    },
+                    {
+                      action: 'set',
+                      subject: 'Alarm',
+                    },
+                  ]);
+                }
                 this.$router.push('/');
               } else {
                 this.$toast({
@@ -171,7 +191,7 @@ export default {
                 });
               }
             })
-            .catch(() => {
+            .catch(err => {
               this.$toast({
                 component: ToastificationContent,
                 props: {

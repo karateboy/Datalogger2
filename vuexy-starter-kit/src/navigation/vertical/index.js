@@ -6,6 +6,8 @@ export default [
       {
         title: '儀錶板',
         route: 'home',
+        action: 'read',
+        resource: 'Data',
       },
       {
         title: '即時數據',
@@ -20,10 +22,14 @@ export default [
       {
         title: '歷史資料查詢',
         route: 'history-data',
+        action: 'read',
+        resource: 'Data',
       },
       {
         title: '歷史趨勢圖',
         route: 'history-trend',
+        action: 'read',
+        resource: 'Data',
       },
       {
         title: '校正資料查詢',
@@ -32,6 +38,8 @@ export default [
       {
         title: '警報記錄查詢',
         route: 'alarm-query',
+        action: 'read',
+        resource: 'Data',
       },
     ],
   },
@@ -64,10 +72,14 @@ export default [
       {
         title: '測點管理',
         route: 'monitor-config',
+        action: 'set',
+        resource: 'Alarm',
       },
       {
         title: '測項管理',
         route: 'monitor-type-config',
+        action: 'set',
+        resource: 'Alarm',
       },
       {
         title: '人工資料註記',

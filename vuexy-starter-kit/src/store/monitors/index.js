@@ -6,7 +6,7 @@ export default {
     monitors: [],
   },
   getters: {
-    mtMap(state) {
+    mMap(state) {
       const map = new Map();
       for (const m of state.monitors) {
         map.set(m._id, m);

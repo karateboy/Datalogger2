@@ -26,6 +26,20 @@
             @change="markDirty(row.item)"
           />
         </template>
+        <template #cell(std_internal)="row">
+          <b-form-input
+            v-model.number="row.item.std_internal"
+            size="sm"
+            @change="markDirty(row.item)"
+          />
+        </template>
+        <template #cell(std_law)="row">
+          <b-form-input
+            v-model.number="row.item.std_law"
+            size="sm"
+            @change="markDirty(row.item)"
+          />
+        </template>
         <template #cell(zd_internal)="row">
           <b-form-input
             v-model.number="row.item.zd_internal"
@@ -138,6 +152,16 @@ export default Vue.extend({
         sortable: true,
       },
       {
+        key: 'std_internal',
+        label: '內控值',
+        sortable: true,
+      },
+      {
+        key: 'std_law',
+        label: '法規值',
+        sortable: true,
+      },
+      {
         key: 'zd_internal',
         label: '零點偏移內控',
       },
@@ -181,6 +205,8 @@ export default Vue.extend({
       if (mt.span_dev_law === '') mt.span_dev_law = null;
       if (mt.zd_internal === '') mt.zd_internal = null;
       if (mt.zd_law === '') mt.zd_law = null;
+      if (mt.std_internal === '') mt.std_internal = null;
+      if (mt.std_law === '') mt.std_law = null;
     },
     save() {
       const all = [];

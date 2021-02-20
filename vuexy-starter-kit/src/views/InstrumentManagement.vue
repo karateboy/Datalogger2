@@ -350,7 +350,6 @@ export default Vue.extend({
       axios
         .get('/InstrumentInfos')
         .then(res => {
-          console.log(res.data);
           this.instList = res.data;
         })
         .catch(err => {
