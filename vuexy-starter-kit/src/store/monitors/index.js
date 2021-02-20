@@ -20,16 +20,14 @@ export default {
     },
   },
   actions: {
-    fetchMonitors({ commit }) {
-      axios
-        .get('/Monitors')
-        .then(res => {
-          const payload = res && res.data;
-          commit('setMonitors', payload);
-        })
-        .catch(err => {
-          throw new Error(err);
-        });
+    async fetchMonitors({ commit }) {
+      try {
+        const res = await axios.get('/Monitors');
+        const payload = res && res.data;
+        commit('setMonitors', payload);
+      } catch (err) {
+        throw new Error(err);
+      }
     },
   },
 };

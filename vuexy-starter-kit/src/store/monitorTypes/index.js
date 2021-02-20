@@ -20,16 +20,14 @@ export default {
     },
   },
   actions: {
-    fetchMonitorTypes({ commit }) {
-      axios
-        .get('/MonitorType')
-        .then(res => {
-          const payload = res && res.data;
-          commit('updateMonitorTypes', payload);
-        })
-        .catch(err => {
-          throw new Error(err);
-        });
+    async fetchMonitorTypes({ commit }) {
+      try {
+        const res = await axios.get('/MonitorType');
+        const payload = res && res.data;
+        commit('updateMonitorTypes', payload);
+      } catch (err) {
+        throw new Error(err);
+      }
     },
   },
 };
