@@ -78,7 +78,7 @@
         </template>
       </b-table>
       <b-row>
-        <b-col offset-md="3">
+        <b-col>
           <b-button
             v-ripple.400="'rgba(255, 255, 255, 0.15)'"
             variant="primary"

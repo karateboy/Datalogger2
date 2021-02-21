@@ -273,6 +273,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/data-management',
+      name: 'data-management',
+      component: () => import('@/views/DataManagement.vue'),
+      meta: {
+        pageTitle: '資料管理',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '資料管理',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/Login.vue'),

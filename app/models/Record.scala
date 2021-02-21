@@ -210,7 +210,8 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp) {
 
   def getID(time: Long, monitor: String) = Document("time" -> new BsonDateTime(time), "monitor" -> monitor)
 
-  def getRecordMap(colName: String)(mtList: List[String], startTime: DateTime, endTime: DateTime, monitor: String = "") = {
+  def getRecordMap(colName: String)
+                  (monitor: String, mtList: Seq[String], startTime: DateTime, endTime: DateTime) = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Projections._
     import org.mongodb.scala.model.Sorts._

@@ -12,7 +12,7 @@ import play.api.libs.json.{JsError, Json, _}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, MINUTES, SECONDS}
 
-case class EventConfig(instId: String, bit: Int)
+case class EventConfig(instId: String, bit: Int, seconds: Option[Int])
 
 case class MqttConfig(topic: String, monitor: String, eventConfig: EventConfig)
 
@@ -137,8 +137,8 @@ class MqttCollector @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, sy
         f.onFailure(ModelHelper.errorHandler)
 
         if(dataCollectManager.checkMinDataAlarm(recordList.mtDataList)){
-          context.parent ! WriteTargetDO(config.eventConfig.instId, config.eventConfig.bit, true)
-          system.scheduler.scheduleOnce(Duration(30, SECONDS), context.parent, WriteTargetDO(config.eventConfig.instId, config.eventConfig.bit, false))
+          val seconds = config.eventConfig.seconds.getOrElse(30)
+          context.parent ! ToggleTargetDO(config.eventConfig.instId, config.eventConfig.bit, seconds)
         }
       })
   }

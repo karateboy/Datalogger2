@@ -19,6 +19,7 @@ import store from './store';
 import App from './App.vue';
 import { ValidationProvider } from 'vee-validate';
 import * as VueGoogleMas from 'gmap-vue';
+import vSelect from 'vue-select';
 
 // Global Components
 import './global-components';
@@ -93,6 +94,8 @@ Highcharts.setOptions({
     ],
   },
 });
+
+Vue.component('VSelect', vSelect);
 
 Vue.component('ValidationProvider', ValidationProvider);
 

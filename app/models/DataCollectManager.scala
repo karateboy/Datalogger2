@@ -95,7 +95,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! WriteTargetDO(id, bit, on)
   }
 
-  def toggleTargetDO(id:String, bit:Int, seconds:Int) = {
+  def toggleTargetDO(id: String, bit: Int, seconds: Int) = {
     manager ! ToggleTargetDO(id, bit, seconds)
   }
 
@@ -114,27 +114,6 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     f.mapTo[Map[String, Record]]
   }
 
-  def checkMinDataAlarm(minMtAvgList: Iterable[(String, (Double, String))]) = {
-    var overThreshold = false
-    for {
-      hourMtData <- minMtAvgList
-      mt = hourMtData._1
-      data = hourMtData._2
-    } {
-      val mtCase = monitorTypeOp.map(mt)
-      if (mtCase.std_internal.isDefined && MonitorStatus.isValid(data._2)) {
-        if (data._1 > mtCase.std_internal.get) {
-          val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, Some(data._1))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
-          alarmOp.log(alarmOp.Src(mt), alarmOp.Level.INFO, msg)
-          overThreshold = true
-        }
-      }
-    }
-    if (overThreshold) {
-      evtOperationHighThreshold
-    }
-  }
-
   import scala.collection.mutable.ListBuffer
 
   def evtOperationHighThreshold {
@@ -142,9 +121,9 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! EvtOperationOverThreshold
   }
 
-  def recalculateHourData(current: DateTime, forward: Boolean = true)(mtList: List[String]) = {
-    Logger.debug("calculate hour data " + (current - 1.hour))
-    val recordMap = recordOp.getRecordMap(recordOp.MinCollection)(mtList, current - 1.hour, current)
+  def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid:Boolean)(mtList: Seq[String]) = {
+    Logger.debug(s"calculate ${monitor} hour data " + (current - 1.hour))
+    val recordMap = recordOp.getRecordMap(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current)
 
     import scala.collection.mutable.ListBuffer
     var mtMap = Map.empty[String, Map[String, ListBuffer[(DateTime, Double)]]]
@@ -170,8 +149,8 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
       lb.append((r.time, r.value))
     }
 
-    val mtDataList = calculateHourAvgMap(mtMap)
-    val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, "")
+    val mtDataList = calculateHourAvgMap(mtMap, alwaysValid)
+    val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
     val f = recordOp.upsertRecord(recordList)(recordOp.HourCollection)
     if (forward)
       f map { _ => ForwardManager.forwardHourData }
@@ -179,7 +158,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     f
   }
 
-  def calculateHourAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]]) = {
+  def calculateHourAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid:Boolean) = {
     for {
       mt <- mtMap.keys
       statusMap = mtMap(mt)
@@ -191,8 +170,8 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         } sum
         val statusKV = {
           val kv = statusMap.maxBy(kv => kv._2.length)
-          if (kv._1 == MonitorStatus.NormalStat &&
-            statusMap(kv._1).size < totalSize * effectivRatio) {
+          if (kv._1 == MonitorStatus.NormalStat &&(!alwaysValid &&
+            statusMap(kv._1).size < totalSize * effectivRatio)) {
             //return most status except normal
             val noNormalStatusMap = statusMap - kv._1
             noNormalStatusMap.maxBy(kv => kv._2.length)
@@ -231,7 +210,8 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 
 @Singleton
 class DataCollectManager @Inject()
-(config: Configuration, system: ActorSystem, recordOp: RecordOp, monitorTypeOp: MonitorTypeOp,
+(config: Configuration, system: ActorSystem, recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp,
+ dataCollectManagerOp: DataCollectManagerOp,
  instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmOp, instrumentOp: InstrumentOp) extends Actor with InjectedActorSupport {
   val effectivRatio = 0.75
   val storeSecondData = config.getBoolean("storeSecondData").getOrElse(false)
@@ -312,55 +292,6 @@ class DataCollectManager @Inject()
     }
   }
 
-  def calculateHourAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]]) = {
-    for {
-      mt <- mtMap.keys
-      statusMap = mtMap(mt)
-      normalValueOpt = statusMap.get(MonitorStatus.NormalStat) if normalValueOpt.isDefined
-    } yield {
-      val minuteAvg = {
-        val totalSize = statusMap map {
-          _._2.length
-        } sum
-        val statusKV = {
-          val kv = statusMap.maxBy(kv => kv._2.length)
-          if (kv._1 == MonitorStatus.NormalStat &&
-            statusMap(kv._1).size < totalSize * effectivRatio) {
-            //return most status except normal
-            val noNormalStatusMap = statusMap - kv._1
-            noNormalStatusMap.maxBy(kv => kv._2.length)
-          } else
-            kv
-        }
-        val values = normalValueOpt.get.map {
-          _._2
-        }
-        val avg = if (mt == monitorTypeOp.WIN_DIRECTION) {
-          val windDir = values
-          val windSpeedStatusMap = mtMap.get(monitorTypeOp.WIN_SPEED)
-          if (windSpeedStatusMap.isDefined) {
-            val windSpeedMostStatus = windSpeedStatusMap.get.maxBy(kv => kv._2.length)
-            val windSpeed = windSpeedMostStatus._2.map(_._2)
-            windAvg(windSpeed.toList, windDir.toList)
-          } else { //assume wind speed is all equal
-            val windSpeed =
-              for (r <- 1 to windDir.length)
-                yield 1.0
-            windAvg(windSpeed.toList, windDir.toList)
-          }
-        } else if (mt == monitorTypeOp.RAIN) {
-          values.max
-        } else if (mt == monitorTypeOp.PM10 || mt == monitorTypeOp.PM25) {
-          values.last
-        } else {
-          values.sum / values.length
-        }
-        (avg, statusKV._1)
-      }
-      MtRecord(mt, minuteAvg._1, minuteAvg._2)
-    }
-  }
-
   def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord]) = {
     var overThreshold = false
     for {
@@ -380,43 +311,6 @@ class DataCollectManager @Inject()
     }
 
     overThreshold
-  }
-
-  def recalculateHourData(current: DateTime, forward: Boolean = true)(mtList: List[String]) = {
-    Logger.debug("calculate hour data " + (current - 1.hour))
-    val recordMap = recordOp.getRecordMap(recordOp.MinCollection)(mtList, current - 1.hour, current)
-
-    import scala.collection.mutable.ListBuffer
-    var mtMap = Map.empty[String, Map[String, ListBuffer[(DateTime, Double)]]]
-
-    for {
-      mtRecords <- recordMap
-      mt = mtRecords._1
-      r <- mtRecords._2
-    } {
-      var statusMap = mtMap.getOrElse(mt, {
-        val map = Map.empty[String, ListBuffer[(DateTime, Double)]]
-        mtMap = mtMap ++ Map(mt -> map)
-        map
-      })
-
-      val lb = statusMap.getOrElse(r.status, {
-        val l = ListBuffer.empty[(DateTime, Double)]
-        statusMap = statusMap ++ Map(r.status -> l)
-        mtMap = mtMap ++ Map(mt -> statusMap)
-        l
-      })
-
-      lb.append((r.time, r.value))
-    }
-
-    val mtDataList = calculateHourAvgMap(mtMap)
-    val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, "")
-    val f = recordOp.upsertRecord(recordList)(recordOp.HourCollection)
-    if (forward)
-      f map { _ => ForwardManager.forwardHourData }
-
-    f
   }
 
   def receive = handler(Map.empty[String, InstrumentParam], Map.empty[ActorRef, String],
@@ -636,7 +530,23 @@ class DataCollectManager @Inject()
       f onFailure (errorHandler)
 
       if (current.getMinuteOfHour == 0) {
-        f.map { _ => recalculateHourData(current)(latestDataMap.keys.toList) }
+        waitReadyResult(f)
+
+        //calculate self
+        dataCollectManagerOp.recalculateHourData(monitor = "",
+          current = current,
+          forward = false,
+          alwaysValid = false)(latestDataMap.keys.toList)
+
+        //calculate other monitors
+        for(m<- monitorOp.mvList){
+          val monitor = monitorOp.map(m)
+          dataCollectManagerOp.recalculateHourData(monitor = monitor._id,
+            current = current,
+            forward = false,
+            alwaysValid = true)(monitor.monitorTypes.toList)
+        }
+
       }
     }
 
@@ -666,6 +576,8 @@ class DataCollectManager @Inject()
       }
 
     case ToggleTargetDO(instId, bit: Int, seconds) =>
+      //Cancel previous timer if any
+      onceTimer map { t => t.cancel()}
       Logger.debug(s"ToggleTargetDO($instId, $bit)")
       self ! WriteTargetDO(instId, bit, true)
       onceTimer = Some(system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),

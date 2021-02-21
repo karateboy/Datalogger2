@@ -4,17 +4,28 @@
       <b-table
         responsive
         :fields="columns"
-        :items="monitors"
+        :items="editMonitors"
         bordered
         sticky-header
-        style="max-height: 600px"
+        style="min-height: 600px"
       >
         <template #cell(desc)="row">
           <b-form-input v-model="row.item.desc" @change="markDirty(row.item)" />
         </template>
+        <template #cell(monitorTypes)="row">
+          <v-select
+            id="monitorType"
+            v-model="row.item.monitorTypes"
+            label="desp"
+            :reduce="mt => mt._id"
+            :options="monitorTypes"
+            multiple
+            @input="markDirty(row.item)"
+          />
+        </template>
       </b-table>
       <b-row>
-        <b-col offset-md="3">
+        <b-col>
           <b-button
             v-ripple.400="'rgba(255, 255, 255, 0.15)'"
             variant="primary"
@@ -27,7 +38,7 @@
             v-ripple.400="'rgba(186, 191, 199, 0.15)'"
             type="reset"
             variant="outline-secondary"
-            @click="getMonitors"
+            @click="rollback"
           >
             取消
           </b-button>
@@ -36,9 +47,6 @@
     </b-card>
   </div>
 </template>
-<style lang="scss">
-@import '@core/scss/vue/libs/vue-select.scss';
-</style>
 <script lang="ts">
 import Vue from 'vue';
 import Ripple from 'vue-ripple-directive';
@@ -78,40 +86,47 @@ export default Vue.extend({
         label: '名稱',
         sortable: true,
       },
+      {
+        key: 'monitorTypes',
+        label: '測項',
+        sortable: true,
+      },
     ];
     // const monitors = [];
 
     return {
+      editMonitors: [],
       display: false,
       columns,
     };
   },
   computed: {
     ...mapState('monitors', ['monitors']),
+    ...mapState('monitorTypes', ['monitorTypes']),
   },
-  mounted() {
-    //this.getMonitors();
+  async mounted() {
+    await this.fetchMonitors();
+    await this.fetchMonitorTypes();
+    this.editMonitors = this.monitors;
   },
   methods: {
     ...mapActions('monitors', ['fetchMonitors']),
-    getMonitors() {
-      axios.get('/Monitors').then(res => {
-        this.monitors = res.data;
-      });
-    },
+    ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     save() {
       const all = [];
-      for (const m of this.monitors) {
+      for (const m of this.editMonitors) {
         if (m.dirty) {
           all.push(axios.put(`/Monitor/${m._id}`, m));
         }
       }
 
       Promise.all(all).then(() => {
-        this.getMonitors();
         this.fetchMonitors();
         this.$bvModal.msgBoxOk('成功');
       });
+    },
+    rollback() {
+      this.editMonitors = this.monitors;
     },
     markDirty(item) {
       item.dirty = true;

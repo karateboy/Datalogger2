@@ -95,7 +95,7 @@ export default [
       },
       {
         title: '資料管理',
-        route: null,
+        route: 'data-management',
       },
     ],
   },

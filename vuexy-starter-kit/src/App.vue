@@ -5,7 +5,9 @@
     </component>
   </div>
 </template>
-
+<style lang="scss">
+@import '@core/scss/vue/libs/vue-select.scss';
+</style>
 <script>
 // This will be populated in `beforeCreate` hook
 import { $themeColors, $themeBreakpoints, $themeConfig } from '@themeConfig';

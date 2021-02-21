@@ -7,7 +7,7 @@ import play.api.libs.json._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-case class Monitor(_id: String, desc: String)
+case class Monitor(_id: String, desc: String, monitorTypes: Seq[String] = Seq.empty[String])
 
 import javax.inject._
 
@@ -26,6 +26,15 @@ class MonitorOp @Inject()(mongoDB: MongoDB) {
   val codecRegistry = fromRegistries(fromProviders(classOf[Monitor]), DEFAULT_CODEC_REGISTRY)
   val collection = mongoDB.database.getCollection[Monitor](colName).withCodecRegistry(codecRegistry)
 
+  def upgrade={
+    // upgrade if no monitorTypes
+    val f = mongoDB.database.getCollection(colName).updateMany(
+      Filters.exists("monitorTypes", false), Updates.set("monitorTypes", Seq.empty[String])).toFuture()
+
+    waitReadyResult(f)
+  }
+
+  upgrade
   refresh
 
   def newMonitor(m: Monitor) = {

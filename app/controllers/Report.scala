@@ -43,7 +43,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
           case PeriodReport.DailyReport =>
             val startDate = new DateTime(startNum).withMillisOfDay(0)
             val mtList = monitorTypeOp.realtimeMtvList
-            val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(mtList, startDate, startDate + 1.day)
+            val periodMap = recordOp.getRecordMap(recordOp.HourCollection)("", mtList, startDate, startDate + 1.day)
             val mtTimeMap: Map[String, Map[DateTime, Record]] = periodMap.map { pair =>
               val k = pair._1
               val v = pair._2
@@ -99,7 +99,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
           case PeriodReport.MonthlyReport =>
             val start = new DateTime(startNum).withMillisOfDay(0).withDayOfMonth(1)
             val mtList = monitorTypeOp.realtimeMtvList
-            val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(monitorTypeOp.activeMtvList, start, start + 1.month)
+            val periodMap = recordOp.getRecordMap(recordOp.HourCollection)("", monitorTypeOp.activeMtvList, start, start + 1.month)
             val statMap = query.getPeriodStatReportMap(periodMap, 1.day)(start, start + 1.month)
             val overallStatMap = getOverallStatMap(statMap)
             val avgRow = {
@@ -148,7 +148,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
           case PeriodReport.YearlyReport =>
             val start = new DateTime(startNum)
             val startDate = start.withMillisOfDay(0).withDayOfMonth(1).withMonthOfYear(1)
-            val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(monitorTypeOp.activeMtvList, startDate, startDate + 1.year)
+            val periodMap = recordOp.getRecordMap(recordOp.HourCollection)("", monitorTypeOp.activeMtvList, startDate, startDate + 1.year)
             val statMap = query.getPeriodStatReportMap(periodMap, 1.month)(start, start + 1.year)
             val overallStatMap = getOverallStatMap(statMap)
             Ok("")
@@ -249,7 +249,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
     val outputType = OutputType.withName(outputTypeStr)
     val title = "月份時報表"
     if (outputType == OutputType.html || outputType == OutputType.pdf) {
-      val recordList = recordOp.getRecordMap(recordOp.HourCollection)(List(mt), start, start + 1.month)(mt)
+      val recordList = recordOp.getRecordMap(recordOp.HourCollection)("", List(mt), start, start + 1.month)(mt)
       val timePair = recordList.map { r => r.time -> r }
       val timeMap = Map(timePair: _*)
 

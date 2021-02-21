@@ -142,7 +142,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
             for (mt <- mtList) {
               monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog)
             }
-            if(newInstrument.active)
+            if (newInstrument.active)
               dataCollectManagerOp.startCollect(newInstrument)
 
             Ok(Json.obj("ok" -> true))
@@ -210,7 +210,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
   }
 
   def getDoInstrumentList = Security.Authenticated {
-    val ret = instrumentOp.getInstrumentList().filter(p=> instrumentTypeOp.DoInstruments.contains(p.instType))
+    val ret = instrumentOp.getInstrumentList().filter(p => instrumentTypeOp.DoInstruments.contains(p.instType))
 
     Ok(Json.toJson(ret))
   }
@@ -412,7 +412,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
 
   def monitorList = Security.Authenticated {
     implicit val writes = Json.writes[Monitor]
-    val mtList = monitorOp.mvList map { m => monitorOp.map(m)}
+    val mtList = monitorOp.mvList map { m => monitorOp.map(m) }
     Ok(Json.toJson(mtList))
   }
 
@@ -435,15 +435,15 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     implicit request =>
       val userInfo = Security.getUserinfo(request).get
 
-    implicit val writes = Json.writes[MonitorType]
-    val mtList = if(userInfo.isAdmin)
-      monitorTypeOp.mtvList map monitorTypeOp.map
-    else {
-      val pm25 = monitorTypeOp.mtvList.filter(p => p == "PM25")
-      pm25 map monitorTypeOp.map
-    }
+      implicit val writes = Json.writes[MonitorType]
+      val mtList = if (userInfo.isAdmin)
+        monitorTypeOp.mtvList map monitorTypeOp.map
+      else {
+        val pm25 = monitorTypeOp.mtvList.filter(p => p == "PM25")
+        pm25 map monitorTypeOp.map
+      }
 
-    Ok(Json.toJson(mtList))
+      Ok(Json.toJson(mtList))
   }
 
   def upsertMonitorType(id: String) = Security.Authenticated(BodyParsers.parse.json) {
@@ -478,12 +478,16 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       Ok(Json.toJson(monitorTypeOp.diValueMap))
   }
 
-  def recalculateHour(startStr: String, endStr: String) = Security.Authenticated {
-    val start = DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
-    val end = DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
+  def recalculateHour(monitorStr: String, startNum: Long, endNum: Long) = Security.Authenticated {
+    val monitors = monitorStr.split(":")
+    val start = new DateTime(startNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
+    val end = new DateTime(endNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
 
-    for (hour <- query.getPeriods(start, end, 1.hour)) {
-      dataCollectManagerOp.recalculateHourData(hour, false)(monitorTypeOp.mtvList)
+    for {
+      monitor <- monitors
+      mCase = monitorOp.map(monitor)
+      hour <- query.getPeriods(start, end + 1.hour, 1.hour)} {
+      dataCollectManagerOp.recalculateHourData(monitor, hour, false, true)(mCase.monitorTypes)
     }
     Ok(Json.obj("ok" -> true))
   }
@@ -510,7 +514,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
 
   def testSpray = Security.Authenticated {
     Logger.info("testSpray")
-    val ret: Seq[Instrument] = instrumentOp.getInstrumentList().filter(p=> p.instType == instrumentTypeOp.ADAM6066)
+    val ret: Seq[Instrument] = instrumentOp.getInstrumentList().filter(p => p.instType == instrumentTypeOp.ADAM6066)
     ret map {
       inst =>
         dataCollectManagerOp.toggleTargetDO(inst._id, 17, 10)
@@ -518,5 +522,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
 
     Ok("ok")
   }
+
   case class EditData(id: String, data: String)
+
 }

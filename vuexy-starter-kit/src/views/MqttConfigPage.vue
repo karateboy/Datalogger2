@@ -47,6 +47,14 @@
           />
         </b-form-group>
       </b-col>
+      <b-col cols="12">
+        <b-form-group label="持續時間" label-for="seconds" label-cols-md="3">
+          <b-form-input
+            v-model.number="paramObj.eventConfig.seconds"
+            type="number"
+          />
+        </b-form-group>
+      </b-col>
     </b-row>
   </b-form>
 </template>
@@ -76,6 +84,7 @@ export default Vue.extend({
       eventConfig: {
         instId: '',
         bit: 0,
+        seconds: 30,
       },
     };
 
@@ -108,7 +117,10 @@ export default Vue.extend({
       const res = await axios.get('/Instruments/DO');
       this.doInstruments = res.data;
     },
-    justify() {},
+    justify() {
+      const param = this.paramObj;
+      if (param.eventConfig.seconds === '') param.eventConfig.seconds = 30;
+    },
     onChange(evt) {
       this.justify();
       this.$emit('param-changed', JSON.stringify(this.paramObj));

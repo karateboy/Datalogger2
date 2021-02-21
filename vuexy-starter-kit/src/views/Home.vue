@@ -45,7 +45,7 @@
               :clickable="true"
               :draggable="true"
               :title="m.title"
-              :label="`${m.pm25}`"
+              :icon="m.iconUrl"
               @click="toggleInfoWindow(m, index)"
             />
             <gmap-info-window
@@ -136,6 +136,23 @@ export default {
     markers() {
       const ret = [];
       let count = 0;
+      const getIconUrl = v => {
+        let url = `https://chart.googleapis.com/chart?chst=d_bubble_text_small_withshadow&&chld=bb|`;
+
+        if (v < 12) url += `${v}低|9CFF9C|000000`;
+        else if (v < 24) url += `${v}+低|31FF00|000000`;
+        else if (v < 36) url += `${v}+低|31CF00|000000`;
+        else if (v < 42) url += `${v}+中|FFFF00|000000`;
+        else if (v < 48) url += `${v}+中|FFCF00|000000`;
+        else if (v < 54) url += `${v}+中|FF9A00|000000`;
+        else if (v < 59) url += `${v}+高|FF6464|000000`;
+        else if (v < 65) url += `${v}+高|FF0000|FFFFFF`;
+        else if (v < 71) url += `${v}+高|990000|FFFFFF`;
+        else url += `${v}+非常高|CE30FF|FFFFFF`;
+
+        return url;
+      };
+
       for (const stat of this.realTimeStatus) {
         let lat = 0,
           lng = 0,
@@ -153,11 +170,13 @@ export default {
         if (!pm25Entry) continue;
         pm25 = pm25Entry.value;
 
+        const iconUrl = getIconUrl(pm25);
         ret.push({
           title: this.mMap.get(stat.monitor).desc,
           position: { lat, lng },
           pm25,
           infoText: `<strong>${this.mMap.get(stat.monitor).desc}</strong>`,
+          iconUrl,
         });
         count++;
       }

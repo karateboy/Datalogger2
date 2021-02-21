@@ -353,7 +353,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
 
   def getPeriodReportMap(monitor: String, mt: String, tabType: TableType.Value, period: Period,
                          statusFilter: MonitorStatusFilter.Value = MonitorStatusFilter.ValidData)(start: DateTime, end: DateTime) = {
-    val recordList = recordOp.getRecordMap(TableType.mapCollection(tabType))(List(mt), start, end, monitor)(mt)
+    val recordList = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitor, List(mt), start, end)(mt)
 
     def periodSlice(period_start: DateTime, period_end: DateTime) = {
       recordList.dropWhile {
@@ -373,7 +373,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
         } yield {
           if (mt == monitorTypeOp.WIN_DIRECTION) {
             val windDir = records
-            val windSpeed = recordOp.getRecordMap(TableType.mapCollection(tabType))(List(monitorTypeOp.WIN_SPEED), period_start, period_start + period, monitor)(mt)
+            val windSpeed = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitor, List(monitorTypeOp.WIN_SPEED), period_start, period_start + period)(mt)
             period_start -> windAvg(windSpeed, windDir)
           } else {
             val values = records.map { r => r.value }
@@ -630,7 +630,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
     implicit val w = Json.writes[Record]
     val (start, end) = (new DateTime(startLong), new DateTime(endLong))
 
-    val recordMap = recordOp.getRecordMap(recordOp.HourCollection)(List(monitorType), start, end)
+    val recordMap = recordOp.getRecordMap(recordOp.HourCollection)("", List(monitorType), start, end)
     Ok(Json.toJson(recordMap(monitorType)))
   }
 

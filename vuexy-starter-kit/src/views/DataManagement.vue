@@ -17,22 +17,6 @@
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="測項"
-              label-for="monitorType"
-              label-cols-md="3"
-            >
-              <v-select
-                id="monitorType"
-                v-model="form.monitorTypes"
-                label="desp"
-                :reduce="mt => mt._id"
-                :options="monitorTypes"
-                multiple
-              />
-            </b-form-group>
-          </b-col>
-          <b-col cols="12">
-            <b-form-group
               label="資料來源"
               label-for="dataType"
               label-cols-md="3"
@@ -70,9 +54,9 @@
               type="submit"
               variant="primary"
               class="mr-1"
-              @click="query"
+              @click="recalculate"
             >
-              查詢
+              重新計算
             </b-button>
             <b-button
               v-ripple.400="'rgba(186, 191, 199, 0.15)'"
@@ -84,22 +68,6 @@
           </b-col>
         </b-row>
       </b-form>
-    </b-card>
-    <b-card v-show="display">
-      <b-table striped hover :fields="columns" :items="rows" show-empty>
-        <template #thead-top>
-          <b-tr>
-            <b-th></b-th>
-            <b-th
-              v-for="mt in form.monitorTypes"
-              :key="mt"
-              :colspan="form.monitors.length"
-              class="text-center"
-              >{{ getMtDesc(mt) }}</b-th
-            >
-          </b-tr>
-        </template>
-      </b-table>
     </b-card>
   </div>
 </template>
@@ -131,85 +99,36 @@ export default Vue.extend({
     return {
       dataTypes: [
         { txt: '小時資料', id: 'hour' },
-        { txt: '分鐘資料', id: 'min' },
+        // { txt: '分鐘資料', id: 'min' },
         // { txt: '秒資料', id: 'second' },
       ],
       form: {
         monitors: [],
         monitorTypes: [],
-        dataType: 'min',
+        dataType: 'hour',
         range,
       },
-      display: false,
-      columns: [],
-      rows: [],
     };
   },
   computed: {
-    ...mapState('monitorTypes', ['monitorTypes']),
     ...mapState('monitors', ['monitors']),
-    ...mapGetters('monitorTypes', ['mtMap']),
     ...mapGetters('monitors', ['mMap']),
   },
   async mounted() {
-    await this.fetchMonitorTypes();
     await this.fetchMonitors();
 
-    if (this.monitorTypes.length !== 0) {
-      this.form.monitorTypes.push(this.monitorTypes[0]._id);
-    }
-
-    if (this.monitors.length !== 0) {
-      for (const m of this.monitors) this.form.monitors.push(m._id);
-    }
+    for (const m of this.monitors) this.form.monitors.push(m._id);
   },
   methods: {
-    ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapActions('monitors', ['fetchMonitors']),
-    async query() {
-      this.display = true;
-      this.rows = [];
-      this.columns = this.getColumns();
+    async recalculate() {
       const monitors = this.form.monitors.join(':');
-      const monitorTypes = this.form.monitorTypes.join(':');
-      const url = `/HistoryReport/${monitors}/${monitorTypes}/${this.form.dataType}/${this.form.range[0]}/${this.form.range[1]}`;
+      const url = `/Recalculate/${monitors}/${this.form.range[0]}/${this.form.range[1]}`;
 
       const ret = await axios.get(url);
-      for (const row of ret.data.rows) {
-        row.date = moment(row.date).format('lll');
+      if (ret.data.ok) {
+        this.$bvModal.msgBoxOk('成功');
       }
-
-      this.rows = ret.data.rows;
-    },
-    cellDataTd(i) {
-      return (_value, _key, item) => item.cellData[i].cellClassName;
-    },
-    getMtDesc(mt) {
-      const mtCase = this.mtMap.get(mt);
-      return `${mtCase.desp}(${mtCase.unit})`;
-    },
-    getColumns() {
-      const ret = [];
-      ret.push({
-        key: 'date',
-        label: '時間',
-      });
-      let i = 0;
-      for (const mt of this.form.monitorTypes) {
-        const mtCase = this.mtMap.get(mt);
-        for (const m of this.form.monitors) {
-          // emtpyCell  ${mtCase.desp}(${mtCase.unit})
-          const mCase = this.mMap.get(m);
-          ret.push({
-            key: `cellData[${i}].v`,
-            label: `${mCase.desc}`,
-            tdClass: this.cellDataTd(i),
-          });
-          i++;
-        }
-      }
-
-      return ret;
     },
   },
 });

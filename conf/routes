@@ -63,7 +63,7 @@ GET      /ManualAuditHistory/:start/:end                                        
 
 #Data Management
 
-GET      /Recalculate/:start/:end                                                 controllers.HomeController.recalculateHour(start, end)
+GET      /Recalculate/:monitors/:start/:end                                       controllers.HomeController.recalculateHour(monitors, start:Long, end:Long)
 GET      /Upload/:tab/:start/:end                                                 controllers.HomeController.uploadData(tab, start, end)
 
 #Realtime
