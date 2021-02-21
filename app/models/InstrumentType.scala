@@ -40,6 +40,7 @@ class InstrumentTypeOp @Inject()
  adam6066Drv: Adam6066, adam6066Factory: Adam6066Collector.Factory,
  moxaE1240Drv: MoxaE1240, moxaE1240Factory: MoxaE1240Collector.Factory,
  verewaF701Factory: VerewaF701Collector.Factory,
+ thetaFactory: ThetaCollector.Factory,
  moxaE1212Drv: MoxaE1212, moxaE1212Factory: MoxaE1212Collector.Factory,
  mqttFactory: MqttCollector.Factory,
  baseline9000Factory: Baseline9000Collector.Factory,
@@ -78,6 +79,7 @@ class InstrumentTypeOp @Inject()
   val HORIBA370 = "horiba370"
   val GPS = "gps"
   val MQTT_CLIENT = "mqtt_client"
+  val THETA = "theta"
   val map = Map(
     InstrumentType(ADAM4017, "Adam 4017", List(serial), adam4017Drv, adam4017Factory, true).infoPair,
     InstrumentType(ADAM4068, "Adam 4068", List(serial), Adam4068, adam4068Factory, true).infoPair,
@@ -96,7 +98,8 @@ class InstrumentTypeOp @Inject()
     InstrumentType(T360, "TAPI T360", List(tcp), T360Collector, t360Factory).infoPair,
     InstrumentType(T400, "TAPI T400", List(tcp), T400Collector, t400Factory).infoPair,
     InstrumentType(T700, "TAPI T700", List(tcp), T700Collector, t700Factory).infoPair,
-    InstrumentType(VEREWA_F701, "Verewa F701-20", List(serial), VerewaF701Collector, verewaF701Factory).infoPair
+    InstrumentType(VEREWA_F701, "Verewa F701-20", List(serial), VerewaF701Collector, verewaF701Factory).infoPair,
+    InstrumentType(THETA, "THETA", List(serial), ThetaCollector, thetaFactory).infoPair
   )
 
   val DoInstruments = Seq(ADAM6017, ADAM6066, MOXAE1212)

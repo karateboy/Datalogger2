@@ -150,6 +150,11 @@
             :param-str="form.param"
             @param-changed="onParamChange"
           ></adam-6066-config-page>
+          <theta-config-page
+            v-else-if="isTheta"
+            :param-str="form.param"
+            @param-changed="onParamChange"
+          />
           <div v-else>TBD {{ form.instType }}</div>
         </validation-observer>
       </tab-content>
@@ -181,6 +186,7 @@ import TapiConfigPage from './TapiConfigPage.vue';
 import Adam6017ConfigPage from './Adam6017ConfigPage.vue';
 import MqttConfigPage from './MqttConfigPage.vue';
 import Adam6066ConfigPage from './Adam6066ConfigPage.vue';
+import ThetaConfigPage from './ThetaConfigPage.vue';
 
 export default {
   components: {
@@ -192,6 +198,7 @@ export default {
     Adam6017ConfigPage,
     MqttConfigPage,
     Adam6066ConfigPage,
+    ThetaConfigPage,
   },
   props: {
     isNew: {
@@ -246,6 +253,9 @@ export default {
     },
     isAdam6066() {
       return this.form.instType === 'adam6066';
+    },
+    isTheta() {
+      return this.form.instType === 'theta';
     },
     instrumentSummary() {
       const formNewline = input => {
@@ -341,6 +351,7 @@ export default {
       });
     },
     onParamChange(v) {
+      console.log(v);
       this.form.param = v;
     },
     async formSubmitted() {

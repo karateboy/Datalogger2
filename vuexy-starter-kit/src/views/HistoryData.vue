@@ -86,7 +86,15 @@
       </b-form>
     </b-card>
     <b-card v-show="display">
-      <b-table striped hover :fields="columns" :items="rows" show-empty>
+      <b-table
+        striped
+        hover
+        :fields="columns"
+        :items="rows"
+        show-empty
+        :per-page="15"
+        :current-page="currentPage"
+      >
         <template #thead-top>
           <b-tr>
             <b-th></b-th>
@@ -100,6 +108,16 @@
           </b-tr>
         </template>
       </b-table>
+      <b-pagination
+        v-model="currentPage"
+        :total-rows="rows.length"
+        :per-page="15"
+        first-text="⏮"
+        prev-text="⏪"
+        next-text="⏩"
+        last-text="⏭"
+        class="mt-4"
+      ></b-pagination>
     </b-card>
   </div>
 </template>
@@ -143,6 +161,7 @@ export default Vue.extend({
       display: false,
       columns: [],
       rows: [],
+      currentPage: 0,
     };
   },
   computed: {
