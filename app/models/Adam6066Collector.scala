@@ -83,6 +83,8 @@ class Adam6066Collector @Inject()
 
         }
       } onFailure errorHandler
+    case IsConnected =>
+      sender ! masterOpt.nonEmpty
 
     case Collect =>
       Future {

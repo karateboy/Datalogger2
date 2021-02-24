@@ -9,6 +9,7 @@ import play.api.libs.concurrent.InjectedActorSupport
 import javax.inject._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration.SECONDS
 import scala.language.postfixOps
 
@@ -57,6 +58,9 @@ case object EvtOperationOverThreshold
 
 case object GetLatestData
 
+case class IsTargetConnected(instId:String)
+
+case object IsConnected
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentOp, recordOp: RecordOp,
                                      alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp)() {
@@ -583,6 +587,17 @@ class DataCollectManager @Inject()
       onceTimer = Some(system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
         self, WriteTargetDO(instId, bit, false)))
 
+    case IsTargetConnected(instId) =>
+      import akka.pattern.ask
+      import akka.util.Timeout
+
+      import scala.concurrent.duration._
+      implicit val timeout = Timeout(Duration(3, SECONDS))
+      instrumentMap.get(instId).map { param =>
+        val f = param.actor ? IsTargetConnected(instId)
+        for(ret <- f.mapTo[Boolean]) yield
+          sender ! ret
+      }
     case msg: ExecuteSeq =>
       if (calibratorOpt.isDefined)
         calibratorOpt.get ! msg

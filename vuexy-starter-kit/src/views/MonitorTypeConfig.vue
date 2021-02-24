@@ -26,13 +26,13 @@
             @change="markDirty(row.item)"
           />
         </template>
-        <template #cell(std_internal)="row">
+        <!--  <template #cell(std_internal)="row">
           <b-form-input
             v-model.number="row.item.std_internal"
             size="sm"
             @change="markDirty(row.item)"
           />
-        </template>
+        </template> -->
         <template #cell(std_law)="row">
           <b-form-input
             v-model.number="row.item.std_law"
@@ -40,13 +40,23 @@
             @change="markDirty(row.item)"
           />
         </template>
-        <template #cell(zd_internal)="row">
+        <template #cell(thresholdConfig)="row">
+          <b-form-group
+            :label="showThresholdConfig(row.item.thresholdConfig)"
+            label-cols-md="3"
+          >
+            <b-button size="sm" variant="primary" @click="configThreshold(row)">
+              設定
+            </b-button>
+          </b-form-group>
+        </template>
+        <!-- <template #cell(zd_internal)="row">
           <b-form-input
             v-model.number="row.item.zd_internal"
             size="sm"
             @change="markDirty(row.item)"
           />
-        </template>
+        </template> -->
         <template #cell(zd_law)="row">
           <b-form-input
             v-model.number="row.item.zd_law"
@@ -62,13 +72,13 @@
             @change="markDirty(row.item)"
           />
         </template>
-        <template #cell(span_dev_internal)="row">
+        <!-- <template #cell(span_dev_internal)="row">
           <b-form-input
             v-model.number="row.item.span_dev_internal"
             size="sm"
             @change="markDirty(row.item)"
           />
-        </template>
+        </template> -->
         <template #cell(span_dev_law)="row">
           <b-form-input
             v-model.number="row.item.span_dev_law"
@@ -98,6 +108,9 @@
         </b-col>
       </b-row>
     </b-card>
+    <b-modal id="thresholdConfig">
+      {{ asdf }}
+    </b-modal>
   </div>
 </template>
 <style lang="scss">
@@ -151,20 +164,27 @@ export default Vue.extend({
         label: '小數點位數',
         sortable: true,
       },
+      /*
       {
         key: 'std_internal',
         label: '內控值',
         sortable: true,
-      },
+      },*/
       {
         key: 'std_law',
         label: '法規值',
         sortable: true,
       },
       {
+        key: 'thresholdConfig',
+        label: '高值處理設定',
+        sortable: true,
+      },
+      /*
+      {
         key: 'zd_internal',
         label: '零點偏移內控',
-      },
+      },*/
       {
         key: 'zd_law',
         label: '零點偏移法規',
@@ -173,10 +193,11 @@ export default Vue.extend({
         key: 'span',
         label: '全幅值',
       },
+      /*
       {
         key: 'span_dev_internal',
         label: '全幅偏移內控',
-      },
+      },*/
       {
         key: 'span_dev_law',
         label: '全幅值偏移法規',
@@ -184,10 +205,16 @@ export default Vue.extend({
     ];
     const monitorTypes = [];
 
+    const form = {
+      config: {
+        elapseTime: 30,
+      },
+    };
     return {
       display: false,
       columns,
       monitorTypes,
+      form,
     };
   },
   mounted() {
@@ -198,6 +225,15 @@ export default Vue.extend({
       axios.get('/MonitorType').then(res => {
         this.monitorTypes = res.data;
       });
+    },
+    configThreshold(row) {
+      // do something
+    },
+    showThresholdConfig(config) {
+      if (!config) return '-';
+      else {
+        return `持續時間 ${config.elapseTime}`;
+      }
     },
     justify(mt) {
       if (mt.span === '') mt.span = null;

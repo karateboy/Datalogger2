@@ -33,6 +33,7 @@
       <b-card title="監測地圖🚀">
         <div class="map_container">
           <GmapMap
+            ref="mapRef"
             :center="mapCenter"
             :zoom="16"
             map-type-id="terrain"
@@ -55,12 +56,29 @@
               @closeclick="infoWinOpen = false"
             />
           </GmapMap>
+
+          <div id="legend" class="border m-1">
+            <b-container class="p-1 bg-light">
+              <b-row
+                ><b-col cols="3">1</b-col>
+                <b-col cols="9"><h5>良好</h5></b-col>
+              </b-row>
+              <b-row
+                ><b-col cols="3">1</b-col>
+                <b-col cols="9"><h5>良好</h5></b-col>
+              </b-row>
+            </b-container>
+          </div>
         </div>
       </b-card>
     </b-col>
   </b-row>
 </template>
-
+<style scoped>
+.explain {
+  background-color: white;
+}
+</style>
 <script>
 import moment from 'moment';
 import { mapActions, mapState, mapGetters } from 'vuex';
@@ -86,6 +104,7 @@ export default {
       realTimeStatus: [],
       spray: false,
       timer: 0,
+      refreshTimer: 0,
       infoWindowPos: null,
       infoWinOpen: false,
       currentMidx: null,
@@ -185,11 +204,18 @@ export default {
     },
   },
   mounted() {
-    this.prepare();
-    this.getSignalValues();
+    const legend = document.getElementById('legend');
+    this.$refs.mapRef.$mapPromise.then(map => {
+      map.controls[google.maps.ControlPosition.RIGHT_CENTER].push(legend);
+    });
+
+    this.refreshTimer = setInterval(() => {
+      this.refresh();
+    }, 5000);
   },
   beforeDestroy() {
     clearInterval(this.timer);
+    clearInterval(this.refreshTimer);
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
@@ -218,7 +244,6 @@ export default {
       await axios.get('/TestSpray');
       let countdown = 15;
       this.timer = setInterval(() => {
-        this.getSignalValues();
         countdown--;
         if (countdown === 0) {
           clearInterval(this.timer);
@@ -238,19 +263,22 @@ export default {
       else if (v < 71) return { FPMI9: true };
       else return { FPMI10: true };
     },
-    async prepare() {
+    async refresh() {
       await this.fetchMonitorTypes();
       if (this.monitorTypes.length !== 0) {
+        this.form.monitorTypes = [];
         this.form.monitorTypes.push(this.monitorTypes[0]._id);
       }
 
       await this.fetchMonitors();
       if (this.monitors.length !== 0) {
+        this.form.monitors = [];
         for (const m of this.monitors) this.form.monitors.push(m._id);
       }
 
       this.query();
       this.getRealtimeStatus();
+      this.getSignalValues();
     },
     async query() {
       this.display = true;

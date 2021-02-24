@@ -5,6 +5,7 @@ import org.mongodb.scala.model._
 import play.api._
 import play.api.libs.json._
 
+case class ThresholdConfig(elapseTime:Int)
 case class MonitorType(_id: String, desp: String, unit: String,
                        prec: Int, order: Int,
                        signalType: Boolean = false,
@@ -12,7 +13,8 @@ case class MonitorType(_id: String, desp: String, unit: String,
                        std_internal: Option[Double] = None,
                        zd_internal: Option[Double] = None, zd_law: Option[Double] = None,
                        span: Option[Double] = None, span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None,
-                       var measuringBy: Option[List[String]] = None) {
+                       var measuringBy: Option[List[String]] = None,
+                       thresholdConfig: Option[ThresholdConfig] = None) {
   def defaultUpdate = {
     Updates.combine(
       Updates.setOnInsert("_id", _id),
@@ -74,6 +76,8 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
   import scala.concurrent.ExecutionContext.Implicits.global
   import scala.concurrent._
 
+  implicit val configWrite = Json.writes[ThresholdConfig]
+  implicit val configRead = Json.reads[ThresholdConfig]
   implicit val mtWrite = Json.writes[MonitorType]
   implicit val mtRead = Json.reads[MonitorType]
 
@@ -94,7 +98,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
   lazy val PM10 = ("PM10")
   lazy val LAT = ("LAT")
   lazy val LNG = ("LNG")
-  val codecRegistry = fromRegistries(fromProviders(classOf[MonitorType]), DEFAULT_CODEC_REGISTRY)
+  val codecRegistry = fromRegistries(fromProviders(classOf[MonitorType], classOf[ThresholdConfig]), DEFAULT_CODEC_REGISTRY)
   val colName = "monitorTypes"
   val collection = mongoDB.database.getCollection[MonitorType](colName).withCodecRegistry(codecRegistry)
   val MonitorTypeVer = 2
