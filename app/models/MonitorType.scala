@@ -1,5 +1,6 @@
 package models
 
+import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import org.mongodb.scala.model._
 import play.api._
@@ -152,13 +153,22 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     MonitorType(_id, desp, "N/A", 0, signalOrder, true)
   }
 
-  var diValueMap = Map.empty[String, Boolean]
+  private var signalValueMap = Map.empty[String, (DateTime, Boolean)]
+
+  def updateSignalValueMap(mt:String, v:Boolean) = {
+    signalValueMap = signalValueMap + (mt -> (DateTime.now, v))
+  }
+
+  def getSignalValueMap() ={
+    val now = DateTime.now()
+    signalValueMap = signalValueMap.filter(p => p._2._1.after(now - 6.seconds))
+    signalValueMap map {p => p._1-> p._2._2}
+  }
 
   def logDiMonitorType(mt: String, v: Boolean) = {
     if (!signalMtvList.contains(mt))
       Logger.warn(s"${mt} is not DI monitor type!")
 
-    diValueMap = diValueMap + (mt -> v)
     val mtCase = map(mt)
     if (v) {
       alarmOp.log(alarmOp.Src(), alarmOp.Level.WARN, s"${mtCase.desp}=>觸發", 1)

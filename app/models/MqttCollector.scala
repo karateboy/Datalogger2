@@ -137,8 +137,9 @@ class MqttCollector @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, sy
         f.onFailure(ModelHelper.errorHandler)
 
         if(dataCollectManager.checkMinDataAlarm(recordList.mtDataList)){
-          val seconds = config.eventConfig.seconds.getOrElse(30)
-          context.parent ! ToggleTargetDO(config.eventConfig.instId, config.eventConfig.bit, seconds)
+          val mtCase = monitorTypeOp.map("PM25")
+          val thresholdConfig = mtCase.thresholdConfig.getOrElse(ThresholdConfig(30))
+          context.parent ! ToggleTargetDO(config.eventConfig.instId, config.eventConfig.bit, thresholdConfig.elapseTime)
         }
       })
   }

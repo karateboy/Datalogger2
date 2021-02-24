@@ -9,7 +9,6 @@ import play.api.libs.concurrent.InjectedActorSupport
 import javax.inject._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.concurrent.duration.SECONDS
 import scala.language.postfixOps
 
@@ -58,9 +57,10 @@ case object EvtOperationOverThreshold
 
 case object GetLatestData
 
-case class IsTargetConnected(instId:String)
+case class IsTargetConnected(instId: String)
 
 case object IsConnected
+
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentOp, recordOp: RecordOp,
                                      alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp)() {
@@ -125,7 +125,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! EvtOperationOverThreshold
   }
 
-  def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid:Boolean)(mtList: Seq[String]) = {
+  def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean)(mtList: Seq[String]) = {
     Logger.debug(s"calculate ${monitor} hour data " + (current - 1.hour))
     val recordMap = recordOp.getRecordMap(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current)
 
@@ -162,7 +162,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     f
   }
 
-  def calculateHourAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid:Boolean) = {
+  def calculateHourAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
     for {
       mt <- mtMap.keys
       statusMap = mtMap(mt)
@@ -174,7 +174,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         } sum
         val statusKV = {
           val kv = statusMap.maxBy(kv => kv._2.length)
-          if (kv._1 == MonitorStatus.NormalStat &&(!alwaysValid &&
+          if (kv._1 == MonitorStatus.NormalStat && (!alwaysValid &&
             statusMap(kv._1).size < totalSize * effectivRatio)) {
             //return most status except normal
             val noNormalStatusMap = statusMap - kv._1
@@ -305,15 +305,15 @@ class DataCollectManager @Inject()
       status = hourMtData.status
     } {
       val mtCase = monitorTypeOp.map(mt)
-      if (mtCase.std_internal.isDefined && MonitorStatus.isValid(status)) {
-        if (value > mtCase.std_internal.get) {
-          val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
-          alarmOp.log(alarmOp.Src(mt), alarmOp.Level.INFO, msg)
-          overThreshold = true
+      if (MonitorStatus.isValid(status))
+        for (std_law <- mtCase.std_law) {
+          if (value > std_law) {
+            val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
+            alarmOp.log(alarmOp.Src(mt), alarmOp.Level.INFO, msg)
+            overThreshold = true
+          }
         }
-      }
     }
-
     overThreshold
   }
 
@@ -543,7 +543,7 @@ class DataCollectManager @Inject()
           alwaysValid = false)(latestDataMap.keys.toList)
 
         //calculate other monitors
-        for(m<- monitorOp.mvList){
+        for (m <- monitorOp.mvList) {
           val monitor = monitorOp.map(m)
           dataCollectManagerOp.recalculateHourData(monitor = monitor._id,
             current = current,
@@ -581,7 +581,7 @@ class DataCollectManager @Inject()
 
     case ToggleTargetDO(instId, bit: Int, seconds) =>
       //Cancel previous timer if any
-      onceTimer map { t => t.cancel()}
+      onceTimer map { t => t.cancel() }
       Logger.debug(s"ToggleTargetDO($instId, $bit)")
       self ! WriteTargetDO(instId, bit, true)
       onceTimer = Some(system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
@@ -595,7 +595,7 @@ class DataCollectManager @Inject()
       implicit val timeout = Timeout(Duration(3, SECONDS))
       instrumentMap.get(instId).map { param =>
         val f = param.actor ? IsTargetConnected(instId)
-        for(ret <- f.mapTo[Boolean]) yield
+        for (ret <- f.mapTo[Boolean]) yield
           sender ! ret
       }
     case msg: ExecuteSeq =>

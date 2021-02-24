@@ -351,7 +351,6 @@ export default {
       });
     },
     onParamChange(v) {
-      console.log(v);
       this.form.param = v;
     },
     async formSubmitted() {

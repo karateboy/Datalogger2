@@ -114,6 +114,7 @@ class Adam6066Collector @Inject()
               v = result(idx)
             } yield {
               newDiValueMap = newDiValueMap + (idx -> v)
+              monitorTypeOp.updateSignalValueMap(mt, v)
               // Log on difference
               if (!diValueMap.contains(idx) || diValueMap(idx) != v)
                 monitorTypeOp.logDiMonitorType(mt, v)

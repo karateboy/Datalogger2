@@ -41,14 +41,11 @@
           />
         </template>
         <template #cell(thresholdConfig)="row">
-          <b-form-group
-            :label="showThresholdConfig(row.item.thresholdConfig)"
-            label-cols-md="3"
-          >
-            <b-button size="sm" variant="primary" @click="configThreshold(row)">
-              設定
-            </b-button>
-          </b-form-group>
+          <b-form-input
+            v-model.number="row.item.thresholdConfig.elapseTime"
+            size="sm"
+            @change="markDirty(row.item)"
+          />
         </template>
         <!-- <template #cell(zd_internal)="row">
           <b-form-input
@@ -108,8 +105,14 @@
         </b-col>
       </b-row>
     </b-card>
-    <b-modal id="thresholdConfig">
-      {{ asdf }}
+    <b-modal
+      id="thresholdConfig"
+      title="高值處理設定"
+      cancel-title="取消"
+      ok-title="確認"
+      @ok="setMtThresholdConfig"
+    >
+      <b-form> asdf </b-form>
     </b-modal>
   </div>
 </template>
@@ -177,7 +180,7 @@ export default Vue.extend({
       },
       {
         key: 'thresholdConfig',
-        label: '高值處理設定',
+        label: '超標噴水時間',
         sortable: true,
       },
       /*
@@ -206,7 +209,7 @@ export default Vue.extend({
     const monitorTypes = [];
 
     const form = {
-      config: {
+      thresholdConfig: {
         elapseTime: 30,
       },
     };
@@ -214,6 +217,7 @@ export default Vue.extend({
       display: false,
       columns,
       monitorTypes,
+      editingMt: undefined,
       form,
     };
   },
@@ -224,10 +228,15 @@ export default Vue.extend({
     getMonitorTypes() {
       axios.get('/MonitorType').then(res => {
         this.monitorTypes = res.data;
+        for (const mt of this.monitorTypes) {
+          if (mt.thresholdConfig === undefined)
+            mt.thresholdConfig = { elapseTime: 30 };
+        }
       });
     },
-    configThreshold(row) {
-      // do something
+    configThreshold(item) {
+      this.editingMt = item;
+      this.$bvModal.show('thresholdConfig');
     },
     showThresholdConfig(config) {
       if (!config) return '-';
@@ -260,6 +269,10 @@ export default Vue.extend({
     },
     markDirty(item) {
       item.dirty = true;
+    },
+    setMtThresholdConfig() {
+      this.editingMt.thresholdConfig = this.form.thresholdConfig;
+      this.markDirty(this.editingMt);
     },
   },
 });

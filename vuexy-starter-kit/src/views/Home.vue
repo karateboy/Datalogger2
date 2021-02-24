@@ -1,7 +1,7 @@
 <template>
   <b-row class="match-height">
     <b-col lg="9" md="12">
-      <b-card title="最新監測資訊">
+      <b-card ref="loadingContainer" title="最新監測資訊">
         <b-table striped hover :fields="columns" :items="rows" show-empty>
           <template #thead-top>
             <b-tr>
@@ -20,10 +20,12 @@
     </b-col>
     <b-col lg="3" md="12">
       <b-card title="灑水系統">
-        <b-card-text :class="{ 'text-danger': spray }"
+        <b-card-text :class="{ 'text-danger': !spray }"
           >啟動:{{ sprayStatus }}</b-card-text
         >
-        <b-card-text>連線狀態:OK</b-card-text>
+        <b-card-text :class="{ 'text-danger': !spray_connected }"
+          >連線狀態:{{ sprayConnected }}</b-card-text
+        >
         <b-button variant="primary" :disabled="timer !== 0" @click="testSpray"
           >測試</b-button
         >
@@ -57,17 +59,8 @@
             />
           </GmapMap>
 
-          <div id="legend" class="border m-1">
-            <b-container class="p-1 bg-light">
-              <b-row
-                ><b-col cols="3">1</b-col>
-                <b-col cols="9"><h5>良好</h5></b-col>
-              </b-row>
-              <b-row
-                ><b-col cols="3">1</b-col>
-                <b-col cols="9"><h5>良好</h5></b-col>
-              </b-row>
-            </b-container>
+          <div id="legend" class="legend shadow border border-dark m-2">
+            <b-img src="../assets/images/legend.png" width="130" />
           </div>
         </div>
       </b-card>
@@ -75,8 +68,18 @@
   </b-row>
 </template>
 <style scoped>
-.explain {
+.legend {
+  /* min-width: 100px;*/
   background-color: white;
+}
+
+.airgreen div:before {
+  background: #009865;
+  background-color: rgb(0, 152, 101);
+}
+
+.airgreen {
+  background-color: rgb(229, 244, 239);
 }
 </style>
 <script>
@@ -103,6 +106,8 @@ export default {
       rows: [],
       realTimeStatus: [],
       spray: false,
+      spray_connected: false,
+      loader: undefined,
       timer: 0,
       refreshTimer: 0,
       infoWindowPos: null,
@@ -125,8 +130,14 @@ export default {
     ...mapGetters('monitorTypes', ['mtMap']),
     ...mapGetters('monitors', ['mMap']),
     sprayStatus() {
-      if (this.spray) return '是';
-      else return '否';
+      if (!this.spray_connected) return '未知';
+
+      if (this.spray) return '否';
+      else return '是';
+    },
+    sprayConnected() {
+      if (this.spray_connected) return '正常';
+      else return '斷線';
     },
     mapCenter() {
       let count = 0,
@@ -158,16 +169,13 @@ export default {
       const getIconUrl = v => {
         let url = `https://chart.googleapis.com/chart?chst=d_bubble_text_small_withshadow&&chld=bb|`;
 
-        if (v < 12) url += `${v}低|9CFF9C|000000`;
-        else if (v < 24) url += `${v}+低|31FF00|000000`;
-        else if (v < 36) url += `${v}+低|31CF00|000000`;
-        else if (v < 42) url += `${v}+中|FFFF00|000000`;
-        else if (v < 48) url += `${v}+中|FFCF00|000000`;
-        else if (v < 54) url += `${v}+中|FF9A00|000000`;
-        else if (v < 59) url += `${v}+高|FF6464|000000`;
-        else if (v < 65) url += `${v}+高|FF0000|FFFFFF`;
-        else if (v < 71) url += `${v}+高|990000|FFFFFF`;
-        else url += `${v}+非常高|CE30FF|FFFFFF`;
+        if (v < 15.4) url += `${v}|009865|000000`;
+        else if (v < 35.4) url += `${v}|FFFB26|000000`;
+        else if (v < 54.4) url += `${v}|FF9835|000000`;
+        else if (v < 150.4) url += `${v}|CA0034|000000`;
+        else if (v < 250.4) url += `${v}|670099|000000`;
+        else if (v < 350.4) url += `${v}|7E0123|000000`;
+        else url += `${v}|7E0123|FFFFFF`;
 
         return url;
       };
@@ -206,7 +214,13 @@ export default {
   mounted() {
     const legend = document.getElementById('legend');
     this.$refs.mapRef.$mapPromise.then(map => {
-      map.controls[google.maps.ControlPosition.RIGHT_CENTER].push(legend);
+      map.controls[google.maps.ControlPosition.LEFT_CENTER].push(legend);
+    });
+
+    this.loader = this.$loading.show({
+      // Optional parameters
+      container: null,
+      canCancel: false,
     });
 
     this.refreshTimer = setInterval(() => {
@@ -237,14 +251,18 @@ export default {
     },
     async getSignalValues() {
       const res = await axios.get('/SignalValues');
-      if (res.data.SPRAY) this.spray = true;
+      if (res.data.SPRAY === true) this.spray = true;
       else this.spray = false;
+      if (res.data.SPRAY === undefined) this.spray_connected = false;
+      else this.spray_connected = true;
+      this.loader.hide();
     },
     async testSpray() {
       await axios.get('/TestSpray');
       let countdown = 15;
       this.timer = setInterval(() => {
         countdown--;
+        this.getSignalValues();
         if (countdown === 0) {
           clearInterval(this.timer);
           this.timer = 0;

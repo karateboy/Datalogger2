@@ -13,6 +13,7 @@ import Highcharts from 'highcharts';
 import ex from 'highcharts/modules/exporting';
 import csv from 'highcharts/modules/export-data';
 import offlineExport from 'highcharts/modules/offline-exporting';
+import Loading from 'vue-loading-overlay';
 
 import router from './router';
 import store from './store';
@@ -104,7 +105,7 @@ Vue.use(BootstrapVue);
 Vue.use(IconsPlugin);
 Vue.use(ToastPlugin);
 Vue.use(ModalPlugin);
-
+Vue.use(Loading);
 // Composition API
 Vue.use(VueCompositionAPI);
 
@@ -115,6 +116,8 @@ require('@core/scss/core.scss');
 require('@/assets/scss/style.scss');
 
 require('@core/assets/fonts/feather/iconfont.css');
+
+require('vue-loading-overlay/dist/vue-loading.css');
 
 Vue.config.productionTip = false;
 

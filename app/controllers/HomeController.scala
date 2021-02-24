@@ -476,7 +476,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
 
   def signalValues = Security.Authenticated {
     implicit request =>
-      Ok(Json.toJson(monitorTypeOp.diValueMap))
+      Ok(Json.toJson(monitorTypeOp.getSignalValueMap()))
   }
 
   def recalculateHour(monitorStr: String, startNum: Long, endNum: Long) = Security.Authenticated {
