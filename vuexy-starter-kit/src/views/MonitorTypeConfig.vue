@@ -7,6 +7,7 @@
         :items="monitorTypes"
         bordered
         sticky-header
+        stacked="md"
         style="max-height: 600px"
       >
         <template #cell(desp)="row">

@@ -101,7 +101,6 @@ export default {
         dataType: 'min',
         range,
       },
-      display: false,
       columns: [],
       rows: [],
       realTimeStatus: [],
@@ -217,15 +216,17 @@ export default {
       map.controls[google.maps.ControlPosition.LEFT_CENTER].push(legend);
     });
 
+    /*
     this.loader = this.$loading.show({
       // Optional parameters
       container: null,
       canCancel: false,
-    });
+    }); */
 
+    this.refresh();
     this.refreshTimer = setInterval(() => {
       this.refresh();
-    }, 5000);
+    }, 30000);
   },
   beforeDestroy() {
     clearInterval(this.timer);
@@ -255,7 +256,6 @@ export default {
       else this.spray = false;
       if (res.data.SPRAY === undefined) this.spray_connected = false;
       else this.spray_connected = true;
-      this.loader.hide();
     },
     async testSpray() {
       await axios.get('/TestSpray');
@@ -299,8 +299,7 @@ export default {
       this.getSignalValues();
     },
     async query() {
-      this.display = true;
-      this.rows = [];
+      this.rows.splice(0, this.rows.length);
       this.columns = this.getColumns();
       const monitors = this.form.monitors.join(':');
       const monitorTypes = this.form.monitorTypes.join(':');
@@ -308,7 +307,7 @@ export default {
 
       const ret = await axios.get(url);
       for (const row of ret.data.rows) {
-        row.date = moment(row.date).format('lll');
+        row.date = moment(row.date).format('LLL');
       }
 
       this.rows = ret.data.rows;
