@@ -25,6 +25,20 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/fakehome',
+      name: 'fakehome',
+      component: () => import('@/views/FakeHome.vue'),
+      meta: {
+        pageTitle: '監測畫面',
+        breadcrumb: [
+          {
+            text: '監測畫面',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/realtime-data',
       name: 'realtime-data',
       component: () => import('@/views/RealtimeData.vue'),
@@ -50,7 +64,7 @@ const router = new VueRouter({
             active: true,
           },
           {
-            text: '歷史資料查詢',
+            text: '噪音事件查詢',
             active: true,
           },
         ],

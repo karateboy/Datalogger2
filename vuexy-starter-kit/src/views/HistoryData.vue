@@ -105,7 +105,13 @@
               class="text-center"
               >{{ getMtDesc(mt) }}</b-th
             >
+            <b-th></b-th>
           </b-tr>
+        </template>
+        <template #cell(operation)>
+          <b-button variant="primary">噪音播放</b-button> &nbsp;
+          <b-button variant="primary">照片</b-button> &nbsp;
+          <b-button variant="primary">影片播放</b-button>
         </template>
       </b-table>
       <b-pagination
@@ -228,6 +234,7 @@ export default Vue.extend({
         }
       }
 
+      ret.push({ key: 'operation', label: '' });
       return ret;
     },
   },

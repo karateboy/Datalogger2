@@ -5,7 +5,7 @@ export default [
     children: [
       {
         title: '儀錶板',
-        route: 'home',
+        route: 'fakehome',
         action: 'read',
         resource: 'Data',
       },
@@ -20,7 +20,7 @@ export default [
     icon: 'DatabaseIcon',
     children: [
       {
-        title: '歷史資料查詢',
+        title: '噪音事件查詢',
         route: 'history-data',
         action: 'read',
         resource: 'Data',
