@@ -20,15 +20,30 @@
     </b-col>
     <b-col lg="3" md="12">
       <b-card title="灑水系統">
-        <b-card-text :class="{ 'text-danger': !spray }"
-          >啟動:{{ sprayStatus }}</b-card-text
-        >
-        <b-card-text :class="{ 'text-danger': !spray_connected }"
-          >連線狀態:{{ sprayConnected }}</b-card-text
-        >
-        <b-button variant="primary" :disabled="timer !== 0" @click="testSpray"
-          >測試</b-button
-        >
+        <b-row no-gutters>
+          <b-col cols="3" class="pt-2">
+            <b-img
+              src="../assets/images/sprinkler.svg"
+              class="rounded-0 align-middle"
+            />
+          </b-col>
+          <b-col cols="9">
+            <b-card-body>
+              <b-card-text :class="{ 'text-danger': !spray }"
+                >啟動:{{ sprayStatus }}</b-card-text
+              >
+              <b-card-text :class="{ 'text-danger': !spray_connected }"
+                >連線狀態:{{ sprayConnected }}</b-card-text
+              >
+              <b-button
+                variant="primary"
+                :disabled="timer !== 0"
+                @click="testSpray"
+                >測試</b-button
+              >
+            </b-card-body>
+          </b-col>
+        </b-row>
       </b-card>
     </b-col>
     <b-col lg="12" md="12">

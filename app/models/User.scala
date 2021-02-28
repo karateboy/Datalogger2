@@ -10,12 +10,12 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.implicitConversions
 
 
-case class User(_id: String, password: String, name: String, isAdmin: Boolean)
+case class User(_id: String, password: String, name: String, isAdmin: Boolean, group:Option[String])
 
 import javax.inject._
 
 @Singleton
-class UserOp @Inject()(mongoDB: MongoDB) {
+class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp) {
 
   import org.mongodb.scala._
 
@@ -35,7 +35,7 @@ class UserOp @Inject()(mongoDB: MongoDB) {
     f.onSuccess({
       case count: Long =>
         if (count == 0) {
-          val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn", true)
+          val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn", true, Some(groupOp.PLATFORM_ADMIN))
           Logger.info("Create default user:" + defaultUser.toString())
           newUser(defaultUser)
         }
@@ -44,16 +44,6 @@ class UserOp @Inject()(mongoDB: MongoDB) {
   }
 
   init
-
-  def createDefaultUser = {
-    val f = collection.countDocuments().toFuture()
-    val ret = waitReadyResult(f)
-    if (ret == 0) {
-      val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn",  true)
-      Logger.info("Create default user:" + defaultUser.toString())
-      newUser(defaultUser)
-    }
-  }
 
   def newUser(user: User) = {
     val f = collection.insertOne(user).toFuture()
