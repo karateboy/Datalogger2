@@ -103,6 +103,7 @@
               :key="mt"
               :colspan="form.monitors.length"
               class="text-center"
+              style="text-transform: none"
               >{{ getMtDesc(mt) }}</b-th
             >
           </b-tr>

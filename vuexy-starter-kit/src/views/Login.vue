@@ -169,16 +169,28 @@ export default {
                     },
                   ]);
                 } else {
-                  this.$ability.update([
-                    {
-                      action: 'read',
-                      subject: 'Data',
-                    },
-                    {
-                      action: 'set',
-                      subject: 'Alarm',
-                    },
-                  ]);
+                  if (userInfo._id.startsWith('epb')) {
+                    this.$ability.update([
+                      {
+                        action: 'read',
+                        subject: 'Dashboard',
+                      },
+                    ]);
+                  } else
+                    this.$ability.update([
+                      {
+                        action: 'read',
+                        subject: 'Dashboard',
+                      },
+                      {
+                        action: 'read',
+                        subject: 'Data',
+                      },
+                      {
+                        action: 'set',
+                        subject: 'Alarm',
+                      },
+                    ]);
                 }
                 this.$router.push('/');
               } else {

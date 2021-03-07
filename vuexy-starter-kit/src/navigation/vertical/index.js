@@ -7,7 +7,7 @@ export default [
         title: '儀錶板',
         route: 'home',
         action: 'read',
-        resource: 'Data',
+        resource: 'Dashboard',
       },
       {
         title: '即時數據',
