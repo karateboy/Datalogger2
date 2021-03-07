@@ -94,6 +94,10 @@ export default [
         route: 'user-management',
       },
       {
+        title: '群組管理',
+        route: 'group-management',
+      },
+      {
         title: '資料管理',
         route: 'data-management',
       },

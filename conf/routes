@@ -20,6 +20,11 @@ GET      /User                                                                  
 PUT      /User/:id                                                                controllers.HomeController.updateUser(id)
 DELETE   /User/:id                                                                controllers.HomeController.deleteUser(id)	
 
+POST     /Group                                                                   controllers.HomeController.newGroup
+GET      /Groups                                                                  controllers.HomeController.getAllGroups
+PUT      /Group/:id                                                               controllers.HomeController.updateGroup(id)
+DELETE   /Group/:id                                                               controllers.HomeController.deleteGroup(id)
+
 GET      /HistoryTrend/:monitor/:monitorType/:reportUnit/:statusFilter/:start/:end         controllers.Query.historyTrendChart(monitor, monitorType, reportUnit, statusFilter, start:Long, end:Long, outputTypeStr="html")
 GET      /HistoryTrend/excel/:monitorType/:reportUnit/:statusFilter/:start/:end            controllers.Query.historyTrendChart(monitor, monitorType, reportUnit, statusFilter, start:Long, end:Long, outputTypeStr="excel")
 

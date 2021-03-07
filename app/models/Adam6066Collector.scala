@@ -116,8 +116,10 @@ class Adam6066Collector @Inject()
               newDiValueMap = newDiValueMap + (idx -> v)
               monitorTypeOp.updateSignalValueMap(mt, v)
               // Log on difference
-              if (!diValueMap.contains(idx) || diValueMap(idx) != v)
-                monitorTypeOp.logDiMonitorType(mt, v)
+              if (!diValueMap.contains(idx) || diValueMap(idx) != v) {
+                // FIXME hot code invert
+                monitorTypeOp.logDiMonitorType(mt, !v)
+              }
             }
             context become handler(collectorState, masterOpt, newDiValueMap)
 

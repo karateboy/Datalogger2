@@ -25,8 +25,33 @@ class MonitorOp @Inject()(mongoDB: MongoDB) {
 
   val codecRegistry = fromRegistries(fromProviders(classOf[Monitor]), DEFAULT_CODEC_REGISTRY)
   val collection = mongoDB.database.getCollection[Monitor](colName).withCodecRegistry(codecRegistry)
+  var map: Map[String, Monitor] = {
+    val pairs =
+      for (m <- mList) yield {
+        m._id -> m
+      }
+    pairs.toMap
+  }
 
-  def upgrade={
+  val SELF_ID = ""
+  val selfMonitor = Monitor(SELF_ID, "本站")
+  def init(): Unit = {
+    val colNames = waitReadyResult(mongoDB.database.listCollectionNames().toFuture())
+    if (!colNames.contains(colName)) {
+      val f = mongoDB.database.createCollection(colName).toFuture()
+      f.onFailure(errorHandler)
+    }
+
+    val ret = waitReadyResult(collection.countDocuments(Filters.equal("_id", "")).toFuture())
+    if(ret == 0){
+      waitReadyResult(collection.insertOne(selfMonitor).toFuture())
+    }
+  }
+
+  init
+  refresh
+
+  def upgrade = {
     // upgrade if no monitorTypes
     val f = mongoDB.database.getCollection(colName).updateMany(
       Filters.exists("monitorTypes", false), Updates.set("monitorTypes", Seq.empty[String])).toFuture()
@@ -34,8 +59,19 @@ class MonitorOp @Inject()(mongoDB: MongoDB) {
     waitReadyResult(f)
   }
 
-  upgrade
-  refresh
+  def mvList = mList.map(_._id)
+
+  private def mList: List[Monitor] = {
+    val f = collection.find().sort(Sorts.ascending("_id")).toFuture()
+    val ret = waitReadyResult(f)
+    ret.toList
+  }
+
+  def ensureMonitor(_id: String) = {
+    if (!map.contains(_id)) {
+      newMonitor(Monitor(_id, _id))
+    }
+  }
 
   def newMonitor(m: Monitor) = {
     Logger.debug(s"Create monitor value ${m._id}!")
@@ -47,37 +83,6 @@ class MonitorOp @Inject()(mongoDB: MongoDB) {
       case _: Seq[t] =>
     })
     m._id
-  }
-
-  private def mList: List[Monitor] = {
-    val f = collection.find().sort(Sorts.ascending("_id")).toFuture()
-    val ret = waitReadyResult(f)
-    ret.toList
-  }
-
-  def refresh  {
-    val pairs =
-    for (m <- mList) yield {
-      m._id -> m
-    }
-    map = pairs.toMap
-  }
-
-  var map: Map[String, Monitor] = {
-    val pairs =
-      for (m <- mList) yield {
-        m._id -> m
-      }
-    pairs.toMap
-  }
-
-  def mvList = mList.map(_._id)
-
-
-  def ensureMonitor(_id: String) = {
-    if(!map.contains(_id)){
-      newMonitor(Monitor(_id, _id))
-    }
   }
 
   def format(v: Option[Double]) = {
@@ -92,5 +97,13 @@ class MonitorOp @Inject()(mongoDB: MongoDB) {
     f.onFailure(errorHandler)
     waitReadyResult(f)
     refresh
+  }
+
+  def refresh {
+    val pairs =
+      for (m <- mList) yield {
+        m._id -> m
+      }
+    map = pairs.toMap
   }
 }

@@ -12,7 +12,7 @@ import javax.inject._
 
 class HomeController @Inject()(environment: play.api.Environment, recordOp: RecordOp,
                                userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
-                               monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorOp,
+                               monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorOp, groupOp: GroupOp,
                                instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp) extends Controller {
 
   val title = "資料擷取器"
@@ -21,10 +21,10 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
 
   implicit val userParamRead: Reads[User] = Json.reads[User]
 
-  import monitorTypeOp.configRead
-  import monitorTypeOp.configWrite
   import monitorTypeOp.mtRead
   import monitorTypeOp.mtWrite
+  import groupOp.read
+  import groupOp.write
 
   def newUser = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
@@ -70,6 +70,48 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     implicit val userWrites = Json.writes[User]
 
     Ok(Json.toJson(users))
+  }
+
+  def newGroup = Security.Authenticated(BodyParsers.parse.json) {
+    implicit request =>
+      val newUserParam = request.body.validate[Group]
+
+      newUserParam.fold(
+        error => {
+          Logger.error(JsError.toJson(error).toString())
+          BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+        },
+        param => {
+          groupOp.newGroup(param)
+          Ok(Json.obj("ok" -> true))
+        })
+  }
+
+  def deleteGroup(id: String) = Security.Authenticated {
+    implicit request =>
+      val ret = groupOp.deleteGroup(id)
+      Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
+  }
+
+  def updateGroup(id: String) = Security.Authenticated(BodyParsers.parse.json) {
+    implicit request =>
+      val userParam = request.body.validate[Group]
+
+      userParam.fold(
+        error => {
+          Logger.error(JsError.toJson(error).toString())
+          BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+        },
+        param => {
+          val ret = groupOp.updateGroup(param)
+          Ok(Json.obj("ok" -> (ret.getMatchedCount != 0)))
+        })
+  }
+
+  def getAllGroups = Security.Authenticated {
+    val groups = groupOp.getAllGroups()
+
+    Ok(Json.toJson(groups))
   }
 
   def saveMonitorTypeConfig() = Security.Authenticated {

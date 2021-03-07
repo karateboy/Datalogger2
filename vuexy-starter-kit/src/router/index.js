@@ -273,6 +273,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/group-management',
+      name: 'group-management',
+      component: () => import('@/views/GroupManagement.vue'),
+      meta: {
+        pageTitle: '群組管理',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '群組管理',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/data-management',
       name: 'data-management',
       component: () => import('@/views/DataManagement.vue'),

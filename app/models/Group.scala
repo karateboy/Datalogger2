@@ -6,6 +6,7 @@ import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import org.mongodb.scala.bson.codecs.Macros._
 import org.mongodb.scala.model.{BulkWriteOptions, Filters, UpdateOneModel, UpdateOptions}
 import play.api._
+import play.api.libs.json.Json
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.implicitConversions
@@ -24,6 +25,8 @@ class GroupOp @Inject()(mongoDB: MongoDB) {
   val codecRegistry = fromRegistries(fromProviders(classOf[Group], DEFAULT_CODEC_REGISTRY))
   val collection: MongoCollection[Group] = mongoDB.database.withCodecRegistry(codecRegistry).getCollection(ColName)
 
+  implicit val read = Json.reads[Group]
+  implicit val write = Json.writes[Group]
   val PLATFORM_ADMIN = "platformAdmin"
 
   val defaultGroup : Seq[Group] =
@@ -55,7 +58,7 @@ class GroupOp @Inject()(mongoDB: MongoDB) {
     f onFailure(errorHandler())
   }
 
-  def newUser(group: Group) = {
+  def newGroup(group: Group) = {
     val f = collection.insertOne(group).toFuture()
     waitReadyResult(f)
   }
@@ -77,9 +80,9 @@ class GroupOp @Inject()(mongoDB: MongoDB) {
     f.onFailure {
       errorHandler
     }
-    val user = waitReadyResult(f)
-    if(user != null)
-      Some(user)
+    val group = waitReadyResult(f)
+    if(group != null)
+      Some(group)
     else
       None
   }
