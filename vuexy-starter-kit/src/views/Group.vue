@@ -25,7 +25,41 @@
         ></b-input>
         <b-form-invalid-feedback>顯示名稱不能是空的</b-form-invalid-feedback>
       </b-form-group>
-
+      <b-form-group
+        label="排除測站:"
+        label-for="excludeMonitors"
+        label-cols="3"
+      >
+        <b-form-checkbox-group
+          id="excludeMonitors"
+          v-model="group.excludeMonitors"
+          :options="monitorOptions"
+        >
+        </b-form-checkbox-group>
+      </b-form-group>
+      <b-form-group label="管理員:" label-for="admin" label-cols="3">
+        <b-form-checkbox id="admin" v-model="group.admin" />
+      </b-form-group>
+      <b-form-group
+        label="排除測項:"
+        label-for="excludeMonitorTypes"
+        label-cols="3"
+      >
+        <b-form-checkbox-group
+          id="excludeMonitorTypes"
+          v-model="group.excludeMonitorTypes"
+          :options="monitorTypeOptions"
+        >
+        </b-form-checkbox-group>
+      </b-form-group>
+      <b-form-group label="權限:" label-for="abilities" label-cols="3">
+        <b-form-checkbox-group
+          id="abilities"
+          v-model="group.abilities"
+          :options="abilityOptions"
+        >
+        </b-form-checkbox-group>
+      </b-form-group>
       <b-row>
         <b-col offset-md="3">
           <b-button
@@ -74,31 +108,81 @@ export default Vue.extend({
     const group = {
       _id: '',
       name: '',
+      admin: false,
+      excludeMonitors: [],
+      excludeMonitorTypes: [],
+      abilities: [],
     };
 
-    if (!this.isNew) {
-      const self = this.currentGroup;
-      group._id = self._id;
-      group.name = self.name;
-    }
+    this.copyProp(group);
 
+    console.log(group);
+    const abilityOptions = [
+      {
+        text: '儀表板',
+        value: {
+          action: 'read',
+          subject: 'Dashboard',
+        },
+      },
+      {
+        text: '資料',
+        value: {
+          action: 'read',
+          subject: 'Data',
+        },
+      },
+      {
+        text: '設定警報',
+        value: {
+          action: 'set',
+          subject: 'Alarm',
+        },
+      },
+    ];
     return {
       group,
+      abilityOptions,
     };
   },
   computed: {
+    ...mapState('monitorTypes', ['monitorTypes']),
+    ...mapState('monitors', ['monitors']),
     btnTitle() {
       if (this.isNew) return '新增';
       return '更新';
     },
+    monitorOptions() {
+      let ret = [];
+      for (const m of this.monitors) ret.push({ text: m.desc, value: m._id });
+      return ret;
+    },
+    monitorTypeOptions() {
+      let ret = [];
+      for (const mt of this.monitorTypes)
+        ret.push({ text: mt.desp, value: mt._id });
+      return ret;
+    },
+    canUpsert() {
+      if (!this.group._id) return false;
+      if (!this.group.name) return false;
+      return true;
+    },
   },
   methods: {
-    reset() {
+    copyProp(group) {
       if (!this.isNew) {
         const self = this.currentGroup;
-        this.group._id = self._id;
-        this.group.name = self.name;
+        group._id = self._id;
+        group.name = self.name;
+        group.admin = self.admin;
+        group.excludeMonitors = self.excludeMonitors;
+        group.excludeMonitorTypes = self.excludeMonitorTypes;
+        group.abilities = self.abilities;
       }
+    },
+    reset() {
+      this.copyProp(this.group);
     },
 
     upsert() {

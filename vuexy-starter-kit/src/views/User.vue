@@ -52,13 +52,17 @@
         ></b-input>
       </b-form-group>
       <b-form-group label="管理者:" label-for="admin" label-cols="3">
-        <b-form-checkbox
-          id="admin"
-          v-model="user.isAdmin"
-          size="lg"
-        ></b-form-checkbox>
+        <b-form-checkbox id="admin" v-model="user.isAdmin"></b-form-checkbox>
       </b-form-group>
-
+      <b-form-group label="群組:" label-for="group" label-cols="3">
+        <v-select
+          id="group"
+          v-model="user.group"
+          label="name"
+          :reduce="g => g._id"
+          :options="groupList"
+        />
+      </b-form-group>
       <b-row>
         <b-col offset-md="3">
           <b-button
@@ -112,15 +116,11 @@ export default Vue.extend({
       isAdmin: false,
     };
 
-    if (!this.isNew) {
-      const self = this.currentUser;
-      user._id = self._id;
-      user.name = self.name;
-      user.isAdmin = self.isAdmin;
-    }
-
+    this.copyUser(user);
+    const groupList = [];
     return {
       user,
+      groupList,
     };
   },
   computed: {
@@ -158,14 +158,31 @@ export default Vue.extend({
       return this.userinfo.isAdmin;
     },
   },
+  mounted() {
+    this.getGroupList();
+  },
   methods: {
-    reset() {
+    getGroupList() {
+      axios
+        .get('/Groups')
+        .then(res => {
+          this.groupList = res.data;
+        })
+        .catch(err => {
+          throw new Error(err);
+        });
+    },
+    copyUser(user) {
       if (!this.isNew) {
         const self = this.currentUser;
-        this.user._id = self._id;
-        this.user.name = self.name;
-        this.user.isAdmin = self.isAdmin;
+        user._id = self._id;
+        user.name = self.name;
+        user.isAdmin = self.isAdmin;
+        user.group = self.group;
       }
+    },
+    reset() {
+      this.copyUser(this.user);
     },
 
     upsert() {

@@ -57,6 +57,7 @@
       :title="modalTitle"
       modal-class="modal-primary"
       hide-footer
+      no-close-on-backdrop
       size="lg"
     >
       <group

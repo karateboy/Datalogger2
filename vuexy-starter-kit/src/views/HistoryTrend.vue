@@ -194,10 +194,6 @@ export default Vue.extend({
           type: 'scatter',
           desc: '點圖',
         },
-        {
-          type: 'boxplot',
-          desc: '盒鬚圖',
-        },
       ],
       form: {
         monitors: [],

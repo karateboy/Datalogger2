@@ -158,8 +158,9 @@ export default {
             .then(res => {
               const ret = res.data;
               if (ret.ok) {
-                const userInfo = ret.userInfo;
-                this.setUserInfo(ret.userInfo);
+                const userData = ret.userData;
+                const userInfo = userData.user;
+                this.setUserInfo(userInfo);
                 this.setLogin(true);
                 if (userInfo.isAdmin) {
                   this.$ability.update([
@@ -169,28 +170,7 @@ export default {
                     },
                   ]);
                 } else {
-                  if (userInfo._id.startsWith('epb')) {
-                    this.$ability.update([
-                      {
-                        action: 'read',
-                        subject: 'Dashboard',
-                      },
-                    ]);
-                  } else
-                    this.$ability.update([
-                      {
-                        action: 'read',
-                        subject: 'Dashboard',
-                      },
-                      {
-                        action: 'read',
-                        subject: 'Data',
-                      },
-                      {
-                        action: 'set',
-                        subject: 'Alarm',
-                      },
-                    ]);
+                  this.$ability.update(userData.group.abilities);
                 }
                 this.$router.push('/');
               } else {

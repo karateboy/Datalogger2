@@ -177,6 +177,7 @@ class MqttCollector @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, sy
       mqttClientOpt map {
         client =>
           val conOpt = new MqttConnectOptions
+          conOpt.setAutomaticReconnect(true)
           conOpt.setCleanSession(true)
           try {
             val conToken = client.connect(conOpt, null, null)

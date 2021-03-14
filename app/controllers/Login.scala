@@ -1,19 +1,17 @@
 package controllers
 
-import play.api._
-import play.api.mvc._
+import models.{Ability, GroupOp, User, UserOp}
 import play.api.libs.json._
-import play.api.libs.functional.syntax._
-import play.api.Logger
-import models.{User, UserOp}
+import play.api.mvc._
 case class Credential(user: String, password: String)
 import javax.inject._
-
+import models.Group
+case class UserData(user:User, group:Group)
 /**
  * @author user
  */
 class Login @Inject()
-(userOp: UserOp)
+(userOp: UserOp, groupOp:GroupOp)
   extends Controller {
   implicit val credentialReads = Json.reads[Credential]
 
@@ -29,11 +27,23 @@ class Login @Inject()
             if(userOpt.isEmpty || userOpt.get.password != crd.password) {
               Results.Unauthorized(Json.obj("ok"->false, "msg"->"密碼或帳戶錯誤"))
             } else {
-              import Security._
               implicit val writes = Json.writes[User]
+              implicit val w3 = Json.writes[Ability]
+              implicit val w1 = Json.writes[Group]
+              implicit val w2 = Json.writes[UserData]
+
               val user = userOpt.get
-              val userInfo = UserInfo(user._id, user.name, user.isAdmin)
-              Ok(Json.obj("ok"->true, "userInfo"->user)).withSession(Security.setUserinfo(request, userInfo))
+              val userGroup = {
+                user.group.getOrElse({
+                  if(user.isAdmin)
+                    groupOp.PLATFORM_ADMIN
+                  else
+                    groupOp.PLATFORM_USER
+                })
+              }
+              val userInfo = UserInfo(user._id, user.name, userGroup, user.isAdmin)
+              val group = groupOp.getGroupByID(userGroup).get
+              Ok(Json.obj("ok"->true, "userData"->UserData(user, group))).withSession(Security.setUserinfo(request, userInfo))
             }              
           })
   }

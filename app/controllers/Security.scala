@@ -5,28 +5,23 @@ import play.api.mvc._
 import scala.concurrent._
 
 class AuthenticatedRequest[A](val userinfo:String, request: Request[A]) extends WrappedRequest[A](request)
-
+case class UserInfo(id:String, name:String, group:String, isAdmin:Boolean)
 object Security {
   val idKey = "ID"
   val nameKey = "Name"
   val adminKey = "Admin"
-  case class UserInfo(id:String, name:String, isAdmin:Boolean)
+  val groupKey = "Group"
+
   
 
   def getUserinfo(request: RequestHeader):Option[UserInfo] = {
-    val optId = request.session.get(idKey)
-    if(optId.isEmpty)
-      return None
-      
-    val optAdmin = request.session.get(adminKey)
-    if(optAdmin.isEmpty)
-      return None
-      
-    val optName = request.session.get(nameKey)
-    if(optName.isEmpty)
-      return None
-          
-    Some(UserInfo(optId.get, optName.get, optAdmin.get.toBoolean))
+    for{
+      id <- request.session.get(idKey)
+      admin <- request.session.get(adminKey)
+      name <- request.session.get(nameKey)
+      group <- request.session.get(groupKey)
+    }yield
+      UserInfo(id, name, group, admin.toBoolean)
   }
   
   def onUnauthorized(request: RequestHeader) = {
@@ -46,7 +41,7 @@ object Security {
   def setUserinfo[A](request: Request[A], userInfo:UserInfo)={
     request.session + 
       (idKey->userInfo.id.toString()) + (adminKey->userInfo.isAdmin.toString()) + 
-      (nameKey->userInfo.name) 
+      (nameKey->userInfo.name) + (groupKey -> userInfo.group)
   }
   
   def getUserInfo[A]()(implicit request:Request[A]):Option[UserInfo]={

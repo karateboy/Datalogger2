@@ -57,6 +57,7 @@
       :title="modalTitle"
       modal-class="modal-primary"
       hide-footer
+      no-close-on-backdrop
       size="lg"
     >
       <user
@@ -104,13 +105,23 @@ export default Vue.extend({
         label: '管理員',
         sortable: true,
       },
+      {
+        key: 'group',
+        label: '群組',
+        sortable: true,
+        formatter: this.groupFormatter,
+      },
     ];
+
+    const groupList = [];
 
     return {
       fields,
       userList,
       isNew: true,
       selected: [],
+      groupList,
+      groupMap: new Map(),
     };
   },
   computed: {
@@ -123,8 +134,9 @@ export default Vue.extend({
       return this.selected[0];
     },
   },
-  mounted() {
-    this.getUserList();
+  async mounted() {
+    await this.getGroupList();
+    await this.getUserList();
   },
 
   methods: {
@@ -148,15 +160,20 @@ export default Vue.extend({
           throw Error(err);
         });
     },
-    getUserList() {
-      axios
-        .get('/User')
-        .then(res => {
-          this.userList = res.data;
-        })
-        .catch(err => {
-          throw new Error(err);
-        });
+    async getUserList() {
+      const res = await axios.get('/User');
+      this.userList = res.data;
+    },
+    async getGroupList() {
+      const res = await axios.get('/Groups');
+      this.groupList = res.data;
+      for (const g of this.groupList) {
+        this.groupMap.set(g._id, g);
+      }
+    },
+    groupFormatter(value, key, item) {
+      if (this.groupMap.has(value)) return this.groupMap.get(value).name;
+      return value;
     },
     onUserSelected(items) {
       this.selected = items;

@@ -4,13 +4,14 @@ import models.ModelHelper._
 import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import org.mongodb.scala.bson.codecs.Macros._
+import org.mongodb.scala.model.Updates
 import play.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.implicitConversions
 
 
-case class User(_id: String, password: String, name: String, isAdmin: Boolean, group:Option[String])
+case class User(_id: String, password: String, name: String, isAdmin: Boolean, group: Option[String])
 
 import javax.inject._
 
@@ -24,7 +25,7 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp) {
   val collection: MongoCollection[User] = mongoDB.database.withCodecRegistry(codecRegistry).getCollection(ColName)
 
   def init() {
-    for(colNames <- mongoDB.database.listCollectionNames().toFuture()){
+    for (colNames <- mongoDB.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(ColName)) {
         val f = mongoDB.database.createCollection(ColName).toFuture()
         f.onFailure(errorHandler)
@@ -58,8 +59,28 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp) {
   }
 
   def updateUser(user: User) = {
-    val f = collection.replaceOne(equal("_id", user._id), user).toFuture()
-    waitReadyResult(f)
+    if (user.password != "") {
+      val f = collection.replaceOne(equal("_id", user._id), user).toFuture()
+      waitReadyResult(f)
+    } else {
+      val updates = {
+        if (user.group.isEmpty)
+          Updates.combine(
+            Updates.set("name", user.name),
+            Updates.set("isAdmin", user.isAdmin)
+          )
+        else
+          Updates.combine(
+            Updates.set("name", user.name),
+            Updates.set("isAdmin", user.isAdmin),
+            Updates.set("group", user.group.get)
+          )
+      }
+
+      val f = collection.findOneAndUpdate(equal("_id", user._id), updates).toFuture()
+      waitReadyResult(f)
+    }
+
   }
 
   def getUserByEmail(email: String) = {
@@ -68,7 +89,7 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp) {
       errorHandler
     }
     val user = waitReadyResult(f)
-    if(user != null)
+    if (user != null)
       Some(user)
     else
       None
