@@ -213,6 +213,8 @@ export default {
         pm25 = pm25Entry.value;
 
         const iconUrl = getIconUrl(pm25);
+        console.log(stat)
+        console.log(this.mMap)
         ret.push({
           title: this.mMap.get(stat.monitor).desc,
           position: { lat, lng },

@@ -195,6 +195,7 @@ export default Vue.extend({
       const url = `/HistoryReport/${monitors}/${monitorTypes}/${this.form.dataType}/${this.form.range[0]}/${this.form.range[1]}`;
 
       const ret = await axios.get(url);
+      console.log(ret)
       for (const row of ret.data.rows) {
         row.date = moment(row.date).format('lll');
       }
