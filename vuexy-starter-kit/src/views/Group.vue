@@ -116,7 +116,6 @@ export default Vue.extend({
 
     this.copyProp(group);
 
-    console.log(group);
     const abilityOptions = [
       {
         text: '儀表板',

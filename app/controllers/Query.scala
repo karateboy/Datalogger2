@@ -487,9 +487,9 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           } {
             val monitorMap = mtMonitorMap(mt)
             if(monitorMap.contains(m))
-              cellDataList = cellDataList.+:(mtMonitorMap(mt)(m))
+              cellDataList = cellDataList:+(mtMonitorMap(mt)(m))
             else
-              cellDataList = cellDataList.+:(emtpyCell)
+              cellDataList = cellDataList:+(emtpyCell)
           }
           RowData(time.getMillis, cellDataList)
         }
