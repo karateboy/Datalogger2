@@ -13,6 +13,17 @@ libraryDependencies ++= Seq(
   "net.sf.marineapi" % "marineapi" % "0.10.0"
 )
 
+libraryDependencies ++= Seq(
+  "org.scalikejdbc" %% "scalikejdbc"                  % "3.4.2",
+  "org.scalikejdbc" %% "scalikejdbc-config"           % "3.4.2"
+)
+
+// https://mvnrepository.com/artifact/org.scalikejdbc/scalikejdbc-play-initializer
+libraryDependencies += "org.scalikejdbc" %% "scalikejdbc-play-initializer" % "2.5.3"
+
+// https://mvnrepository.com/artifact/net.sf.ucanaccess/ucanaccess
+libraryDependencies += "net.sf.ucanaccess" % "ucanaccess" % "5.0.1"
+
 // https://mvnrepository.com/artifact/org.mongodb.scala/mongo-scala-driver
 libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "4.1.1"
 
