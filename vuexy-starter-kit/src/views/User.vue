@@ -63,6 +63,14 @@
           :options="groupList"
         />
       </b-form-group>
+      <b-form-group label="關注測項:" label-for="monitorTypes" label-cols="3">
+        <b-form-checkbox-group
+          id="monitorTypes"
+          v-model="user.monitorTypeOfInterest"
+          :options="monitorTypeOptions"
+        >
+        </b-form-checkbox-group>
+      </b-form-group>
       <b-row>
         <b-col offset-md="3">
           <b-button
@@ -124,6 +132,7 @@ export default Vue.extend({
     };
   },
   computed: {
+    ...mapState('monitorTypes', ['monitorTypes']),
     ...mapState('user', ['userInfo']),
     passwordLabel() {
       if (this.isNew) return '密碼:';
@@ -157,6 +166,12 @@ export default Vue.extend({
     isAdmin() {
       return this.userinfo.isAdmin;
     },
+    monitorTypeOptions() {
+      let ret = [];
+      for (const mt of this.monitorTypes)
+        ret.push({ text: mt.desp, value: mt._id });
+      return ret;
+    },
   },
   mounted() {
     this.getGroupList();
@@ -179,6 +194,7 @@ export default Vue.extend({
         user.name = self.name;
         user.isAdmin = self.isAdmin;
         user.group = self.group;
+        user.monitorTypeOfInterest = self.monitorTypeOfInterest;
       }
     },
     reset() {

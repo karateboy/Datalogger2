@@ -468,8 +468,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
         val mList2 = monitorOp.mvList map { m => monitorOp.map(m) }
         Ok(Json.toJson(mList2))
       }else{
-        val mList = monitorOp.mvList filter { !group.excludeMonitors.contains(_)}
-        val mList2 = mList map { m => monitorOp.map(m) }
+        val mList2 = group.monitors map { m => monitorOp.map(m) }
         Ok(Json.toJson(mList2))
       }
   }
@@ -497,7 +496,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       val mtList = if (userInfo.isAdmin)
         monitorTypeOp.mtvList map monitorTypeOp.map
       else {
-        monitorTypeOp.mtvList.filter(!group.excludeMonitorTypes.contains(_)) map monitorTypeOp.map
+        group.monitorTypes map monitorTypeOp.map
         //val pm25 = monitorTypeOp.mtvList.filter(p => p == "PM25")
         //pm25 map monitorTypeOp.map
       }

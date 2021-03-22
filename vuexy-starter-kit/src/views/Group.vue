@@ -25,14 +25,10 @@
         ></b-input>
         <b-form-invalid-feedback>顯示名稱不能是空的</b-form-invalid-feedback>
       </b-form-group>
-      <b-form-group
-        label="排除測站:"
-        label-for="excludeMonitors"
-        label-cols="3"
-      >
+      <b-form-group label="測站:" label-for="monitors" label-cols="3">
         <b-form-checkbox-group
           id="excludeMonitors"
-          v-model="group.excludeMonitors"
+          v-model="group.monitors"
           :options="monitorOptions"
         >
         </b-form-checkbox-group>
@@ -40,14 +36,10 @@
       <b-form-group label="管理員:" label-for="admin" label-cols="3">
         <b-form-checkbox id="admin" v-model="group.admin" />
       </b-form-group>
-      <b-form-group
-        label="排除測項:"
-        label-for="excludeMonitorTypes"
-        label-cols="3"
-      >
+      <b-form-group label="測項:" label-for="monitorTypes" label-cols="3">
         <b-form-checkbox-group
-          id="excludeMonitorTypes"
-          v-model="group.excludeMonitorTypes"
+          id="monitorTypes"
+          v-model="group.monitorTypes"
           :options="monitorTypeOptions"
         >
         </b-form-checkbox-group>
@@ -109,8 +101,8 @@ export default Vue.extend({
       _id: '',
       name: '',
       admin: false,
-      excludeMonitors: [],
-      excludeMonitorTypes: [],
+      monitors: [],
+      monitorTypes: [],
       abilities: [],
     };
 
@@ -175,8 +167,8 @@ export default Vue.extend({
         group._id = self._id;
         group.name = self.name;
         group.admin = self.admin;
-        group.excludeMonitors = self.excludeMonitors;
-        group.excludeMonitorTypes = self.excludeMonitorTypes;
+        group.monitors = self.monitors;
+        group.monitorTypes = self.monitorTypes;
         group.abilities = self.abilities;
       }
     },

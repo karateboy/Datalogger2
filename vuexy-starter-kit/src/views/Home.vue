@@ -7,7 +7,7 @@
             <b-tr>
               <b-th></b-th>
               <b-th
-                v-for="mt in form.monitorTypes"
+                v-for="mt in userInfo.monitorTypeOfInterest"
                 :key="mt"
                 :colspan="form.monitors.length"
                 class="text-center"
@@ -113,7 +113,6 @@ export default {
       ],
       form: {
         monitors: [],
-        monitorTypes: [],
         dataType: 'min',
         range,
       },
@@ -142,6 +141,7 @@ export default {
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapState('monitors', ['monitors']),
+    ...mapState('user', ['userInfo']),
     ...mapGetters('monitorTypes', ['mtMap']),
     ...mapGetters('monitors', ['mMap']),
     sprayStatus() {
@@ -209,12 +209,11 @@ export default {
         lng = lngEntry.value;
 
         const pm25Entry = stat.mtDataList.find(v => v.mtName === 'PM25');
+
         if (!pm25Entry) continue;
         pm25 = pm25Entry.value;
 
-        const iconUrl = getIconUrl(pm25);
-        console.log(stat);
-        console.log(this.mMap);
+        const iconUrl = getIconUrl(`PM2.5 ${pm25}`);
         ret.push({
           title: this.mMap.get(stat.monitor).desc,
           position: { lat, lng },
@@ -320,12 +319,12 @@ export default {
       this.rows.splice(0, this.rows.length);
       this.columns = this.getColumns();
       const monitors = this.form.monitors.join(':');
-      const monitorTypes = this.form.monitorTypes.join(':');
+      const monitorTypes = this.userInfo.monitorTypeOfInterest.join(':');
       const url = `/LatestData/${monitors}/${monitorTypes}/${this.form.dataType}`;
 
       const ret = await axios.get(url);
       for (const row of ret.data.rows) {
-        row.date = moment(row.date).format('LLL');
+        row.date = moment(row.date).format('MM-DD HH:mm');
       }
 
       this.rows = ret.data.rows;
@@ -348,7 +347,7 @@ export default {
         label: '時間',
       });
       let i = 0;
-      for (const mt of this.form.monitorTypes) {
+      for (const mt of this.userInfo.monitorTypeOfInterest) {
         const mtCase = this.mtMap.get(mt);
         for (const m of this.form.monitors) {
           // emtpyCell  ${mtCase.desp}(${mtCase.unit})

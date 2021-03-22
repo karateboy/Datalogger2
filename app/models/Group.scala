@@ -5,8 +5,7 @@ import models.ModelHelper._
 import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import org.mongodb.scala.bson.codecs.Macros._
-import org.mongodb.scala.model.{BulkWriteOptions, Filters, UpdateOneModel, UpdateOptions, Updates}
-import play.api._
+import org.mongodb.scala.model.{Filters, InsertOneOptions, Updates}
 import play.api.libs.json.Json
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -14,7 +13,7 @@ import scala.language.implicitConversions
 
 
 case class Ability(action:String, subject:String)
-case class Group(_id: String, name: String, excludeMonitors:Seq[String], excludeMonitorTypes: Seq[String],
+case class Group(_id: String, name: String, monitors:Seq[String], monitorTypes: Seq[String],
                  admin:Boolean, abilities: Seq[Ability])
 
 import javax.inject._
@@ -63,15 +62,17 @@ class GroupOp @Inject()(mongoDB: MongoDB, monitorOp: MonitorOp) {
     }
     createDefaultGroup
   }
+  def upgrade(): Unit ={
+    val updates = Updates.combine(Updates.set("monitors", Seq.empty[String]), Updates.set("monitorTypes", Seq.empty[String]))
+    collection.updateMany(Filters.not(Filters.exists("monitors")), updates).toFuture()
+  }
 
   init
+  // upgrade
 
   def createDefaultGroup = {
     for(group <- defaultGroup) yield {
-      val option = new FindOneAndReplaceOptions()
-      val f = collection.findOneAndReplace(Filters.equal("_id", group._id), group, option.upsert(true))
-        .toFuture()
-      f onFailure(errorHandler())
+      val f = collection.insertOne(group).toFuture()
       f
     }
   }

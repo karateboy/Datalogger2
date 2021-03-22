@@ -4,19 +4,19 @@ import models.ModelHelper._
 import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import org.mongodb.scala.bson.codecs.Macros._
-import org.mongodb.scala.model.Updates
+import org.mongodb.scala.model.{Filters, Updates}
 import play.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.implicitConversions
 
 
-case class User(_id: String, password: String, name: String, isAdmin: Boolean, group: Option[String])
+case class User(_id: String, password: String, name: String, isAdmin: Boolean, group: Option[String], monitorTypeOfInterest: Seq[String])
 
 import javax.inject._
 
 @Singleton
-class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp) {
+class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp, monitorTypeOp: MonitorTypeOp) {
 
   import org.mongodb.scala._
 
@@ -36,7 +36,8 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp) {
     f.onSuccess({
       case count: Long =>
         if (count == 0) {
-          val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn", true, Some(groupOp.PLATFORM_ADMIN))
+          val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn", true, Some(groupOp.PLATFORM_ADMIN),
+            Seq(monitorTypeOp.PM25))
           Logger.info("Create default user:" + defaultUser.toString())
           newUser(defaultUser)
         }
@@ -44,7 +45,12 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp) {
     f.onFailure(errorHandler)
   }
 
+  def upgrade(): Unit ={
+    collection.updateMany(Filters.exists("_id"), Updates.set("monitorTypeOfInterest", Seq(monitorTypeOp.PM25))).toFuture()
+  }
+
   init
+  upgrade
 
   def newUser(user: User) = {
     val f = collection.insertOne(user).toFuture()
@@ -67,13 +73,15 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp) {
         if (user.group.isEmpty)
           Updates.combine(
             Updates.set("name", user.name),
-            Updates.set("isAdmin", user.isAdmin)
+            Updates.set("isAdmin", user.isAdmin),
+            Updates.set("monitorTypeOfInterest", user.monitorTypeOfInterest)
           )
         else
           Updates.combine(
             Updates.set("name", user.name),
             Updates.set("isAdmin", user.isAdmin),
-            Updates.set("group", user.group.get)
+            Updates.set("group", user.group.get),
+            Updates.set("monitorTypeOfInterest", user.monitorTypeOfInterest)
           )
       }
 
