@@ -213,7 +213,7 @@ export default {
         if (!pm25Entry) continue;
         pm25 = pm25Entry.value;
 
-        const iconUrl = getIconUrl(`PM2.5 ${pm25}`);
+        const iconUrl = getIconUrl(pm25);
         ret.push({
           title: this.mMap.get(stat.monitor).desc,
           position: { lat, lng },

@@ -9,8 +9,10 @@ import org.eclipse.paho.client.mqttv3._
 import play.api._
 import play.api.libs.json.{JsError, Json, _}
 
+import java.nio.file.Files
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, MINUTES}
+import scala.concurrent.{Future, blocking}
 
 case class EventConfig(instId: String, bit: Int, seconds: Option[Int])
 
@@ -114,7 +116,8 @@ class MqttCollector @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, sy
 
       import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence
       import org.eclipse.paho.client.mqttv3.{MqttAsyncClient, MqttException}
-      val tmpDir = System.getProperty("java.io.tmpdir")
+      val  tmpDir = Files.createTempDirectory(MqttAsyncClient.generateClientId()).toFile().getAbsolutePath();
+      Logger.info(s"$id uses $tmpDir as tempDir")
       val dataStore = new MqttDefaultFilePersistence(tmpDir)
       try {
         mqttClientOpt = Some(new MqttAsyncClient(url, MqttAsyncClient.generateClientId(), dataStore))
@@ -131,35 +134,45 @@ class MqttCollector @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, sy
           system.scheduler.scheduleOnce(Duration(1, MINUTES), self, CreateClient)
       }
     case ConnectBroker =>
-      mqttClientOpt map {
-        client =>
-          val conOpt = new MqttConnectOptions
-          conOpt.setAutomaticReconnect(true)
-          conOpt.setCleanSession(true)
-          try {
-            val conToken = client.connect(conOpt, null, null)
-            conToken.waitForCompletion()
-            Logger.info(s"MqttCollector $id: Connected")
-            self ! SubscribeTopic
-          } catch {
-            case ex: Exception =>
-              Logger.error("connect broker failed.", ex)
-              system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectBroker)
+      Future {
+        blocking {
+          mqttClientOpt map {
+            client =>
+              val conOpt = new MqttConnectOptions
+              conOpt.setAutomaticReconnect(true)
+              conOpt.setCleanSession(false)
+              try {
+                val conToken = client.connect(conOpt, null, null)
+                conToken.waitForCompletion()
+                Logger.info(s"MqttCollector $id: Connected")
+                self ! SubscribeTopic
+              } catch {
+                case ex: Exception =>
+                  Logger.error("connect broker failed.", ex)
+                  system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectBroker)
+              }
           }
+        }
       }
+
     case SubscribeTopic =>
-      mqttClientOpt map {
-        client =>
-          try {
-            val subToken = client.subscribe(config.topic, 2, null, null)
-            subToken.waitForCompletion()
-            Logger.info(s"MqttCollector $id: Subscribed")
-          } catch {
-            case ex: Exception =>
-              Logger.error("Subscribe failed", ex)
-              system.scheduler.scheduleOnce(Duration(1, MINUTES), self, SubscribeTopic)
+      Future {
+        blocking {
+          mqttClientOpt map {
+            client =>
+              try {
+                val subToken = client.subscribe(config.topic, 2, null, null)
+                subToken.waitForCompletion()
+                Logger.info(s"MqttCollector $id: Subscribed")
+              } catch {
+                case ex: Exception =>
+                  Logger.error("Subscribe failed", ex)
+                  system.scheduler.scheduleOnce(Duration(1, MINUTES), self, SubscribeTopic)
+              }
           }
+        }
       }
+
     case SetState(id, state) =>
       Logger.warn(s"$id ignore $self => $state")
   }
@@ -174,7 +187,6 @@ class MqttCollector @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, sy
   }
 
   override def connectionLost(cause: Throwable): Unit = {
-
   }
 
   override def messageArrived(topic: String, message: MqttMessage): Unit = {
@@ -182,7 +194,6 @@ class MqttCollector @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, sy
       messageHandler(new String(message.getPayload))
     } catch {
       case ex: Exception =>
-        Logger.debug(new String(message.getPayload))
         Logger.error("failed to handleMessage", ex)
     }
 
