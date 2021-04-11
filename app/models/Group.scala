@@ -68,7 +68,6 @@ class GroupOp @Inject()(mongoDB: MongoDB, monitorOp: MonitorOp) {
   }
 
   init
-  // upgrade
 
   def createDefaultGroup = {
     for(group <- defaultGroup) yield {

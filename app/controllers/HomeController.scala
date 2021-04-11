@@ -13,7 +13,8 @@ import javax.inject._
 class HomeController @Inject()(environment: play.api.Environment, recordOp: RecordOp,
                                userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
                                monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorOp, groupOp: GroupOp,
-                               instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp) extends Controller {
+                               instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp,
+                               sensorOp: MqttSensorOp) extends Controller {
 
   val title = "資料擷取器"
 

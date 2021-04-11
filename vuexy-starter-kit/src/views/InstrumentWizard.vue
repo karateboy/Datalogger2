@@ -145,6 +145,11 @@
             :param-str="form.param"
             @param-changed="onParamChange"
           />
+          <mqtt2-config-page
+            v-else-if="isMqtt2"
+            :param-str="form.param"
+            @param-changed="onParamChange"
+          />
           <adam-6066-config-page
             v-else-if="isAdam6066"
             :param-str="form.param"
@@ -185,6 +190,7 @@ import ToastificationContent from '@core/components/toastification/Toastificatio
 import TapiConfigPage from './TapiConfigPage.vue';
 import Adam6017ConfigPage from './Adam6017ConfigPage.vue';
 import MqttConfigPage from './MqttConfigPage.vue';
+import Mqtt2ConfigPage from './Mqtt2ConfigPage';
 import Adam6066ConfigPage from './Adam6066ConfigPage.vue';
 import ThetaConfigPage from './ThetaConfigPage.vue';
 
@@ -197,6 +203,7 @@ export default {
     TapiConfigPage,
     Adam6017ConfigPage,
     MqttConfigPage,
+    Mqtt2ConfigPage,
     Adam6066ConfigPage,
     ThetaConfigPage,
   },
@@ -250,6 +257,9 @@ export default {
     },
     isMqtt() {
       return this.form.instType === 'mqtt_client';
+    },
+    isMqtt2() {
+      return this.form.instType === 'mqtt_client2';
     },
     isAdam6066() {
       return this.form.instType === 'adam6066';

@@ -21,7 +21,7 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp, monitorTypeOp: Monito
   import org.mongodb.scala._
 
   val ColName = "users"
-  val codecRegistry = fromRegistries(fromProviders(classOf[User], classOf[AlarmConfig], DEFAULT_CODEC_REGISTRY))
+  val codecRegistry = fromRegistries(fromProviders(classOf[User], classOf[AlarmConfig]), DEFAULT_CODEC_REGISTRY)
   val collection: MongoCollection[User] = mongoDB.database.withCodecRegistry(codecRegistry).getCollection(ColName)
 
   def init() {
