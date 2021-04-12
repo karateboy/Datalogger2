@@ -12,7 +12,7 @@ case class Monitor(_id: String, desc: String, monitorTypes: Seq[String] = Seq.em
 import javax.inject._
 
 @Singleton
-class MonitorOp @Inject()(mongoDB: MongoDB) {
+class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration) {
   implicit val mWrite = Json.writes[Monitor]
   implicit val mRead = Json.reads[Monitor]
 
@@ -25,6 +25,9 @@ class MonitorOp @Inject()(mongoDB: MongoDB) {
 
   val codecRegistry = fromRegistries(fromProviders(classOf[Monitor]), DEFAULT_CODEC_REGISTRY)
   val collection = mongoDB.database.getCollection[Monitor](colName).withCodecRegistry(codecRegistry)
+  val hasSelfMonitor = config.getBoolean("selfMonitor").getOrElse(false)
+  val SELF_ID = ""
+  val selfMonitor = Monitor(SELF_ID, "本站")
   var map: Map[String, Monitor] = {
     val pairs =
       for (m <- mList) yield {
@@ -33,8 +36,6 @@ class MonitorOp @Inject()(mongoDB: MongoDB) {
     pairs.toMap
   }
 
-  val SELF_ID = ""
-  val selfMonitor = Monitor(SELF_ID, "本站")
   def init(): Unit = {
     val colNames = waitReadyResult(mongoDB.database.listCollectionNames().toFuture())
     if (!colNames.contains(colName)) {
@@ -43,7 +44,7 @@ class MonitorOp @Inject()(mongoDB: MongoDB) {
     }
 
     val ret = waitReadyResult(collection.countDocuments(Filters.equal("_id", "")).toFuture())
-    if(ret == 0){
+    if (ret == 0) {
       waitReadyResult(collection.insertOne(selfMonitor).toFuture())
     }
   }
@@ -59,13 +60,10 @@ class MonitorOp @Inject()(mongoDB: MongoDB) {
     waitReadyResult(f)
   }
 
-  def mvList = mList.map(_._id)
-
-  private def mList: List[Monitor] = {
-    val f = collection.find().sort(Sorts.ascending("_id")).toFuture()
-    val ret = waitReadyResult(f)
-    ret.toList
-  }
+  def mvList = mList.map(_._id).filter({
+    p =>
+      hasSelfMonitor || p != SELF_ID
+  })
 
   def ensureMonitor(_id: String) = {
     if (!map.contains(_id)) {
@@ -105,5 +103,11 @@ class MonitorOp @Inject()(mongoDB: MongoDB) {
         m._id -> m
       }
     map = pairs.toMap
+  }
+
+  private def mList: List[Monitor] = {
+    val f = collection.find().sort(Sorts.ascending("_id")).toFuture()
+    val ret = waitReadyResult(f)
+    ret.toList
   }
 }

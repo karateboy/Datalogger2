@@ -537,10 +537,12 @@ class DataCollectManager @Inject()
         waitReadyResult(f)
 
         //calculate self
-        dataCollectManagerOp.recalculateHourData(monitor = "",
-          current = current,
-          forward = false,
-          alwaysValid = false)(latestDataMap.keys.toList)
+        if(monitorOp.hasSelfMonitor){
+          dataCollectManagerOp.recalculateHourData(monitor = monitorOp.SELF_ID,
+            current = current,
+            forward = false,
+            alwaysValid = false)(latestDataMap.keys.toList)
+        }
 
         //calculate other monitors
         for (m <- monitorOp.mvList) {
