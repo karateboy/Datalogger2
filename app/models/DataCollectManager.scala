@@ -11,11 +11,16 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.SECONDS
 import scala.language.postfixOps
+import scala.util.Success
 
 
-case class AddInstrument(inst: Instrument)
+case class StartInstrument(inst: Instrument)
 
-case class RemoveInstrument(id: String)
+case class StopInstrument(id: String)
+
+case class RestartInstrument(id: String)
+
+case object RestartMyself
 
 case class SetState(instId: String, state: String)
 
@@ -67,16 +72,16 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
   val effectivRatio = 0.75
 
   def startCollect(inst: Instrument) {
-    manager ! AddInstrument(inst)
+    manager ! StartInstrument(inst)
   }
 
   def startCollect(id: String) {
     val instList = instrumentOp.getInstrument(id)
-    instList.map { inst => manager ! AddInstrument(inst) }
+    instList.map { inst => manager ! StartInstrument(inst) }
   }
 
   def stopCollect(id: String) {
-    manager ! RemoveInstrument(id)
+    manager ! StopInstrument(id)
   }
 
   def setInstrumentState(id: String, state: String) {
@@ -126,7 +131,6 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
   }
 
   def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean)(mtList: Seq[String]) = {
-    Logger.debug(s"calculate ${monitor} hour data " + (current - 1.hour))
     val recordMap = recordOp.getRecordMap(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current)
 
     import scala.collection.mutable.ListBuffer
@@ -242,7 +246,7 @@ class DataCollectManager @Inject()
     instrumentList.foreach {
       inst =>
         if (inst.active)
-          self ! AddInstrument(inst)
+          self ! StartInstrument(inst)
     }
     Logger.info("DataCollect manager started")
   }
@@ -318,14 +322,15 @@ class DataCollectManager @Inject()
   }
 
   def receive = handler(Map.empty[String, InstrumentParam], Map.empty[ActorRef, String],
-    Map.empty[String, Map[String, Record]], List.empty[(DateTime, String, List[MonitorTypeData])])
+    Map.empty[String, Map[String, Record]], List.empty[(DateTime, String, List[MonitorTypeData])], List.empty[String])
 
   def handler(
                instrumentMap: Map[String, InstrumentParam],
                collectorInstrumentMap: Map[ActorRef, String],
                latestDataMap: Map[String, Map[String, Record]],
-               mtDataList: List[(DateTime, String, List[MonitorTypeData])]): Receive = {
-    case AddInstrument(inst) =>
+               mtDataList: List[(DateTime, String, List[MonitorTypeData])],
+               restartList: Seq[String]): Receive = {
+    case StartInstrument(inst) =>
       val instType = instrumentTypeOp.map(inst.instType)
       val collector = instrumentTypeOp.start(inst.instType, inst._id, inst.protocol, inst.param)
       val monitorTypes = instType.driver.getMonitorTypes(inst.param)
@@ -353,9 +358,9 @@ class DataCollectManager @Inject()
       context become handler(
         instrumentMap + (inst._id -> instrumentParam),
         collectorInstrumentMap + (collector -> inst._id),
-        latestDataMap, mtDataList)
+        latestDataMap, mtDataList, restartList)
 
-    case RemoveInstrument(id: String) =>
+    case StopInstrument(id: String) =>
       val paramOpt = instrumentMap.get(id)
       if (paramOpt.isDefined) {
         val param = paramOpt.get
@@ -364,15 +369,35 @@ class DataCollectManager @Inject()
         param.calibrationTimerOpt.map { timer => timer.cancel() }
         param.actor ! PoisonPill
 
-        context become handler(instrumentMap - (id), collectorInstrumentMap - param.actor,
-          latestDataMap -- param.mtList, mtDataList)
-
         if (calibratorOpt == Some(param.actor)) {
           calibratorOpt = None
         } else if (digitalOutputOpt == Some(param.actor)) {
           digitalOutputOpt = None
         }
+
+        if (!restartList.contains(id))
+          context become handler(instrumentMap - (id), collectorInstrumentMap - param.actor,
+            latestDataMap -- param.mtList, mtDataList, restartList)
+        else {
+          val removed = restartList.filter(_ != id)
+          val f = instrumentOp.getInstrumentFuture(id)
+          f.andThen({
+            case Success(value) =>
+              self ! StartInstrument(value)
+          })
+          handler(instrumentMap - (id), collectorInstrumentMap - param.actor,
+            latestDataMap -- param.mtList, mtDataList, removed)
+        }
       }
+
+    case RestartInstrument(id) =>
+      self ! StopInstrument(id)
+      context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, mtDataList, restartList :+ (id))
+
+    case RestartMyself =>
+      val id = collectorInstrumentMap(sender)
+      Logger.info(s"restart $id")
+      self ! RestartInstrument(id)
 
     case ReportData(dataList) =>
       val now = DateTime.now
@@ -392,7 +417,7 @@ class DataCollectManager @Inject()
             }
 
           context become handler(instrumentMap, collectorInstrumentMap,
-            latestDataMap ++ pairs, (DateTime.now, instId, dataList) :: mtDataList)
+            latestDataMap ++ pairs, (DateTime.now, instId, dataList) :: mtDataList, restartList)
       }
 
     case CalculateData => {
@@ -523,27 +548,28 @@ class DataCollectManager @Inject()
 
         checkMinDataAlarm(minuteMtAvgList)
 
-        context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData)
-        val f = recordOp.insertRecord(RecordList(currentMintues.minusMinutes(1), minuteMtAvgList.toList, ""))(recordOp.MinCollection)
+        context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData, restartList)
+        val f = recordOp.upsertRecord(RecordList(currentMintues.minusMinutes(1), minuteMtAvgList.toList, monitorOp.SELF_ID))(recordOp.MinCollection)
         f map { _ => ForwardManager.forwardMinData }
         f
       }
 
       val current = DateTime.now().withSecondOfMinute(0).withMillisOfSecond(0)
-      val f = calculateMinData(current)
-      f onFailure (errorHandler)
+      if (monitorOp.hasSelfMonitor) {
+        val f = calculateMinData(current)
+        f onFailure (errorHandler)
+        f.andThen({
+          case Success(x) =>
+            if (current.getMinuteOfHour == 0) {
+              dataCollectManagerOp.recalculateHourData(monitor = monitorOp.SELF_ID,
+                current = current,
+                forward = false,
+                alwaysValid = false)(latestDataMap.keys.toList)
+            }
+        })
+      }
 
       if (current.getMinuteOfHour == 0) {
-        waitReadyResult(f)
-
-        //calculate self
-        if(monitorOp.hasSelfMonitor){
-          dataCollectManagerOp.recalculateHourData(monitor = monitorOp.SELF_ID,
-            current = current,
-            forward = false,
-            alwaysValid = false)(latestDataMap.keys.toList)
-        }
-
         //calculate other monitors
         for (m <- monitorOp.mvList) {
           val monitor = monitorOp.map(m)
@@ -552,7 +578,6 @@ class DataCollectManager @Inject()
             forward = false,
             alwaysValid = true)(monitor.monitorTypes.toList)
         }
-
       }
     }
 
@@ -649,7 +674,7 @@ class DataCollectManager @Inject()
         }
       }
 
-      context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, mtDataList)
+      context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, mtDataList, restartList)
 
       sender ! latestMap
   }

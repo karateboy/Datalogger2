@@ -1,10 +1,11 @@
 package models
 
 import akka.actor._
-import com.github.nscala_time.time.Imports.{DateTime, DateTimeFormat}
+import com.github.nscala_time.time.Imports.{DateTime, DateTimeFormat, richDateTime}
 import com.google.inject.assistedinject.Assisted
 import models.ModelHelper.waitReadyResult
 import models.MqttCollector.{ConnectBroker, CreateClient, SubscribeTopic}
+import models.MqttCollector2.{CheckTimeout, timeout}
 import models.Protocol.ProtocolParam
 import org.eclipse.paho.client.mqttv3._
 import play.api._
@@ -12,7 +13,7 @@ import play.api.libs.json.{JsError, Json, _}
 
 import java.nio.file.Files
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{Duration, MINUTES}
+import scala.concurrent.duration.{DAYS, Duration, MINUTES, SECONDS}
 import scala.concurrent.{Future, blocking}
 
 case class MqttConfig2(topic: String, group:String, eventConfig: EventConfig)
@@ -71,6 +72,9 @@ object MqttCollector2 extends DriverOps {
 
   case object SubscribeTopic
 
+  case object CheckTimeout
+
+  val timeout = 15 // mintues
 }
 
 import javax.inject._
@@ -99,6 +103,11 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
 
   implicit val reads = Json.reads[Message]
   var mqttClientOpt: Option[MqttAsyncClient] = None
+  var lastDataArrival: DateTime = DateTime.now
+
+  val watchDog = context.system.scheduler.schedule(Duration(1, MINUTES),
+    Duration(timeout, MINUTES), self, CheckTimeout)
+
   lazy val sensorMap: Map[String, Sensor] = {
     waitReadyResult(mqttSensorOp.getSensorMap(config.group))
   }
@@ -172,6 +181,12 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
           }
         }
       }
+    case CheckTimeout=>
+      val duration = new org.joda.time.Duration(lastDataArrival, DateTime.now())
+      if(duration.getStandardMinutes > timeout) {
+        Logger.error(s"Mqtt ${id} no data timeout!")
+        context.parent ! RestartMyself
+      }
 
     case SetState(id, state) =>
       Logger.warn(s"$id ignore $self => $state")
@@ -191,6 +206,7 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
 
   override def messageArrived(topic: String, message: MqttMessage): Unit = {
     try {
+      lastDataArrival = DateTime.now
       messageHandler(new String(message.getPayload))
     } catch {
       case ex: Exception =>
@@ -230,8 +246,6 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
         val mtDataList: Seq[MtRecord] = mtData.flatten ++ latlon
         val time = DateTime.parse(message.time, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss"))
         if(sensorMap.contains(message.id)){
-          //Logger.info(s"Insert ${id}")
-          //Logger.info(message.toString)
           val sensor = sensorMap(message.id)
           val recordList = RecordList(time.toDate, mtDataList, sensor.monitor)
           val f = recordOp.upsertRecord(recordList)(recordOp.MinCollection)

@@ -2,8 +2,11 @@ package models
 
 import models.Protocol.ProtocolParam
 import play.api.libs.json._
+
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.util.Success
 case class InstrumentInfo(_id: String, instType: String, state: String,
                           protocol: String, protocolParam: String, monitorTypes: String,
                           calibrationTime: Option[String], inst:Instrument)
@@ -113,6 +116,12 @@ class InstrumentOp @Inject() (mongoDB: MongoDB) {
   def getInstrument(id: String) = {
     val f = collection.find(equal("_id", id)).toFuture()
     waitReadyResult(f).map { toInstrument }
+  }
+
+  def getInstrumentFuture(id: String):Future[Instrument] = {
+    val f = collection.find(equal("_id", id)).first().toFuture()
+    for(doc <- f) yield
+      toInstrument(doc)
   }
 
   def getAllInstrumentFuture = {

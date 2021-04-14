@@ -138,15 +138,6 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     RecordList(dt, mtDataList, monitor, RecordListID(dt, monitor))
   }
 
-  def insertRecord(doc: RecordList)(colName: String) = {
-    val col = getCollection(colName)
-    val f = col.insertOne(doc).toFuture()
-    f.onFailure({
-      case ex: Exception => Logger.error(ex.getMessage, ex)
-    })
-    f
-  }
-
   def insertManyRecord(docs: Seq[RecordList])(colName: String) = {
     val col = getCollection(colName)
     val f = col.insertMany(docs).toFuture()
