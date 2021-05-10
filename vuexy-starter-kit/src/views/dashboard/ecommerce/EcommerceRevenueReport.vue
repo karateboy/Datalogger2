@@ -7,13 +7,23 @@
           <div class="d-flex align-items-center">
             <div class="d-flex align-items-center mr-2">
               <span
-                class="bullet bullet-primary svg-font-small-3 mr-50 cursor-pointer"
+                class="
+                  bullet bullet-primary
+                  svg-font-small-3
+                  mr-50
+                  cursor-pointer
+                "
               />
               <span>Earning</span>
             </div>
             <div class="d-flex align-items-center ml-75">
               <span
-                class="bullet bullet-warning svg-font-small-3 mr-50 cursor-pointer"
+                class="
+                  bullet bullet-warning
+                  svg-font-small-3
+                  mr-50
+                  cursor-pointer
+                "
               />
               <span>Expense</span>
             </div>

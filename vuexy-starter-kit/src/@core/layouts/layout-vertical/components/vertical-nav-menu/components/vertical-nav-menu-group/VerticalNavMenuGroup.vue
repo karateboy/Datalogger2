@@ -64,12 +64,8 @@ export default {
     },
   },
   setup(props) {
-    const {
-      isOpen,
-      isActive,
-      updateGroupOpen,
-      updateIsActive,
-    } = useVerticalNavMenuGroup(props.item);
+    const { isOpen, isActive, updateGroupOpen, updateIsActive } =
+      useVerticalNavMenuGroup(props.item);
 
     const { t } = useI18nUtils();
     const { canViewVerticalNavMenuGroup } = useAclUtils();

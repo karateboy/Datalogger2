@@ -9,14 +9,25 @@
     <div v-if="!icon" class="timeline-item-point" />
     <div
       v-else
-      class="timeline-item-icon d-flex align-items-center justify-content-center rounded-circle"
+      class="
+        timeline-item-icon
+        d-flex
+        align-items-center
+        justify-content-center
+        rounded-circle
+      "
     >
       <feather-icon :icon="icon" />
     </div>
 
     <slot>
       <div
-        class="d-flex flex-sm-row flex-column flex-wrap justify-content-between mb-1 mb-sm-0"
+        class="
+          d-flex
+          flex-sm-row flex-column flex-wrap
+          justify-content-between
+          mb-1 mb-sm-0
+        "
       >
         <h6 v-text="title" />
         <small

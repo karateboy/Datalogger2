@@ -22,7 +22,13 @@
     <b-row class="text-center mx-0">
       <b-col
         cols="6"
-        class="border-top border-right d-flex align-items-between flex-column py-1"
+        class="
+          border-top border-right
+          d-flex
+          align-items-between
+          flex-column
+          py-1
+        "
       >
         <b-card-text class="text-muted mb-0"> Completed </b-card-text>
         <h3 class="font-weight-bolder mb-0">

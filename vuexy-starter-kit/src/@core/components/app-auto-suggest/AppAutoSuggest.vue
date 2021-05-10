@@ -67,9 +67,8 @@ export default {
       'This component is still in Development. Please do not use it.',
     );
 
-    const { searchQuery, filteredData, resetsearchQuery } = useAutoSuggest(
-      props,
-    );
+    const { searchQuery, filteredData, resetsearchQuery } =
+      useAutoSuggest(props);
 
     const suggestionSelected = suggestion => {
       resetsearchQuery();

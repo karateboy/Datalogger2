@@ -9,7 +9,12 @@
       <app-timeline>
         <app-timeline-item variant="primary">
           <div
-            class="d-flex justify-content-between flex-sm-row flex-column mb-sm-0 mb-1"
+            class="
+              d-flex
+              justify-content-between
+              flex-sm-row flex-column
+              mb-sm-0 mb-1
+            "
           >
             <h6>{{ data.step1.title }}</h6>
             <small class="timeline-item-time text-nowrap text-muted ml-1">{{
@@ -35,7 +40,12 @@
 
         <app-timeline-item variant="warning">
           <div
-            class="d-flex justify-content-between flex-sm-row flex-column mb-sm-0 mb-1"
+            class="
+              d-flex
+              justify-content-between
+              flex-sm-row flex-column
+              mb-sm-0 mb-1
+            "
           >
             <h6>{{ data.step2.title }}</h6>
             <small class="timeline-item-time text-nowrap text-muted ml-1">{{
@@ -60,7 +70,12 @@
 
         <app-timeline-item variant="info">
           <div
-            class="d-flex justify-content-between flex-sm-row flex-column mb-sm-0 mb-1"
+            class="
+              d-flex
+              justify-content-between
+              flex-sm-row flex-column
+              mb-sm-0 mb-1
+            "
           >
             <h6>{{ data.step3.title }}</h6>
             <small class="timeline-item-time text-nowrap text-muted ml-1">{{

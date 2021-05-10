@@ -21,19 +21,18 @@ export default function useHorizontalNavMenuGroup(item) {
       nextTick(() => {
         const childDropdownWidth = refChildDropdown.value.offsetWidth;
         const windowContentWidth = window.innerWidth - 16;
-        const {
-          left: childDropdownLeft,
-        } = refChildDropdown.value.getBoundingClientRect();
+        const { left: childDropdownLeft } =
+          refChildDropdown.value.getBoundingClientRect();
         const shallDropLeft =
           childDropdownLeft + childDropdownWidth - windowContentWidth;
         openChildDropdownOnLeft.value = shallDropLeft > 0;
 
         // Add scroll to child dd if don't have much space
 
-        const refChildDropdownTop = refChildDropdown.value.getBoundingClientRect()
-          .top;
-        const refChildDropdownHeight = refChildDropdown.value.getBoundingClientRect()
-          .height;
+        const refChildDropdownTop =
+          refChildDropdown.value.getBoundingClientRect().top;
+        const refChildDropdownHeight =
+          refChildDropdown.value.getBoundingClientRect().height;
         if (
           window.innerHeight -
             refChildDropdownTop -
