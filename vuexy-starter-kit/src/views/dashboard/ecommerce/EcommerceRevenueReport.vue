@@ -84,7 +84,7 @@ import {
 } from 'bootstrap-vue';
 import VueApexCharts from 'vue-apexcharts';
 import { $themeColors } from '@themeConfig';
-import Ripple from 'vue-ripple-directive';
+const Ripple = require('vue-ripple-directive');
 
 export default {
   components: {

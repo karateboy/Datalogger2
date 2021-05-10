@@ -81,7 +81,7 @@
 import Vue from 'vue';
 import { mapState } from 'vuex';
 import axios from 'axios';
-import Ripple from 'vue-ripple-directive';
+const Ripple = require('vue-ripple-directive');
 import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
 const emptyPassword = '';
 export default Vue.extend({

@@ -122,7 +122,7 @@
 </style>
 <script lang="ts">
 import Vue from 'vue';
-import Ripple from 'vue-ripple-directive';
+const Ripple = require('vue-ripple-directive');
 import axios from 'axios';
 /*
 interface MonitorType {
@@ -207,7 +207,7 @@ export default Vue.extend({
         label: '全幅值偏移法規',
       },
     ];
-    const monitorTypes = [];
+    const monitorTypes = Array<any>();
 
     const form = {
       thresholdConfig: {
@@ -218,7 +218,9 @@ export default Vue.extend({
       display: false,
       columns,
       monitorTypes,
-      editingMt: undefined,
+      editingMt: {
+        thresholdConfig: {},
+      },
       form,
     };
   },
@@ -235,17 +237,17 @@ export default Vue.extend({
         }
       });
     },
-    configThreshold(item) {
+    configThreshold(item: any) {
       this.editingMt = item;
       this.$bvModal.show('thresholdConfig');
     },
-    showThresholdConfig(config) {
+    showThresholdConfig(config: any) {
       if (!config) return '-';
       else {
         return `持續時間 ${config.elapseTime}`;
       }
     },
-    justify(mt) {
+    justify(mt: any) {
       if (mt.span === '') mt.span = null;
       if (mt.span_dev_internal === '') mt.span_dev_internal = null;
       if (mt.span_dev_law === '') mt.span_dev_law = null;
@@ -268,7 +270,7 @@ export default Vue.extend({
         this.$bvModal.msgBoxOk('成功');
       });
     },
-    markDirty(item) {
+    markDirty(item: any) {
       item.dirty = true;
     },
     setMtThresholdConfig() {

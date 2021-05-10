@@ -84,7 +84,7 @@ import {
   BDropdownItem,
   BButton,
 } from 'bootstrap-vue';
-import Ripple from 'vue-ripple-directive';
+const Ripple = require('vue-ripple-directive');
 
 export default {
   directives: {

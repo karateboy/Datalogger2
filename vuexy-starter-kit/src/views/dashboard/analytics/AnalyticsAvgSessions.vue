@@ -118,7 +118,7 @@ import {
   BCardText,
 } from 'bootstrap-vue';
 import VueApexCharts from 'vue-apexcharts';
-import Ripple from 'vue-ripple-directive';
+const Ripple = require('vue-ripple-directive');
 import { $themeColors } from '@themeConfig';
 import { kFormatter } from '@core/utils/filter';
 

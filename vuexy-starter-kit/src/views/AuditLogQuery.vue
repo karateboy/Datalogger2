@@ -62,7 +62,7 @@ import Vue from 'vue';
 import DatePicker from 'vue2-datepicker';
 import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
-import Ripple from 'vue-ripple-directive';
+const Ripple = require('vue-ripple-directive');
 import moment from 'moment';
 import { mapState, mapGetters } from 'vuex';
 import axios from 'axios';
@@ -122,7 +122,7 @@ export default Vue.extend({
     ...mapGetters('monitorTypes', ['mtMap']),
   },
   methods: {
-    handleReport(data) {
+    handleReport(data: any) {
       for (const log of data) {
         log.dataTime = moment(log.dataTime).format('lll');
         log.modifiedTime = moment(log.modifiedTime).format('lll');

@@ -72,7 +72,7 @@
 <script>
 import Vue from 'vue';
 import axios from 'axios';
-import Ripple from 'vue-ripple-directive';
+const Ripple = require('vue-ripple-directive');
 import User from './User.vue';
 import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
 

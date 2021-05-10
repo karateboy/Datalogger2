@@ -91,7 +91,7 @@ import DatePicker from 'vue2-datepicker';
 import vSelect from 'vue-select';
 import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
-import Ripple from 'vue-ripple-directive';
+const Ripple =  require('vue-ripple-directive');
 import { mapState, mapActions } from 'vuex';
 import moment from 'moment';
 import axios from 'axios';
@@ -108,7 +108,7 @@ export default Vue.extend({
     const date = moment().valueOf();
     return {
       display: false,
-      columns: [],
+      columns: Array<any>(),
       statRows: [],
       rows: [],
       form: {
@@ -135,7 +135,7 @@ export default Vue.extend({
       const res = await axios.get(url);
       this.handleReport(res.data);
     },
-    handleReport(report) {
+    handleReport(report: any) {
       this.columns.splice(0, this.columns.length);
 
       this.columns.push({

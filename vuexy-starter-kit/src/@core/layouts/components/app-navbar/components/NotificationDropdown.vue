@@ -102,7 +102,7 @@ import {
   BFormCheckbox,
 } from 'bootstrap-vue';
 import VuePerfectScrollbar from 'vue-perfect-scrollbar';
-import Ripple from 'vue-ripple-directive';
+const Ripple = require('vue-ripple-directive');
 
 export default {
   components: {

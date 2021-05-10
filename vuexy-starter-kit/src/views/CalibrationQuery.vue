@@ -55,7 +55,7 @@ import Vue from 'vue';
 import DatePicker from 'vue2-datepicker';
 import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
-import Ripple from 'vue-ripple-directive';
+const Ripple = require('vue-ripple-directive');
 import moment from 'moment';
 import axios from 'axios';
 

@@ -8,7 +8,6 @@ import {
 import VueCompositionAPI from '@vue/composition-api';
 import axios from 'axios';
 import moment from 'moment';
-import jscookie from 'js-cookie';
 import Highcharts from 'highcharts';
 import ex from 'highcharts/modules/exporting';
 import csv from 'highcharts/modules/export-data';
@@ -19,7 +18,7 @@ import router from './router';
 import store from './store';
 import App from './App.vue';
 import { ValidationProvider } from 'vee-validate';
-import * as VueGoogleMas from 'gmap-vue';
+const VueGoogleMap = require('gmap-vue');
 import vSelect from 'vue-select';
 
 // Global Components
@@ -129,7 +128,7 @@ router.beforeEach((to, from, next) => {
   }
 });
 
-Vue.use(VueGoogleMas, {
+Vue.use(VueGoogleMap, {
   load: {
     key: 'AIzaSyDiE_K-p1_3V-lff9yXfD6KkC1SGpXVcKc',
     libraries: 'places', // This is required if you use the Autocomplete plugin
