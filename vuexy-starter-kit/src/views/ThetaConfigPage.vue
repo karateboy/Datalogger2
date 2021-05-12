@@ -2,10 +2,10 @@
   <b-form @submit.prevent @change="onChange">
     <b-row>
       <b-col cols="12">
-        <b-form-group label="型號" label-for="model" label-cols-md="3">
+        <b-form-group label="測項" label-for="model" label-cols-md="3">
           <v-select
-            v-model="paramObj.model"
-            :options="models"
+            v-model="paramObj.fetchMonitorTypes"
+            :options="monitorTypes"
             @input="onChange"
           />
         </b-form-group>
@@ -34,7 +34,7 @@ export default Vue.extend({
   },
   data() {
     let paramObj = {
-      model: 'T100',
+      monitorTypes: [],
     };
 
     if (this.paramStr) {
@@ -45,7 +45,7 @@ export default Vue.extend({
 
     return {
       paramObj,
-      models: ['T100', 'T200'],
+      monitorTypes: ['PM25'],
     };
   },
   computed: {},

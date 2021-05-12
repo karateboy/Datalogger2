@@ -3,16 +3,19 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
-import jssc.SerialPort
+import com.serotonin.modbus4j.{ModbusFactory, ModbusMaster}
 import models.ModelHelper._
 import models.Protocol.ProtocolParam
 import play.api._
 import play.api.libs.json.{JsError, Json}
 import play.libs.Scala.None
 
+import java.io.{InputStream, OutputStream}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.{Duration, SECONDS}
+import scala.concurrent.{Future, blocking}
 
-case class ThetaConfig(model: String)
+case class ThetaConfig(monitorTypes: Seq[String])
 
 object ThetaCollector extends DriverOps {
   var count = 0
@@ -49,8 +52,8 @@ object ThetaCollector extends DriverOps {
 
 
   override def getMonitorTypes(param: String): List[String] = {
-    // val config = validateParam(param)
-    List("WD_SPEED", "WD_DIR", "PRESS", "HUMID", "TEMP")
+    val config = validateParam(param)
+    config.monitorTypes.toList
   }
 
   override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
@@ -75,6 +78,9 @@ object ThetaCollector extends DriverOps {
   trait Factory {
     def apply(id: String, protocol: ProtocolParam, param: ThetaConfig): Actor
   }
+
+  case object ConnectHost
+  case object Collect
 }
 
 import javax.inject._
@@ -83,86 +89,69 @@ class ThetaCollector @Inject()
 (alarmOp: AlarmOp, monitorStatusOp: MonitorStatusOp, instrumentOp: InstrumentOp, system: ActorSystem)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted mt: String) extends Actor {
 
-  import VerewaF701Collector._
+  import ThetaCollector._
 
-  import scala.concurrent.duration._
+  override def receive: Receive = init()
 
-  var cancelable = system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort)
-  var serialOpt: Option[SerialComm] = None[SerialComm]
+  var timer: Cancellable = _
 
-  import scala.concurrent.{Future, blocking}
+  self ! ConnectHost
 
-  var collectorStatus = MonitorStatus.NormalStat
-
-  def handlMessage(lines: Seq[String]) = {
-    lines map {
-      line =>
-        val data: Array[Option[MonitorTypeData]] =
-          for (part <- line.split(",")) yield {
-            part match {
-              case x: String if x.split("=").length != 2 =>
-                None
-              case x: String if x.charAt(0).isDigit =>
-                None
-              case x: String =>
-                val token = x.split("=")
-                val mt = token(0)
-                val vstr = token(1).trim
-                val v = vstr.substring(0, vstr.length - 1).toDouble
-                mt match {
-                  case "Dm" =>
-                    Some(MonitorTypeData("WD_DIR", v, collectorStatus))
-                  case "Sm" =>
-                    Some(MonitorTypeData("WD_SPEED", v, collectorStatus))
-                  case "Pa" =>
-                    Some(MonitorTypeData("PRESS", v, collectorStatus))
-                  case "Ua" =>
-                    Some(MonitorTypeData("HUMID", v, collectorStatus))
-                  case "Ta" =>
-                    Some(MonitorTypeData("TEMP", v, collectorStatus))
-                  case _ =>
-                    None
-                }
-            }
-          } //end of yield
-        val mtData: Array[MonitorTypeData] = data.flatten
-        context.parent ! ReportData(mtData.toList)
-    }
-  }
-
-  def receive = {
-    case OpenComPort =>
-      try {
-        serialOpt = Some(SerialComm.open(protocolParam.comPort.get, SerialPort.BAUDRATE_19200))
-        cancelable = system.scheduler.schedule(scala.concurrent.duration.Duration(1, SECONDS), Duration(1, SECONDS), self, ReadData)
-      } catch {
-        case ex: Exception =>
-          Logger.error(ex.getMessage, ex)
-          Logger.info("Reopen 1 min latter...")
-          cancelable = system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort)
-      }
-
-    case ReadData =>
+  def init() : Receive = {
+    case ConnectHost =>
       Future {
         blocking {
-          for(serial <- serialOpt){
-            val lines = serial.getLine2
-            handlMessage(lines)
+          try {
+            assert(protocolParam.protocol == Protocol.serial)
+            val com = protocolParam.comPort.get
+            val serial = SerialComm.open(com)
+            context become connected(MonitorStatus.NormalStat, serial)
+            timer = system.scheduler.scheduleOnce(Duration(1, SECONDS), self, Collect)
+          } catch {
+            case ex: Exception =>
+              Logger.error(ex.getMessage, ex)
+              alarmOp.log(alarmOp.instStr(id), alarmOp.Level.ERR, s"Unable to open:${ex.getMessage}")
+              import scala.concurrent.duration._
+              system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
           }
-        } //end of blocking
+        }
+      }
+  }
+
+  def connected(state:String, serial: SerialComm):Receive = {
+    case Collect =>
+      Future {
+        blocking {
+          try {
+            serial.os.write("#01\r\n".getBytes)
+            val lines = serial.getLine2
+            for(line<-lines) {
+              val target = line.dropWhile(_ == ">").drop(1)
+              Logger.info(target)
+            }
+
+            import scala.concurrent.duration._
+            timer = system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
+          } catch {
+            case ex: Throwable =>
+              Logger.error("Read serial failed", ex)
+              serial.close
+              context become init()
+              self ! ConnectHost
+          }
+        }
       } onFailure errorHandler
 
     case SetState(id, state) =>
-      Logger.info(s"SetState(${monitorStatusOp.map(state).desp})")
-      collectorStatus = state
+      Logger.info(s"$self => $state")
       instrumentOp.setState(id, state)
+      context become connected(state, serial)
   }
 
   override def postStop(): Unit = {
-    cancelable.cancel()
-    serialOpt map {
-      serial =>
-        SerialComm.close(serial)
-    }
+    super.postStop()
+    if(timer != null)
+      timer.cancel()
   }
+
 }

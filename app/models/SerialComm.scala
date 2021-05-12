@@ -1,5 +1,7 @@
 package models
 
+import com.serotonin.modbus4j.serial.SerialPortWrapper
+
 import java.io.InputStream
 import java.io.OutputStream
 import jssc.SerialPort
@@ -56,6 +58,7 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
 
     splitLine(readBuffer)
   }
+
   def getLine2(timeout: Int):List[String] = {
     import com.github.nscala_time.time.Imports._
     var strList = getLine2
@@ -69,6 +72,33 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     }
     strList
   }
+
+  def getLine3 = {
+    def splitLine(buf: Array[Byte]): List[String] = {
+      val idx = buf.indexOf('\n'.toByte)
+      if (idx == -1) {
+        val cr_idx = buf.indexOf('\r'.toByte)
+        if (cr_idx == -1) {
+          readBuffer = buf
+          Nil
+        } else {
+          val (a, rest) = buf.splitAt(cr_idx + 1)
+          new String(a).trim() :: splitLine(rest)
+        }
+      } else {
+        val (a, rest) = buf.splitAt(idx + 1)
+        new String(a) :: splitLine(rest)
+      }
+    }
+
+    val ret = port.readBytes()
+    if (ret != null)
+      readBuffer = readBuffer ++ ret
+
+    Logger.info(s"readBuffer len=${readBuffer.length}")
+    splitLine(readBuffer)
+  }
+
   def close = {
     is.close
     os.close
@@ -116,4 +146,37 @@ class SerialInputStream(serialPort: jssc.SerialPort) extends InputStream {
     else
       retArray(0)
   }
+}
+
+class SerialRTU(n: Int, baudRate: Int) extends SerialPortWrapper {
+
+  var serialCommOpt : Option[SerialComm]= None
+
+  override def close(): Unit = {
+    Logger.info(s"SerialRTU COM${n} close")
+
+    for(serialComm <- serialCommOpt)
+      serialComm.close
+  }
+
+  override def open(): Unit = {
+    Logger.info(s"SerialRTU COM${n} open")
+    serialCommOpt = Some(SerialComm.open(n, baudRate))
+  }
+
+  override def getInputStream: InputStream = serialCommOpt.get.is
+
+  override def getOutputStream: OutputStream = serialCommOpt.get.os
+
+  override def getBaudRate: Int = baudRate
+
+  override def getFlowControlIn: Int = 0
+
+  override def getFlowControlOut: Int = 0
+
+  override def getDataBits: Int = 8
+
+  override def getStopBits: Int = 1
+
+  override def getParity: Int = 0
 }

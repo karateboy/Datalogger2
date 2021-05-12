@@ -9,7 +9,7 @@ export const $themeBreakpoints = {};
 // APP CONFIG
 export const $themeConfig = {
   app: {
-    appName: 'Vuexy', // Will update name in navigation menu (Branding)
+    appName: 'Iot-Station', // Will update name in navigation menu (Branding)
     // eslint-disable-next-line global-require
     appLogoImage: require('@/assets/images/logo/logo.svg'), // Will update logo in navigation menu (Branding)
   },
@@ -21,7 +21,7 @@ export const $themeConfig = {
     contentWidth: 'full', // full, boxed
     menu: {
       hidden: false,
-      isCollapsed: false,
+      isCollapsed: true,
     },
     navbar: {
       // ? For horizontal menu, navbar type will work for navMenu type
@@ -29,7 +29,7 @@ export const $themeConfig = {
       backgroundColor: '', // BS color options [primary, success, etc]
     },
     footer: {
-      type: 'static', // static, sticky, hidden
+      type: 'hidden', // static, sticky, hidden
     },
     customizer: true,
     enableScrollToTop: true,
