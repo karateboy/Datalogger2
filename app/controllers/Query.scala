@@ -630,7 +630,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
     implicit val w = Json.writes[Record]
     val (start, end) = (new DateTime(startLong), new DateTime(endLong))
 
-    val recordMap = recordOp.getRecordMap(recordOp.HourCollection)("", List(monitorType), start, end)
+    val recordMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.SELF_ID, List(monitorType), start, end)
     Ok(Json.toJson(recordMap(monitorType)))
   }
 

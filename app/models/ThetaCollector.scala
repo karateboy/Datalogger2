@@ -4,6 +4,7 @@ import akka.actor._
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
 import models.ModelHelper._
+import models.MonitorType.{CH2O, CO, CO2, H2, H2S, HUMID, NH3, NO, NO2, NOISE, O3, PM10, PM25, PRESS, RAIN, SO2, TEMP, TVOC, WIN_DIRECTION, WIN_SPEED}
 import models.Protocol.ProtocolParam
 import play.api._
 import play.api.libs.json.{JsError, Json}
@@ -36,8 +37,13 @@ object ThetaCollector extends DriverOps {
   implicit val configWrite = Json.writes[ThetaConfig]
 
   override def getMonitorTypes(param: String): List[String] = {
-    val config = validateParam(param)
-    config.monitorTypes.toList
+    //val config = validateParam(param)
+    //config.monitorTypes.toList
+    Seq(WIN_SPEED, WIN_DIRECTION, HUMID, TEMP, PRESS,
+      RAIN,
+      PM25, PM10, CH2O, TVOC, CO2,
+      NOISE, CO, SO2, NO2, O3,
+      NO, H2S, H2, NH3).toList
   }
 
   override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
@@ -115,7 +121,7 @@ class ThetaCollector @Inject()
       PM25, PM10, CH2O, TVOC, CO2,
       NOISE, CO, SO2, NO2, O3,
       NO, H2S, H2, NH3)
-    val reseult: Seq[Option[MonitorTypeData]] = {
+    val result: Seq[Option[MonitorTypeData]] = {
       for ((mt, valueStr) <- monitorTypeList.zip(numSeq)) yield {
         if (mt == ignore)
           None
@@ -130,7 +136,7 @@ class ThetaCollector @Inject()
         }
       }
     }
-    context.parent ! ReportData(reseult.flatten.toList)
+    context.parent ! ReportData(result.flatten.toList)
   }
 
   def connected(state: String, serial: SerialComm): Receive = {

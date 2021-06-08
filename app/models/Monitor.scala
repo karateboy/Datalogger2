@@ -10,12 +10,16 @@ import scala.concurrent.ExecutionContext.Implicits.global
 case class Monitor(_id: String, desc: String, monitorTypes: Seq[String] = Seq.empty[String])
 
 import javax.inject._
-
+object Monitor{
+  val SELF_ID = "me"
+  val selfMonitor = Monitor(SELF_ID, "本站")
+}
 @Singleton
 class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: MqttSensorOp) {
   implicit val mWrite = Json.writes[Monitor]
   implicit val mRead = Json.reads[Monitor]
 
+  import Monitor._
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
@@ -26,8 +30,7 @@ class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: Mqt
   val codecRegistry = fromRegistries(fromProviders(classOf[Monitor]), DEFAULT_CODEC_REGISTRY)
   val collection = mongoDB.database.getCollection[Monitor](colName).withCodecRegistry(codecRegistry)
   val hasSelfMonitor = config.getBoolean("selfMonitor").getOrElse(false)
-  val SELF_ID = ""
-  val selfMonitor = Monitor(SELF_ID, "本站")
+
   var map: Map[String, Monitor] = {
     val pairs =
       for (m <- mList) yield {
@@ -43,7 +46,7 @@ class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: Mqt
       f.onFailure(errorHandler)
     }
 
-    val ret = waitReadyResult(collection.countDocuments(Filters.equal("_id", "")).toFuture())
+    val ret = waitReadyResult(collection.countDocuments(Filters.equal("_id", selfMonitor)).toFuture())
     if (ret == 0) {
       waitReadyResult(collection.insertOne(selfMonitor).toFuture())
     }

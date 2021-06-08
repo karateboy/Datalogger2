@@ -413,7 +413,7 @@ class DataCollectManager @Inject()
                 r.time >= DateTime.now() - 6.second
               }
 
-              (data.mt -> (filteredMap ++ Map(instId -> Record(now, data.value, data.status, ""))))
+              (data.mt -> (filteredMap ++ Map(instId -> Record(now, data.value, data.status, Monitor.SELF_ID))))
             }
 
           context become handler(instrumentMap, collectorInstrumentMap,
@@ -549,7 +549,7 @@ class DataCollectManager @Inject()
         checkMinDataAlarm(minuteMtAvgList)
 
         context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData, restartList)
-        val f = recordOp.upsertRecord(RecordList(currentMintues.minusMinutes(1), minuteMtAvgList.toList, monitorOp.SELF_ID))(recordOp.MinCollection)
+        val f = recordOp.upsertRecord(RecordList(currentMintues.minusMinutes(1), minuteMtAvgList.toList, Monitor.SELF_ID))(recordOp.MinCollection)
         f map { _ => ForwardManager.forwardMinData }
         f
       }
@@ -561,7 +561,7 @@ class DataCollectManager @Inject()
         f.andThen({
           case Success(x) =>
             if (current.getMinuteOfHour == 0) {
-              dataCollectManagerOp.recalculateHourData(monitor = monitorOp.SELF_ID,
+              dataCollectManagerOp.recalculateHourData(monitor = Monitor.SELF_ID,
                 current = current,
                 forward = false,
                 alwaysValid = false)(latestDataMap.keys.toList)
