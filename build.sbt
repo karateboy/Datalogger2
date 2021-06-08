@@ -1,4 +1,4 @@
-name := """MqttManager"""
+name := """DataLogger2"""
 
 version := "1.0.3"
 

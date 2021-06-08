@@ -70,16 +70,37 @@ case class MonitorType(_id: String, desp: String, unit: String,
 import javax.inject._
 
 object MonitorType {
+  val SO2 = "SO2"
+  val NOx = "NOx"
+  val NO2 = "NO2"
+  val NO = "NO"
+  val CO = "CO"
+  val CO2 = "CO2"
+  val CH4 = "CH4"
   val PM10 = "PM10"
+  val PM25 = "PM25"
+  val O3 = "O3"
+  val THC = "THC"
+
   val LAT = "LAT"
   val LNG = "LNG"
   val WIN_SPEED = "WD_SPEED"
   val WIN_DIRECTION = "WD_DIR"
   val RAIN = "RAIN"
-  val PM25 = "PM25"
+  val TEMP= "TEMP"
+  val TS = "TS"
+  val PRESS = "PRESS"
   val DOOR = "DOOR"
   val SMOKE = "SMOKE"
   val FLOW = "FLOW"
+  val HUMID ="HUMID"
+  val SOLAR = "SOLAR"
+  val CH2O = "CH2O"
+  val TVOC = "TVOC"
+  val NOISE = "NOISE"
+  val H2S = "H2S"
+  val H2 = "H2"
+  val NH3 = "NH3"
   var rangeOrder = 0
   var signalOrder = 1000
 
@@ -110,40 +131,46 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
   val collection = mongoDB.database.getCollection[MonitorType](colName).withCodecRegistry(codecRegistry)
   val MonitorTypeVer = 2
   val defaultMonitorTypes = List(
-    rangeType("SO2", "二氧化硫", "ppb", 1),
-    rangeType("NOx", "氮氧化物", "ppb", 1),
-    rangeType("NO2", "二氧化氮", "ppb", 1),
-    rangeType("NO", "一氧化氮", "ppb", 1),
-    rangeType("CO", "一氧化碳", "ppm", 1),
-    rangeType("CO2", "二氧化碳", "ppm", 1),
-    rangeType("O3", "臭氧", "ppb", 1),
-    rangeType("THC", "總碳氫化合物", "ppm", 1),
-    rangeType("TS", "總硫", "ppb", 1),
-    rangeType("CH4", "甲烷", "ppm", 1),
+    rangeType(SO2, "二氧化硫", "ppb", 1),
+    rangeType(NOx, "氮氧化物", "ppb", 1),
+    rangeType(NO2, "二氧化氮", "ppb", 1),
+    rangeType(NO, "一氧化氮", "ppb", 1),
+    rangeType(CO, "一氧化碳", "ppm", 1),
+    rangeType(CO2, "二氧化碳", "ppm", 1),
+    rangeType(O3, "臭氧", "ppb", 1),
+    rangeType(THC, "總碳氫化合物", "ppm", 1),
+    rangeType(TS, "總硫", "ppb", 1),
+    rangeType(CH4, "甲烷", "ppm", 1),
     rangeType("NMHC", "非甲烷碳氫化合物", "ppm", 1),
-    rangeType("NH3", "氨", "ppb", 1),
+    rangeType(NH3, "氨", "ppb", 1),
     rangeType("TSP", "TSP", "μg/m3", 1),
-    rangeType("PM10", "PM10懸浮微粒", "μg/m3", 1),
-    rangeType("PM25", "PM2.5細懸浮微粒", "μg/m3", 1),
-    rangeType("WD_SPEED", "風速", "m/sec", 1),
-    rangeType("WD_DIR", "風向", "degrees", 1),
-    rangeType("TEMP", "溫度", "℃", 1),
-    rangeType("HUMID", "濕度", "%", 1),
-    rangeType("PRESS", "氣壓", "hPa", 1),
-    rangeType("RAIN", "雨量", "mm/h", 1),
-    rangeType("LAT", "緯度", "度", 4),
-    rangeType("LNG", "經度", "度", 4),
+    rangeType(PM10, "PM10懸浮微粒", "μg/m3", 1),
+    rangeType(PM25, "PM2.5細懸浮微粒", "μg/m3", 1),
+    rangeType(WIN_SPEED, "風速", "m/sec", 1),
+    rangeType(WIN_DIRECTION, "風向", "degrees", 1),
+    rangeType(TEMP, "溫度", "℃", 1),
+    rangeType(HUMID, "濕度", "%", 1),
+    rangeType(PRESS, "氣壓", "hPa", 1),
+    rangeType(RAIN, "雨量", "mm/h", 1),
+    rangeType(LAT, "緯度", "度", 4),
+    rangeType(LNG, "經度", "度", 4),
     rangeType("HCl", "氯化氫", "ppm", 1),
     rangeType("H2O", "水", "ppm", 1),
     rangeType("RT", "室內溫度", "℃", 1),
     rangeType("OPA", "不透光率 ", "%", 1),
     rangeType("HCl", "氯化氫 ", "ppm", 1),
     rangeType("O2", "氧氣 ", "%", 1),
-    rangeType("Flow", "流率 ", "Nm3/h", 1),
+    rangeType(FLOW, "流率 ", "Nm3/h", 1),
+    rangeType(SOLAR, "日照", "W/m2", 1),
+    rangeType(CH2O, "CH2O", "ppb", 1),
+    rangeType(TVOC, "TVOC", "ppb", 1),
+    rangeType(NOISE, "NOISE", "dB", 1),
+    rangeType(H2S, "H2S", "ppb", 1),
+    rangeType(H2, "H2", "ppb", 1),
     /////////////////////////////////////////////////////
-    signalType("DOOR", "門禁"),
-    signalType("SMOKE", "煙霧"),
-    signalType("FLOW", "採樣流量"),
+    signalType(DOOR, "門禁"),
+    signalType(SMOKE, "煙霧"),
+    signalType(FLOW, "採樣流量"),
     signalType("SPRAY", "灑水"))
 
   var (mtvList, signalMtvList, map) = refreshMtv
