@@ -92,8 +92,10 @@
         :fields="columns"
         :items="rows"
         show-empty
+        empty-text="無資料"
         :per-page="15"
         :current-page="currentPage"
+        responsive
       >
         <template #thead-top>
           <b-tr>

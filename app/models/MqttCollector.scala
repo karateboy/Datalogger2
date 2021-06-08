@@ -201,8 +201,8 @@ class MqttCollector @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, sy
 
   def messageHandler(payload: String): Unit = {
     val mtMap = Map[String, String](
-      "pm2_5" -> monitorTypeOp.PM25,
-      "pm10" -> monitorTypeOp.PM10,
+      "pm2_5" -> MonitorType.PM25,
+      "pm10" -> MonitorType.PM10,
       "humidity" -> "HUMID"
     )
     val ret = Json.parse(payload).validate[Message]
@@ -225,8 +225,8 @@ class MqttCollector @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, sy
               MtRecord(mt, v, MonitorStatus.NormalStat)
 
           }
-        val latlon = Seq(MtRecord(monitorTypeOp.LAT, message.lat, MonitorStatus.NormalStat),
-          MtRecord(monitorTypeOp.LNG, message.lon, MonitorStatus.NormalStat))
+        val latlon = Seq(MtRecord(MonitorType.LAT, message.lat, MonitorStatus.NormalStat),
+          MtRecord(MonitorType.LNG, message.lon, MonitorStatus.NormalStat))
         val mtDataList: Seq[MtRecord] = mtData.flatten ++ latlon
         val time = DateTime.parse(message.time, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss"))
         val recordList = RecordList(time.toDate, mtDataList, config.monitor)

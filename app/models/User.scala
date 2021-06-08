@@ -37,7 +37,7 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp, monitorTypeOp: Monito
       case count: Long =>
         if (count == 0) {
           val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn", true, Some(groupOp.PLATFORM_ADMIN),
-            Seq(monitorTypeOp.PM25))
+            Seq(MonitorType.PM25))
           Logger.info("Create default user:" + defaultUser.toString())
           newUser(defaultUser)
         }
@@ -46,7 +46,7 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp, monitorTypeOp: Monito
   }
 
   def upgrade(): Unit ={
-    collection.updateMany(Filters.exists("_id"), Updates.set("monitorTypeOfInterest", Seq(monitorTypeOp.PM25))).toFuture()
+    collection.updateMany(Filters.exists("_id"), Updates.set("monitorTypeOfInterest", Seq(MonitorType.PM25))).toFuture()
   }
 
   init

@@ -12,7 +12,7 @@ case class Monitor(_id: String, desc: String, monitorTypes: Seq[String] = Seq.em
 import javax.inject._
 
 @Singleton
-class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration) {
+class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: MqttSensorOp) {
   implicit val mWrite = Json.writes[Monitor]
   implicit val mRead = Json.reads[Monitor]
 
@@ -71,6 +71,12 @@ class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration) {
     }
   }
 
+  def ensureMonitor(_id: String, monitorTypes: Seq[String]) = {
+    if (!map.contains(_id)) {
+      newMonitor(Monitor(_id, _id, monitorTypes))
+    }
+  }
+
   def newMonitor(m: Monitor) = {
     Logger.debug(s"Create monitor value ${m._id}!")
     map = map + (m._id -> m)
@@ -80,6 +86,7 @@ class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration) {
     f.onSuccess({
       case _: Seq[t] =>
     })
+    waitReadyResult(f)
     m._id
   }
 
@@ -109,5 +116,14 @@ class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration) {
     val f = collection.find().sort(Sorts.ascending("_id")).toFuture()
     val ret = waitReadyResult(f)
     ret.toList
+  }
+
+  def deleteMonitor(_id:String) = {
+    val f = collection.deleteOne(Filters.equal("_id", _id)).toFuture()
+    f.andThen({
+      case _=>
+        sensorOp.deleteByMonitor(_id)
+        map = map.filter(p => p._1 != _id)
+    })
   }
 }

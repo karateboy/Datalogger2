@@ -9,6 +9,8 @@ import play.api.libs.json._
 import play.api.mvc._
 
 import javax.inject._
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class HomeController @Inject()(environment: play.api.Environment, recordOp: RecordOp,
                                userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
@@ -22,10 +24,8 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
 
   implicit val userParamRead: Reads[User] = Json.reads[User]
 
-  import monitorTypeOp.mtRead
-  import monitorTypeOp.mtWrite
-  import groupOp.read
-  import groupOp.write
+  import groupOp.{read, write}
+  import monitorTypeOp.{mtRead, mtWrite}
 
   def newUser = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
@@ -463,13 +463,16 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       val userInfo = Security.getUserinfo(request).get
       val group = groupOp.getGroupByID(userInfo.group).get
 
-    implicit val writes = Json.writes[Monitor]
+      implicit val writes = Json.writes[Monitor]
 
-      if(userInfo.isAdmin){
+      if (userInfo.isAdmin) {
         val mList2 = monitorOp.mvList map { m => monitorOp.map(m) }
         Ok(Json.toJson(mList2))
-      }else{
-        val mList2 = group.monitors map { m => monitorOp.map(m) }
+      } else {
+        val mList2 =
+          for(m <-group.monitors if monitorOp.map.contains(m)) yield
+            monitorOp.map(m)
+
         Ok(Json.toJson(mList2))
       }
   }
@@ -487,6 +490,11 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
           monitorOp.upsert(m)
           Ok(Json.obj("ok" -> true))
         })
+  }
+
+  def deleteMonitor(id: String) = Security.Authenticated.async {
+    for (ret <- monitorOp.deleteMonitor(id)) yield
+      Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
   }
 
   def monitorTypeList = Security.Authenticated {
@@ -579,6 +587,37 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     Ok("ok")
   }
 
-  case class EditData(id: String, data: String)
+  def getSensors = Security.Authenticated.async {
+    import MqttSensor.write
+    val f = sensorOp.getAllSensorList
+    for (ret <- f) yield
+      Ok(Json.toJson(ret))
+  }
 
+  def upsertSensor(id: String) = Security.Authenticated.async(BodyParsers.parse.json) {
+    implicit request =>
+      import MqttSensor.read
+      val ret = request.body.validate[Sensor]
+      ret.fold(err => {
+        Logger.error(JsError.toJson(err).toString())
+        Future {
+          BadRequest(JsError.toJson(err).toString())
+        }
+      },
+        sensor => {
+          for (ret <- sensorOp.upsert(sensor)) yield {
+            //insert case
+            monitorOp.ensureMonitor(id, Seq(MonitorType.PM25, MonitorType.PM10))
+
+            Ok(Json.obj("ok" -> ret.wasAcknowledged()))
+          }
+        })
+  }
+
+  def deleteSensor(id: String) = Security.Authenticated.async {
+    for (ret <- sensorOp.delete(id)) yield
+      Ok(Json.obj("ok" -> ret.getDeletedCount))
+  }
+
+  case class EditData(id: String, data: String)
 }

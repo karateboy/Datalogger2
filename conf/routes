@@ -66,6 +66,11 @@ PUT      /ExecuteSeq/:ids/:seq                                                  
 GET      /InstrumentStatusReport/:id/:start/:end                                  controllers.Query.instrumentStatusReport(id, start:Long, end:Long)
 GET      /ManualAuditHistory/:start/:end                                          controllers.Query.manualAuditHistoryReport(start:Long, end:Long)
 
+GET      /Sensors                                                                 controllers.HomeController.getSensors
+POST     /Sensor/:id                                                              controllers.HomeController.upsertSensor(id)
+PUT      /Sensor/:id                                                              controllers.HomeController.upsertSensor(id)
+DELETE   /Sensor/:id                                                              controllers.HomeController.deleteSensor(id)
+
 #Data Management
 
 GET      /Recalculate/:monitors/:start/:end                                       controllers.HomeController.recalculateHour(monitors, start:Long, end:Long)
@@ -91,6 +96,7 @@ GET      /SignalValues                                                          
 
 GET      /Monitors                                                                controllers.HomeController.monitorList
 PUT      /Monitor/:id                                                             controllers.HomeController.upsertMonitor(id)
+DELETE   /Monitor/:id                                                             controllers.HomeController.deleteMonitor(id)
 
 
 GET      /Record/:monitorType/:start/:end                                         controllers.Query.recordList(monitorType, start:Long, end:Long)

@@ -71,8 +71,8 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
 
   def getPeriodStatReportMap(recordListMap: Map[String, Seq[Record]], period: Period, statusFilter: List[String] = List("010"))(start: DateTime, end: DateTime): Map[String, Map[DateTime, Stat]] = {
     val mTypes = recordListMap.keys.toList
-    if (mTypes.contains(monitorTypeOp.WIN_DIRECTION)) {
-      if (!mTypes.contains(monitorTypeOp.WIN_SPEED))
+    if (mTypes.contains(MonitorType.WIN_DIRECTION)) {
+      if (!mTypes.contains(MonitorType.WIN_SPEED))
         throw new Exception("風速和風向必須同時查詢")
     }
 
@@ -105,9 +105,9 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
         } else
           0
 
-        val avg = if (mt == monitorTypeOp.WIN_DIRECTION) {
+        val avg = if (mt == MonitorType.WIN_DIRECTION) {
           val windDir = records
-          val windSpeed = periodSlice(recordListMap(monitorTypeOp.WIN_SPEED), period_start, period_start + period)
+          val windSpeed = periodSlice(recordListMap(MonitorType.WIN_SPEED), period_start, period_start + period)
           windAvg(windSpeed, windDir)
         } else {
           sum / total
@@ -371,9 +371,9 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           period_start <- getPeriods(start, end, period)
           records = periodSlice(period_start, period_start + period) if records.length > 0
         } yield {
-          if (mt == monitorTypeOp.WIN_DIRECTION) {
+          if (mt == MonitorType.WIN_DIRECTION) {
             val windDir = records
-            val windSpeed = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitor, List(monitorTypeOp.WIN_SPEED), period_start, period_start + period)(mt)
+            val windSpeed = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitor, List(MonitorType.WIN_SPEED), period_start, period_start + period)(mt)
             period_start -> windAvg(windSpeed, windDir)
           } else {
             val values = records.map { r => r.value }

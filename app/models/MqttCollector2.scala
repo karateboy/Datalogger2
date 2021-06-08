@@ -108,8 +108,8 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
   val watchDog = context.system.scheduler.schedule(Duration(1, MINUTES),
     Duration(timeout, MINUTES), self, CheckTimeout)
 
-  lazy val sensorMap: Map[String, Sensor] = {
-    waitReadyResult(mqttSensorOp.getSensorMap(config.group))
+  var sensorMap: Map[String, Sensor] = {
+    waitReadyResult(mqttSensorOp.getSensorMap)
   }
   self ! CreateClient
 
@@ -182,6 +182,10 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
         }
       }
     case CheckTimeout=>
+      for(map <- mqttSensorOp.getSensorMap){
+        sensorMap = map
+      }
+
       val duration = new org.joda.time.Duration(lastDataArrival, DateTime.now())
       if(duration.getStandardMinutes > timeout) {
         Logger.error(s"Mqtt ${id} no data timeout!")
@@ -217,8 +221,8 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
 
   def messageHandler(payload: String): Unit = {
     val mtMap = Map[String, String](
-      "pm2_5" -> monitorTypeOp.PM25,
-      "pm10" -> monitorTypeOp.PM10,
+      "pm2_5" -> MonitorType.PM25,
+      "pm10" -> MonitorType.PM10,
       "humidity" -> "HUMID"
     )
     val ret = Json.parse(payload).validate[Message]
@@ -241,8 +245,8 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
               MtRecord(mt, v, MonitorStatus.NormalStat)
 
           }
-        val latlon = Seq(MtRecord(monitorTypeOp.LAT, message.lat, MonitorStatus.NormalStat),
-          MtRecord(monitorTypeOp.LNG, message.lon, MonitorStatus.NormalStat))
+        val latlon = Seq(MtRecord(MonitorType.LAT, message.lat, MonitorStatus.NormalStat),
+          MtRecord(MonitorType.LNG, message.lon, MonitorStatus.NormalStat))
         val mtDataList: Seq[MtRecord] = mtData.flatten ++ latlon
         val time = DateTime.parse(message.time, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss"))
         if(sensorMap.contains(message.id)){
@@ -264,6 +268,6 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
 
   }
 
-  case class Message(id: String, desc: String, lat: Double, lon: Double, time: String, data: Seq[JsValue])
+  case class Message(id: String, lat: Double, lon: Double, time: String, data: Seq[JsValue])
 
 }

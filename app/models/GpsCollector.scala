@@ -87,8 +87,8 @@ class GpsCollector @Inject()(monitorTypeOp: MonitorTypeOp)(@Assisted id: String,
   var reportTime = DateTime.now
   def providerUpdate(evt: PositionEvent) {
     if (reportTime < DateTime.now - 3.second) {
-      val lat = MonitorTypeData(monitorTypeOp.LAT, evt.getPosition.getLatitude, MonitorStatus.NormalStat)
-      val lng = MonitorTypeData(monitorTypeOp.LNG, evt.getPosition.getLongitude, MonitorStatus.NormalStat)
+      val lat = MonitorTypeData(MonitorType.LAT, evt.getPosition.getLatitude, MonitorStatus.NormalStat)
+      val lng = MonitorTypeData(MonitorType.LNG, evt.getPosition.getLongitude, MonitorStatus.NormalStat)
       context.parent ! ReportData(List(lat, lng))
       reportTime = DateTime.now
     }

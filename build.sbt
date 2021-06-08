@@ -1,6 +1,6 @@
-name := """DataLogger2"""
+name := """MqttManager"""
 
-version := "1.1.12"
+version := "1.0.3"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala, LauncherJarPlugin)
 

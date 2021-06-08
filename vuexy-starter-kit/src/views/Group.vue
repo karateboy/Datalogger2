@@ -1,6 +1,15 @@
 <template>
   <div>
     <b-form @submit.prevent>
+      <b-form-group label="父群組:" label-for="parent" label-cols="3">
+        <v-select
+          id="group"
+          v-model="group.parent"
+          label="name"
+          :reduce="grp => grp._id"
+          :options="groupList"
+        />
+      </b-form-group>
       <b-form-group label="群組ID:" label-for="account" label-cols="3">
         <b-input
           id="account"
@@ -77,13 +86,15 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import Vue from 'vue';
 import { mapState } from 'vuex';
 import axios from 'axios';
+import { Group, TextStrValue } from './types';
 const Ripple = require('vue-ripple-directive');
 import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
 const emptyPassword = '';
+
 export default Vue.extend({
   directives: {
     Ripple,
@@ -97,16 +108,15 @@ export default Vue.extend({
     },
   },
   data() {
-    const group = {
+    const group: Group = {
       _id: '',
       name: '',
       admin: false,
       monitors: [],
       monitorTypes: [],
       abilities: [],
+      parent: undefined,
     };
-
-    this.copyProp(group);
 
     const abilityOptions = [
       {
@@ -131,37 +141,66 @@ export default Vue.extend({
         },
       },
     ];
+
     return {
       group,
       abilityOptions,
+      groupList: Array<Group>(),
     };
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapState('monitors', ['monitors']),
-    btnTitle() {
+    btnTitle(): string {
       if (this.isNew) return '新增';
       return '更新';
     },
-    monitorOptions() {
-      let ret = [];
-      for (const m of this.monitors) ret.push({ text: m.desc, value: m._id });
+    monitorOptions(): Array<any> {
+      const ret = Array<TextStrValue>();
+      let monitors = this.monitors;
+      if (this.group.parent) {
+        const parentGroup = this.groupList.find((group, index) => {
+          return group._id === this.group.parent;
+        }) as Group;
+
+        monitors = this.monitors.filter((m: any) => {
+          return parentGroup.monitors.indexOf(m._id) !== -1;
+        });
+      }
+
+      for (const m of monitors) ret.push({ text: m.desc, value: m._id });
       return ret;
     },
-    monitorTypeOptions() {
-      let ret = [];
-      for (const mt of this.monitorTypes)
-        ret.push({ text: mt.desp, value: mt._id });
+    monitorTypeOptions(): Array<TextStrValue> {
+      const ret = Array<TextStrValue>();
+
+      let monitorTyes: Array<any> = this.monitorTypes;
+      if (this.group.parent) {
+        const parentGroup = this.groupList.find((group, index) => {
+          return group._id === this.group.parent;
+        }) as Group;
+
+        monitorTyes = this.monitorTypes.filter((mt: any) => {
+          return parentGroup.monitorTypes.indexOf(mt._id) !== -1;
+        });
+      }
+
+      for (const mt of monitorTyes) ret.push({ text: mt.desp, value: mt._id });
+
       return ret;
     },
-    canUpsert() {
+    canUpsert(): boolean {
       if (!this.group._id) return false;
       if (!this.group.name) return false;
       return true;
     },
   },
+  mounted() {
+    this.copyProp(this.group);
+    this.getGroupList();
+  },
   methods: {
-    copyProp(group) {
+    copyProp(group: Group): void {
       if (!this.isNew) {
         const self = this.currentGroup;
         group._id = self._id;
@@ -170,12 +209,16 @@ export default Vue.extend({
         group.monitors = self.monitors;
         group.monitorTypes = self.monitorTypes;
         group.abilities = self.abilities;
+        group.parent = self.parent;
       }
     },
     reset() {
       this.copyProp(this.group);
     },
-
+    async getGroupList() {
+      const res = await axios.get('/Groups');
+      if (res.status == 200) this.groupList = res.data;
+    },
     upsert() {
       if (this.isNew) {
         axios.post(`/Group`, this.group).then(res => {

@@ -1,25 +1,25 @@
 package models
 
-import com.mongodb.client.model.FindOneAndReplaceOptions
 import models.ModelHelper._
 import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import org.mongodb.scala.bson.codecs.Macros._
-import org.mongodb.scala.model.{Filters, InsertOneOptions, Updates}
+import org.mongodb.scala.model.{Filters, Updates}
 import play.api.libs.json.Json
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.implicitConversions
+import scala.util.Success
 
 
 case class Ability(action:String, subject:String)
 case class Group(_id: String, name: String, monitors:Seq[String], monitorTypes: Seq[String],
-                 admin:Boolean, abilities: Seq[Ability])
+                 admin:Boolean, abilities: Seq[Ability], parent:Option[String] = None)
 
 import javax.inject._
 
 @Singleton
-class GroupOp @Inject()(mongoDB: MongoDB, monitorOp: MonitorOp) {
+class GroupOp @Inject()(mongoDB: MongoDB) {
 
   import org.mongodb.scala._
 
@@ -58,13 +58,12 @@ class GroupOp @Inject()(mongoDB: MongoDB, monitorOp: MonitorOp) {
       if (!colNames.contains(ColName)) {
         val f = mongoDB.database.createCollection(ColName).toFuture()
         f.onFailure(errorHandler)
+        f.andThen({
+          case Success(_) =>
+            createDefaultGroup
+        })
       }
     }
-    createDefaultGroup
-  }
-  def upgrade(): Unit ={
-    val updates = Updates.combine(Updates.set("monitors", Seq.empty[String]), Updates.set("monitorTypes", Seq.empty[String]))
-    collection.updateMany(Filters.not(Filters.exists("monitors")), updates).toFuture()
   }
 
   init
@@ -111,5 +110,11 @@ class GroupOp @Inject()(mongoDB: MongoDB, monitorOp: MonitorOp) {
       errorHandler
     }
     waitReadyResult(f)
+  }
+
+  def addMonitor(_id: String, monitorID:String)= {
+    val f = collection.updateOne(Filters.equal("_id", _id), Updates.addToSet("monitors", monitorID)).toFuture()
+    f onFailure(errorHandler)
+    f
   }
 }

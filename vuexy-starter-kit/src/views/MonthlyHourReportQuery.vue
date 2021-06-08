@@ -91,7 +91,7 @@ import DatePicker from 'vue2-datepicker';
 import vSelect from 'vue-select';
 import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
-const Ripple =  require('vue-ripple-directive');
+const Ripple = require('vue-ripple-directive');
 import { mapState, mapActions } from 'vuex';
 import moment from 'moment';
 import axios from 'axios';

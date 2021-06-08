@@ -68,7 +68,7 @@ case object IsConnected
 
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentOp, recordOp: RecordOp,
-                                     alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp)() {
+                                     alarmOp: AlarmOp)() {
   val effectivRatio = 0.75
 
   def startCollect(inst: Instrument) {
@@ -189,9 +189,9 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         val values = normalValueOpt.get.map {
           _._2
         }
-        val avg = if (mt == monitorTypeOp.WIN_DIRECTION) {
+        val avg = if (mt == MonitorType.WIN_DIRECTION) {
           val windDir = values
-          val windSpeedStatusMap = mtMap.get(monitorTypeOp.WIN_SPEED)
+          val windSpeedStatusMap = mtMap.get(MonitorType.WIN_SPEED)
           if (windSpeedStatusMap.isDefined) {
             val windSpeedMostStatus = windSpeedStatusMap.get.maxBy(kv => kv._2.length)
             val windSpeed = windSpeedMostStatus._2.map(_._2)
@@ -202,9 +202,9 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                 yield 1.0
             windAvg(windSpeed.toList, windDir.toList)
           }
-        } else if (mt == monitorTypeOp.RAIN) {
+        } else if (mt == MonitorType.RAIN) {
           values.max
-        } else if (mt == monitorTypeOp.PM10 || mt == monitorTypeOp.PM25) {
+        } else if (mt == MonitorType.PM10 || mt == MonitorType.PM25) {
           values.last
         } else {
           values.sum / values.length
@@ -274,9 +274,9 @@ class DataCollectManager @Inject()
             kv
         }
         val values = statusKV._2.map(_._2)
-        val avg = if (mt == monitorTypeOp.WIN_DIRECTION) {
+        val avg = if (mt == MonitorType.WIN_DIRECTION) {
           val windDir = values
-          val windSpeedStatusMap = mtMap.get(monitorTypeOp.WIN_SPEED)
+          val windSpeedStatusMap = mtMap.get(MonitorType.WIN_SPEED)
           if (windSpeedStatusMap.isDefined) {
             val windSpeedMostStatus = windSpeedStatusMap.get.maxBy(kv => kv._2.length)
             val windSpeed = windSpeedMostStatus._2.map(_._2)
@@ -287,9 +287,9 @@ class DataCollectManager @Inject()
                 yield 1.0
             windAvg(windSpeed.toList, windDir.toList)
           }
-        } else if (mt == monitorTypeOp.RAIN) {
+        } else if (mt == MonitorType.RAIN) {
           values.max
-        } else if (mt == monitorTypeOp.PM10 || mt == monitorTypeOp.PM25) {
+        } else if (mt == MonitorType.PM10 || mt == MonitorType.PM25) {
           values.last
         } else {
           values.sum / values.length
@@ -651,7 +651,7 @@ class DataCollectManager @Inject()
       val latestMap = latestDataMap.flatMap { kv =>
         val mt = kv._1
         val instRecordMap = kv._2
-        val timeout = if (mt == monitorTypeOp.LAT || mt == monitorTypeOp.LNG)
+        val timeout = if (mt == MonitorType.LAT || mt == MonitorType.LNG)
           1.minute
         else
           6.second

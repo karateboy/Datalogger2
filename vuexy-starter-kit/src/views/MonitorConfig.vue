@@ -4,11 +4,18 @@
       <b-table
         responsive
         :fields="columns"
-        :items="editMonitors"
+        :items="monitors"
         bordered
         sticky-header
         style="min-height: 600px"
       >
+        <template #cell(operation)="row">
+          <p>
+            <b-button variant="gradient-danger" @click="deleteMonitor(row)"
+              >刪除</b-button
+            >
+          </p>
+        </template>
         <template #cell(desc)="row">
           <b-form-input v-model="row.item.desc" @change="markDirty(row.item)" />
         </template>
@@ -78,6 +85,10 @@ export default Vue.extend({
   data() {
     const columns = [
       {
+        key: 'operation',
+        label: '',
+      },
+      {
         key: '_id',
         label: '代碼',
       },
@@ -92,10 +103,8 @@ export default Vue.extend({
         sortable: true,
       },
     ];
-    // const monitors = [];
 
     return {
-      editMonitors: Array<any>(),
       display: false,
       columns,
     };
@@ -107,14 +116,13 @@ export default Vue.extend({
   async mounted() {
     await this.fetchMonitors();
     await this.fetchMonitorTypes();
-    this.editMonitors = this.monitors;
   },
   methods: {
     ...mapActions('monitors', ['fetchMonitors']),
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     save() {
       const all = Array<any>();
-      for (const m of this.editMonitors) {
+      for (const m of this.monitors) {
         if (m.dirty) {
           all.push(axios.put(`/Monitor/${m._id}`, m));
         }
@@ -126,7 +134,20 @@ export default Vue.extend({
       });
     },
     rollback() {
-      this.editMonitors = this.monitors;
+      this.fetchMonitors();
+    },
+    async deleteMonitor(row: any) {
+      const confirm = await this.$bvModal.msgBoxConfirm(
+        `確定要刪除${row.item._id}?`,
+        { okTitle: '確認', cancelTitle: '取消' },
+      );
+
+      if (!confirm) return;
+
+      const _id = row.item._id;
+      const res = await axios.delete(`/Monitor/${_id}`);
+      if (res.status == 200) this.$bvModal.msgBoxOk('成功');
+      this.fetchMonitors();
     },
     markDirty(item: any) {
       item.dirty = true;

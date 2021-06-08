@@ -69,13 +69,28 @@ case class MonitorType(_id: String, desp: String, unit: String,
 
 import javax.inject._
 
+object MonitorType {
+  val PM10 = "PM10"
+  val LAT = "LAT"
+  val LNG = "LNG"
+  val WIN_SPEED = "WD_SPEED"
+  val WIN_DIRECTION = "WD_DIR"
+  val RAIN = "RAIN"
+  val PM25 = "PM25"
+  val DOOR = "DOOR"
+  val SMOKE = "SMOKE"
+  val FLOW = "FLOW"
+  var rangeOrder = 0
+  var signalOrder = 1000
+
+}
 @Singleton
 class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
 
   import org.mongodb.scala.bson._
-
   import scala.concurrent.ExecutionContext.Implicits.global
   import scala.concurrent._
+  import MonitorType._
 
   implicit val configWrite = Json.writes[ThresholdConfig]
   implicit val configRead = Json.reads[ThresholdConfig]
@@ -90,15 +105,6 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
 
-  lazy val WIN_SPEED = ("WD_SPEED")
-  lazy val WIN_DIRECTION = ("WD_DIR")
-  lazy val RAIN = ("RAIN")
-  lazy val PM25 = ("PM25")
-
-  //Logger.info(s"MonitorType upgrade = $mtUpgrade")
-  lazy val PM10 = ("PM10")
-  lazy val LAT = ("LAT")
-  lazy val LNG = ("LNG")
   val codecRegistry = fromRegistries(fromProviders(classOf[MonitorType], classOf[ThresholdConfig]), DEFAULT_CODEC_REGISTRY)
   val colName = "monitorTypes"
   val collection = mongoDB.database.getCollection[MonitorType](colName).withCodecRegistry(codecRegistry)
@@ -139,12 +145,6 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     signalType("SMOKE", "煙霧"),
     signalType("FLOW", "採樣流量"),
     signalType("SPRAY", "灑水"))
-
-  val DOOR = "DOOR"
-  val SMOKE = "SMOKE"
-  val FLOW = "FLOW"
-  var rangeOrder = 0
-  var signalOrder = 1000
 
   var (mtvList, signalMtvList, map) = refreshMtv
 

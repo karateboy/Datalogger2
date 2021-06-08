@@ -183,7 +183,7 @@ class MoxaE1212Collector @Inject()
         val resetRegAddr = 272
 
         for {
-          ch_idx <- param.ch.zipWithIndex if ch_idx._1.enable && ch_idx._1.mt == Some(monitorTypeOp.RAIN)
+          ch_idx <- param.ch.zipWithIndex if ch_idx._1.enable && ch_idx._1.mt == Some(MonitorType.RAIN)
           ch = ch_idx._1
           idx = ch_idx._2
         } {

@@ -41,13 +41,13 @@
     >
       <b-dropdown variant="link" no-caret toggle-class="p-0" right>
         <template #button-content>
-          <b-button
+          <!-- <b-button
             v-ripple.400="'rgba(255, 255, 255, 0.15)'"
             variant="primary"
             class="btn-icon"
           >
             <feather-icon icon="SettingsIcon" />
-          </b-button>
+          </b-button> -->
         </template>
 
         <b-dropdown-item>
@@ -97,7 +97,7 @@ export default {
     BCol,
     BDropdown,
     BDropdownItem,
-    BButton,
+    //BButton,
   },
 };
 </script>

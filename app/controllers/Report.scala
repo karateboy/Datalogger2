@@ -198,7 +198,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
         _.avg
       }.min
       val avg =
-        if (mt != monitorTypeOp.WIN_DIRECTION) {
+        if (mt != MonitorType.WIN_DIRECTION) {
           if (total == 0 || count == 0)
             None
           else {
@@ -207,7 +207,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
             }.map { s => s.avg.get * s.total }.sum / (values.map(_.total).sum))
           }
         } else {
-          val winSpeedMap = statMap(monitorTypeOp.WIN_SPEED)
+          val winSpeedMap = statMap(MonitorType.WIN_SPEED)
           val dates = dateMap.keys.toList
           val windDir = dates.map {
             dateMap
@@ -270,7 +270,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
           } else
             0
 
-          val avg = if (mt == monitorTypeOp.WIN_DIRECTION) {
+          val avg = if (mt == MonitorType.WIN_DIRECTION) {
             val windDir = records
             val windSpeed = hourList.map(timeMap)
             windAvg(windSpeed, windDir)

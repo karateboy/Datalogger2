@@ -201,6 +201,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/sensor-management',
+      name: 'sensor-management',
+      component: () => import('@/views/SensorManagement.vue'),
+      meta: {
+        pageTitle: '感測器管理',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '感測器管理',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/monitor-type-config',
       name: 'monitor-type-config',
       component: () => import('@/views/MonitorTypeConfig.vue'),
