@@ -45,12 +45,7 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp, monitorTypeOp: Monito
     f.onFailure(errorHandler)
   }
 
-  def upgrade(): Unit ={
-    collection.updateMany(Filters.exists("_id"), Updates.set("monitorTypeOfInterest", Seq(MonitorType.PM25))).toFuture()
-  }
-
   init
-  upgrade
 
   def newUser(user: User) = {
     val f = collection.insertOne(user).toFuture()
