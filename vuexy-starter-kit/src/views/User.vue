@@ -98,7 +98,7 @@
 
 <script>
 import Vue from 'vue';
-import { mapState } from 'vuex';
+import { mapState, mapActions } from 'vuex';
 import axios from 'axios';
 const Ripple = require('vue-ripple-directive');
 import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
@@ -173,10 +173,14 @@ export default Vue.extend({
       return ret;
     },
   },
-  mounted() {
+  async mounted() {
+    await this.fetchMonitorTypes();
+    await this.fetchMonitors();
     this.getGroupList();
   },
   methods: {
+    ...mapActions('monitorTypes', ['fetchMonitorTypes']),
+    ...mapActions('monitors', ['fetchMonitors']),
     getGroupList() {
       axios
         .get('/Groups')

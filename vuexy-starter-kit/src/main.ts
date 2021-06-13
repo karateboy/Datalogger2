@@ -121,7 +121,7 @@ require('vue-loading-overlay/dist/vue-loading.css');
 Vue.config.productionTip = false;
 
 router.beforeEach((to, from, next) => {
-  if (store.state.user.login || to.name === 'login') {
+  if (store.state.login || to.name === 'login') {
     next();
   } else {
     next({ name: 'login' });

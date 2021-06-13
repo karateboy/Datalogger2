@@ -33,7 +33,7 @@
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="資料來源"
+              label="資料種類"
               label-for="dataType"
               label-cols-md="3"
             >
@@ -85,17 +85,17 @@
         </b-row>
       </b-form>
     </b-card>
-    <b-card v-show="display">
+    <b-card v-show="display" :title="resultTitle">
       <b-table
         striped
         hover
         :fields="columns"
         :items="rows"
         show-empty
-        empty-text="無資料"
         :per-page="15"
         :current-page="currentPage"
         responsive
+        sticky-header="800px"
       >
         <template #thead-top>
           <b-tr>
@@ -124,23 +124,18 @@
     </b-card>
   </div>
 </template>
-<style lang="scss">
-@import '@core/scss/vue/libs/vue-select.scss';
-</style>
 <script lang="ts">
 import Vue from 'vue';
-import vSelect from 'vue-select';
 import DatePicker from 'vue2-datepicker';
 import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
 const Ripple = require('vue-ripple-directive');
-import { mapState, mapGetters, mapActions } from 'vuex';
+import { mapState, mapGetters, mapActions, mapMutations } from 'vuex';
 import moment from 'moment';
 import axios from 'axios';
 
 export default Vue.extend({
   components: {
-    vSelect,
     DatePicker,
   },
   directives: {
@@ -163,8 +158,8 @@ export default Vue.extend({
       },
       display: false,
       columns: Array<any>(),
-      rows: [],
-      currentPage: 0,
+      rows: Array<any>(),
+      currentPage: 1,
     };
   },
   computed: {
@@ -172,23 +167,29 @@ export default Vue.extend({
     ...mapState('monitors', ['monitors']),
     ...mapGetters('monitorTypes', ['mtMap']),
     ...mapGetters('monitors', ['mMap']),
+    resultTitle(): string {
+      return `總共${this.rows.length}筆`;
+    },
   },
+  watch: {},
   async mounted() {
     await this.fetchMonitorTypes();
     await this.fetchMonitors();
 
-    if (this.monitorTypes.length !== 0) {
-      this.form.monitorTypes.push(this.monitorTypes[0]._id);
+    if (this.monitors.length !== 0) {
+      this.form.monitors.push(this.monitors[0]._id);
     }
 
-    if (this.monitors.length !== 0) {
-      for (const m of this.monitors) this.form.monitors.push(m._id);
+    if (this.monitorTypes.length !== 0) {
+      this.form.monitorTypes.push('PM25');
     }
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapActions('monitors', ['fetchMonitors']),
+    ...mapMutations(['setLoading']),
     async query() {
+      this.setLoading({ loading: true });
       this.display = true;
       this.rows = [];
       this.columns = this.getColumns();
@@ -197,6 +198,7 @@ export default Vue.extend({
       const url = `/HistoryReport/${monitors}/${monitorTypes}/${this.form.dataType}/${this.form.range[0]}/${this.form.range[1]}`;
 
       const ret = await axios.get(url);
+      this.setLoading({ loading: false });
       for (const row of ret.data.rows) {
         row.date = moment(row.date).format('lll');
       }
@@ -207,7 +209,7 @@ export default Vue.extend({
       return (_value: any, _key: any, item: any) =>
         item.cellData[i].cellClassName;
     },
-    getMtDesc(mt: any) {
+    getMtDesc(mt: string) {
       const mtCase = this.mtMap.get(mt);
       return `${mtCase.desp}(${mtCase.unit})`;
     },
@@ -216,12 +218,12 @@ export default Vue.extend({
       ret.push({
         key: 'date',
         label: '時間',
+        stickyColumn: true,
       });
       let i = 0;
       for (const mt of this.form.monitorTypes) {
         const mtCase = this.mtMap.get(mt);
         for (const m of this.form.monitors) {
-          // emtpyCell  ${mtCase.desp}(${mtCase.unit})
           const mCase = this.mMap.get(m);
           ret.push({
             key: `cellData[${i}].v`,

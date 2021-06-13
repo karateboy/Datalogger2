@@ -127,6 +127,10 @@ const Ripple = require('vue-ripple-directive');
 import axios from 'axios';
 import { MonitorType, ThresholdConfig } from './types';
 
+interface EditMonitorType extends MonitorType {
+  dirty?: boolean;
+}
+
 export default Vue.extend({
   components: {},
   directives: {
@@ -178,7 +182,7 @@ export default Vue.extend({
         },
       },
     ];
-    const monitorTypes = Array<MonitorType>();
+    const monitorTypes = Array<EditMonitorType>();
 
     let thresholdConfig: ThresholdConfig = {
       elapseTime: 30,
