@@ -4,7 +4,7 @@ import akka.actor._
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
 import models.ModelHelper._
-import models.MonitorType.{CH2O, CO, CO2, H2, H2S, HUMID, NH3, NO, NO2, NOISE, O3, PM10, PM25, PRESS, RAIN, SO2, TEMP, TVOC, WIN_DIRECTION, WIN_SPEED}
+import models.MonitorType.{CH2O, CO, CO2, H2, H2S, HUMID, NH3, NO, NO2, NOISE, O3, PM10, PM25, PRESS, RAIN, SO2, SOLAR, TEMP, TVOC, WIN_DIRECTION, WIN_SPEED}
 import models.Protocol.ProtocolParam
 import play.api._
 import play.api.libs.json.{JsError, Json}
@@ -40,7 +40,7 @@ object ThetaCollector extends DriverOps {
     //val config = validateParam(param)
     //config.monitorTypes.toList
     Seq(WIN_SPEED, WIN_DIRECTION, HUMID, TEMP, PRESS,
-      RAIN,
+      RAIN, SOLAR,
       PM25, PM10, CH2O, TVOC, CO2,
       NOISE, CO, SO2, NO2, O3,
       NO, H2S, H2, NH3).toList
@@ -117,7 +117,7 @@ class ThetaCollector @Inject()
     import MonitorType._
     val ignore = "_"
     val monitorTypeList = Seq(WIN_SPEED, WIN_DIRECTION, HUMID, TEMP, PRESS,
-      RAIN, ignore, ignore, ignore, ignore,
+      RAIN, ignore, ignore, ignore, SOLAR,
       PM25, PM10, CH2O, TVOC, CO2,
       NOISE, CO, SO2, NO2, O3,
       NO, H2S, H2, NH3)

@@ -46,7 +46,7 @@ class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: Mqt
       f.onFailure(errorHandler)
     }
 
-    val ret = waitReadyResult(collection.countDocuments(Filters.equal("_id", selfMonitor)).toFuture())
+    val ret = waitReadyResult(collection.countDocuments(Filters.equal("_id", SELF_ID)).toFuture())
     if (ret == 0) {
       waitReadyResult(collection.insertOne(selfMonitor).toFuture())
     }
@@ -54,14 +54,6 @@ class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: Mqt
 
   init
   refresh
-
-  def upgrade = {
-    // upgrade if no monitorTypes
-    val f = mongoDB.database.getCollection(colName).updateMany(
-      Filters.exists("monitorTypes", false), Updates.set("monitorTypes", Seq.empty[String])).toFuture()
-
-    waitReadyResult(f)
-  }
 
   def mvList = mList.map(_._id).filter({
     p =>

@@ -10,7 +10,7 @@ class Realtime @Inject()
 (monitorTypeOp: MonitorTypeOp, dataCollectManagerOp: DataCollectManagerOp,
  monitorStatusOp: MonitorStatusOp) extends Controller {
   val overTimeLimit = 6
-  case class MonitorTypeStatus(desp: String, value: String, unit: String, instrument: String, status: String, classStr: Seq[String], order: Int)
+  case class MonitorTypeStatus(_id:String, desp: String, value: String, unit: String, instrument: String, status: String, classStr: Seq[String], order: Int)
   def MonitorTypeStatusList() = Security.Authenticated.async {
     implicit request =>
 
@@ -39,11 +39,11 @@ class Realtime @Inject()
                 else
                   "通訊中斷"
 
-                MonitorTypeStatus(mCase.desp, monitorTypeOp.format(mt, Some(record.value)), mCase.unit, measuringByStr,
+                MonitorTypeStatus(_id=mCase._id, desp=mCase.desp, monitorTypeOp.format(mt, Some(record.value)), mCase.unit, measuringByStr,
                   monitorStatusOp.map(record.status).desp,
                   MonitorStatus.getCssClassStr(record.status, overInternal, overLaw), mCase.order)
               } else {
-                MonitorTypeStatus(mCase.desp, monitorTypeOp.format(mt, None), mCase.unit, measuringByStr,
+                MonitorTypeStatus(_id=mCase._id, mCase.desp, monitorTypeOp.format(mt, None), mCase.unit, measuringByStr,
                   "通訊中斷",
                   Seq("abnormal_status"), mCase.order)
               }

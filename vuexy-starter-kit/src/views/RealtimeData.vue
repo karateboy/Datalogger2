@@ -1,5 +1,5 @@
 <template>
-  <b-card title="asdf">
+  <b-card title="即時資訊">
     <b-table striped hover :fields="fields" :items="items" />
   </b-card>
 </template>
