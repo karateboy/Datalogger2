@@ -436,7 +436,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
       val prec = map(mt).prec
       val value = s"%.${prec}f".format(r.get.value)
       if (overInternal || overLaw)
-        s"<i class='fa fa-exclamation-triangle'></i>$value"
+        s"$value"
       else
         s"$value"
     }

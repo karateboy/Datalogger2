@@ -10,6 +10,9 @@
   "dependencies": {
     "@casl/ability": "4.1.6",
     "@casl/vue": "1.1.1",
+    "@fortawesome/fontawesome-svg-core": "^1.2.35",
+    "@fortawesome/free-solid-svg-icons": "^5.15.3",
+    "@fortawesome/vue-fontawesome": "^2.0.2",
     "@fullcalendar/daygrid": "5.5.0",
     "@fullcalendar/interaction": "5.5.0",
     "@fullcalendar/list": "5.5.0",

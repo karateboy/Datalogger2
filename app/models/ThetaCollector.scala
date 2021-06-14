@@ -18,6 +18,8 @@ case class ThetaConfig(monitorTypes: Seq[String])
 
 object ThetaCollector extends DriverOps {
   var count = 0
+  implicit val configRead = Json.reads[ThetaConfig]
+  implicit val configWrite = Json.writes[ThetaConfig]
 
   override def verifyParam(json: String) = {
     val ret = Json.parse(json).validate[ThetaConfig]
@@ -32,9 +34,6 @@ object ThetaCollector extends DriverOps {
   }
 
   override def getCalibrationTime(param: String): Option[LocalTime] = None[LocalTime]
-
-  implicit val configRead = Json.reads[ThetaConfig]
-  implicit val configWrite = Json.writes[ThetaConfig]
 
   override def getMonitorTypes(param: String): List[String] = {
     //val config = validateParam(param)

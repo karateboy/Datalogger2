@@ -58,3 +58,25 @@ export interface MonitorType {
   measuringBy?: Array<string>;
   thresholdConfig?: ThresholdConfig;
 }
+
+export interface CellData {
+  v: string;
+  cellClassName: Array<string>;
+  status?: string;
+}
+
+export interface RowData {
+  date: number;
+  cellData: Array<CellData>;
+}
+
+export interface StatRow {
+  name: string;
+  cellData: Array<CellData>;
+}
+
+export interface DailyReport {
+  columnNames: Array<String>;
+  hourRows: Array<RowData>;
+  statRows: Array<StatRow>;
+}

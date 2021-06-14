@@ -26,6 +26,8 @@ import { mapActions, mapState } from 'vuex';
 import axios from 'axios';
 import { MonitorTypeStatus } from './types';
 import highcharts from 'highcharts';
+import { AxisTypeValue } from 'highcharts';
+import moment from 'moment';
 
 export default Vue.extend({
   data() {
@@ -39,7 +41,9 @@ export default Vue.extend({
         key: 'value',
         label: '測值',
         formatter: (value: string, key: string, item: MonitorTypeStatus) => {
-          return `${item.value} ${item.status}`;
+          const v = parseFloat(item.value);
+          if (isNaN(v)) return `${item.status}`;
+          else return `${item.value}`;
         },
         tdClass: (value: string, key: string, item: MonitorTypeStatus) => {
           return item.classStr;
@@ -50,7 +54,7 @@ export default Vue.extend({
     let chart: any;
     chart = null;
     return {
-      maxPoints: 300,
+      maxPoints: 100,
       fields,
       refreshTimer: 0,
       realTimeStatus: Array<MonitorTypeStatus>(),
@@ -107,14 +111,7 @@ export default Vue.extend({
       for (const mtStatus of this.realTimeStatus) {
         let data = Array<{ x: number; y: number }>();
         const wind = ['WD_SPEED', 'WD_DIR'];
-        const selectedMt = [
-          'PM25',
-          'PM10',
-          'WIN_SPEED',
-          'TEMP',
-          'WD_SPEED',
-          'WD_DIR',
-        ];
+        const selectedMt = ['PM25', 'PM10', 'TEMP', 'WD_SPEED'];
         const visible = selectedMt.indexOf(mtStatus._id) !== -1;
         if (wind.indexOf(mtStatus._id) === -1) {
           let series: highcharts.SeriesSplineOptions = {
@@ -206,16 +203,19 @@ export default Vue.extend({
       const monitors = 'me';
       const url = `/HistoryTrend/${monitors}/${mt}/Min/all/${oneHourBefore}/${now}`;
       const res = await axios.get(url);
-      const ret = res.data;
+      const ret: highcharts.Options = res.data;
 
       ret.chart = {
         type: 'spline',
         zoomType: 'x',
-        panning: true,
+        panning: {
+          enabled: true,
+        },
         panKey: 'shift',
         alignTicks: false,
       };
 
+      ret.title!.text = moment(oneHourBefore).fromNow();
       const pointFormatter = function pointFormatter(this: any) {
         /** @type any */
         const me = this as any;
@@ -245,8 +245,11 @@ export default Vue.extend({
         enabled: false,
         href: 'http://www.wecc.com.tw/',
       };
-      ret.xAxis.type = 'datetime';
-      ret.xAxis.dateTimeLabelFormats = {
+
+      let xAxis: highcharts.XAxisOptions = ret.xAxis as highcharts.XAxisOptions;
+      xAxis.type = 'datetime';
+
+      xAxis!.dateTimeLabelFormats = {
         day: '%b%e日',
         week: '%b%e日',
         month: '%y年%b',

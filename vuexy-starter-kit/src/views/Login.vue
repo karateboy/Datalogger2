@@ -22,7 +22,7 @@
       <b-col lg="4" class="d-flex align-items-center auth-bg px-2 p-lg-5">
         <b-col sm="8" md="6" lg="12" class="px-xl-2 mx-auto">
           <b-card-title title-tag="h2" class="font-weight-bold mb-1">
-            歡迎使用PM2.5監測系統👋
+            歡迎使用環境監測系統👋
           </b-card-title>
           <b-card-text class="mb-2"> 請登入您的帳號 </b-card-text>
 

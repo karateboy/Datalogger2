@@ -177,8 +177,13 @@ export default Vue.extend({
       {
         key: 'measuringBy',
         label: '測量儀器',
-        formatter: (value: string, key: string, item: Array<string>) => {
-          return `${item.join(', ')}`;
+        formatter: (
+          value: null | Array<string>,
+          key: string,
+          item: Array<string>,
+        ) => {
+          if (value !== null) return `${value.join(', ')}`;
+          else return '';
         },
       },
     ];
