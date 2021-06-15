@@ -40,8 +40,7 @@ object ThetaCollector extends DriverOps {
     //config.monitorTypes.toList
     Seq(WIN_SPEED, WIN_DIRECTION, HUMID, TEMP, PRESS,
       RAIN, SOLAR,
-      PM25, PM10, CH2O, TVOC, CO2,
-      NOISE, CO, SO2, NO2, O3,
+      PM25, PM10, CH2O, TVOC, CO2, CO, SO2, NO2, O3,
       NO, H2S, H2, NH3).toList
   }
 
@@ -118,7 +117,7 @@ class ThetaCollector @Inject()
     val monitorTypeList = Seq(WIN_SPEED, WIN_DIRECTION, HUMID, TEMP, PRESS,
       RAIN, ignore, ignore, ignore, SOLAR,
       PM25, PM10, CH2O, TVOC, CO2,
-      NOISE, CO, SO2, NO2, O3,
+      ignore, CO, SO2, NO2, O3,
       NO, H2S, H2, NH3)
     val result: Seq[Option[MonitorTypeData]] = {
       for ((mt, valueStr) <- monitorTypeList.zip(numSeq)) yield {
