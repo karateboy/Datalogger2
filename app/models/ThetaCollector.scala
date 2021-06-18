@@ -4,7 +4,7 @@ import akka.actor._
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
 import models.ModelHelper._
-import models.MonitorType.{CH2O, CO, CO2, H2, H2S, HUMID, NH3, NO, NO2, NOISE, O3, PM10, PM25, PRESS, RAIN, SO2, SOLAR, TEMP, TVOC, WIN_DIRECTION, WIN_SPEED}
+import models.MonitorType._
 import models.Protocol.ProtocolParam
 import play.api._
 import play.api.libs.json.{JsError, Json}
@@ -14,10 +14,15 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, SECONDS}
 import scala.concurrent.{Future, blocking}
 
-case class ThetaConfig(monitorTypes: Seq[String])
+case class CalibrationConfig(monitorType: String, value: Double)
+
+case class ThetaConfig(calibrations: Seq[CalibrationConfig])
 
 object ThetaCollector extends DriverOps {
+
   var count = 0
+  implicit val calibrationWrite = Json.writes[CalibrationConfig]
+  implicit val calibrationRead = Json.reads[CalibrationConfig]
   implicit val configRead = Json.reads[ThetaConfig]
   implicit val configWrite = Json.writes[ThetaConfig]
 
@@ -67,8 +72,6 @@ object ThetaCollector extends DriverOps {
 
   case object OpenComPort
 
-  import akka.actor._
-
   case object ReadData
 
   case object ConnectHost
@@ -84,6 +87,13 @@ class ThetaCollector @Inject()
 
   import ThetaCollector._
 
+  val calibrationMap: Map[String, Double] = {
+    val pairs = config.calibrations map { c => c.monitorType -> c.value }
+    pairs.toMap
+  }
+  assert(protocolParam.protocol == Protocol.serial)
+  val com = protocolParam.comPort.get
+  val serial = SerialComm.open(com)
   var timer: Cancellable = _
 
   override def receive: Receive = init()
@@ -95,9 +105,6 @@ class ThetaCollector @Inject()
       Future {
         blocking {
           try {
-            assert(protocolParam.protocol == Protocol.serial)
-            val com = protocolParam.comPort.get
-            val serial = SerialComm.open(com)
             context become connected(MonitorStatus.NormalStat, serial)
             timer = system.scheduler.scheduleOnce(Duration(1, SECONDS), self, Collect)
           } catch {
@@ -114,7 +121,7 @@ class ThetaCollector @Inject()
   def decode(numSeq: Seq[String]): Unit = {
     import MonitorType._
     val ignore = "_"
-    val monitorTypeList = Seq(WIN_SPEED, WIN_DIRECTION, HUMID, TEMP, PRESS,
+    val monitorTypeList = Seq(WIN_SPEED, WIN_DIRECTION, TEMP, HUMID, PRESS,
       RAIN, ignore, ignore, ignore, SOLAR,
       PM25, PM10, CH2O, TVOC, CO2,
       ignore, CO, SO2, NO2, O3,
@@ -125,8 +132,10 @@ class ThetaCollector @Inject()
           None
         else {
           try {
-            val value = valueStr.toDouble
-            Some(MonitorTypeData(mt, value, MonitorStatus.NormalStat))
+            val value: Double = valueStr.toDouble
+            val calibration: Double = calibrationMap.get(mt).getOrElse(0)
+            val v: Double = value + calibration
+            Some(MonitorTypeData(mt, v, MonitorStatus.NormalStat))
           } catch {
             case _: Throwable =>
               None
@@ -171,6 +180,7 @@ class ThetaCollector @Inject()
 
   override def postStop(): Unit = {
     super.postStop()
+    serial.close
     if (timer != null)
       timer.cancel()
   }

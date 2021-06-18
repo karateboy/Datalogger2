@@ -50,6 +50,10 @@ export default Vue.extend({
         },
         sortable: true,
       },
+      {
+        key: 'unit',
+        label: '單位',
+      },
     ];
     let chart: any;
     chart = null;
@@ -188,6 +192,9 @@ export default Vue.extend({
                 highcharts.numberFormat(this.y, 2)
               );
             },
+          },
+          time: {
+            timezoneOffset: -480,
           },
           exporting: {
             enabled: false,

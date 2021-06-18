@@ -1,6 +1,6 @@
 name := """DataLogger2"""
 
-version := "1.2.6"
+version := "1.2.8"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala, LauncherJarPlugin)
 
@@ -34,7 +34,7 @@ mappings in Universal ++=
 	
  	
 //libraryDependencies += "com.google.guava" % "guava" % "19.0"
-
+scalacOptions += "-feature"
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
 
 routesGenerator := InjectedRoutesGenerator

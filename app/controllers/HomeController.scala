@@ -503,7 +503,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       val group = groupOp.getGroupByID(userInfo.group).get
 
       val mtList = if (userInfo.isAdmin)
-        monitorTypeOp.realtimeMtvList map monitorTypeOp.map
+        monitorTypeOp.mtvList map monitorTypeOp.map
       else {
         group.monitorTypes map monitorTypeOp.map
         //val pm25 = monitorTypeOp.mtvList.filter(p => p == "PM25")

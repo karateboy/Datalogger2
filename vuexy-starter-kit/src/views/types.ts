@@ -80,3 +80,12 @@ export interface DailyReport {
   hourRows: Array<RowData>;
   statRows: Array<StatRow>;
 }
+
+export interface CalibrationConfig {
+  monitorType: string;
+  value: number;
+}
+
+export interface ThetaConfig {
+  calibrations: Array<CalibrationConfig>;
+}
