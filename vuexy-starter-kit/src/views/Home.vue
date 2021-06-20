@@ -61,6 +61,7 @@ export default Vue.extend({
       maxPoints: 100,
       fields,
       refreshTimer: 0,
+      mtInterestTimer: 0,
       realTimeStatus: Array<MonitorTypeStatus>(),
       chartSeries: Array<highcharts.SeriesOptionsType>(),
       chart,
@@ -70,12 +71,17 @@ export default Vue.extend({
     ...mapState('user', ['userInfo']),
   },
   async mounted() {
+    const me = this;
     for (const mt of this.userInfo.monitorTypeOfInterest) this.query(mt);
+    this.mtInterestTimer = setInterval(() => {
+      for (const mt of me.userInfo.monitorTypeOfInterest) me.query(mt);
+    }, 60000);
 
     await this.initRealtimeChart();
   },
   beforeDestroy() {
     clearInterval(this.refreshTimer);
+    clearInterval(this.mtInterestTimer);
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
