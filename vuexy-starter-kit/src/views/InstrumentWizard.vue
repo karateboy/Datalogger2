@@ -280,7 +280,7 @@ export default {
         desc += `網址:${this.form.protocol.host}\n`;
       else desc += `COM:${this.form.protocol.comPort}\n`;
 
-      if (this.isTapiInstrument) return (desc += this.tapiSummary());      
+      if (this.isTapiInstrument) return (desc += this.tapiSummary());
 
       return formNewline(desc);
     },

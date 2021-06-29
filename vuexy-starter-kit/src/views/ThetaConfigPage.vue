@@ -81,7 +81,7 @@ export default Vue.extend({
       this.$emit('param-changed', JSON.stringify(config));
     }
 
-    let me = this;
+    let me = this as any;
     return {
       fields: [
         {
@@ -95,9 +95,7 @@ export default Vue.extend({
         {
           key: 'unit',
           label: '單位',
-          formatter: (value: string, key: string, item: any) => {
-            return this.mtMap.get(item.monitorType).unit;
-          },
+          formatter: me.formatter,
         },
         {
           key: 'delete',
@@ -155,22 +153,25 @@ export default Vue.extend({
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
-    onChange() {
+    onChange(): void {
       this.$emit('param-changed', JSON.stringify(this.config));
     },
-    addCalibrationConfig() {
+    addCalibrationConfig(): void {
       this.config.calibrations.push(Object.assign({}, this.calibrationConfig));
       this.calibrationConfig.monitorType = 'PM25';
       this.calibrationConfig.value = 0;
       this.onChange();
     },
-    deleteRow(row: any) {
+    deleteRow(row: any): void {
       this.config.calibrations.splice(row.index, 1);
       this.onChange();
     },
-    getUnit(mt: string) {
+    getUnit(mt: string): string {
       if (this.mtMap.get(mt)) return this.mtMap.get(mt).unit;
       else return '';
+    },
+    formatter(value: string, key: string, item: any): string {
+      return this.mtMap.get(item.monitorType).unit;
     },
   },
 });

@@ -126,8 +126,8 @@ export default {
   data() {
     return {
       status: '',
-      password: '',
-      userEmail: '',
+      password: 'abc123',
+      userEmail: 'sales@wecc.com.tw',
       sideImg: require('@/assets/images/pages/login-v2.svg'),
       // validation rulesimport store from '@/store/index'
       required,
@@ -146,6 +146,9 @@ export default {
       }
       return this.sideImg;
     },
+  },
+  mounted() {
+    this.validationForm();
   },
   methods: {
     ...mapMutations(['setLogin']),
