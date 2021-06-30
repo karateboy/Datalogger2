@@ -103,13 +103,15 @@ export default Vue.extend({
         if (series) {
           let value = parseFloat(mtStatus.value);
           if (!isNaN(value)) {
-            series.addPoint([now, value], true, false, true);
+            series.addPoint([now, value], false, false, true);
             while (series.data.length >= this.maxPoints) {
               series.removePoint(0, false);
             }
           }
         }
       }
+      let chart = this.chart as highcharts.Chart;
+      chart.redraw();
     },
     async getRealtimeStatus(): Promise<void> {
       const ret = await axios.get('/MonitorTypeStatusList');
