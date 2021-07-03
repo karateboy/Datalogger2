@@ -36,9 +36,9 @@ class Login @Inject()
               val userGroup = {
                 user.group.getOrElse({
                   if(user.isAdmin)
-                    groupOp.PLATFORM_ADMIN
+                    Group.PLATFORM_ADMIN
                   else
-                    groupOp.PLATFORM_USER
+                    Group.PLATFORM_USER
                 })
               }
               val userInfo = UserInfo(user._id, user.name, userGroup, user.isAdmin)
