@@ -22,7 +22,7 @@
 <style scoped></style>
 <script lang="ts">
 import Vue from 'vue';
-import { mapActions, mapState } from 'vuex';
+import { mapActions, mapGetters, mapState } from 'vuex';
 import axios from 'axios';
 import { MonitorTypeStatus } from './types';
 import highcharts from 'highcharts';
@@ -58,7 +58,7 @@ export default Vue.extend({
     let chart: any;
     chart = null;
     return {
-      maxPoints: 100,
+      maxPoints: 30,
       fields,
       refreshTimer: 0,
       mtInterestTimer: 0,
@@ -69,8 +69,10 @@ export default Vue.extend({
   },
   computed: {
     ...mapState('user', ['userInfo']),
+    ...mapGetters('monitorTypes', ['mtMap']),
   },
   async mounted() {
+    await this.fetchMonitorTypes();
     const me = this;
     for (const mt of this.userInfo.monitorTypeOfInterest) this.query(mt);
     this.mtInterestTimer = setInterval(() => {
@@ -93,9 +95,8 @@ export default Vue.extend({
       await this.getRealtimeStatus();
       const now = new Date().getTime();
 
+      let chart = this.chart as highcharts.Chart;
       for (const mtStatus of this.realTimeStatus) {
-        let chart = this.chart as highcharts.Chart;
-
         const series = chart.series.find(s => {
           return s.name === mtStatus.desp;
         });
@@ -110,7 +111,7 @@ export default Vue.extend({
           }
         }
       }
-      let chart = this.chart as highcharts.Chart;
+
       chart.redraw();
     },
     async getRealtimeStatus(): Promise<void> {
@@ -123,7 +124,7 @@ export default Vue.extend({
       for (const mtStatus of this.realTimeStatus) {
         let data = Array<{ x: number; y: number }>();
         const wind = ['WD_SPEED', 'WD_DIR'];
-        const selectedMt = ['PM25', 'PM10', 'TEMP', 'WD_SPEED'];
+        const selectedMt = ['PM25'];
         const visible = selectedMt.indexOf(mtStatus._id) !== -1;
         if (wind.indexOf(mtStatus._id) === -1) {
           let series: highcharts.SeriesSplineOptions = {
@@ -131,6 +132,9 @@ export default Vue.extend({
             name: mtStatus.desp,
             type: 'spline',
             data: data,
+            tooltip: {
+              valueDecimals: this.mtMap.get(mtStatus._id).prec,
+            },
             visible,
           };
           this.chartSeries.push(series);
@@ -138,7 +142,10 @@ export default Vue.extend({
           let series: highcharts.SeriesScatterOptions = {
             name: mtStatus.desp,
             type: 'scatter',
-            data: data,
+            data,
+            tooltip: {
+              valueDecimals: this.mtMap.get(mtStatus._id).prec,
+            },
             visible,
           };
           this.chartSeries.push(series);
@@ -146,6 +153,7 @@ export default Vue.extend({
       }
 
       const me = this;
+
       return new Promise(function (resolve, reject) {
         const chartOption: highcharts.Options = {
           chart: {
@@ -189,18 +197,6 @@ export default Vue.extend({
               },
             ],
           },
-          tooltip: {
-            formatter: function () {
-              return (
-                '<b>' +
-                this.series.name +
-                '</b><br/>' +
-                highcharts.dateFormat('%Y-%m-%d %H:%M:%S', this.x) +
-                '<br/>' +
-                highcharts.numberFormat(this.y, 2)
-              );
-            },
-          },
           time: {
             timezoneOffset: -480,
           },
@@ -231,12 +227,6 @@ export default Vue.extend({
       };
 
       ret.title!.text = moment(oneHourBefore).fromNow();
-      const pointFormatter = function pointFormatter(this: any) {
-        /** @type any */
-        const me = this as any;
-        const d = new Date(me.x);
-        return `${d.toLocaleString()}:${Math.round(me.y)}度`;
-      };
 
       ret.colors = [
         '#7CB5EC',
@@ -271,9 +261,14 @@ export default Vue.extend({
       };
 
       ret.plotOptions = {
+        spline: {
+          tooltip: {
+            valueDecimals: this.mtMap.get(mt).prec,
+          },
+        },
         scatter: {
           tooltip: {
-            pointFormatter,
+            valueDecimals: this.mtMap.get(mt).prec,
           },
         },
       };
