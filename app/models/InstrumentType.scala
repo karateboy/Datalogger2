@@ -6,52 +6,16 @@ import play.api.Logger
 import play.api.libs.concurrent.InjectedActorSupport
 import play.api.libs.json._
 
-case class ProtocolInfo(id: Protocol.Value, desp: String)
+case class ProtocolInfo(id: Protocol.ProtocolType, desp: String)
 
 case class InstrumentTypeInfo(id: String, desp: String, protocolInfo: List[ProtocolInfo])
 
-case class InstrumentType(id: String, desp: String, protocol: List[Protocol.Value],
+case class InstrumentType(id: String, desp: String, protocol: List[Protocol.ProtocolType],
                           driver: DriverOps, diFactory: AnyRef, analog: Boolean = false) {
   def infoPair = id -> this
 }
 
-trait DriverOps {
-
-  import Protocol.ProtocolParam
-  import akka.actor._
-
-  def verifyParam(param: String): String
-
-  def getMonitorTypes(param: String): List[String]
-
-  def getCalibrationTime(param: String): Option[LocalTime]
-
-  // @Deprecated def start(id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext): ActorRef
-
-  def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor
-}
-
-import javax.inject._
-
-@Singleton
-class InstrumentTypeOp @Inject()
-(adam4017Drv: Adam4017, adam4017Factory: Adam4017Collector.Factory, adam4068Factory: Adam4068Collector.Factory,
- adam6017Drv: Adam6017, adam6017Factory: Adam6017Collector.Factory,
- adam6066Drv: Adam6066, adam6066Factory: Adam6066Collector.Factory,
- moxaE1240Drv: MoxaE1240, moxaE1240Factory: MoxaE1240Collector.Factory,
- verewaF701Factory: VerewaF701Collector.Factory,
- thetaFactory: ThetaCollector.Factory,
- moxaE1212Drv: MoxaE1212, moxaE1212Factory: MoxaE1212Collector.Factory,
- mqttFactory: MqttCollector.Factory,
- mqtt2Factory: MqttCollector2.Factory,
- baseline9000Factory: Baseline9000Collector.Factory,
- horiba370Factory: Horiba370Collector.Factory,
- gpsFactory: GpsCollector.Factory,
- t100Factory: T100Collector.Factory, t200Factory: T200Collector.Factory, t201Factory: T201Collector.Factory,
- t300Factory: T300Collector.Factory, t360Factory: T360Collector.Factory, t400Factory: T400Collector.Factory, t700Factory: T700Collector.Factory) extends InjectedActorSupport {
-
-  import Protocol._
-
+object InstrumentType {
   implicit val prtocolWrite = Json.writes[ProtocolInfo]
   implicit val write = Json.writes[InstrumentTypeInfo]
 
@@ -83,30 +47,70 @@ class InstrumentTypeOp @Inject()
   val MQTT_CLIENT2 = "mqtt_client2"
 
   val THETA = "theta"
-  val map = Map(
-    InstrumentType(ADAM4017, "Adam 4017", List(serial), adam4017Drv, adam4017Factory, true).infoPair,
-    InstrumentType(ADAM4068, "Adam 4068", List(serial), Adam4068, adam4068Factory, true).infoPair,
-    InstrumentType(ADAM6017, "Adam 6017", List(tcp), adam6017Drv, adam6017Factory, true).infoPair,
-    InstrumentType(ADAM6066, "Adam 6066", List(tcp), adam6066Drv, adam6066Factory, true).infoPair,
-    InstrumentType(BASELINE9000, "Baseline 9000 MNME Analyzer", List(serial), Baseline9000Collector, baseline9000Factory).infoPair,
-    InstrumentType(GPS, "GPS", List(serial), GpsCollector, gpsFactory).infoPair,
-    InstrumentType(HORIBA370, "Horiba APXX-370", List(tcp), Horiba370Collector, horiba370Factory).infoPair,
-    InstrumentType(MOXAE1240, "MOXA E1240", List(tcp), moxaE1240Drv, moxaE1240Factory).infoPair,
-    InstrumentType(MOXAE1212, "MOXA E1212", List(tcp), moxaE1212Drv, moxaE1212Factory).infoPair,
-    InstrumentType(MQTT_CLIENT, "MQTT Client", List(tcp), MqttCollector, mqttFactory).infoPair,
-    InstrumentType(MQTT_CLIENT2, "MQTT Client2", List(tcp), MqttCollector2, mqtt2Factory).infoPair,
-    InstrumentType(T100, "TAPI T100", List(tcp), T100Collector, t100Factory).infoPair,
-    InstrumentType(T200, "TAPI T200", List(tcp), T200Collector, t200Factory).infoPair,
-    InstrumentType(T201, "TAPI T201", List(tcp), T201Collector, t201Factory).infoPair,
-    InstrumentType(T300, "TAPI T300", List(tcp), T300Collector, t300Factory).infoPair,
-    InstrumentType(T360, "TAPI T360", List(tcp), T360Collector, t360Factory).infoPair,
-    InstrumentType(T400, "TAPI T400", List(tcp), T400Collector, t400Factory).infoPair,
-    InstrumentType(T700, "TAPI T700", List(tcp), T700Collector, t700Factory).infoPair,
-    InstrumentType(VEREWA_F701, "Verewa F701-20", List(serial), VerewaF701Collector, verewaF701Factory).infoPair,
-    InstrumentType(THETA, "THETA", List(serial), ThetaCollector, thetaFactory).infoPair
-  )
 
   val DoInstruments = Seq(ADAM6017, ADAM6066, MOXAE1212)
+}
+
+trait DriverOps {
+
+  import Protocol.ProtocolParam
+  import akka.actor._
+
+  def verifyParam(param: String): String
+
+  def getMonitorTypes(param: String): List[String]
+
+  def getCalibrationTime(param: String): Option[LocalTime]
+
+  def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor
+
+}
+
+import javax.inject._
+
+@Singleton
+class InstrumentTypeOp @Inject()
+(adam4017Drv: Adam4017, adam4017Factory: Adam4017Collector.Factory, adam4068Factory: Adam4068Collector.Factory,
+ adam6017Drv: Adam6017, adam6017Factory: Adam6017Collector.Factory,
+ adam6066Drv: Adam6066, adam6066Factory: Adam6066Collector.Factory,
+ moxaE1240Drv: MoxaE1240, moxaE1240Factory: MoxaE1240Collector.Factory,
+ verewaF701Factory: VerewaF701Collector.Factory,
+ thetaFactory: ThetaCollector.Factory,
+ moxaE1212Drv: MoxaE1212, moxaE1212Factory: MoxaE1212Collector.Factory,
+ mqttFactory: MqttCollector.Factory,
+ mqtt2Factory: MqttCollector2.Factory,
+ baseline9000Factory: Baseline9000Collector.Factory,
+ horiba370Factory: Horiba370Collector.Factory,
+ gpsFactory: GpsCollector.Factory,
+ t100Factory: T100Collector.Factory, t200Factory: T200Collector.Factory, t201Factory: T201Collector.Factory,
+ t300Factory: T300Collector.Factory, t360Factory: T360Collector.Factory, t400Factory: T400Collector.Factory, t700Factory: T700Collector.Factory) extends InjectedActorSupport {
+
+  import Protocol._
+  import InstrumentType._
+
+  val map = Map(
+    InstrumentType(ADAM4017, "Adam 4017", List(Serial()), adam4017Drv, adam4017Factory, true).infoPair,
+    InstrumentType(ADAM4068, "Adam 4068", List(Serial()), Adam4068, adam4068Factory, true).infoPair,
+    InstrumentType(ADAM6017, "Adam 6017", List(Tcp()), adam6017Drv, adam6017Factory, true).infoPair,
+    InstrumentType(ADAM6066, "Adam 6066", List(Tcp()), adam6066Drv, adam6066Factory, true).infoPair,
+    InstrumentType(BASELINE9000, "Baseline 9000 MNME Analyzer", List(Serial()), Baseline9000Collector, baseline9000Factory).infoPair,
+    InstrumentType(GPS, "GPS", List(Serial()), GpsCollector, gpsFactory).infoPair,
+    InstrumentType(HORIBA370, "Horiba APXX-370", List(Tcp()), Horiba370Collector, horiba370Factory).infoPair,
+    InstrumentType(MOXAE1240, "MOXA E1240", List(Tcp()), moxaE1240Drv, moxaE1240Factory).infoPair,
+    InstrumentType(MOXAE1212, "MOXA E1212", List(Tcp()), moxaE1212Drv, moxaE1212Factory).infoPair,
+    InstrumentType(MQTT_CLIENT, "MQTT Client", List(Tcp()), MqttCollector, mqttFactory).infoPair,
+    InstrumentType(MQTT_CLIENT2, "MQTT Client2", List(Tcp()), MqttCollector2, mqtt2Factory).infoPair,
+    InstrumentType(T100, "TAPI T100", List(Tcp()), T100Collector, t100Factory).infoPair,
+    InstrumentType(T200, "TAPI T200", List(Tcp()), T200Collector, t200Factory).infoPair,
+    InstrumentType(T201, "TAPI T201", List(Tcp()), T201Collector, t201Factory).infoPair,
+    InstrumentType(T300, "TAPI T300", List(Tcp()), T300Collector, t300Factory).infoPair,
+    InstrumentType(T360, "TAPI T360", List(Tcp()), T360Collector, t360Factory).infoPair,
+    InstrumentType(T400, "TAPI T400", List(Tcp()), T400Collector, t400Factory).infoPair,
+    InstrumentType(T700, "TAPI T700", List(Tcp()), T700Collector, t700Factory).infoPair,
+    InstrumentType(VEREWA_F701, "Verewa F701-20", List(Serial()), VerewaF701Collector, verewaF701Factory).infoPair,
+    InstrumentType(THETA, "THETA", List(Serial()), ThetaCollector, thetaFactory).infoPair
+  )
+
   var count = 0
 
   def getInstInfoPair(instType: InstrumentType) = {

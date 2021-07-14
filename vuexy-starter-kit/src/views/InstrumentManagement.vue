@@ -149,12 +149,14 @@
     </b-modal>
   </b-card>
 </template>
-<script>
+<script lang="ts">
 import Vue from 'vue';
 import axios from 'axios';
 const Ripple = require('vue-ripple-directive');
 import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
 import InstrumentWizard from './InstrumentWizard.vue';
+import { Group, Instrument, InstrumentInfo } from './types';
+
 export default Vue.extend({
   components: {
     InstrumentWizard,
@@ -163,7 +165,8 @@ export default Vue.extend({
     Ripple,
   },
   data() {
-    const instList = [];
+    const instList = Array<InstrumentInfo>();
+    let groupList = Array<Group>();
     const fields = [
       {
         key: 'selected',
@@ -204,24 +207,31 @@ export default Vue.extend({
         label: '測項',
         sortable: true,
       },
+      {
+        key: 'group',
+        label: '群組',
+        sortable: true,
+      },
     ];
 
+    const selected = Array<InstrumentInfo>();
     return {
       fields,
       instList,
       isNew: true,
-      selected: [],
+      selected,
       bit: 17,
       on: true,
+      groupList,
     };
   },
   computed: {
-    modalTitle() {
+    modalTitle(): string {
       return this.isNew ? '新增儀器' : '更新儀器設定';
     },
-    selectedInstrument() {
+    selectedInstrument(): Instrument | undefined {
       if (!this.isNew && this.selected.length) return this.selected[0].inst;
-      else return {};
+      else return undefined;
     },
   },
   mounted() {
@@ -229,7 +239,7 @@ export default Vue.extend({
   },
 
   methods: {
-    onSubmit(evt) {
+    onSubmit() {
       this.$bvModal.hide('instModal');
       this.$toast({
         component: ToastificationContent,
@@ -241,7 +251,7 @@ export default Vue.extend({
       });
       this.getInstList();
     },
-    showResult(ok) {
+    showResult(ok: boolean) {
       if (ok) {
         this.$toast({
           component: ToastificationContent,
@@ -356,10 +366,10 @@ export default Vue.extend({
           throw new Error(err);
         });
     },
-    onInstSelected(items) {
+    onInstSelected(items: Array<InstrumentInfo>) {
       this.selected = items;
     },
-    delInst(id) {
+    delInst(id: string) {
       axios
         .delete(`/Instrument/${id}`)
         .then(res => {
@@ -396,6 +406,12 @@ export default Vue.extend({
     },
     onDeleted() {
       this.getInstList();
+    },
+    async getGroupList() {
+      const res = await axios.get('/Groups');
+      if (res.status === 200) {
+        this.groupList = res.data;
+      }
     },
   },
 });

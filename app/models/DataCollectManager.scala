@@ -56,6 +56,10 @@ case class ToggleTargetDO(instId: String, bit: Int, seconds: Int)
 
 case class WriteDO(bit: Int, on: Boolean)
 
+case class ToggleMonitorTypeDO(instId: String, mtID: String, seconds: Int)
+
+case class WriteMonitorTypeDO(mtID: String, on: Boolean)
+
 case object ResetCounter
 
 case object EvtOperationOverThreshold
@@ -300,7 +304,7 @@ class DataCollectManager @Inject()
     }
   }
 
-  def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord]) = {
+  def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord], groupID: Option[String] = None) = {
     var overThreshold = false
     for {
       hourMtData <- minMtAvgList
@@ -349,9 +353,9 @@ class DataCollectManager @Inject()
       }
 
       val instrumentParam = InstrumentParam(collector, monitorTypes, timerOpt)
-      if (inst.instType == instrumentTypeOp.T700) {
+      if (inst.instType == InstrumentType.T700) {
         calibratorOpt = Some(collector)
-      } else if (inst.instType == instrumentTypeOp.MOXAE1212 || inst.instType == instrumentTypeOp.ADAM4068) {
+      } else if (inst.instType == InstrumentType.MOXAE1212 || inst.instType == InstrumentType.ADAM4068) {
         digitalOutputOpt = Some(collector)
       }
 
@@ -413,7 +417,7 @@ class DataCollectManager @Inject()
                 r.time >= DateTime.now() - 6.second
               }
 
-              (data.mt -> (filteredMap ++ Map(instId -> Record(now, data.value, data.status, ""))))
+              (data.mt -> (filteredMap ++ Map(instId -> Record(now, data.value, data.status, Monitor.SELF_ID))))
             }
 
           context become handler(instrumentMap, collectorInstrumentMap,
@@ -549,7 +553,7 @@ class DataCollectManager @Inject()
         checkMinDataAlarm(minuteMtAvgList)
 
         context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData, restartList)
-        val f = recordOp.upsertRecord(RecordList(currentMintues.minusMinutes(1), minuteMtAvgList.toList, monitorOp.SELF_ID))(recordOp.MinCollection)
+        val f = recordOp.upsertRecord(RecordList(currentMintues.minusMinutes(1), minuteMtAvgList.toList, Monitor.SELF_ID))(recordOp.MinCollection)
         f map { _ => ForwardManager.forwardMinData }
         f
       }
@@ -561,7 +565,7 @@ class DataCollectManager @Inject()
         f.andThen({
           case Success(x) =>
             if (current.getMinuteOfHour == 0) {
-              dataCollectManagerOp.recalculateHourData(monitor = monitorOp.SELF_ID,
+              dataCollectManagerOp.recalculateHourData(monitor = Monitor.SELF_ID,
                 current = current,
                 forward = false,
                 alwaysValid = false)(latestDataMap.keys.toList)
@@ -613,6 +617,17 @@ class DataCollectManager @Inject()
       self ! WriteTargetDO(instId, bit, true)
       onceTimer = Some(system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
         self, WriteTargetDO(instId, bit, false)))
+
+    case ToggleMonitorTypeDO(instId, mtID, seconds)=>
+      onceTimer map { t => t.cancel() }
+      Logger.debug(s"ToggleMonitorTypeDO($instId, $mtID)")
+      instrumentMap.get(instId).map { param =>
+        param.actor ! WriteMonitorTypeDO(mtID, true)
+        onceTimer = Some(system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
+          param.actor, WriteMonitorTypeDO(mtID, false)))
+      }
+
+
 
     case IsTargetConnected(instId) =>
       import akka.pattern.ask

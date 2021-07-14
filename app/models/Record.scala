@@ -81,10 +81,10 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     for (records <- recordF) {
       var i = 1
       for (doc <- records) {
-        val newID = Document("time" -> doc.get("_id").get.asDateTime(), "monitor" -> monitorOp.SELF_ID)
+        val newID = Document("time" -> doc.get("_id").get.asDateTime(), "monitor" -> Monitor.SELF_ID)
         val newDoc = doc ++ Document("_id" -> newID,
           "time" -> doc.get("_id").get.asDateTime(),
-          "monitor" -> monitorOp.SELF_ID)
+          "monitor" -> Monitor.SELF_ID)
         val f = col.deleteOne(Filters.equal("_id", doc("_id"))).toFuture()
         val f2 = col.insertOne(newDoc).toFuture()
 
@@ -133,7 +133,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     }
   }
 
-  def toRecordList(dt: DateTime, dataList: List[(String, (Double, String))], monitor: String = monitorOp.SELF_ID) = {
+  def toRecordList(dt: DateTime, dataList: List[(String, (Double, String))], monitor: String = Monitor.SELF_ID) = {
     val mtDataList = dataList map { t => MtRecord(t._1, t._2._1, t._2._2) }
     RecordList(dt, mtDataList, monitor, RecordListID(dt, monitor))
   }
@@ -182,7 +182,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     f
   }
 
-  def updateRecordStatus(dt: Long, mt: String, status: String, monitor: String = monitorOp.SELF_ID)(colName: String) = {
+  def updateRecordStatus(dt: Long, mt: String, status: String, monitor: String = Monitor.SELF_ID)(colName: String) = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Updates._
 
@@ -227,7 +227,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     Map(pairs: _*)
   }
 
-  def getRecord2Map(colName: String)(mtList: List[String], startTime: DateTime, endTime: DateTime, monitor: String = monitorOp.SELF_ID)
+  def getRecord2Map(colName: String)(mtList: List[String], startTime: DateTime, endTime: DateTime, monitor: String = Monitor.SELF_ID)
                    (skip: Int = 0, limit: Int = 500) = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
@@ -262,7 +262,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
   implicit val idWrite = Json.writes[RecordListID]
   implicit val recordListWrite = Json.writes[RecordList]
 
-  def getRecordListFuture(colName: String)(startTime: DateTime, endTime: DateTime, monitors: Seq[String] = Seq(monitorOp.SELF_ID)) = {
+  def getRecordListFuture(colName: String)(startTime: DateTime, endTime: DateTime, monitors: Seq[String] = Seq(Monitor.SELF_ID)) = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
@@ -272,7 +272,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
       .sort(ascending("time")).toFuture()
   }
 
-  def getRecordWithLimitFuture(colName: String)(startTime: DateTime, endTime: DateTime, limit: Int, monitor: String = monitorOp.SELF_ID) = {
+  def getRecordWithLimitFuture(colName: String)(startTime: DateTime, endTime: DateTime, limit: Int, monitor: String = Monitor.SELF_ID) = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 

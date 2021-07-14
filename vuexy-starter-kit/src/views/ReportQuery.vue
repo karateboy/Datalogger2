@@ -82,24 +82,22 @@
     </b-card>
   </div>
 </template>
-<style lang="scss">
-@import '@core/scss/vue/libs/vue-select.scss';
-</style>
 <script lang="ts">
 import Vue from 'vue';
-import vSelect from 'vue-select';
 import DatePicker from 'vue2-datepicker';
 import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
 const Ripple = require('vue-ripple-directive');
-
+import { DailyReport, RowData } from './types';
 import moment from 'moment';
 import axios from 'axios';
 
+interface RowDataReport extends RowData {
+  time?: string;
+}
 export default Vue.extend({
   components: {
     DatePicker,
-    vSelect,
   },
   directives: {
     Ripple,
@@ -114,7 +112,7 @@ export default Vue.extend({
       ],
       columns: Array<any>(),
       statRows: Array<any>(),
-      rows: [],
+      rows: Array<RowDataReport>(),
       form: {
         date,
         reportType: 'daily',
@@ -134,7 +132,7 @@ export default Vue.extend({
       const res = await axios.get(url);
       this.handleReport(res.data);
     },
-    handleReport(report: any) {
+    handleReport(report: DailyReport) {
       this.columns.splice(0, this.columns.length);
       if (this.form.reportType === 'daily') {
         this.columns.push({
@@ -156,11 +154,12 @@ export default Vue.extend({
           sortable: true,
         });
       }
-      for (const row of report.hourRows) {
+      for (const r of report.hourRows) {
+        const row = r as RowDataReport;
         row.time =
           this.form.reportType === 'daily'
-            ? moment(row.time).format('HH:mm')
-            : moment(row.time).format('MM/DD');
+            ? moment(row.date).format('HH:mm')
+            : moment(row.date).format('MM/DD');
       }
       this.rows = report.hourRows;
       this.statRows = report.statRows;

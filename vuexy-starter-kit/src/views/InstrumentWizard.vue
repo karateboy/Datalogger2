@@ -53,6 +53,17 @@
                 </validation-provider>
               </b-form-group>
             </b-col>
+            <b-col cols="12">
+              <b-form-group label="群組" label-for="inst-id" label-cols-md="3">
+                <v-select
+                  id="instrumentGroup"
+                  v-model="form.group"
+                  label="name"
+                  :reduce="group => group._id"
+                  :options="groupList"
+                />
+              </b-form-group>
+            </b-col>
           </b-row>
         </validation-observer>
       </tab-content>
@@ -179,26 +190,35 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import Vue, { PropType } from 'vue';
 import axios from 'axios';
-import { FormWizard, TabContent } from 'vue-form-wizard';
+import { Instrument, InstrumentTypeInfo, ProtocolInfo, Group } from './types';
+
 import { ValidationObserver } from 'vee-validate';
-import vSelect from 'vue-select';
-import { required, email } from '@validations';
-import 'vue-form-wizard/dist/vue-form-wizard.min.css';
 import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
 import TapiConfigPage from './TapiConfigPage.vue';
 import Adam6017ConfigPage from './Adam6017ConfigPage.vue';
 import MqttConfigPage from './MqttConfigPage.vue';
-import Mqtt2ConfigPage from './Mqtt2ConfigPage';
+import Mqtt2ConfigPage from './Mqtt2ConfigPage.vue';
 import Adam6066ConfigPage from './Adam6066ConfigPage.vue';
 import ThetaConfigPage from './ThetaConfigPage.vue';
 
-export default {
+const emptyForm: Instrument = {
+  _id: '',
+  instType: '',
+  protocol: {
+    protocol: '',
+    host: undefined,
+    comPort: undefined,
+  },
+  param: '',
+  active: true,
+  state: '010',
+};
+
+export default Vue.extend({
   components: {
-    FormWizard,
-    TabContent,
-    vSelect,
     ValidationObserver,
     TapiConfigPage,
     Adam6017ConfigPage,
@@ -209,66 +229,59 @@ export default {
   },
   props: {
     isNew: {
-      type: Boolean,
+      type: Boolean as PropType<boolean>,
       default: true,
     },
     inst: {
-      type: Object,
-      default: () => {
-        return {};
-      },
+      type: Object as PropType<Instrument>,
+      default: () => emptyForm,
     },
   },
   data() {
-    const emptyForm = {
-      _id: '',
-      instType: '',
-      protocol: {
-        protocol: null,
-        host: null,
-        comPort: null,
-      },
-      param: '',
-      active: true,
-      state: '010',
-    };
+    let form: Instrument = emptyForm;
+    let isNew = this.isNew;
+    if (!isNew) {
+      form = Object.assign({}, this.inst);
+    }
 
+    const groupList = Array<Group>();
     return {
-      form: this.isNew ? emptyForm : this.inst,
-      instrumentTypes: [],
-      instTypeMap: new Map(),
+      form,
+      instrumentTypes: Array<string>(),
+      instTypeMap: new Map<string, InstrumentTypeInfo>(),
+      groupList,
     };
   },
   computed: {
-    hasDetailConfig() {
+    hasDetailConfig(): boolean {
       if (this.form.instType === 'gps') return false;
 
       return true;
     },
-    isTapiInstrument() {
+    isTapiInstrument(): boolean {
       const tapi = ['t100', 't200', 't201', 't300', 't360', 't400', 't700'];
       for (const t of tapi) {
         if (this.form.instType === t) return true;
       }
       return false;
     },
-    isAdam6017() {
+    isAdam6017(): boolean {
       return this.form.instType === 'adam6017';
     },
-    isMqtt() {
+    isMqtt(): boolean {
       return this.form.instType === 'mqtt_client';
     },
-    isMqtt2() {
+    isMqtt2(): boolean {
       return this.form.instType === 'mqtt_client2';
     },
-    isAdam6066() {
+    isAdam6066(): boolean {
       return this.form.instType === 'adam6066';
     },
-    isTheta() {
+    isTheta(): boolean {
       return this.form.instType === 'theta';
     },
-    instrumentSummary() {
-      const formNewline = input => {
+    instrumentSummary(): string {
+      const formNewline = (input: string) => {
         const newline = String.fromCharCode(13, 10);
         return input.replaceAll('\\n', newline);
       };
@@ -285,11 +298,12 @@ export default {
       return formNewline(desc);
     },
   },
-  mounted() {
+  async mounted() {
     this.getInstrumentTypes();
+    await this.getGroupList();
   },
   methods: {
-    tapiSummary() {
+    tapiSummary(): string {
       let desc = '';
       const param = JSON.parse(this.form.param);
       desc += 'slave ID:' + param.slaveID + '\n';
@@ -314,22 +328,27 @@ export default {
       }
       return desc;
     },
-    async getInstrumentTypes() {
+    async getInstrumentTypes(): Promise<void> {
       const res = await axios.get('/InstrumentTypes');
       this.instrumentTypes = res.data;
       for (const instType of res.data) {
         this.instTypeMap.set(instType.id, instType);
       }
     },
-    getProtocolOptions() {
+    getProtocolOptions(): Array<ProtocolInfo> {
       if (this.form.instType && this.instTypeMap.get(this.form.instType)) {
-        const info = this.instTypeMap.get(this.form.instType).protocolInfo;
-        return this.instTypeMap.get(this.form.instType).protocolInfo;
+        let instrumentTypeInfo = this.instTypeMap.get(
+          this.form.instType,
+        ) as InstrumentTypeInfo;
+        return instrumentTypeInfo.protocolInfo;
       } else return [];
     },
-    validateInstType() {
+    validateInstType(): Promise<boolean> {
       return new Promise((resolve, reject) => {
-        this.$refs.instTypeRules.validate().then(success => {
+        let validateOserver = this.$refs['instTypeRules'] as InstanceType<
+          typeof ValidationObserver
+        >;
+        validateOserver.validate().then(success => {
           if (success) {
             resolve(true);
           } else {
@@ -338,9 +357,12 @@ export default {
         });
       });
     },
-    validateProtocol() {
+    validateProtocol(): Promise<boolean> {
       return new Promise((resolve, reject) => {
-        this.$refs.protocolRules.validate().then(success => {
+        let validateOserver = this.$refs['protocolRules'] as InstanceType<
+          typeof ValidationObserver
+        >;
+        validateOserver.validate().then((success: boolean) => {
           if (success) {
             resolve(true);
           } else {
@@ -349,9 +371,12 @@ export default {
         });
       });
     },
-    validateDetailConfig() {
+    validateDetailConfig(): Promise<boolean> {
       return new Promise((resolve, reject) => {
-        this.$refs.detailConfigRules.validate().then(success => {
+        let validateOserver = this.$refs['detailConfigRules'] as InstanceType<
+          typeof ValidationObserver
+        >;
+        validateOserver.validate().then((success: boolean) => {
           if (success) {
             resolve(true);
           } else {
@@ -360,7 +385,7 @@ export default {
         });
       });
     },
-    onParamChange(v) {
+    onParamChange(v: string): void {
       this.form.param = v;
     },
     async formSubmitted() {
@@ -380,6 +405,12 @@ export default {
         });
       }
     },
+    async getGroupList() {
+      const res = await axios.get('/Groups');
+      if (res.status === 200) {
+        this.groupList = res.data;
+      }
+    },
   },
-};
+});
 </script>

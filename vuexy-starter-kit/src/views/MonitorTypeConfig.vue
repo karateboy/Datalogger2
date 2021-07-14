@@ -2,6 +2,7 @@
   <div>
     <b-card title="測項管理" class="text-center">
       <b-table
+        small
         responsive
         :fields="columns"
         :items="monitorTypes"
@@ -124,23 +125,11 @@
 import Vue from 'vue';
 const Ripple = require('vue-ripple-directive');
 import axios from 'axios';
-/*
-interface MonitorType {
-  _id: string;
-  desp: string;
-  unit: string;
-  prec: number;
-  order: number;
-  signalType: boolean;
-  std_law?: number;
-  std_internal?: number;
-  zd_internal?: number;
-  zd_law?: number;
-  span?: number;
-  span_dev_internal?: number;
-  span_dev_law?: number;
-  measuringBy?: Array<string>;
-} */
+import { MonitorType, ThresholdConfig } from './types';
+
+interface EditMonitorType extends MonitorType {
+  dirty?: boolean;
+}
 
 export default Vue.extend({
   components: {},
@@ -168,27 +157,11 @@ export default Vue.extend({
         label: '小數點位數',
         sortable: true,
       },
-      /*
-      {
-        key: 'std_internal',
-        label: '內控值',
-        sortable: true,
-      },*/
       {
         key: 'std_law',
         label: '法規值',
         sortable: true,
       },
-      {
-        key: 'thresholdConfig',
-        label: '超標噴水時間',
-        sortable: true,
-      },
-      /*
-      {
-        key: 'zd_internal',
-        label: '零點偏移內控',
-      },*/
       {
         key: 'zd_law',
         label: '零點偏移法規',
@@ -197,22 +170,31 @@ export default Vue.extend({
         key: 'span',
         label: '全幅值',
       },
-      /*
-      {
-        key: 'span_dev_internal',
-        label: '全幅偏移內控',
-      },*/
       {
         key: 'span_dev_law',
         label: '全幅值偏移法規',
       },
+      {
+        key: 'measuringBy',
+        label: '測量儀器',
+        formatter: (
+          value: null | Array<string>,
+          key: string,
+          item: Array<string>,
+        ) => {
+          if (value !== null) return `${value.join(', ')}`;
+          else return '';
+        },
+      },
     ];
-    const monitorTypes = Array<any>();
+    const monitorTypes = Array<EditMonitorType>();
+
+    let thresholdConfig: ThresholdConfig = {
+      elapseTime: 30,
+    };
 
     const form = {
-      thresholdConfig: {
-        elapseTime: 30,
-      },
+      thresholdConfig,
     };
     return {
       display: false,

@@ -3,9 +3,9 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports.{DateTime, DateTimeFormat, richDateTime}
 import com.google.inject.assistedinject.Assisted
-import models.ModelHelper.waitReadyResult
+import models.ModelHelper.{errorHandler, waitReadyResult}
 import models.MqttCollector.{ConnectBroker, CreateClient, SubscribeTopic}
-import models.MqttCollector2.{CheckTimeout, timeout}
+import models.MqttCollector2.{CheckTimeout, HandleMessage, timeout}
 import models.Protocol.ProtocolParam
 import org.eclipse.paho.client.mqttv3._
 import play.api._
@@ -16,7 +16,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{DAYS, Duration, MINUTES, SECONDS}
 import scala.concurrent.{Future, blocking}
 
-case class MqttConfig2(topic: String, group:String, eventConfig: EventConfig)
+case class MqttConfig2(topic: String)
 
 object MqttCollector2 extends DriverOps {
 
@@ -66,13 +66,17 @@ object MqttCollector2 extends DriverOps {
     def apply(id: String, protocolParam: ProtocolParam, config: MqttConfig2): Actor
   }
 
-  case object CreateClient
+  sealed trait MqttMessage2
 
-  case object ConnectBroker
+  case object CreateClient extends MqttMessage2
 
-  case object SubscribeTopic
+  case object ConnectBroker extends MqttMessage2
 
-  case object CheckTimeout
+  case object SubscribeTopic extends MqttMessage2
+
+  case object CheckTimeout extends MqttMessage2
+
+  case class HandleMessage(message:String) extends MqttMessage2
 
   val timeout = 15 // mintues
 }
@@ -80,7 +84,7 @@ object MqttCollector2 extends DriverOps {
 import javax.inject._
 
 class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, system: ActorSystem,
-                              recordOp: RecordOp, monitorOp: MonitorOp, dataCollectManager: DataCollectManager,
+                              recordOp: RecordOp, dataCollectManager: DataCollectManager, instrumentOp: InstrumentOp,
                                mqttSensorOp: MqttSensorOp)
                              (@Assisted id: String,
                               @Assisted protocolParam: ProtocolParam,
@@ -105,17 +109,14 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
   var mqttClientOpt: Option[MqttAsyncClient] = None
   var lastDataArrival: DateTime = DateTime.now
 
-  val watchDog = context.system.scheduler.schedule(Duration(1, MINUTES),
+  val watchDog = context.system.scheduler.schedule(Duration(1, SECONDS),
     Duration(timeout, MINUTES), self, CheckTimeout)
 
-  var sensorMap: Map[String, Sensor] = {
-    waitReadyResult(mqttSensorOp.getSensorMap)
-  }
   self ! CreateClient
 
-  def receive = handler(MonitorStatus.NormalStat)
+  def receive = handler(MonitorStatus.NormalStat, Map.empty[String, Sensor])
 
-  def handler(collectorState: String): Receive = {
+  def handler(collectorState: String, sensorMap: Map[String, Sensor]): Receive = {
     case CreateClient =>
       Logger.info(s"Init Mqtt client ${protocolParam.host.get} ${config.toString}")
       val url = if (protocolParam.host.get.contains(":"))
@@ -182,18 +183,22 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
         }
       }
     case CheckTimeout=>
-      for(map <- mqttSensorOp.getSensorMap){
-        sensorMap = map
-      }
-
       val duration = new org.joda.time.Duration(lastDataArrival, DateTime.now())
       if(duration.getStandardMinutes > timeout) {
         Logger.error(s"Mqtt ${id} no data timeout!")
         context.parent ! RestartMyself
       }
 
+      for(map <- mqttSensorOp.getSensorMap) yield {
+        context become handler(collectorState, map)
+      }
+
     case SetState(id, state) =>
       Logger.warn(s"$id ignore $self => $state")
+      context become handler(state, sensorMap)
+
+    case HandleMessage(message) =>
+      messageHandler(message, sensorMap)
   }
 
   override def postStop(): Unit = {
@@ -211,7 +216,7 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
   override def messageArrived(topic: String, message: MqttMessage): Unit = {
     try {
       lastDataArrival = DateTime.now
-      messageHandler(new String(message.getPayload))
+      self ! HandleMessage(new String(message.getPayload))
     } catch {
       case ex: Exception =>
         Logger.error("failed to handleMessage", ex)
@@ -219,7 +224,7 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
 
   }
 
-  def messageHandler(payload: String): Unit = {
+  def messageHandler(payload: String, sensorMap: Map[String, Sensor]): Unit = {
     val mtMap = Map[String, String](
       "pm2_5" -> MonitorType.PM25,
       "pm10" -> MonitorType.PM10,
@@ -255,10 +260,17 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
           val f = recordOp.upsertRecord(recordList)(recordOp.MinCollection)
           f.onFailure(ModelHelper.errorHandler)
 
-          if (dataCollectManager.checkMinDataAlarm(recordList.mtDataList)) {
+          if (dataCollectManager.checkMinDataAlarm(recordList.mtDataList, Some(sensor.group))) {
             val mtCase = monitorTypeOp.map("PM25")
-            val thresholdConfig = mtCase.thresholdConfig.getOrElse(ThresholdConfig(30))
-            context.parent ! ToggleTargetDO(config.eventConfig.instId, config.eventConfig.bit, thresholdConfig.elapseTime)
+            // FIXME findout group 6066 and alert spay !!!
+            for(doInstruments <- instrumentOp.getDoInstrumentList()){
+              doInstruments.filter(inst => inst.group == Some(sensor.group)).foreach(
+                inst =>
+                  for(thresholdConfig <- mtCase.thresholdConfig){
+                    context.parent ! ToggleMonitorTypeDO(inst._id, MonitorType.SPRAY, thresholdConfig.elapseTime)
+                  }
+              )
+            }
           }
         }
       })

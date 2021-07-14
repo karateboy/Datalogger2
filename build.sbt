@@ -1,6 +1,6 @@
 name := """MqttManager"""
 
-version := "1.0.4"
+version := "1.2.6"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala, LauncherJarPlugin)
 
@@ -34,7 +34,7 @@ mappings in Universal ++=
 	
  	
 //libraryDependencies += "com.google.guava" % "guava" % "19.0"
-
+scalacOptions += "-feature"
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
 
 routesGenerator := InjectedRoutesGenerator

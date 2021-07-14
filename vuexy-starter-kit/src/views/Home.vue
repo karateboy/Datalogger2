@@ -1,6 +1,6 @@
 <template>
   <b-row class="match-height">
-    <b-col lg="12" md="12">
+    <b-col :lg="statusLength" md="12">
       <b-card ref="loadingContainer" title="最新監測資訊">
         <b-table
           striped
@@ -25,6 +25,34 @@
             </b-tr>
           </template>
         </b-table>
+      </b-card>
+    </b-col>
+    <b-col v-if="hasSpray" lg="3" md="12">
+      <b-card title="灑水系統">
+        <b-row no-gutters>
+          <b-col cols="3" class="pt-2">
+            <b-img
+              src="../assets/images/sprinkler.svg"
+              class="rounded-0 align-middle"
+            />
+          </b-col>
+          <b-col cols="9">
+            <b-card-body>
+              <b-card-text :class="{ 'text-danger': !spray }"
+                >啟動:{{ sprayStatus }}</b-card-text
+              >
+              <b-card-text :class="{ 'text-danger': !spray_connected }"
+                >連線狀態:{{ sprayConnected }}</b-card-text
+              >
+              <b-button
+                variant="primary"
+                :disabled="timer !== 0"
+                @click="testSpray"
+                >測試</b-button
+              >
+            </b-card-body>
+          </b-col>
+        </b-row>
       </b-card>
     </b-col>
     <b-col lg="12" md="12">
@@ -99,6 +127,7 @@ export default {
       columns: [],
       rows: [],
       realTimeStatus: [],
+      hasSpray: false,
       spray: false,
       spray_connected: false,
       loader: undefined,
@@ -124,6 +153,10 @@ export default {
     ...mapState('user', ['userInfo']),
     ...mapGetters('monitorTypes', ['mtMap']),
     ...mapGetters('monitors', ['mMap']),
+    statusLength() {
+      if (this.hasSpray) return 9;
+      else return 12;
+    },
     sprayStatus() {
       if (!this.spray_connected) return '未知';
 
@@ -214,7 +247,7 @@ export default {
       return ret;
     },
   },
-  mounted() {
+  async mounted() {
     const legend = document.getElementById('legend');
     this.$refs.mapRef.$mapPromise.then(map => {
       map.controls[google.maps.ControlPosition.LEFT_CENTER].push(legend);
@@ -227,10 +260,13 @@ export default {
       canCancel: false,
     }); */
 
+    await this.getSignalInstrumentList();
     this.refresh();
     this.refreshTimer = setInterval(() => {
       this.refresh();
     }, 30000);
+    await this.fetchMonitors();
+    await this.fetchMonitorTypes();
   },
   beforeDestroy() {
     clearInterval(this.timer);
@@ -281,6 +317,7 @@ export default {
 
       this.query();
       this.getRealtimeStatus();
+      this.getSignalValues();
     },
     async query() {
       this.rows.splice(0, this.rows.length);
@@ -329,6 +366,31 @@ export default {
       }
 
       return ret;
+    },
+    async getSignalValues() {
+      const res = await axios.get('/SignalValues');
+      if (res.data.SPRAY === true) this.spray = true;
+      else this.spray = false;
+      if (res.data.SPRAY === undefined) this.spray_connected = false;
+      else this.spray_connected = true;
+    },
+    async getSignalInstrumentList() {
+      const res = await axios.get('/DoInstrumentInfoList');
+      console.log(res.data);
+      if (res.data.length === 0) this.hasSpray = false;
+      else this.hasSpray = true;
+    },
+    async testSpray() {
+      await axios.get('/TestSpray');
+      let countdown = 15;
+      this.timer = setInterval(() => {
+        countdown--;
+        this.getSignalValues();
+        if (countdown === 0) {
+          clearInterval(this.timer);
+          this.timer = 0;
+        }
+      }, 1000);
     },
   },
 };

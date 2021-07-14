@@ -17,10 +17,14 @@ case class Group(_id: String, name: String, monitors:Seq[String], monitorTypes: 
                  admin:Boolean, abilities: Seq[Ability], parent:Option[String] = None)
 
 import javax.inject._
+object Group {
+  val PLATFORM_ADMIN = "platformAdmin"
+  val PLATFORM_USER = "platformUser"
+}
 
 @Singleton
 class GroupOp @Inject()(mongoDB: MongoDB) {
-
+  import Group._
   import org.mongodb.scala._
 
   val ColName = "groups"
@@ -31,8 +35,6 @@ class GroupOp @Inject()(mongoDB: MongoDB) {
   implicit val writeAbility = Json.writes[Ability]
   implicit val read = Json.reads[Group]
   implicit val write = Json.writes[Group]
-  val PLATFORM_ADMIN = "platformAdmin"
-  val PLATFORM_USER = "platformUser"
 
   val ACTION_READ = "read"
   val ACTION_MANAGE = "manage"

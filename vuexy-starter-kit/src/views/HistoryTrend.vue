@@ -125,19 +125,17 @@
 </style>
 <script lang="ts">
 import Vue from 'vue';
-import vSelect from 'vue-select';
 import DatePicker from 'vue2-datepicker';
 import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
 const Ripple = require('vue-ripple-directive');
-import { mapState, mapActions } from 'vuex';
+import { mapState, mapActions, mapMutations } from 'vuex';
 import moment from 'moment';
 import axios from 'axios';
 import highcharts from 'highcharts';
 
 export default Vue.extend({
   components: {
-    vSelect,
     DatePicker,
   },
   directives: {
@@ -196,8 +194,8 @@ export default Vue.extend({
         },
       ],
       form: {
-        monitors: Array<any>(),
-        monitorTypes: Array<any>(),
+        monitors: Array<string>(),
+        monitorTypes: Array<string>(),
         reportUnit: 'Min',
         statusFilter: 'all',
         chartType: 'line',
@@ -209,23 +207,25 @@ export default Vue.extend({
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapState('monitors', ['monitors']),
   },
-  mounted() {
-    this.fetchMonitorTypes().then(() => {
-      if (this.monitorTypes.length !== 0) {
-        this.form.monitorTypes.push(this.monitorTypes[0]._id);
-      }
-    });
+  watch: {},
+  async mounted() {
+    await this.fetchMonitorTypes();
+    await this.fetchMonitors();
 
-    this.fetchMonitors().then(() => {
-      if (this.monitors.length !== 0) {
-        for (const m of this.monitors) this.form.monitors.push(m._id);
-      }
-    });
+    if (this.monitorTypes.length !== 0) {
+      this.form.monitorTypes.push('PM25');
+    }
+
+    if (this.monitors.length !== 0) {
+      this.form.monitors.push(this.monitors[0]._id);
+    }
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapActions('monitors', ['fetchMonitors']),
+    ...mapMutations(['setLoading']),
     async query() {
+      this.setLoading({ loading: true });
       this.display = true;
       const monitors = this.form.monitors.join(':');
       const url = `/HistoryTrend/${monitors}/${this.form.monitorTypes.join(
@@ -235,6 +235,8 @@ export default Vue.extend({
       }/${this.form.range[1]}`;
       const res = await axios.get(url);
       const ret = res.data;
+
+      this.setLoading({ loading: false });
       if (this.form.chartType !== 'boxplot') {
         ret.chart = {
           type: this.form.chartType,
@@ -245,10 +247,8 @@ export default Vue.extend({
         };
 
         const pointFormatter = function pointFormatter(this: any) {
-          /** @type any */
-          const me = this as any;
-          const d = new Date(me.x);
-          return `${d.toLocaleString()}:${Math.round(me.y)}度`;
+          const d = new Date(this.x);
+          return `${d.toLocaleString()}:${Math.round(this.y)}度`;
         };
 
         ret.colors = [

@@ -21,7 +21,7 @@ object MoxaE1212Collector {
     val prop = Props(classOf[MoxaE1212Collector], id, protocolParam, param)
     val collector = context.actorOf(prop, name = "MoxaE1212Collector" + count)
     count += 1
-    assert(protocolParam.protocol == Protocol.tcp)
+    assert(protocolParam.protocol == Protocol.Tcp())
     val host = protocolParam.host.get
     collector ! ConnectHost
     collector

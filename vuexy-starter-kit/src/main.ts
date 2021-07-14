@@ -13,7 +13,10 @@ import ex from 'highcharts/modules/exporting';
 import csv from 'highcharts/modules/export-data';
 import offlineExport from 'highcharts/modules/offline-exporting';
 import Loading from 'vue-loading-overlay';
+import VueFormWizard from 'vue-form-wizard';
+import 'vue-form-wizard/dist/vue-form-wizard.min.css';
 
+Vue.use(VueFormWizard);
 import router from './router';
 import store from './store';
 import App from './App.vue';
@@ -105,6 +108,7 @@ Vue.use(IconsPlugin);
 Vue.use(ToastPlugin);
 Vue.use(ModalPlugin);
 Vue.use(Loading);
+Vue.use(VueFormWizard);
 // Composition API
 Vue.use(VueCompositionAPI);
 
@@ -121,7 +125,7 @@ require('vue-loading-overlay/dist/vue-loading.css');
 Vue.config.productionTip = false;
 
 router.beforeEach((to, from, next) => {
-  if (store.state.user.login || to.name === 'login') {
+  if (store.state.login || to.name === 'login') {
     next();
   } else {
     next({ name: 'login' });

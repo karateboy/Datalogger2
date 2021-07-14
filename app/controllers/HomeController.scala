@@ -147,7 +147,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
           t.protocol.map { p => ProtocolInfo(p, Protocol.map(p)) })
       }
     val sorted = iTypes.toList.sortWith((a, b) => a.id < b.id)
-    Ok(Json.toJson(sorted.toList))
+    Ok(Json.toJson(sorted))
   }
 
   def getInstrumentType(id: String) = Security.Authenticated {
@@ -172,26 +172,26 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
           Logger.error(JsError.toJson(error).toString())
           BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
         },
-        rawInstrument => {
+        instrument => {
           try {
-            val instType = instrumentTypeOp.map(rawInstrument.instType)
-            val instParam = instType.driver.verifyParam(rawInstrument.param)
-            val newInstrument = rawInstrument.replaceParam(instParam)
-            if (newInstrument._id.isEmpty())
+            val instType = instrumentTypeOp.map(instrument.instType)
+            val instParam = instType.driver.verifyParam(instrument.param)
+            instrument.param = instParam
+            if (instrument._id.isEmpty())
               throw new Exception("儀器ID不可是空的!")
 
-            instrumentOp.upsertInstrument(newInstrument)
+            instrumentOp.upsertInstrument(instrument)
 
             //Stop measuring if any
-            dataCollectManagerOp.stopCollect(newInstrument._id)
-            monitorTypeOp.stopMeasuring(newInstrument._id)
+            dataCollectManagerOp.stopCollect(instrument._id)
+            monitorTypeOp.stopMeasuring(instrument._id)
 
             val mtList = instType.driver.getMonitorTypes(instParam)
             for (mt <- mtList) {
-              monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog)
+              monitorTypeOp.addMeasuring(mt, instrument._id, instType.analog)
             }
-            if (newInstrument.active)
-              dataCollectManagerOp.startCollect(newInstrument)
+            if (instrument.active)
+              dataCollectManagerOp.startCollect(instrument)
 
             Ok(Json.obj("ok" -> true))
           } catch {
@@ -233,9 +233,9 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
         }.mkString(",")
         val protocolParam =
           inst.protocol.protocol match {
-            case Protocol.tcp =>
+            case Protocol.Tcp() =>
               inst.protocol.host.get
-            case Protocol.serial =>
+            case Protocol.Serial() =>
               s"COM${inst.protocol.comPort.get}"
           }
         val calibrationTime = getCalibrationTime.map { t => t.toString("HH:mm") }
@@ -243,7 +243,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
         val state = getStateStr
 
         InstrumentInfo(inst._id, instrumentTypeOp.map(inst.instType).desp, state,
-          Protocol.map(inst.protocol.protocol), protocolParam, mtStr, calibrationTime, inst)
+          Protocol.map(inst.protocol.protocol), protocolParam, mtStr, calibrationTime, inst, inst.group)
       }
 
       getInfoClass
@@ -258,7 +258,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
   }
 
   def getDoInstrumentList = Security.Authenticated {
-    val ret = instrumentOp.getInstrumentList().filter(p => instrumentTypeOp.DoInstruments.contains(p.instType))
+    val ret = instrumentOp.getInstrumentList().filter(p => InstrumentType.DoInstruments.contains(p.instType))
 
     Ok(Json.toJson(ret))
   }
@@ -539,7 +539,59 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
 
   def signalValues = Security.Authenticated {
     implicit request =>
-      Ok(Json.toJson(monitorTypeOp.getSignalValueMap()))
+      val userInfo = request.user
+      Ok(Json.toJson(monitorTypeOp.getSignalValueMap(userInfo.group)))
+  }
+
+  def getSignalInstrumentList = Security.Authenticated.async {
+    implicit request=>
+      val userInfo = request.user
+      val f = instrumentOp.getGroupDoInstrumentList(userInfo.group)
+      for(ret <- f) yield {
+        Logger.info(s"getSignalInstrumentList group=${userInfo.group} #=${ret.size}")
+        implicit val write = Json.writes[InstrumentInfo]
+
+        val ret2 = ret.map { inst =>
+          def getMonitorTypes: List[String] = {
+            val instTypeCase = instrumentTypeOp.map(inst.instType)
+            instTypeCase.driver.getMonitorTypes(inst.param)
+          }
+
+          def getStateStr = {
+            if (inst.active) {
+              monitorStatusOp.map(inst.state).desp
+            } else
+              "停用"
+          }
+
+          def getCalibrationTime = {
+            val instTypeCase = instrumentTypeOp.map(inst.instType)
+            instTypeCase.driver.getCalibrationTime(inst.param)
+          }
+
+          def getInfoClass = {
+            val mtStr = getMonitorTypes.map {
+              monitorTypeOp.map(_).desp
+            }.mkString(",")
+            val protocolParam =
+              inst.protocol.protocol match {
+                case Protocol.Tcp() =>
+                  inst.protocol.host.get
+                case Protocol.Serial() =>
+                  s"COM${inst.protocol.comPort.get}"
+              }
+            val calibrationTime = getCalibrationTime.map { t => t.toString("HH:mm") }
+
+            val state = getStateStr
+
+            InstrumentInfo(inst._id, instrumentTypeOp.map(inst.instType).desp, state,
+              Protocol.map(inst.protocol.protocol), protocolParam, mtStr, calibrationTime, inst, inst.group)
+          }
+
+          getInfoClass
+        }
+        Ok(Json.toJson(ret2))
+      }
   }
 
   def recalculateHour(monitorStr: String, startNum: Long, endNum: Long) = Security.Authenticated {
@@ -551,7 +603,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       monitor <- monitors
       mCase = monitorOp.map(monitor)
       hour <- query.getPeriods(start, end + 1.hour, 1.hour)} {
-      dataCollectManagerOp.recalculateHourData(monitor, hour, false, true)(mCase.monitorTypes)
+      dataCollectManagerOp.recalculateHourData(monitor, hour, false, true)(monitorTypeOp.realtimeMtvList)
     }
     Ok(Json.obj("ok" -> true))
   }
@@ -578,7 +630,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
 
   def testSpray = Security.Authenticated {
     Logger.info("testSpray")
-    val ret: Seq[Instrument] = instrumentOp.getInstrumentList().filter(p => p.instType == instrumentTypeOp.ADAM6066)
+    val ret: Seq[Instrument] = instrumentOp.getInstrumentList().filter(p => p.instType == InstrumentType.ADAM6066)
     ret map {
       inst =>
         dataCollectManagerOp.toggleTargetDO(inst._id, 17, 10)

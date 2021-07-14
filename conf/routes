@@ -93,6 +93,7 @@ POST     /MonitorType/:id                                                       
 PUT      /MonitorType/:id                                                         controllers.HomeController.upsertMonitorType(id)
 GET      /SignalTypes                                                             controllers.HomeController.signalTypeList
 GET      /SignalValues                                                            controllers.HomeController.signalValues
+GET      /DoInstrumentInfoList                                                    controllers.HomeController.getSignalInstrumentList
 
 GET      /Monitors                                                                controllers.HomeController.monitorList
 PUT      /Monitor/:id                                                             controllers.HomeController.upsertMonitor(id)

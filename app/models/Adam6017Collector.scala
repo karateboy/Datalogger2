@@ -17,7 +17,7 @@ object Adam6017Collector {
     val prop = Props(classOf[Adam6017Collector], id, protocolParam, param)
     val collector = context.actorOf(prop, name = "Adam6077Collector" + count)
     count += 1
-    assert(protocolParam.protocol == Protocol.tcp)
+    assert(protocolParam.protocol == Protocol.Tcp())
     collector ! ConnectHost
     collector
 

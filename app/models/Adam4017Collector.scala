@@ -17,7 +17,7 @@ object Adam4017Collector {
   def start(id: String, protocolParam: ProtocolParam, param: List[Adam4017Param])(implicit context: ActorContext) = {
     val collector = context.actorOf(Props[Adam4017Collector], name = "Adam4017Collector" + count)
     count += 1
-    assert(protocolParam.protocol == Protocol.serial)
+    assert(protocolParam.protocol == Protocol.Serial())
     val com = protocolParam.comPort.get
     collector ! PrepareCollect(id, com, param)
     collector

@@ -21,7 +21,7 @@ object Adam6066Collector {
     val prop = Props(classOf[Adam6066Collector], id, protocolParam, param)
     val collector = context.actorOf(prop, name = "Adam6077Collector" + count)
     count += 1
-    assert(protocolParam.protocol == Protocol.tcp)
+    assert(protocolParam.protocol == Protocol.Tcp())
     collector ! ConnectHost
     collector
 
@@ -44,6 +44,8 @@ class Adam6066Collector @Inject()
   import MoxaE1212Collector._
 
   self ! ConnectHost
+
+  val myInstrument = instrumentOp.getInstrument(id)(0)
 
   import com.serotonin.modbus4j._
   import com.serotonin.modbus4j.ip.IpParameters
@@ -113,7 +115,7 @@ class Adam6066Collector @Inject()
               v = result(idx)
             } yield {
               newDiValueMap = newDiValueMap + (idx -> v)
-              monitorTypeOp.updateSignalValueMap(mt, v)
+              monitorTypeOp.updateSignalValueMap(myInstrument.group.getOrElse(Group.PLATFORM_ADMIN), mt, v)
               // Log on difference
               if (!diValueMap.contains(idx) || diValueMap(idx) != v) {
                 // FIXME hot code invert
@@ -121,8 +123,6 @@ class Adam6066Collector @Inject()
               }
             }
             context become handler(collectorState, masterOpt, newDiValueMap)
-
-
             import scala.concurrent.duration._
             cancelable = system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
           } catch {
@@ -153,6 +153,16 @@ class Adam6066Collector @Inject()
       } catch {
         case ex: Exception =>
           ModelHelper.logException(ex)
+      }
+    case WriteMonitorTypeDO(mtID, on) =>
+      for {
+        cfg <- param.chs.zipWithIndex
+        chCfg = cfg._1 if chCfg.enable && chCfg.mt.isDefined
+        mt = chCfg.mt.get if mt == mtID
+        idx = cfg._2
+      } yield {
+        Logger.info(s"WriteMonitorTypeDO $mtID $idx $on")
+        self ! WriteDO(idx, on)
       }
   }
 

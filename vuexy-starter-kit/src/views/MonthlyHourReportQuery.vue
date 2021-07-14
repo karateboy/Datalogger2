@@ -153,7 +153,7 @@ export default Vue.extend({
         });
       }
       for (const row of report.rows) {
-        row.time = moment(row.time).format('MM/DD');
+        row.time = moment(row.date).format('MM/DD');
       }
       this.rows = report.rows;
       this.statRows = report.statRows;
