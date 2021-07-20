@@ -8,7 +8,6 @@
         :items="monitorTypes"
         bordered
         sticky-header
-        stacked="md"
         style="max-height: 600px"
       >
         <template #cell(desp)="row">
@@ -163,6 +162,11 @@ export default Vue.extend({
         sortable: true,
       },
       {
+        key: 'thresholdConfig',
+        label: '超標噴水時間',
+        sortable: true,
+      },
+      {
         key: 'zd_law',
         label: '零點偏移法規',
       },
@@ -173,18 +177,6 @@ export default Vue.extend({
       {
         key: 'span_dev_law',
         label: '全幅值偏移法規',
-      },
-      {
-        key: 'measuringBy',
-        label: '測量儀器',
-        formatter: (
-          value: null | Array<string>,
-          key: string,
-          item: Array<string>,
-        ) => {
-          if (value !== null) return `${value.join(', ')}`;
-          else return '';
-        },
       },
     ];
     const monitorTypes = Array<EditMonitorType>();
