@@ -103,32 +103,34 @@ class Adam6066Collector @Inject()
 
             batch.setContiguousRequests(true)
 
-            val rawResult = masterOpt.get.send(batch)
-            val result =
-              for (idx <- 0 to 7) yield rawResult.getValue(idx).asInstanceOf[Boolean]
+            for(master<- masterOpt){
+              val rawResult = master.send(batch)
+              val result =
+                for (idx <- 0 to 7) yield rawResult.getValue(idx).asInstanceOf[Boolean]
 
-            for {
-              cfg <- param.chs.zipWithIndex
-              chCfg = cfg._1 if chCfg.enable && chCfg.mt.isDefined
-              mt = chCfg.mt.get
-              idx = cfg._2
-              v = result(idx)
-            } yield {
-              newDiValueMap = newDiValueMap + (idx -> v)
-              monitorTypeOp.updateSignalValueMap(myInstrument.group.getOrElse(Group.PLATFORM_ADMIN), mt, v)
-              // Log on difference
-              if (!diValueMap.contains(idx) || diValueMap(idx) != v) {
-                // FIXME hot code invert
-                monitorTypeOp.logDiMonitorType(mt, !v)
+              for {
+                cfg <- param.chs.zipWithIndex
+                chCfg = cfg._1 if chCfg.enable && chCfg.mt.isDefined
+                mt = chCfg.mt.get
+                idx = cfg._2
+                v = result(idx)
+              } yield {
+                newDiValueMap = newDiValueMap + (idx -> v)
+                monitorTypeOp.updateSignalValueMap(myInstrument.group.getOrElse(Group.PLATFORM_ADMIN), mt, v)
+                // Log on difference
+                if (!diValueMap.contains(idx) || diValueMap(idx) != v) {
+                  // FIXME hot code invert
+                  monitorTypeOp.logDiMonitorType(mt, !v)
+                }
               }
+              context become handler(collectorState, masterOpt, newDiValueMap)
+              import scala.concurrent.duration._
+              cancelable = system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
             }
-            context become handler(collectorState, masterOpt, newDiValueMap)
-            import scala.concurrent.duration._
-            cancelable = system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Throwable =>
               Logger.error("Read reg failed", ex)
-              masterOpt.get.destroy()
+              masterOpt map { _.destroy() }
               context become handler(collectorState, None, diValueMap)
               self ! ConnectHost
           }
@@ -162,7 +164,7 @@ class Adam6066Collector @Inject()
         idx = cfg._2
       } yield {
         Logger.info(s"WriteMonitorTypeDO $mtID $idx $on")
-        self ! WriteDO(idx, on)
+        self ! WriteDO(17 + idx, on)
       }
   }
 

@@ -75,7 +75,7 @@ object MqttCollector extends DriverOps {
 import javax.inject._
 
 class MqttCollector @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, system: ActorSystem,
-                              recordOp: RecordOp, monitorOp: MonitorOp, dataCollectManager: DataCollectManager)
+                              recordOp: RecordOp, monitorOp: MonitorOp, dataCollectManagerOp: DataCollectManagerOp)
                              (@Assisted id: String,
                               @Assisted protocolParam: ProtocolParam,
                               @Assisted config: MqttConfig) extends Actor with MqttCallback {
@@ -233,11 +233,7 @@ class MqttCollector @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, sy
         val f = recordOp.upsertRecord(recordList)(recordOp.MinCollection)
         f.onFailure(ModelHelper.errorHandler)
 
-        if (dataCollectManager.checkMinDataAlarm(recordList.mtDataList)) {
-          val mtCase = monitorTypeOp.map("PM25")
-          val thresholdConfig = mtCase.thresholdConfig.getOrElse(ThresholdConfig(30))
-          context.parent ! ToggleTargetDO(config.eventConfig.instId, config.eventConfig.bit, thresholdConfig.elapseTime)
-        }
+        dataCollectManagerOp.checkMinDataAlarm(recordList.mtDataList)
       })
   }
 

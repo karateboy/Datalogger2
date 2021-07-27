@@ -72,7 +72,7 @@ case object IsConnected
 
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentOp, recordOp: RecordOp,
-                                     alarmOp: AlarmOp)() {
+                                     alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp)() {
   val effectivRatio = 0.75
 
   def startCollect(inst: Instrument) {
@@ -218,6 +218,37 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
       MtRecord(mt, minuteAvg._1, minuteAvg._2)
     }
   }
+
+  def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord], groupOpt: Option[String] = None) = {
+    var overThreshold = false
+    for {
+      hourMtData <- minMtAvgList
+      mt = hourMtData.mtName
+      value = hourMtData.value
+      status = hourMtData.status
+    } {
+      val mtCase = monitorTypeOp.map(mt)
+      if (MonitorStatus.isValid(status))
+        for (std_law <- mtCase.std_law) {
+          if (value > std_law) {
+            val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
+            alarmOp.log(alarmOp.Src(mt), alarmOp.Level.INFO, msg)
+            for(group<-groupOpt){
+              for(groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(group)){
+                groupDoInstruments.foreach(
+                  inst =>
+                    for(thresholdConfig <- mtCase.thresholdConfig){
+                      manager ! ToggleMonitorTypeDO(inst._id, MonitorType.SPRAY, thresholdConfig.elapseTime)
+                    }
+                )
+              }
+            }
+            overThreshold = true
+          }
+        }
+    }
+    overThreshold
+  }
 }
 
 @Singleton
@@ -302,27 +333,6 @@ class DataCollectManager @Inject()
       }
       MtRecord(mt, minuteAvg._1, minuteAvg._2)
     }
-  }
-
-  def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord], groupID: Option[String] = None) = {
-    var overThreshold = false
-    for {
-      hourMtData <- minMtAvgList
-      mt = hourMtData.mtName
-      value = hourMtData.value
-      status = hourMtData.status
-    } {
-      val mtCase = monitorTypeOp.map(mt)
-      if (MonitorStatus.isValid(status))
-        for (std_law <- mtCase.std_law) {
-          if (value > std_law) {
-            val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
-            alarmOp.log(alarmOp.Src(mt), alarmOp.Level.INFO, msg)
-            overThreshold = true
-          }
-        }
-    }
-    overThreshold
   }
 
   def receive = handler(Map.empty[String, InstrumentParam], Map.empty[ActorRef, String],
@@ -550,7 +560,7 @@ class DataCollectManager @Inject()
 
         val minuteMtAvgList = calculateAvgMap(priorityMtMap)
 
-        checkMinDataAlarm(minuteMtAvgList)
+        dataCollectManagerOp.checkMinDataAlarm(minuteMtAvgList)
 
         context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData, restartList)
         val f = recordOp.upsertRecord(RecordList(currentMintues.minusMinutes(1), minuteMtAvgList.toList, Monitor.SELF_ID))(recordOp.MinCollection)

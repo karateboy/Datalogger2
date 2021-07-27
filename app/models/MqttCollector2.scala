@@ -1,9 +1,8 @@
 package models
 
 import akka.actor._
-import com.github.nscala_time.time.Imports.{DateTime, DateTimeFormat, richDateTime}
+import com.github.nscala_time.time.Imports.{DateTime, DateTimeFormat}
 import com.google.inject.assistedinject.Assisted
-import models.ModelHelper.{errorHandler, waitReadyResult}
 import models.MqttCollector.{ConnectBroker, CreateClient, SubscribeTopic}
 import models.MqttCollector2.{CheckTimeout, HandleMessage, timeout}
 import models.Protocol.ProtocolParam
@@ -13,7 +12,7 @@ import play.api.libs.json.{JsError, Json, _}
 
 import java.nio.file.Files
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{DAYS, Duration, MINUTES, SECONDS}
+import scala.concurrent.duration.{Duration, MINUTES, SECONDS}
 import scala.concurrent.{Future, blocking}
 
 case class MqttConfig2(topic: String)
@@ -84,7 +83,7 @@ object MqttCollector2 extends DriverOps {
 import javax.inject._
 
 class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, system: ActorSystem,
-                              recordOp: RecordOp, dataCollectManager: DataCollectManager, instrumentOp: InstrumentOp,
+                              recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp,
                                mqttSensorOp: MqttSensorOp)
                              (@Assisted id: String,
                               @Assisted protocolParam: ProtocolParam,
@@ -260,18 +259,7 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
           val f = recordOp.upsertRecord(recordList)(recordOp.MinCollection)
           f.onFailure(ModelHelper.errorHandler)
 
-          if (dataCollectManager.checkMinDataAlarm(recordList.mtDataList, Some(sensor.group))) {
-            val mtCase = monitorTypeOp.map("PM25")
-            // FIXME findout group 6066 and alert spay !!!
-            for(doInstruments <- instrumentOp.getDoInstrumentList()){
-              doInstruments.filter(inst => inst.group == Some(sensor.group)).foreach(
-                inst =>
-                  for(thresholdConfig <- mtCase.thresholdConfig){
-                    context.parent ! ToggleMonitorTypeDO(inst._id, MonitorType.SPRAY, thresholdConfig.elapseTime)
-                  }
-              )
-            }
-          }
+          dataCollectManagerOp.checkMinDataAlarm(recordList.mtDataList, Some(sensor.group))
         }
       })
   }
