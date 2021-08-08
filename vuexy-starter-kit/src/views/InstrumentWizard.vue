@@ -228,7 +228,7 @@ export default {
         host: null,
         comPort: null,
       },
-      param: '',
+      param: '{}',
       active: true,
       state: '010',
     };
@@ -246,7 +246,16 @@ export default {
       return true;
     },
     isTapiInstrument() {
-      const tapi = ['t100', 't200', 't201', 't300', 't360', 't400', 't700'];
+      const tapi = [
+        't100',
+        't200',
+        't201',
+        't300',
+        't360',
+        't400',
+        't700',
+        'thermal43i',
+      ];
       for (const t of tapi) {
         if (this.form.instType === t) return true;
       }
@@ -290,6 +299,7 @@ export default {
   },
   methods: {
     tapiSummary() {
+      
       let desc = '';
       const param = JSON.parse(this.form.param);
       desc += 'slave ID:' + param.slaveID + '\n';
@@ -320,6 +330,7 @@ export default {
       for (const instType of res.data) {
         this.instTypeMap.set(instType.id, instType);
       }
+      console.log(this.instTypeMap);
     },
     getProtocolOptions() {
       if (this.form.instType && this.instTypeMap.get(this.form.instType)) {

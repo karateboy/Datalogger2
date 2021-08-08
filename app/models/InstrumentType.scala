@@ -47,6 +47,7 @@ class InstrumentTypeOp @Inject()
  baseline9000Factory: Baseline9000Collector.Factory,
  horiba370Factory: Horiba370Collector.Factory,
  gpsFactory: GpsCollector.Factory,
+ thermal43iFactory: Thermal43i.Factory,
  t100Factory: T100Collector.Factory, t200Factory: T200Collector.Factory, t201Factory: T201Collector.Factory,
  t300Factory: T300Collector.Factory, t360Factory: T360Collector.Factory, t400Factory: T400Collector.Factory, t700Factory: T700Collector.Factory) extends InjectedActorSupport {
 
@@ -83,6 +84,8 @@ class InstrumentTypeOp @Inject()
   val MQTT_CLIENT2 = "mqtt_client2"
 
   val THETA = "theta"
+  val THERMAL43i = "thermal43i"
+
   val map = Map(
     InstrumentType(ADAM4017, "Adam 4017", List(serial), adam4017Drv, adam4017Factory, true).infoPair,
     InstrumentType(ADAM4068, "Adam 4068", List(serial), Adam4068, adam4068Factory, true).infoPair,
@@ -103,7 +106,8 @@ class InstrumentTypeOp @Inject()
     InstrumentType(T400, "TAPI T400", List(tcp), T400Collector, t400Factory).infoPair,
     InstrumentType(T700, "TAPI T700", List(tcp), T700Collector, t700Factory).infoPair,
     InstrumentType(VEREWA_F701, "Verewa F701-20", List(serial), VerewaF701Collector, verewaF701Factory).infoPair,
-    InstrumentType(THETA, "THETA", List(serial), ThetaCollector, thetaFactory).infoPair
+    InstrumentType(THETA, "THETA", List(serial), ThetaCollector, thetaFactory).infoPair,
+    InstrumentType(THERMAL43i, "Thermal 43i", List(tcp), Thermal43i, thermal43iFactory).infoPair
   )
 
   val DoInstruments = Seq(ADAM6017, ADAM6066, MOXAE1212)
