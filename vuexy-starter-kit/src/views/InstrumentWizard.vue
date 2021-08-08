@@ -299,7 +299,6 @@ export default {
   },
   methods: {
     tapiSummary() {
-      
       let desc = '';
       const param = JSON.parse(this.form.param);
       desc += 'slave ID:' + param.slaveID + '\n';
@@ -330,7 +329,6 @@ export default {
       for (const instType of res.data) {
         this.instTypeMap.set(instType.id, instType);
       }
-      console.log(this.instTypeMap);
     },
     getProtocolOptions() {
       if (this.form.instType && this.instTypeMap.get(this.form.instType)) {

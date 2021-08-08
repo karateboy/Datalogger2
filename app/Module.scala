@@ -1,5 +1,5 @@
 import com.google.inject.AbstractModule
-import models.{Adam4017Collector, Adam4068Collector, Adam6017Collector, Adam6066Collector, Baseline9000Collector, DataCollectManager, GpsCollector, Horiba370Collector, MongoDB, MonitorTypeOp, MoxaE1212Collector, MoxaE1240Collector, MqttCollector, MqttCollector2, T100Collector, T200Collector, T201Collector, T300Collector, T360Collector, T400Collector, T700Collector, Thermal43i, Thermal43iCollector, ThetaCollector, VerewaF701Collector}
+import models.{Adam4017Collector, Adam4068Collector, Adam6017Collector, Adam6066Collector, Baseline9000Collector, DataCollectManager, GpsCollector, Horiba370Collector, MongoDB, MonitorTypeOp, MoxaE1212Collector, MoxaE1240Collector, MqttCollector, MqttCollector2, T100Collector, T200Collector, T201Collector, T300Collector, T360Collector, T400Collector, T700Collector, TcpModbusCollector, TcpModbusDrv, Thermal43i, Thermal43iCollector, ThetaCollector, VerewaF701Collector}
 import play.api._
 import play.api.libs.concurrent.AkkaGuiceSupport
 /**
@@ -39,6 +39,7 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bindActorFactory[T700Collector, T700Collector.Factory]
     bindActorFactory[VerewaF701Collector, VerewaF701Collector.Factory]
     bindActorFactory[ThetaCollector, ThetaCollector.Factory]
+    bindActorFactory[TcpModbusCollector, TcpModbusDrv.Factory]
     bindActorFactory[Thermal43iCollector, Thermal43i.Factory]
     //bind(classOf[ForwardManager])
     // Use the system clock as the default implementation of Clock

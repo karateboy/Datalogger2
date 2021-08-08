@@ -1,16 +1,19 @@
 package models
 
 import akka.actor._
+import com.google.inject.assistedinject.Assisted
+import com.serotonin.modbus4j.locator.BaseLocator
 import models.ModelHelper._
 import play.api._
 
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-abstract class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
+class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
                                             alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
                                             calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
-                                           (instId: String, modelReg: TcpModelReg, deviceConfig: DeviceConfig, host:String) extends Actor {
+                                  (@Assisted("instId") instId: String, @Assisted modelReg: TcpModelReg,
+                                   @Assisted deviceConfig: DeviceConfig, @Assisted("host") host:String) extends Actor {
   var timerOpt: Option[Cancellable] = None
   import TapiTxxCollector._
   import com.serotonin.modbus4j._
@@ -465,54 +468,67 @@ abstract class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorS
   }
 
   def resetToNormal {
-    deviceConfig.calibrateZeoDO map {
-      doBit =>
-        context.parent ! WriteDO(doBit, false)
-    }
+    try {
+      deviceConfig.calibrateZeoDO map {
+        doBit =>
+          context.parent ! WriteDO(doBit, false)
+      }
 
-    deviceConfig.calibrateSpanSeq map {
-      seq =>
-        // FIXME
-        Logger.info("not implement yet..")
+      deviceConfig.calibrateSpanSeq map {
+        seq =>
+      }
+
+      if (deviceConfig.skipInternalVault != Some(true)) {
+        masterOpt.get.setValue(BaseLocator.coilStatus(
+          deviceConfig.slaveID, modelReg.calibrationReg.zeroAddress), false)
+        masterOpt.get.setValue(BaseLocator.coilStatus(
+          deviceConfig.slaveID, modelReg.calibrationReg.spanAddress), false)
+      }
+    } catch {
+      case ex: Exception =>
+        ModelHelper.logException(ex)
     }
   }
 
   def triggerZeroCalibration(v: Boolean) {
-    deviceConfig.calibrateZeoDO map {
-      doBit =>
-        context.parent ! WriteDO(doBit, v)
-    }
+    try {
+      deviceConfig.calibrateZeoDO map {
+        doBit =>
+          context.parent ! WriteDO(doBit, v)
+      }
 
-    deviceConfig.calibrateZeoSeq map {
-      seq =>
-        // FIXME
-          Logger.info("zero calibrate not defined")
-        /*
-        if (v)
-          context.parent ! ExecuteSeq(seq, v)
-        else
-          context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+      deviceConfig.calibrateZeoSeq map {
+        seq =>
+      }
 
-         */
+      if (deviceConfig.skipInternalVault != Some(true)) {
+        val locator = BaseLocator.coilStatus(deviceConfig.slaveID, modelReg.calibrationReg.zeroAddress)
+        masterOpt.get.setValue(locator, v)
+      }
+    } catch {
+      case ex: Exception =>
+        ModelHelper.logException(ex)
     }
   }
 
   def triggerSpanCalibration(v: Boolean) {
-    deviceConfig.calibrateSpanDO map {
-      doBit =>
-        context.parent ! WriteDO(doBit, v)
-    }
+    try {
+      deviceConfig.calibrateSpanDO map {
+        doBit =>
+          context.parent ! WriteDO(doBit, v)
+      }
 
-    deviceConfig.calibrateSpanSeq map {
-      seq =>
-        Logger.info("span calibrate not defined")
-        /*
-        if (v)
-          context.parent ! ExecuteSeq(seq, v)
-        else
-          context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+      deviceConfig.calibrateSpanSeq map {
+        seq =>
+      }
 
-         */
+      if (deviceConfig.skipInternalVault != Some(true)) {
+        val locator = BaseLocator.coilStatus(deviceConfig.slaveID, modelReg.calibrationReg.spanAddress)
+        masterOpt.get.setValue(locator, v)
+      }
+    } catch {
+      case ex: Exception =>
+        ModelHelper.logException(ex)
     }
   }
 
@@ -536,8 +552,6 @@ abstract class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorS
         ModelHelper.logException(ex)
     }
   }
-
-  def reportData(regValue: ModelRegValue): Option[ReportData]
 
   var nextLoggingStatusTime = {
     def getNextTime(period: Int) = {
@@ -626,6 +640,23 @@ abstract class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorS
       None
     } else
       Some(dataReg.get._2)
+  }
+
+  def reportData(regValue: ModelRegValue) = {
+    val optValues: Seq[Option[(String, (InstrumentStatusType, Float))]] = {
+      for (dataReg <- modelReg.dataRegs) yield {
+        for (idx <- findDataRegIdx(regValue)(dataReg.address)) yield
+          (dataReg.monitorType, regValue.inputRegs(idx))
+      }
+    }
+
+    val monitorTypeData = optValues.flatten.map(
+      t=> MonitorTypeData(t._1, t._2._2.toDouble, collectorState))
+
+    if(monitorTypeData.isEmpty)
+      None
+    else
+      Some(ReportData(monitorTypeData.toList))
   }
 
   override def postStop(): Unit = {

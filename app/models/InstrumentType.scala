@@ -26,8 +26,6 @@ trait DriverOps {
 
   def getCalibrationTime(param: String): Option[LocalTime]
 
-  // @Deprecated def start(id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext): ActorRef
-
   def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor
 }
 
@@ -49,7 +47,8 @@ class InstrumentTypeOp @Inject()
  gpsFactory: GpsCollector.Factory,
  thermal43iFactory: Thermal43i.Factory,
  t100Factory: T100Collector.Factory, t200Factory: T200Collector.Factory, t201Factory: T201Collector.Factory,
- t300Factory: T300Collector.Factory, t360Factory: T360Collector.Factory, t400Factory: T400Collector.Factory, t700Factory: T700Collector.Factory) extends InjectedActorSupport {
+ t300Factory: T300Collector.Factory, t360Factory: T360Collector.Factory, t400Factory: T400Collector.Factory,
+ t700Factory: T700Collector.Factory, tcpModbusFactory: TcpModbusDrv.Factory, environment: play.api.Environment) extends InjectedActorSupport {
 
   import Protocol._
 
@@ -85,6 +84,8 @@ class InstrumentTypeOp @Inject()
 
   val THETA = "theta"
   val THERMAL43i = "thermal43i"
+
+
 
   val map = Map(
     InstrumentType(ADAM4017, "Adam 4017", List(serial), adam4017Drv, adam4017Factory, true).infoPair,

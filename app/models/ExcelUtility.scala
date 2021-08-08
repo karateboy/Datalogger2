@@ -36,29 +36,6 @@ class ExcelUtility @Inject()
     new File(reportFilePath.toAbsolutePath().toString())
   }
   
-  def createStyle(mt: String)(implicit wb: XSSFWorkbook) = {
-    val prec = monitorTypeOp.map(mt).prec
-    val format_str = "0." + "0" * prec
-    val style = wb.createCellStyle();
-    val format = wb.createDataFormat();
-        // Create a new font and alter it.
-    val font = wb.createFont();
-    font.setFontHeightInPoints(10);
-    font.setFontName("標楷體");
-
-    style.setFont(font)
-    style.setDataFormat(format.getFormat(format_str))
-    style.setBorderBottom(CellStyle.BORDER_THIN);
-    style.setBottomBorderColor(IndexedColors.BLACK.getIndex());
-    style.setBorderLeft(CellStyle.BORDER_THIN);
-    style.setLeftBorderColor(IndexedColors.BLACK.getIndex());
-    style.setBorderRight(CellStyle.BORDER_THIN);
-    style.setRightBorderColor(IndexedColors.BLACK.getIndex());
-    style.setBorderTop(CellStyle.BORDER_THIN);
-    style.setTopBorderColor(IndexedColors.BLACK.getIndex());
-    style
-  }
-    
   import controllers.Highchart._
   def exportChartData(chart: HighchartData, monitorTypes: Array[String], showSec:Boolean): File = {
     val precArray = monitorTypes.map { mt => monitorTypeOp.map(mt).prec }

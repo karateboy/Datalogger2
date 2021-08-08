@@ -167,6 +167,7 @@ export default Vue.extend({
   },
   data() {
     let paramObj = {
+      model: this.instType,
       slaveID: 1,
       calibrationTime: null,
       monitorTypes: null,
@@ -181,8 +182,10 @@ export default Vue.extend({
       calibrateSpanDO: null,
       skipInternalVault: null,
     };
-    if (this.paramStr !== '') paramObj = JSON.parse(this.paramStr);
+    console.log(this.paramStr);
+    if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr);
 
+    console.log(paramObj);
     return {
       paramObj,
     };
@@ -204,6 +207,7 @@ export default Vue.extend({
     },
     onChange(evt) {
       this.justify();
+      console.log(JSON.stringify(this.paramObj));
       this.$emit('param-changed', JSON.stringify(this.paramObj));
     },
   },

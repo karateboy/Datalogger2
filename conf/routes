@@ -110,6 +110,7 @@ GET      /AlertRecord/:start/end                                                
 	
 GET      /EvtOptHigh                                                              controllers.HomeController.testEvtOptHigh
 GET      /TestSpray                                                               controllers.HomeController.testSpray
+GET      /TestModbus                                                              controllers.HomeController.testGeneralTcpModbus
 #GET		/WindRose				controllers.Query.windRose
 #GET		/MonitorTypeRose		controllers.Query.monitorTypeRose
 #GET		/WindRoseReport/:monitor/:monitorType/:nWays/:start/:end	controllers.Query.windRoseReport(monitor, monitorType, nWays:Int, start, end)

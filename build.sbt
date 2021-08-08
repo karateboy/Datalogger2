@@ -22,6 +22,13 @@ libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "2.26.0"
 // https://mvnrepository.com/artifact/org.eclipse.paho/org.eclipse.paho.client.mqttv3
 libraryDependencies += "org.eclipse.paho" % "org.eclipse.paho.client.mqttv3" % "1.2.5"
 
+// https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml
+libraryDependencies += "org.apache.poi" % "poi-ooxml" % "5.0.0"
+
+// https://mvnrepository.com/artifact/net.jockx/test-jssc
+libraryDependencies += "net.jockx" % "test-jssc" % "2.9.3"
+
+
 routesGenerator := StaticRoutesGenerator
 
 mappings in Universal ++=
