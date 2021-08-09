@@ -2,7 +2,7 @@ package models
 
 import com.google.inject.assistedinject.Assisted
 
-object T200U extends TcpModbusDrv("T500U") {
+object T200U extends TcpModbusDrv("T200U") {
   lazy val modelReg: TcpModelReg = readModelSetting
 
   val instType = "t200u"
