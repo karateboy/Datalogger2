@@ -255,6 +255,8 @@ export default {
         't400',
         't700',
         'thermal43i',
+        't500u',
+        't200u',
       ];
       for (const t of tapi) {
         if (this.form.instType === t) return true;

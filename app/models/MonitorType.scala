@@ -74,6 +74,7 @@ object MonitorType {
   val NOx = "NOx"
   val NO2 = "NO2"
   val NO = "NO"
+  val NOX = "NOX"
   val CO = "CO"
   val CO2 = "CO2"
   val CH4 = "CH4"
@@ -135,6 +136,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     rangeType(NOx, "氮氧化物", "ppb", 1),
     rangeType(NO2, "二氧化氮", "ppb", 1),
     rangeType(NO, "一氧化氮", "ppb", 1),
+    rangeType(NOX, "NOX", "ppb", 1),
     rangeType(CO, "一氧化碳", "ppm", 1),
     rangeType(CO2, "二氧化碳", "ppm", 1),
     rangeType(O3, "臭氧", "ppb", 1),

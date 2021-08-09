@@ -146,7 +146,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
         InstrumentTypeInfo(t.id, t.desp,
           t.protocol.map { p => ProtocolInfo(p, Protocol.map(p)) })
       }
-    val sorted = iTypes.toList.sortWith((a, b) => a.id < b.id)
+    val sorted = iTypes.toList.sortWith((a, b) => a.desp < b.desp)
     Ok(Json.toJson(sorted.toList))
   }
 
