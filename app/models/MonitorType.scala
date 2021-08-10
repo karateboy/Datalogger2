@@ -102,6 +102,8 @@ object MonitorType {
   val H2S = "H2S"
   val H2 = "H2"
   val NH3 = "NH3"
+  val NOY_NO = "NOY-NO"
+  val NOY = "NOY"
   var rangeOrder = 0
   var signalOrder = 1000
 
@@ -136,7 +138,8 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     rangeType(NOx, "氮氧化物", "ppb", 1),
     rangeType(NO2, "二氧化氮", "ppb", 1),
     rangeType(NO, "一氧化氮", "ppb", 1),
-    rangeType(NOX, "NOX", "ppb", 1),
+    rangeType(NOY, "NOY", "ppb", 1),
+    rangeType(NOY_NO, "NOY-NO", "ppb", 1),
     rangeType(CO, "一氧化碳", "ppm", 1),
     rangeType(CO2, "二氧化碳", "ppm", 1),
     rangeType(O3, "臭氧", "ppb", 1),
