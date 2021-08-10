@@ -75,7 +75,8 @@ export default Vue.extend({
   computed: {
     ...mapState(['isLoading', 'loadingMessage']),
     layout() {
-      if (this.$route.meta.layout === 'full') return 'layout-full';
+      let meta = this.$route.meta as any;
+      if (meta.layout === 'full') return 'layout-full';
       return `layout-${this.contentLayoutType}`;
     },
     contentLayoutType() {

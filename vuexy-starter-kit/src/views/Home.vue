@@ -1,16 +1,16 @@
 <template>
   <b-row class="match-height">
     <b-col lg="9" md="12">
-      <b-row class="match-height">
+      <b-card title="即時監測資訊">
+        <div id="realtimeChart"></div>
+      </b-card>
+      <b-row>
         <b-col v-for="mt in userInfo.monitorTypeOfInterest" :key="mt">
           <b-card>
             <div :id="`history_${mt}`"></div>
           </b-card>
         </b-col>
       </b-row>
-      <b-card title="即時監測資訊">
-        <div id="realtimeChart"></div>
-      </b-card>
     </b-col>
     <b-col lg="3">
       <b-card>
@@ -26,7 +26,6 @@ import { mapActions, mapGetters, mapState } from 'vuex';
 import axios from 'axios';
 import { MonitorTypeStatus } from './types';
 import highcharts from 'highcharts';
-import { AxisTypeValue } from 'highcharts';
 import moment from 'moment';
 
 export default Vue.extend({
@@ -179,7 +178,7 @@ export default Vue.extend({
           },
 
           title: {
-            text: '測項即時曲線圖',
+            text: '',
           },
           xAxis: {
             type: 'datetime',
@@ -226,7 +225,7 @@ export default Vue.extend({
         alignTicks: false,
       };
 
-      ret.title!.text = moment(oneHourBefore).fromNow();
+      ret.title!.text = '分鐘趨勢圖';
 
       ret.colors = [
         '#7CB5EC',

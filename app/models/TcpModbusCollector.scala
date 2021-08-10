@@ -36,7 +36,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
   val ModeKey = "Mode"
   val WarnKey = "Warn"
 
-  def probeInstrumentStatusType = {
+  def probeInstrumentStatusType: Seq[InstrumentStatusType] = {
     Logger.info("Probing supported modbus registers...")
     import com.serotonin.modbus4j.code.DataType
     import com.serotonin.modbus4j.locator.BaseLocator
@@ -237,11 +237,16 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
             connected = true
 
             if (instrumentStatusTypesOpt.isEmpty) {
-              instrumentStatusTypesOpt = Some(probeInstrumentStatusType.toList)
-              instrumentOp.updateStatusType(instId, instrumentStatusTypesOpt.get)
+              val statusTypeList = probeInstrumentStatusType.toList
+              if(modelReg.dataRegs.forall(reg=> statusTypeList.exists(statusType=> statusType.addr == reg.address))){
+                // Data register must included in the list
+                instrumentStatusTypesOpt = Some(probeInstrumentStatusType.toList)
+                instrumentOp.updateStatusType(instId, instrumentStatusTypesOpt.get)
+              }else
+                throw new Exception("Probe register failed. Data register is not in there...");
             }
             import scala.concurrent.duration._
-            timerOpt = Some(system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadRegister))
+            timerOpt = Some(system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)

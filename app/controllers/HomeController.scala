@@ -619,9 +619,5 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       Ok(Json.obj("ok" -> ret.getDeletedCount))
   }
 
-  def testGeneralTcpModbus = Security.Authenticated {
-    TcpModbusDrv.getInstrumentTypeList(environment)
-    Ok("")
-  }
   case class EditData(id: String, data: String)
 }

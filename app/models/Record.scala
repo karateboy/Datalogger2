@@ -98,41 +98,6 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
 
   init
 
-  def upgrade2() = {
-    Logger.info("upgrade record!")
-    import org.mongodb.scala.model._
-    val col = mongoDB.database.getCollection(HourCollection)
-    val recordF = col.find(Filters.exists("_id")).toFuture()
-    for (records <- recordF) {
-      var i = 1
-      for (doc <- records) {
-        val _id = doc("_id").asDocument()
-        val time = doc("time").asDateTime()
-        val monitor = doc("monitor").asString().getValue
-        val mtDataList =
-          for {
-            mt <- monitorTypeOp.allMtvList
-            mtBFName = monitorTypeOp.BFName(mt)
-            mtDocOpt = doc.get(mtBFName) if mtDocOpt.isDefined && mtDocOpt.get.isDocument()
-            mtDoc = mtDocOpt.get.asDocument()
-            v = mtDoc.get("v") if v.isDouble()
-            s = mtDoc.get("s") if s.isString()
-          } yield {
-            Document("mtName" -> mt, "value" -> v.asDouble(), "status" -> s.asString())
-          }
-
-        val newDoc = Document("_id" -> _id,
-          "time" -> time,
-          "monitor" -> monitor, "mtDataList" -> mtDataList)
-        val f = col.replaceOne(Filters.equal("_id", _id), newDoc).toFuture()
-        waitReadyResult(f)
-
-        Logger.info(s"$i/${records.length}")
-        i += 1
-      }
-    }
-  }
-
   def toRecordList(dt: DateTime, dataList: List[(String, (Double, String))], monitor: String = Monitor.SELF_ID) = {
     val mtDataList = dataList map { t => MtRecord(t._1, t._2._1, t._2._2) }
     RecordList(dt, mtDataList, monitor, RecordListID(dt, monitor))

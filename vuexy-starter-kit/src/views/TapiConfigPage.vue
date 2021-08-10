@@ -182,13 +182,15 @@ export default Vue.extend({
       calibrateSpanDO: null,
       skipInternalVault: null,
     };
-    console.log(this.paramStr);
+
     if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr);
 
-    console.log(paramObj);
     return {
       paramObj,
     };
+  },
+  async mounted() {
+    this.onChange();
   },
   methods: {
     justify() {
@@ -207,7 +209,6 @@ export default Vue.extend({
     },
     onChange(evt) {
       this.justify();
-      console.log(JSON.stringify(this.paramObj));
       this.$emit('param-changed', JSON.stringify(this.paramObj));
     },
   },

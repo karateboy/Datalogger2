@@ -4,7 +4,7 @@
 
 # Home page
 GET      /                                                                     controllers.Assets.at(path="/public/dist", file="index.html")
-
+GET      /dist/                                                                controllers.Assets.at(path="/public/dist", file="index.html")
 # Map static resources from the /public folder to the /assets URL path
 GET      /static/*file                                                         controllers.Assets.versioned(path="/public/static", file: Asset)
 GET      /html/*file                                                           controllers.Assets.at(path="/public/html", file)
@@ -110,7 +110,7 @@ GET      /AlertRecord/:start/end                                                
 	
 GET      /EvtOptHigh                                                              controllers.HomeController.testEvtOptHigh
 GET      /TestSpray                                                               controllers.HomeController.testSpray
-GET      /TestModbus                                                              controllers.HomeController.testGeneralTcpModbus
+
 #GET		/WindRose				controllers.Query.windRose
 #GET		/MonitorTypeRose		controllers.Query.monitorTypeRose
 #GET		/WindRoseReport/:monitor/:monitorType/:nWays/:start/:end	controllers.Query.windRoseReport(monitor, monitorType, nWays:Int, start, end)

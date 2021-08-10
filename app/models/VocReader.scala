@@ -1,15 +1,10 @@
 package models
-import play.api._
 import akka.actor._
-import play.api.Play.current
-import play.api.libs.concurrent.Akka
 import com.github.nscala_time.time.Imports._
-import play.api.Play.current
-import ModelHelper._
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
-import scala.concurrent.ExecutionContext.Implicits.global
+import play.api._
+
 import javax.inject._
+import scala.concurrent.ExecutionContext.Implicits.global
 @Singleton
 class VocReaderOp @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, system: ActorSystem) {
   case object ReadFile
@@ -30,11 +25,11 @@ class VocReaderOp @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, sy
       manager ! ReparseDir(year, month)
     }
   }
-  import java.nio.file.{ Paths, Files, StandardOpenOption }
-  import java.nio.charset.{ StandardCharsets }
+  import java.io.File
+  import java.nio.charset.StandardCharsets
+  import java.nio.file.{Files, Paths, StandardOpenOption}
   import scala.collection.JavaConverters._
   import scala.concurrent._
-  import java.io.File
 
   val parsedFileName = "parsed.list"
   var parsedFileList =
@@ -70,7 +65,6 @@ class VocReaderOp @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, sy
   }
 
   def parser(file: File, dateTime: DateTime): Future[Any] = {
-    import scala.io.Source
     import com.github.tototoshi.csv._
 
     val reader = CSVReader.open(file)

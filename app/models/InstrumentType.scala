@@ -40,17 +40,14 @@ class InstrumentTypeOp @Inject()
  verewaF701Factory: VerewaF701Collector.Factory,
  thetaFactory: ThetaCollector.Factory,
  moxaE1212Drv: MoxaE1212, moxaE1212Factory: MoxaE1212Collector.Factory,
- mqttFactory: MqttCollector.Factory,
  mqtt2Factory: MqttCollector2.Factory,
  baseline9000Factory: Baseline9000Collector.Factory,
  horiba370Factory: Horiba370Collector.Factory,
  gpsFactory: GpsCollector.Factory,
- thermal43iFactory: Thermal43i.Factory,
  t100Factory: T100Collector.Factory, t200Factory: T200Collector.Factory, t201Factory: T201Collector.Factory,
  t300Factory: T300Collector.Factory, t360Factory: T360Collector.Factory, t400Factory: T400Collector.Factory,
- t700Factory: T700Collector.Factory, tcpModbusFactory: TcpModbusDrv.Factory, environment: play.api.Environment,
- t500UFactory: T500U.Factory,
- t200UFactory: T200U.Factory) extends InjectedActorSupport {
+ t700Factory: T700Collector.Factory, environment: play.api.Environment,
+ tcpModbusFactory: TcpModbusDrv2.Factory, monitorTypeOp: MonitorTypeOp) extends InjectedActorSupport {
 
   import Protocol._
 
@@ -87,7 +84,10 @@ class InstrumentTypeOp @Inject()
   val THETA = "theta"
   val THERMAL43i = "thermal43i"
 
-  val map = Map(
+  val tcpModbusDeviceTypeMap: Map[String, InstrumentType] =
+    TcpModbusDrv2.getInstrumentTypeList(environment, tcpModbusFactory, monitorTypeOp).map(_.infoPair).toMap
+
+  val otherMap = Map(
     InstrumentType(ADAM4017, "Adam 4017", List(serial), adam4017Drv, adam4017Factory, true).infoPair,
     InstrumentType(ADAM4068, "Adam 4068", List(serial), Adam4068, adam4068Factory, true).infoPair,
     InstrumentType(ADAM6017, "Adam 6017", List(tcp), adam6017Drv, adam6017Factory, true).infoPair,
@@ -97,7 +97,6 @@ class InstrumentTypeOp @Inject()
     InstrumentType(HORIBA370, "Horiba APXX-370", List(tcp), Horiba370Collector, horiba370Factory).infoPair,
     InstrumentType(MOXAE1240, "MOXA E1240", List(tcp), moxaE1240Drv, moxaE1240Factory).infoPair,
     InstrumentType(MOXAE1212, "MOXA E1212", List(tcp), moxaE1212Drv, moxaE1212Factory).infoPair,
-    InstrumentType(MQTT_CLIENT, "MQTT Client", List(tcp), MqttCollector, mqttFactory).infoPair,
     InstrumentType(MQTT_CLIENT2, "MQTT Client2", List(tcp), MqttCollector2, mqtt2Factory).infoPair,
     InstrumentType(T100, "TAPI T100", List(tcp), T100Collector, t100Factory).infoPair,
     InstrumentType(T200, "TAPI T200", List(tcp), T200Collector, t200Factory).infoPair,
@@ -107,11 +106,15 @@ class InstrumentTypeOp @Inject()
     InstrumentType(T400, "TAPI T400", List(tcp), T400Collector, t400Factory).infoPair,
     InstrumentType(T700, "TAPI T700", List(tcp), T700Collector, t700Factory).infoPair,
     InstrumentType(VEREWA_F701, "Verewa F701-20", List(serial), VerewaF701Collector, verewaF701Factory).infoPair,
-    InstrumentType(THETA, "THETA", List(serial), ThetaCollector, thetaFactory).infoPair,
-    InstrumentType(THERMAL43i, "Thermal 43i", List(tcp), Thermal43i, thermal43iFactory).infoPair,
-    InstrumentType(T500U.instType, "TAPI T500U", List(tcp), T500U, t500UFactory).infoPair,
-    InstrumentType(T200U.instType, "TAPI T200U", List(tcp), T200U, t200UFactory).infoPair
-  )
+    InstrumentType(THETA, "THETA", List(serial), ThetaCollector, thetaFactory).infoPair)
+
+  val map: Map[String, InstrumentType] = tcpModbusDeviceTypeMap ++ otherMap
+
+
+    // InstrumentType(THERMAL43i, "Thermal 43i", List(tcp), Thermal43i, thermal43iFactory).infoPair,
+    // InstrumentType(T500U.instType, "TAPI T500U", List(tcp), T500U, t500UFactory).infoPair,
+    // InstrumentType(T200U.instType, "TAPI T200U", List(tcp), T200U, t200UFactory).infoPair
+
 
   val DoInstruments = Seq(ADAM6017, ADAM6066, MOXAE1212)
   var count = 0

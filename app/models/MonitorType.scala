@@ -134,44 +134,39 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
   val collection = mongoDB.database.getCollection[MonitorType](colName).withCodecRegistry(codecRegistry)
   val MonitorTypeVer = 2
   val defaultMonitorTypes = List(
-    rangeType(SO2, "二氧化硫", "ppb", 1),
-    rangeType(NOx, "氮氧化物", "ppb", 1),
-    rangeType(NO2, "二氧化氮", "ppb", 1),
-    rangeType(NO, "一氧化氮", "ppb", 1),
-    rangeType(NOY, "NOY", "ppb", 1),
-    rangeType(NOY_NO, "NOY-NO", "ppb", 1),
-    rangeType(CO, "一氧化碳", "ppm", 1),
-    rangeType(CO2, "二氧化碳", "ppm", 1),
-    rangeType(O3, "臭氧", "ppb", 1),
-    rangeType(THC, "總碳氫化合物", "ppm", 1),
-    rangeType(TS, "總硫", "ppb", 1),
-    rangeType(CH4, "甲烷", "ppm", 1),
-    rangeType("NMHC", "非甲烷碳氫化合物", "ppm", 1),
-    rangeType(NH3, "氨", "ppb", 1),
-    rangeType("TSP", "TSP", "μg/m3", 1),
-    rangeType(PM10, "PM10懸浮微粒", "μg/m3", 1),
-    rangeType(PM25, "PM2.5細懸浮微粒", "μg/m3", 1),
-    rangeType(WIN_SPEED, "風速", "m/sec", 1),
-    rangeType(WIN_DIRECTION, "風向", "degrees", 1),
-    rangeType(TEMP, "溫度", "℃", 1),
-    rangeType(HUMID, "濕度", "%", 1),
-    rangeType(PRESS, "氣壓", "hPa", 1),
-    rangeType(RAIN, "雨量", "mm/h", 1),
+    rangeType(SO2, "二氧化硫", "ppb", 2),
+    rangeType(NOx, "氮氧化物", "ppb", 2),
+    rangeType(NO2, "二氧化氮", "ppb", 2),
+    rangeType(NO, "一氧化氮", "ppb", 2),
+    rangeType(NOY, "NOY", "ppb", 2),
+    rangeType(NOY_NO, "NOY-NO", "ppb", 2),
+    rangeType(CO, "一氧化碳", "ppm", 2),
+    rangeType(CO2, "二氧化碳", "ppm", 2),
+    rangeType(O3, "臭氧", "ppb", 2),
+    rangeType(THC, "總碳氫化合物", "ppm", 2),
+    rangeType(TS, "總硫", "ppb", 2),
+    rangeType(CH4, "甲烷", "ppm", 2),
+    rangeType("NMHC", "非甲烷碳氫化合物", "ppm", 2),
+    rangeType(NH3, "氨", "ppb", 2),
+    rangeType("TSP", "TSP", "μg/m3", 2),
+    rangeType(PM10, "PM10懸浮微粒", "μg/m3", 2),
+    rangeType(PM25, "PM2.5細懸浮微粒", "μg/m3", 2),
+    rangeType(WIN_SPEED, "風速", "m/sec", 2),
+    rangeType(WIN_DIRECTION, "風向", "degrees", 2),
+    rangeType(TEMP, "溫度", "℃", 2),
+    rangeType(HUMID, "濕度", "%", 2),
+    rangeType(PRESS, "氣壓", "hPa", 2),
+    rangeType(RAIN, "雨量", "mm/h", 2),
     rangeType(LAT, "緯度", "度", 4),
     rangeType(LNG, "經度", "度", 4),
-    rangeType("HCl", "氯化氫", "ppm", 1),
-    rangeType("H2O", "水", "ppm", 1),
     rangeType("RT", "室內溫度", "℃", 1),
-    rangeType("OPA", "不透光率 ", "%", 1),
-    rangeType("HCl", "氯化氫 ", "ppm", 1),
     rangeType("O2", "氧氣 ", "%", 1),
-    rangeType(FLOW, "流率 ", "Nm3/h", 1),
-    rangeType(SOLAR, "日照", "W/m2", 1),
-    rangeType(CH2O, "CH2O", "ppb", 1),
-    rangeType(TVOC, "TVOC", "ppb", 1),
-    rangeType(NOISE, "NOISE", "dB", 1),
-    rangeType(H2S, "H2S", "ppb", 1),
-    rangeType(H2, "H2", "ppb", 1),
+    rangeType(SOLAR, "日照", "W/m2", 2),
+    rangeType(CH2O, "CH2O", "ppb", 2),
+    rangeType(TVOC, "TVOC", "ppb", 2),
+    rangeType(NOISE, "NOISE", "dB", 2),
+    rangeType(H2S, "H2S", "ppb", 2),
+    rangeType(H2, "H2", "ppb", 2),
     /////////////////////////////////////////////////////
     signalType(DOOR, "門禁"),
     signalType(SMOKE, "煙霧"),
@@ -246,13 +241,14 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     mtCase._id.replace(".", "_")
   }
 
-  def toDocument(mt: MonitorType) = {
-    val json = Json.toJson(mt)
-    Document(json.toString())
-  }
-
   def exist(mt: MonitorType) = map.contains(mt._id)
 
+  def ensureMonitorType(id:String) = {
+    if(!map.contains(id)){
+      val mt = rangeType(id, id, "??", 2)
+      newMonitorType(mt)
+    }
+  }
   def getRawMonitorType(mt: String) =
     (rawMonitorTypeID(mt.toString()))
 

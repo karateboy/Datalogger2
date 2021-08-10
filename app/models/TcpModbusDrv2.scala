@@ -1,28 +1,51 @@
 package models
 
 import akka.actor.Actor
+import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
 import com.typesafe.config.ConfigFactory
 import models.Protocol.ProtocolParam
-import models.TcpModbusDrv.{Factory, readModelSetting, validateParam}
 import play.api._
 import play.api.libs.json._
 
+import java.io.File
+
+case class DeviceConfig(slaveID: Int, calibrationTime: Option[LocalTime], monitorTypes: Option[List[String]],
+                        raiseTime: Option[Int], downTime: Option[Int], holdTime: Option[Int],
+                        calibrateZeoSeq: Option[Int], calibrateSpanSeq: Option[Int],
+                        calibratorPurgeSeq: Option[Int], calibratorPurgeTime: Option[Int],
+                        calibrateZeoDO: Option[Int], calibrateSpanDO: Option[Int], skipInternalVault: Option[Boolean])
+
+case class DataReg(monitorType: String, address: Int)
+
+case class CalibrationReg(zeroAddress: Int, spanAddress: Int)
+
+case class TcpModelReg(dataRegs: List[DataReg], calibrationReg: CalibrationReg,
+                       inputRegs: List[InputReg], holdingRegs: List[HoldingReg],
+                       modeRegs: List[DiscreteInputReg], warnRegs: List[DiscreteInputReg], coilRegs: List[CoilReg])
+case class TcpModbusDeviceModel(id: String, description: String, tcpModelReg: TcpModelReg)
+
 object TcpModbusDrv2 {
-  trait Factory {
-    def apply(@Assisted("instId") instId: String, modelReg: TcpModelReg, config: DeviceConfig, @Assisted("host") host: String): Actor
+  val deviceTypeHead = "TcpModbus."
+  def getInstrumentTypeList(environment: play.api.Environment, factory: TcpModbusDrv2.Factory, monitorTypeOp: MonitorTypeOp) = {
+    val docRoot = environment.rootPath + "/conf/TcpModbus/"
+    val files = new File(docRoot).listFiles()
+    Logger.info(s"${files.size}")
+    for (file <- files) yield {
+      Logger.info(file.getName)
+      val device: TcpModbusDeviceModel = getDeviceModel(file)
+      device.tcpModelReg.dataRegs.foreach(reg=>monitorTypeOp.ensureMonitorType(reg.monitorType))
+      InstrumentType(s"${deviceTypeHead}${device.id}", device.description, List(Protocol.tcp),
+        new TcpModbusDrv2(device.tcpModelReg), factory)
+    }
   }
-}
 
-class TcpModbusDrv2(model: String) extends DriverOps {
-  implicit val cfgReads = Json.reads[DeviceConfig]
-  implicit val cfgWrites = Json.writes[DeviceConfig]
-  val tcpModelReg = readModelSetting
-
-  def readModelSetting = {
-    val driverConfig = ConfigFactory.load(model)
+  def getDeviceModel(modelFile: File): TcpModbusDeviceModel = {
+    val driverConfig = ConfigFactory.parseFile(modelFile)
     import java.util.ArrayList
 
+    val id = driverConfig.getString("ID")
+    val description = driverConfig.getString("description")
     val inputRegList = {
       val inputRegAnyList = driverConfig.getAnyRefList(s"Input.reg")
       for {
@@ -95,8 +118,18 @@ class TcpModbusDrv2(model: String) extends DriverOps {
         addressList.get(1).asInstanceOf[Int])
     }
 
-    TcpModelReg(dataRegList.toList, calibrationReg, inputRegList.toList, holdingRegList.toList, modeRegList.toList, warnRegList.toList, coilRegList.toList)
+    TcpModbusDeviceModel(id, description,
+    TcpModelReg(dataRegList.toList, calibrationReg, inputRegList.toList, holdingRegList.toList, modeRegList.toList, warnRegList.toList, coilRegList.toList))
   }
+
+  trait Factory {
+    def apply(@Assisted("instId") instId: String, modelReg: TcpModelReg, config: DeviceConfig, @Assisted("host") host: String): Actor
+  }
+}
+
+class TcpModbusDrv2(tcpModelReg: TcpModelReg) extends DriverOps {
+  implicit val cfgReads = Json.reads[DeviceConfig]
+  implicit val cfgWrites = Json.writes[DeviceConfig]
 
   override def verifyParam(json: String) = {
     val ret = Json.parse(json).validate[DeviceConfig]
@@ -107,7 +140,7 @@ class TcpModbusDrv2(model: String) extends DriverOps {
       },
       param => {
         val mt = tcpModelReg.dataRegs.map(_.monitorType)
-        val newParam = DeviceConfig(param.model, param.slaveID, param.calibrationTime, Some(mt),
+        val newParam = DeviceConfig(param.slaveID, param.calibrationTime, Some(mt),
           param.raiseTime, param.downTime, param.holdTime,
           param.calibrateZeoSeq, param.calibrateSpanSeq,
           param.calibratorPurgeSeq, param.calibratorPurgeTime,
@@ -126,11 +159,6 @@ class TcpModbusDrv2(model: String) extends DriverOps {
       List.empty[String]
   }
 
-  override def getCalibrationTime(param: String) = {
-    val config = validateParam(param)
-    config.calibrationTime
-  }
-
   def validateParam(json: String): DeviceConfig = {
     val ret = Json.parse(json).validate[DeviceConfig]
     ret.fold(
@@ -141,11 +169,15 @@ class TcpModbusDrv2(model: String) extends DriverOps {
       param => param)
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
-    assert(f.isInstanceOf[Factory])
-    val f2 = f.asInstanceOf[Factory]
+  override def getCalibrationTime(param: String) = {
     val config = validateParam(param)
-    val tcpModelReg = readModelSetting
+    config.calibrationTime
+  }
+
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+    assert(f.isInstanceOf[TcpModbusDrv2.Factory])
+    val f2 = f.asInstanceOf[TcpModbusDrv2.Factory]
+    val config = validateParam(param)
     f2(id, tcpModelReg, config, protocol.host.get)
   }
 }

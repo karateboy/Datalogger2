@@ -179,25 +179,48 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import axios from 'axios';
+import Vue, { PropType } from 'vue';
 import { FormWizard, TabContent } from 'vue-form-wizard';
 import { ValidationObserver } from 'vee-validate';
 import vSelect from 'vue-select';
-import { required, email } from '@validations';
 import 'vue-form-wizard/dist/vue-form-wizard.min.css';
 import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
 import TapiConfigPage from './TapiConfigPage.vue';
 import Adam6017ConfigPage from './Adam6017ConfigPage.vue';
 import MqttConfigPage from './MqttConfigPage.vue';
-import Mqtt2ConfigPage from './Mqtt2ConfigPage';
+import Mqtt2ConfigPage from './Mqtt2ConfigPage.vue';
 import Adam6066ConfigPage from './Adam6066ConfigPage.vue';
 import ThetaConfigPage from './ThetaConfigPage.vue';
+interface ProtocolParam {
+  protocol: 'tcp' | 'serial';
+  host?: string;
+  comPort?: number;
+}
 
-export default {
+interface ProtocolInfo {
+  id: string;
+  desp: string;
+}
+
+interface InstrumentTypeInfo {
+  id: string;
+  desp: string;
+  protocolInfo: Array<ProtocolInfo>;
+}
+
+interface Instrument {
+  _id: string;
+  instType: string;
+  protocol: ProtocolParam;
+  param: string;
+  active: boolean;
+  state: string;
+}
+
+export default Vue.extend({
   components: {
-    FormWizard,
-    TabContent,
     vSelect,
     ValidationObserver,
     TapiConfigPage,
@@ -209,83 +232,85 @@ export default {
   },
   props: {
     isNew: {
-      type: Boolean,
+      type: Boolean as PropType<boolean>,
       default: true,
     },
     inst: {
-      type: Object,
-      default: () => {
-        return {};
+      type: Object as PropType<Instrument>,
+      default: (): Instrument => {
+        return {
+          _id: '',
+          instType: '',
+          protocol: {
+            protocol: 'tcp',
+            host: undefined,
+            comPort: undefined,
+          },
+          param: '{}',
+          active: true,
+          state: '010',
+        };
       },
     },
   },
   data() {
-    const emptyForm = {
+    const emptyForm: Instrument = {
       _id: '',
       instType: '',
       protocol: {
-        protocol: null,
-        host: null,
-        comPort: null,
+        protocol: 'tcp',
+        host: undefined,
+        comPort: undefined,
       },
       param: '{}',
       active: true,
       state: '010',
     };
 
+    let form: Instrument = this.isNew ? emptyForm : this.inst;
+
     return {
-      form: this.isNew ? emptyForm : this.inst,
+      form,
       instrumentTypes: [],
-      instTypeMap: new Map(),
+      instTypeMap: new Map<string, InstrumentTypeInfo>(),
     };
   },
   computed: {
-    hasDetailConfig() {
+    hasDetailConfig(): boolean {
       if (this.form.instType === 'gps') return false;
 
       return true;
     },
-    isTapiInstrument() {
-      const tapi = [
-        't100',
-        't200',
-        't201',
-        't300',
-        't360',
-        't400',
-        't700',
-        'thermal43i',
-        't500u',
-        't200u',
-      ];
+    isTapiInstrument(): boolean {
+      const tapi = ['t100', 't200', 't201', 't300', 't360', 't400', 't700'];
       for (const t of tapi) {
         if (this.form.instType === t) return true;
       }
-      return false;
+      return this.form.instType.startsWith('TcpModbus.');
     },
-    isAdam6017() {
+    isAdam6017(): boolean {
       return this.form.instType === 'adam6017';
     },
-    isMqtt() {
+    isMqtt(): boolean {
       return this.form.instType === 'mqtt_client';
     },
-    isMqtt2() {
+    isMqtt2(): boolean {
       return this.form.instType === 'mqtt_client2';
     },
-    isAdam6066() {
+    isAdam6066(): boolean {
       return this.form.instType === 'adam6066';
     },
-    isTheta() {
+    isTheta(): boolean {
       return this.form.instType === 'theta';
     },
-    instrumentSummary() {
-      const formNewline = input => {
+    instrumentSummary(): string {
+      const formNewline = (input: string) => {
         const newline = String.fromCharCode(13, 10);
         return input.replaceAll('\\n', newline);
       };
 
       let desc = `儀器ID:${this.form._id}\n`;
-      desc += `儀器種類:${this.form.instType}\n`;
+      desc += `儀器種類:${this.getInstrumentDesc()}\n`;
       desc += `通訊協定:${this.form.protocol.protocol}\n`;
       if (this.form.protocol.protocol === 'tcp')
         desc += `網址:${this.form.protocol.host}\n`;
@@ -296,7 +321,7 @@ export default {
       return formNewline(desc);
     },
   },
-  mounted() {
+  async mounted() {
     this.getInstrumentTypes();
   },
   methods: {
@@ -325,56 +350,73 @@ export default {
       }
       return desc;
     },
-    async getInstrumentTypes() {
+    async getInstrumentTypes(): Promise<void> {
       const res = await axios.get('/InstrumentTypes');
       this.instrumentTypes = res.data;
       for (const instType of res.data) {
-        this.instTypeMap.set(instType.id, instType);
+        this.instTypeMap.set(instType.id, instType as InstrumentTypeInfo);
       }
     },
-    getProtocolOptions() {
+    getInstrumentDesc(): string {
+      if (this.instTypeMap.get(this.form.instType)) {
+        let info = this.instTypeMap.get(
+          this.form.instType,
+        ) as InstrumentTypeInfo;
+        return info.desp;
+      } else return '';
+    },
+    getProtocolOptions(): Array<ProtocolInfo> {
       if (this.form.instType && this.instTypeMap.get(this.form.instType)) {
-        const info = this.instTypeMap.get(this.form.instType).protocolInfo;
-        return this.instTypeMap.get(this.form.instType).protocolInfo;
+        return this.instTypeMap.get(this.form.instType)!.protocolInfo;
       } else return [];
     },
-    validateInstType() {
+    validateInstType(): Promise<any> {
       return new Promise((resolve, reject) => {
-        this.$refs.instTypeRules.validate().then(success => {
-          if (success) {
-            resolve(true);
-          } else {
-            reject();
-          }
-        });
+        if (this.$refs.instTypeRules !== null) {
+          let rules = this.$refs.instTypeRules as any;
+          rules = this.$refs.instTypeRules;
+          rules.validate().then((success: boolean) => {
+            if (success) {
+              resolve(true);
+            } else {
+              reject();
+            }
+          });
+        }
       });
     },
-    validateProtocol() {
+    validateProtocol(): Promise<any> {
       return new Promise((resolve, reject) => {
-        this.$refs.protocolRules.validate().then(success => {
-          if (success) {
-            resolve(true);
-          } else {
-            reject();
-          }
-        });
+        if (this.$refs.protocolRules !== null) {
+          let rules = this.$refs.protocolRules as any;
+          rules.validate().then((success: boolean) => {
+            if (success) {
+              resolve(true);
+            } else {
+              reject();
+            }
+          });
+        }
       });
     },
-    validateDetailConfig() {
+    validateDetailConfig(): Promise<any> {
       return new Promise((resolve, reject) => {
-        this.$refs.detailConfigRules.validate().then(success => {
-          if (success) {
-            resolve(true);
-          } else {
-            reject();
-          }
-        });
+        if (this.$refs.detailConfigRules !== null) {
+          let rules = this.$refs.detailConfigRules as any;
+          rules.validate().then((success: boolean) => {
+            if (success) {
+              resolve(true);
+            } else {
+              reject();
+            }
+          });
+        }
       });
     },
-    onParamChange(v) {
+    onParamChange(v: string) {
       this.form.param = v;
     },
-    async formSubmitted() {
+    async formSubmitted(): Promise<void> {
       const res = await axios.post('/Instrument', this.form);
       const ret = res.data;
       if (ret.ok) {
@@ -392,5 +434,5 @@ export default {
       }
     },
   },
-};
+});
 </script>

@@ -76,11 +76,6 @@ export default [
         resource: 'Alarm',
       },
       {
-        title: '感測器管理',
-        route: 'sensor-management',
-        action: 'set',
-      },
-      {
         title: '測項管理',
         route: 'monitor-type-config',
         action: 'set',
