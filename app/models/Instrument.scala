@@ -112,6 +112,13 @@ class InstrumentOp @Inject() (mongoDB: MongoDB) {
     waitReadyResult(f).map { toInstrument }
   }
 
+  def getInstrumentMap() = {
+    val f = collection.find().toFuture()
+    for(docs<-f) yield {
+      val instruments = docs map {toInstrument}
+      instruments.map(inst=>inst._id->inst).toMap
+    }
+  }
   
   def getInstrument(id: String) = {
     val f = collection.find(equal("_id", id)).toFuture()

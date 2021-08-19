@@ -12,21 +12,21 @@
         </b-col>
       </b-row>
     </b-col>
-    <b-col lg="3">
+    <b-col lg="3" class="text-center">
       <b-card>
         <b-table :fields="fields" :items="realTimeStatus" small> </b-table>
       </b-card>
     </b-col>
   </b-row>
 </template>
-<style scoped></style>
+<style scoped>
+</style>
 <script lang="ts">
 import Vue from 'vue';
 import { mapActions, mapGetters, mapState } from 'vuex';
 import axios from 'axios';
 import { MonitorTypeStatus } from './types';
 import highcharts from 'highcharts';
-import moment from 'moment';
 
 export default Vue.extend({
   data() {
@@ -41,7 +41,7 @@ export default Vue.extend({
         label: '測值',
         formatter: (value: string, key: string, item: MonitorTypeStatus) => {
           const v = parseFloat(item.value);
-          if (isNaN(v)) return `${item.status}`;
+          if (isNaN(v)) return `-`;
           else return `${item.value}`;
         },
         tdClass: (value: string, key: string, item: MonitorTypeStatus) => {
@@ -52,6 +52,10 @@ export default Vue.extend({
       {
         key: 'unit',
         label: '單位',
+      },
+      {
+        key: 'status',
+        label: '狀態',
       },
     ];
     let chart: any;
@@ -279,5 +283,3 @@ export default Vue.extend({
   },
 });
 </script>
-
-<style></style>

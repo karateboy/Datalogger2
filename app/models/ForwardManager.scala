@@ -14,11 +14,8 @@ case class LatestRecordTime(time: Long)
 object ForwardManager {
   implicit val latestRecordTimeRead = Json.reads[LatestRecordTime]
 
-  val serverConfig = Play.current.configuration.getConfig("server").getOrElse(Configuration.empty)
-  
-  val enable = serverConfig.getBoolean("enable").getOrElse(false)
-  val server = serverConfig.getString("host").getOrElse("localhost")
-  val monitor = serverConfig.getString("monitor").getOrElse("A01")
+
+  //val enable = serverConfig.getBoolean("enable").getOrElse(false)
 
   case object ForwardHour
   case class ForwardHourRecord(start: DateTime, end: DateTime)
@@ -32,16 +29,6 @@ object ForwardManager {
 
   var managerOpt: Option[ActorRef] = None
   var count = 0
-  def startup() = {
-    val props = Props(classOf[ForwardManager], server, monitor)
-    if (!enable)
-      Logger.info("forwarding is disabled.")
-    else{
-      Logger.info(s"create forwarder to $server/$monitor")
-      managerOpt = Some(Akka.system.actorOf(props, name = s"forward_$count"))
-      count += 1
-    }
-  }
 
   def updateInstrumentStatusType = {
     managerOpt map { _ ! UpdateInstrumentStatusType }
@@ -67,9 +54,13 @@ object ForwardManager {
 
 import javax.inject._
 class ForwardManager @Inject()
-(system: ActorSystem, dataCollectManagerOp: DataCollectManagerOp, ws: WSClient)
-(server: String, monitor: String) extends Actor {
+(system: ActorSystem, dataCollectManagerOp: DataCollectManagerOp, ws: WSClient, configuration: Configuration)
+() extends Actor {
   import ForwardManager._
+  val serverConfig = configuration.getConfig("server").getOrElse(Configuration.empty)
+  val server = serverConfig.getString("host").getOrElse("localhost")
+  val monitor = serverConfig.getString("monitor").getOrElse("A01")
+  Logger.info(s"create forwarder to $server/$monitor")
 
   val hourRecordForwarder = context.actorOf(Props(classOf[HourRecordForwarder], server, monitor),
     "hourForwarder")

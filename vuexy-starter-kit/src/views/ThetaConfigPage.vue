@@ -75,7 +75,7 @@ export default Vue.extend({
       value: 0,
     };
 
-    if (this.paramStr) {
+    if (this.paramStr !== '{}') {
       config = JSON.parse(this.paramStr);
     } else {
       this.$emit('param-changed', JSON.stringify(config));
