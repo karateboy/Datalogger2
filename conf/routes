@@ -18,7 +18,8 @@ GET      /login                                                                 
 POST     /User                                                                    controllers.HomeController.newUser
 GET      /User                                                                    controllers.HomeController.getAllUsers
 PUT      /User/:id                                                                controllers.HomeController.updateUser(id)
-DELETE   /User/:id                                                                controllers.HomeController.deleteUser(id)	
+DELETE   /User/:id                                                                controllers.HomeController.deleteUser(id)
+GET      /User/:id                                                                controllers.HomeController.getUser(id)
 
 POST     /Group                                                                   controllers.HomeController.newGroup
 GET      /Groups                                                                  controllers.HomeController.getAllGroups

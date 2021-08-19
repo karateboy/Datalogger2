@@ -619,5 +619,12 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       Ok(Json.obj("ok" -> ret.getDeletedCount))
   }
 
+  def getUser(id:String) = Security.Authenticated {
+    implicit request =>
+      implicit val write = Json.writes[User]
+      val user = userOp.getUserByEmail(id)
+      Ok(Json.toJson(user))
+  }
+
   case class EditData(id: String, data: String)
 }

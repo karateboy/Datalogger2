@@ -14,6 +14,7 @@
       class="bookmark-wrapper align-items-center flex-grow-1 d-none d-lg-flex"
     >
       <dark-Toggler class="d-none d-lg-block" />
+      <h3 class="mt-1 mb-1">空氣品質資料蒐集系統</h3>
     </div>
 
     <b-navbar-nav class="nav align-items-center ml-auto">

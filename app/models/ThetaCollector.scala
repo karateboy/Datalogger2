@@ -118,7 +118,7 @@ class ThetaCollector @Inject()
       }
   }
 
-  def decode(numSeq: Seq[String]): Unit = {
+  def decode(numSeq: Seq[String], state:String): Unit = {
     import MonitorType._
     val ignore = "_"
     val monitorTypeList = Seq(WIN_SPEED, WIN_DIRECTION, TEMP, HUMID, PRESS,
@@ -135,7 +135,7 @@ class ThetaCollector @Inject()
             val value: Double = valueStr.toDouble
             val calibration: Double = calibrationMap.get(mt).getOrElse(0)
             val v: Double = value + calibration
-            Some(MonitorTypeData(mt, v, MonitorStatus.NormalStat))
+            Some(MonitorTypeData(mt, v, state))
           } catch {
             case _: Throwable =>
               None
@@ -157,7 +157,7 @@ class ThetaCollector @Inject()
               val target = line.dropWhile(_ == ">").drop(1)
               val numArray = target.split(",")
               if (numArray.length == 24)
-                decode(numArray)
+                decode(numArray, state)
             }
 
             import scala.concurrent.duration._

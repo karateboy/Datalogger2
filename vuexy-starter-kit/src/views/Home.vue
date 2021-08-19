@@ -5,7 +5,7 @@
         <div id="realtimeChart"></div>
       </b-card>
       <b-row>
-        <b-col v-for="mt in userInfo.monitorTypeOfInterest" :key="mt">
+        <b-col v-for="mt in userInfo.monitorTypeOfInterest" :key="mt" cols="3">
           <b-card>
             <div :id="`history_${mt}`"></div>
           </b-card>
@@ -19,14 +19,15 @@
     </b-col>
   </b-row>
 </template>
-<style scoped>
-</style>
+<style scoped></style>
 <script lang="ts">
 import Vue from 'vue';
 import { mapActions, mapGetters, mapState } from 'vuex';
 import axios from 'axios';
 import { MonitorTypeStatus } from './types';
 import highcharts from 'highcharts';
+import darkTheme from 'highcharts/themes/dark-unica';
+import useAppConfig from '../@core/app-config/useAppConfig';
 
 export default Vue.extend({
   data() {
@@ -73,9 +74,19 @@ export default Vue.extend({
   computed: {
     ...mapState('user', ['userInfo']),
     ...mapGetters('monitorTypes', ['mtMap']),
+    skin() {
+      const { skin } = useAppConfig();
+      return skin;
+    },
   },
   async mounted() {
+    const { skin } = useAppConfig();
+    if (skin.value == 'dark') {
+      darkTheme(highcharts);
+    }
+
     await this.fetchMonitorTypes();
+    await this.getUserInfo();
     const me = this;
     for (const mt of this.userInfo.monitorTypeOfInterest) this.query(mt);
     this.mtInterestTimer = setInterval(() => {
@@ -91,6 +102,7 @@ export default Vue.extend({
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapActions('monitors', ['fetchMonitors']),
+    ...mapActions('user', ['getUserInfo']),
     async refresh(): Promise<void> {
       this.plotLatestData();
     },

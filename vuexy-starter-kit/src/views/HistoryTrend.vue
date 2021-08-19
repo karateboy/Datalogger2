@@ -130,6 +130,8 @@ import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
 const Ripple = require('vue-ripple-directive');
 import { mapState, mapActions, mapMutations } from 'vuex';
+import darkTheme from 'highcharts/themes/dark-unica';
+import useAppConfig from '../@core/app-config/useAppConfig';
 import moment from 'moment';
 import axios from 'axios';
 import highcharts from 'highcharts';
@@ -209,6 +211,11 @@ export default Vue.extend({
   },
   watch: {},
   async mounted() {
+    const { skin } = useAppConfig();
+    if (skin.value == 'dark') {
+      darkTheme(highcharts);
+    }
+
     await this.fetchMonitorTypes();
     await this.fetchMonitors();
 

@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 export default {
   namespaced: true,
   state: {
@@ -24,5 +26,16 @@ export default {
       state.login = val;
     },
   },
-  actions: {},
+
+  actions: {
+    async getUserInfo({ commit, state }) {
+      try {
+        const res = await axios.get(`/User/${state.userInfo._id}`);
+        const payload = res && res.data;
+        commit('setUserInfo', payload);
+      } catch (err) {
+        throw new Error(err);
+      }
+    },
+  },
 };

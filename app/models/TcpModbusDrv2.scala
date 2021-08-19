@@ -30,9 +30,7 @@ object TcpModbusDrv2 {
   def getInstrumentTypeList(environment: play.api.Environment, factory: TcpModbusDrv2.Factory, monitorTypeOp: MonitorTypeOp) = {
     val docRoot = environment.rootPath + "/conf/TcpModbus/"
     val files = new File(docRoot).listFiles()
-    Logger.info(s"${files.size}")
     for (file <- files) yield {
-      Logger.info(file.getName)
       val device: TcpModbusDeviceModel = getDeviceModel(file)
       device.tcpModelReg.dataRegs.foreach(reg=>monitorTypeOp.ensureMonitorType(reg.monitorType))
       InstrumentType(s"${deviceTypeHead}${device.id}", device.description, List(Protocol.tcp),
