@@ -4,6 +4,8 @@ import ModelHelper._
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import akka.actor._
+import models.Protocol.serial
+
 import javax.inject._
 
 case class AiChannelCfg(enable: Boolean, mt: Option[String], max: Option[Double], mtMax: Option[Double],
@@ -12,6 +14,11 @@ case class Adam4017Param(addr: String, ch: Seq[AiChannelCfg])
 
 @Singleton
 class Adam4017 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
+  override def id: String = "adam4017"
+
+  override def description: String = "Adam 4017"
+
+  override def protocol: List[Protocol.Value] = List(serial)
 
   implicit val cfgReads = Json.reads[AiChannelCfg]
   implicit val reads = Json.reads[Adam4017Param]
@@ -73,5 +80,4 @@ class Adam4017 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
   }
 
   override def getCalibrationTime(param: String) = None
-
 }

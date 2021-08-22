@@ -3,7 +3,7 @@ import play.api._
 import akka.actor._
 import play.api.Play.current
 import play.api.libs.concurrent.Akka
-import Protocol.ProtocolParam
+import Protocol.{ProtocolParam, serial}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import ModelHelper._
@@ -80,6 +80,12 @@ object VerewaF701Collector extends DriverOps{
   trait Factory {
     def apply(id: String, protocol: ProtocolParam, param: F701_20Config): Actor
   }
+
+  override def id: String = "VEREWA_F701"
+
+  override def description: String = "Verewa F701-20"
+
+  override def protocol: List[Protocol.Value] = List(serial)
 }
 
 import javax.inject._

@@ -620,6 +620,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       RowData(report._1.getMillis, cellData)
     }
 
+    implicit val write = Json.writes[InstrumentReport]
     Ok(Json.toJson(InstrumentReport(columnNames, rows)))
   }
 

@@ -5,7 +5,7 @@ import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
 import models.ModelHelper._
 import models.MonitorType._
-import models.Protocol.ProtocolParam
+import models.Protocol.{ProtocolParam, serial}
 import play.api._
 import play.api.libs.json.{JsError, Json}
 import play.libs.Scala.None
@@ -77,6 +77,12 @@ object ThetaCollector extends DriverOps {
   case object ConnectHost
 
   case object Collect
+
+  override def id: String = "theta"
+
+  override def description: String = "THETA"
+
+  override def protocol: List[Protocol.Value] = List(serial)
 }
 
 import javax.inject._

@@ -3,7 +3,7 @@ package models
 import akka.actor.{Actor, Props, _}
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
-import models.Protocol.ProtocolParam
+import models.Protocol.{ProtocolParam, serial}
 import play.api._
 import play.api.libs.json.{JsError, Json}
 
@@ -79,6 +79,11 @@ object Baseline9000Collector extends DriverOps {
 
   case object ReadData
 
+  override def id: String = "baseline9000"
+
+  override def description: String = "Baseline 9000 MNME Analyzer"
+
+  override def protocol: List[Protocol.Value] = List(serial)
 }
 
 import javax.inject._

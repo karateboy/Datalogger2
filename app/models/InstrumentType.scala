@@ -11,14 +11,21 @@ case class ProtocolInfo(id: Protocol.Value, desp: String)
 case class InstrumentTypeInfo(id: String, desp: String, protocolInfo: List[ProtocolInfo])
 
 case class InstrumentType(id: String, desp: String, protocol: List[Protocol.Value],
-                          driver: DriverOps, diFactory: AnyRef, analog: Boolean = false) {
-  def infoPair = id -> this
+                          driver: DriverOps, diFactory: AnyRef, analog: Boolean)
+
+object InstrumentType {
+  def apply(driver: DriverOps, diFactory: AnyRef, analog: Boolean = false): InstrumentType =
+    InstrumentType(driver.id, driver.description, driver.protocol, driver, diFactory, analog)
 }
 
 trait DriverOps {
 
   import Protocol.ProtocolParam
   import akka.actor._
+
+  def id: String
+  def description: String
+  def protocol: List[Protocol.Value]
 
   def verifyParam(param: String): String
 
@@ -27,6 +34,10 @@ trait DriverOps {
   def getCalibrationTime(param: String): Option[LocalTime]
 
   def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor
+
+  def isDoInstrument: Boolean = false
+
+  def isCalibrator:Boolean = false
 }
 
 import javax.inject._
@@ -47,76 +58,43 @@ class InstrumentTypeOp @Inject()
  t100Factory: T100Collector.Factory, t200Factory: T200Collector.Factory, t201Factory: T201Collector.Factory,
  t300Factory: T300Collector.Factory, t360Factory: T360Collector.Factory, t400Factory: T400Collector.Factory,
  t700Factory: T700Collector.Factory, environment: play.api.Environment,
- tcpModbusFactory: TcpModbusDrv2.Factory, monitorTypeOp: MonitorTypeOp) extends InjectedActorSupport {
+ tcpModbusFactory: TcpModbusDrv2.Factory, sabio4010Factory: Sabio4010.Factory,monitorTypeOp: MonitorTypeOp) extends InjectedActorSupport {
 
   import Protocol._
 
   implicit val prtocolWrite = Json.writes[ProtocolInfo]
   implicit val write = Json.writes[InstrumentTypeInfo]
 
-  val BASELINE9000 = "baseline9000"
-  val ADAM4017 = "adam4017"
-  val ADAM4068 = "adam4068"
-  val ADAM5000 = "adam5000"
-  val ADAM6017 = "adam6017"
-  val ADAM6066 = "adam6066"
-
-  val T100 = "t100"
-  val T200 = "t200"
-  val T201 = "t201"
-  val T300 = "t300"
-  val T360 = "t360"
-  val T400 = "t400"
-  val T700 = "t700"
-
-  val TapiTypes = List(T100, T200, T201, T300, T360, T400, T700)
-
-  val VEREWA_F701 = "verewa_f701"
-
-  val MOXAE1240 = "moxaE1240"
-  val MOXAE1212 = "moxaE1212"
-
-  val HORIBA370 = "horiba370"
-  val GPS = "gps"
-  val MQTT_CLIENT = "mqtt_client"
-  val MQTT_CLIENT2 = "mqtt_client2"
-
-  val THETA = "theta"
-  val THERMAL43i = "thermal43i"
-
   val tcpModbusDeviceTypeMap: Map[String, InstrumentType] =
-    TcpModbusDrv2.getInstrumentTypeList(environment, tcpModbusFactory, monitorTypeOp).map(_.infoPair).toMap
+    TcpModbusDrv2.getInstrumentTypeList(environment, tcpModbusFactory, monitorTypeOp)
+      .map(dt => dt.id -> dt).toMap
 
-  val otherMap = Map(
-    InstrumentType(ADAM4017, "Adam 4017", List(serial), adam4017Drv, adam4017Factory, true).infoPair,
-    InstrumentType(ADAM4068, "Adam 4068", List(serial), Adam4068, adam4068Factory, true).infoPair,
-    InstrumentType(ADAM6017, "Adam 6017", List(tcp), adam6017Drv, adam6017Factory, true).infoPair,
-    InstrumentType(ADAM6066, "Adam 6066", List(tcp), adam6066Drv, adam6066Factory, true).infoPair,
-    InstrumentType(BASELINE9000, "Baseline 9000 MNME Analyzer", List(serial), Baseline9000Collector, baseline9000Factory).infoPair,
-    InstrumentType(GPS, "GPS", List(serial), GpsCollector, gpsFactory).infoPair,
-    InstrumentType(HORIBA370, "Horiba APXX-370", List(tcp), Horiba370Collector, horiba370Factory).infoPair,
-    InstrumentType(MOXAE1240, "MOXA E1240", List(tcp), moxaE1240Drv, moxaE1240Factory).infoPair,
-    InstrumentType(MOXAE1212, "MOXA E1212", List(tcp), moxaE1212Drv, moxaE1212Factory).infoPair,
-    InstrumentType(MQTT_CLIENT2, "MQTT Client2", List(tcp), MqttCollector2, mqtt2Factory).infoPair,
-    InstrumentType(T100, "TAPI T100", List(tcp), T100Collector, t100Factory).infoPair,
-    InstrumentType(T200, "TAPI T200", List(tcp), T200Collector, t200Factory).infoPair,
-    InstrumentType(T201, "TAPI T201", List(tcp), T201Collector, t201Factory).infoPair,
-    InstrumentType(T300, "TAPI T300", List(tcp), T300Collector, t300Factory).infoPair,
-    InstrumentType(T360, "TAPI T360", List(tcp), T360Collector, t360Factory).infoPair,
-    InstrumentType(T400, "TAPI T400", List(tcp), T400Collector, t400Factory).infoPair,
-    InstrumentType(T700, "TAPI T700", List(tcp), T700Collector, t700Factory).infoPair,
-    InstrumentType(VEREWA_F701, "Verewa F701-20", List(serial), VerewaF701Collector, verewaF701Factory).infoPair,
-    InstrumentType(THETA, "THETA", List(serial), ThetaCollector, thetaFactory).infoPair)
+  val otherDeviceList = Seq(
+    InstrumentType(adam4017Drv, adam4017Factory, true),
+    InstrumentType(Adam4068, adam4068Factory, true),
+    InstrumentType(adam6017Drv, adam6017Factory, true),
+    InstrumentType(adam6066Drv, adam6066Factory, true),
+    InstrumentType(Baseline9000Collector, baseline9000Factory),
+    InstrumentType(GpsCollector, gpsFactory),
+    InstrumentType(Horiba370Collector, horiba370Factory),
+    InstrumentType(moxaE1240Drv, moxaE1240Factory),
+    InstrumentType(moxaE1212Drv, moxaE1212Factory),
+    InstrumentType(MqttCollector2, mqtt2Factory),
+    InstrumentType(T100Collector, t100Factory),
+    InstrumentType(T200Collector, t200Factory),
+    InstrumentType(T201Collector, t201Factory),
+    InstrumentType(T300Collector, t300Factory),
+    InstrumentType(T360Collector, t360Factory),
+    InstrumentType(T400Collector, t400Factory),
+    InstrumentType(T700Collector, t700Factory),
+    InstrumentType(VerewaF701Collector, verewaF701Factory),
+    InstrumentType(ThetaCollector, thetaFactory),
+    InstrumentType(Sabio4010, sabio4010Factory))
 
+  val otherMap = otherDeviceList.map(dt=> dt.id->dt).toMap
   val map: Map[String, InstrumentType] = tcpModbusDeviceTypeMap ++ otherMap
 
-
-    // InstrumentType(THERMAL43i, "Thermal 43i", List(tcp), Thermal43i, thermal43iFactory).infoPair,
-    // InstrumentType(T500U.instType, "TAPI T500U", List(tcp), T500U, t500UFactory).infoPair,
-    // InstrumentType(T200U.instType, "TAPI T200U", List(tcp), T200U, t200UFactory).infoPair
-
-
-  val DoInstruments = Seq(ADAM6017, ADAM6066, MOXAE1212)
+  val DoInstruments = otherDeviceList.filter(_.driver.isDoInstrument)
   var count = 0
 
   def getInstInfoPair(instType: InstrumentType) = {

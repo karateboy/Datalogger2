@@ -4,10 +4,17 @@ import ModelHelper._
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import akka.actor._
+import models.Protocol.serial
 
 object Adam4068 extends DriverOps {
   case class ChannelCfg(enable: Boolean, evtOp: Option[EventOperation.Value], duration: Option[Int])
   case class Adam4068Param(addr: String, ch: Seq[ChannelCfg])
+
+  override def id: String = "adam4068"
+
+  override def description: String = "Adam 4068"
+
+  override def protocol: List[Protocol.Value] = List(serial)
 
   implicit val cfgReads = Json.reads[ChannelCfg]
   implicit val reads = Json.reads[Adam4068Param]

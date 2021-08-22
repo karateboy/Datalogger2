@@ -6,7 +6,7 @@ import com.google.inject.assistedinject.Assisted
 import models.ModelHelper.waitReadyResult
 import models.MqttCollector.{ConnectBroker, CreateClient, SubscribeTopic}
 import models.MqttCollector2.{CheckTimeout, timeout}
-import models.Protocol.ProtocolParam
+import models.Protocol.{ProtocolParam, tcp}
 import org.eclipse.paho.client.mqttv3._
 import play.api._
 import play.api.libs.json.{JsError, Json, _}
@@ -75,6 +75,12 @@ object MqttCollector2 extends DriverOps {
   case object CheckTimeout
 
   val timeout = 15 // mintues
+
+  override def id: String = "mqtt_client2"
+
+  override def description: String = "MQTT Client2"
+
+  override def protocol: List[Protocol.Value] = List(tcp)
 }
 
 import javax.inject._

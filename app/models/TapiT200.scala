@@ -2,7 +2,7 @@ package models
 
 import akka.actor.ActorSystem
 import com.google.inject.assistedinject.Assisted
-import models.Protocol.ProtocolParam
+import models.Protocol.{ProtocolParam, tcp}
 
 object T200Collector extends TapiTxx(ModelConfig("T200", List("NOx", "NO", "NO2"))) {
   lazy val modelReg = readModelSetting
@@ -19,6 +19,12 @@ object T200Collector extends TapiTxx(ModelConfig("T200", List("NOx", "NO", "NO2"
     val driverParam = validateParam(param)
     f2(id, modelReg, driverParam, protocol.host.get)
   }
+
+  override def id: String = "t200"
+
+  override def description: String = "TAPI T200"
+
+  override def protocol: List[Protocol.Value] = List(tcp)
 }
 
 import javax.inject._

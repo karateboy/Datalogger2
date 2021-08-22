@@ -40,6 +40,7 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bindActorFactory[VerewaF701Collector, VerewaF701Collector.Factory]
     bindActorFactory[ThetaCollector, ThetaCollector.Factory]
     bindActorFactory[TcpModbusCollector, TcpModbusDrv2.Factory]
+    bindActorFactory[Sabio4010Collector, Sabio4010.Factory]
 
     //bind(classOf[ForwardManager])
     // Use the system clock as the default implementation of Clock

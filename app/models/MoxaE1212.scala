@@ -1,6 +1,7 @@
 package models
 
 import akka.actor._
+import models.Protocol.tcp
 import play.api._
 import play.api.libs.json._
 
@@ -75,4 +76,11 @@ class MoxaE1212 @Inject()
 
   override def getCalibrationTime(param: String) = None
 
+  override def id: String = "moxaE1212"
+
+  override def description: String = "MOXA E1212"
+
+  override def protocol: List[Protocol.Value] = List(tcp)
+
+  override def isDoInstrument: Boolean = true
 }

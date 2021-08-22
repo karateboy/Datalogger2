@@ -5,6 +5,7 @@ import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
 import com.typesafe.config.ConfigFactory
 import models.Protocol.ProtocolParam
+import models.TcpModbusDrv2.deviceTypeHead
 import play.api._
 import play.api.libs.json._
 
@@ -33,8 +34,8 @@ object TcpModbusDrv2 {
     for (file <- files) yield {
       val device: TcpModbusDeviceModel = getDeviceModel(file)
       device.tcpModelReg.dataRegs.foreach(reg=>monitorTypeOp.ensureMonitorType(reg.monitorType))
-      InstrumentType(s"${deviceTypeHead}${device.id}", device.description, List(Protocol.tcp),
-        new TcpModbusDrv2(device.tcpModelReg), factory)
+      InstrumentType(
+        new TcpModbusDrv2(s"${deviceTypeHead}${device.id}", device.description, List(Protocol.tcp), device.tcpModelReg), factory)
     }
   }
 
@@ -125,7 +126,7 @@ object TcpModbusDrv2 {
   }
 }
 
-class TcpModbusDrv2(tcpModelReg: TcpModelReg) extends DriverOps {
+class TcpModbusDrv2(_id:String, desp:String, protocols:List[Protocol.Value], tcpModelReg: TcpModelReg) extends DriverOps {
   implicit val cfgReads = Json.reads[DeviceConfig]
   implicit val cfgWrites = Json.writes[DeviceConfig]
 
@@ -178,4 +179,10 @@ class TcpModbusDrv2(tcpModelReg: TcpModelReg) extends DriverOps {
     val config = validateParam(param)
     f2(id, tcpModelReg, config, protocol.host.get)
   }
+
+  override def id: String = _id
+
+  override def description: String = desp
+
+  override def protocol: List[Protocol.Value] = protocols
 }

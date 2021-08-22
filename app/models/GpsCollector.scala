@@ -6,7 +6,7 @@ import play.api.libs.concurrent.Akka
 import ModelHelper._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import Protocol.ProtocolParam
+import Protocol.{ProtocolParam, serial}
 import com.google.inject.assistedinject.Assisted
 
 object GpsCollector extends DriverOps {
@@ -33,6 +33,12 @@ object GpsCollector extends DriverOps {
     val f2 = f.asInstanceOf[Factory]
     f2(id, protocol)
   }
+
+  override def id: String = "gps"
+
+  override def description: String = "GPS"
+
+  override def protocol: List[Protocol.Value] = List(serial)
 }
 
 import net.sf.marineapi.nmea.io.ExceptionListener;

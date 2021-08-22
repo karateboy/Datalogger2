@@ -2,7 +2,7 @@ package models
 
 import akka.actor.ActorSystem
 import com.google.inject.assistedinject.Assisted
-import models.Protocol.ProtocolParam
+import models.Protocol.{ProtocolParam, tcp}
 
 object T400Collector extends TapiTxx(ModelConfig("T400", List("O3"))) {
   lazy val modelReg = readModelSetting
@@ -20,6 +20,11 @@ object T400Collector extends TapiTxx(ModelConfig("T400", List("O3"))) {
     def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, host:String): Actor
   }
 
+  override def id: String = "t400"
+
+  override def description: String = "TAPI T400"
+
+  override def protocol: List[Protocol.Value] = List(tcp)
 }
 
 import javax.inject._

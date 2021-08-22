@@ -1,5 +1,6 @@
 package models
 import com.google.inject.assistedinject.Assisted
+import models.Protocol.tcp
 object T100Collector extends TapiTxx(ModelConfig("T100", List("SO2"))) {
   lazy val modelReg = readModelSetting
 
@@ -16,6 +17,12 @@ object T100Collector extends TapiTxx(ModelConfig("T100", List("SO2"))) {
     val config = validateParam(param)
     f2(id, T100Collector.modelReg, config, protocol.host.get)
   }
+
+  override def id: String = "t100"
+
+  override def description: String = "TAPI T100"
+
+  override def protocol: List[Protocol.Value] = List(tcp)
 }
 
 import akka.actor.ActorSystem

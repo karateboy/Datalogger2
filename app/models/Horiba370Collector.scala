@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorRef, Props, _}
 import akka.util.ByteString
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
-import models.Protocol.ProtocolParam
+import models.Protocol.{ProtocolParam, tcp}
 import play.api._
 import play.api.libs.json.{JsError, Json}
 
@@ -134,6 +134,12 @@ object Horiba370Collector extends DriverOps{
     InstrumentStatusType(Temp + 7, 39, "Temperature 7", "C"),
     InstrumentStatusType(Temp + 8, 39, "Temperature 8", "C"),
     InstrumentStatusType(Temp + 9, 39, "Temperature 9", "C"))
+
+  override def id: String = "horiba370"
+
+  override def description: String = "Horiba APXX-370"
+
+  override def protocol: List[Protocol.Value] = List(tcp)
 }
 
 import javax.inject._

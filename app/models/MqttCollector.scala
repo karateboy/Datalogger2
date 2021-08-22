@@ -70,6 +70,11 @@ object MqttCollector extends DriverOps {
 
   case object SubscribeTopic
 
+  override def id: String = "mqttCollector1"
+
+  override def description: String = "MQTT collector 1"
+
+  override def protocol: List[Protocol.Value] = List(Protocol.tcp)
 }
 
 import javax.inject._

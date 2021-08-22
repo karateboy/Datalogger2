@@ -1,7 +1,7 @@
 package models
 import akka.actor.ActorSystem
 import com.google.inject.assistedinject.Assisted
-import models.Protocol.ProtocolParam
+import models.Protocol.{ProtocolParam, tcp}
 import play.api._
 
 object T700Collector extends TapiTxx(ModelConfig("T700", List.empty[String])) {
@@ -19,6 +19,14 @@ object T700Collector extends TapiTxx(ModelConfig("T700", List.empty[String])) {
     val driverParam = validateParam(param)
     f2(id, modelReg, driverParam, protocol.host.get)
   }
+
+  override def id: String = "t700"
+
+  override def description: String = "TAPI T700"
+
+  override def protocol: List[Protocol.Value] = List(tcp)
+
+  override def isCalibrator: Boolean = true
 }
 
 import javax.inject._

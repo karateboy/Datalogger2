@@ -16,7 +16,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
                                userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
                                monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorOp, groupOp: GroupOp,
                                instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp,
-                               sensorOp: MqttSensorOp) extends Controller {
+                               sensorOp: MqttSensorOp, adam6066: Adam6066) extends Controller {
 
   val title = "資料擷取器"
 
@@ -578,7 +578,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
 
   def testSpray = Security.Authenticated {
     Logger.info("testSpray")
-    val ret: Seq[Instrument] = instrumentOp.getInstrumentList().filter(p => p.instType == instrumentTypeOp.ADAM6066)
+    val ret: Seq[Instrument] = instrumentOp.getInstrumentList().filter(p => p.instType == adam6066.id)
     ret map {
       inst =>
         dataCollectManagerOp.toggleTargetDO(inst._id, 17, 10)

@@ -331,34 +331,38 @@ class DataCollectManager @Inject()
                mtDataList: List[(DateTime, String, List[MonitorTypeData])],
                restartList: Seq[String]): Receive = {
     case StartInstrument(inst) =>
-      val instType = instrumentTypeOp.map(inst.instType)
-      val collector = instrumentTypeOp.start(inst.instType, inst._id, inst.protocol, inst.param)
-      val monitorTypes = instType.driver.getMonitorTypes(inst.param)
-      val calibrateTimeOpt = instType.driver.getCalibrationTime(inst.param)
-      val timerOpt = calibrateTimeOpt.map { localtime =>
-        val calibrationTime = DateTime.now().toLocalDate().toDateTime(localtime)
-        val duration = if (DateTime.now() < calibrationTime)
-          new Duration(DateTime.now(), calibrationTime)
-        else
-          new Duration(DateTime.now(), calibrationTime + 1.day)
+      if(!instrumentTypeOp.map.contains(inst.instType)){
+        Logger.error(s"${inst._id} of ${inst.instType} is unknown!")
+      }else{
+        val instType = instrumentTypeOp.map(inst.instType)
+        val collector = instrumentTypeOp.start(inst.instType, inst._id, inst.protocol, inst.param)
+        val monitorTypes = instType.driver.getMonitorTypes(inst.param)
+        val calibrateTimeOpt = instType.driver.getCalibrationTime(inst.param)
+        val timerOpt = calibrateTimeOpt.map { localtime =>
+          val calibrationTime = DateTime.now().toLocalDate().toDateTime(localtime)
+          val duration = if (DateTime.now() < calibrationTime)
+            new Duration(DateTime.now(), calibrationTime)
+          else
+            new Duration(DateTime.now(), calibrationTime + 1.day)
 
-        import scala.concurrent.duration._
-        system.scheduler.schedule(
-          Duration(duration.getStandardSeconds + 1, SECONDS),
-          Duration(1, DAYS), self, AutoCalibration(inst._id))
+          import scala.concurrent.duration._
+          system.scheduler.schedule(
+            Duration(duration.getStandardSeconds + 1, SECONDS),
+            Duration(1, DAYS), self, AutoCalibration(inst._id))
+        }
+
+        val instrumentParam = InstrumentParam(collector, monitorTypes, timerOpt)
+        if (instType.driver.isCalibrator) {
+          calibratorOpt = Some(collector)
+        } else if (instType.driver.isDoInstrument) {
+          digitalOutputOpt = Some(collector)
+        }
+
+        context become handler(
+          instrumentMap + (inst._id -> instrumentParam),
+          collectorInstrumentMap + (collector -> inst._id),
+          latestDataMap, mtDataList, restartList)
       }
-
-      val instrumentParam = InstrumentParam(collector, monitorTypes, timerOpt)
-      if (inst.instType == instrumentTypeOp.T700) {
-        calibratorOpt = Some(collector)
-      } else if (inst.instType == instrumentTypeOp.MOXAE1212 || inst.instType == instrumentTypeOp.ADAM4068) {
-        digitalOutputOpt = Some(collector)
-      }
-
-      context become handler(
-        instrumentMap + (inst._id -> instrumentParam),
-        collectorInstrumentMap + (collector -> inst._id),
-        latestDataMap, mtDataList, restartList)
 
     case StopInstrument(id: String) =>
       val paramOpt = instrumentMap.get(id)

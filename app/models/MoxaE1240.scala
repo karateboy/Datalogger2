@@ -1,6 +1,7 @@
 package models
 
 import akka.actor._
+import models.Protocol.tcp
 import play.api._
 import play.api.libs.json._
 
@@ -79,4 +80,9 @@ class MoxaE1240 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
 
   override def getCalibrationTime(param: String) = None
 
+  override def id: String = "MOXAE1240"
+
+  override def description: String = "MOXA E1240"
+
+  override def protocol: List[Protocol.Value] = List(tcp)
 }

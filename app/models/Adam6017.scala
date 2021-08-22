@@ -1,6 +1,7 @@
 package models
 
 import akka.actor._
+import models.Protocol.tcp
 import play.api._
 import play.api.libs.json._
 
@@ -76,4 +77,11 @@ class Adam6017 @Inject()
 
   override def getCalibrationTime(param: String) = None
 
+  override def id: String = "adam6017"
+
+  override def description: String = "Adam 6017"
+
+  override def protocol: List[Protocol.Value] = List(tcp)
+
+  override def isDoInstrument: Boolean = true
 }
