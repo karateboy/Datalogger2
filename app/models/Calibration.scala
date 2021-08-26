@@ -21,7 +21,7 @@ case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTi
     yield s_dev / std *100
 
   def toJSON = {
-    CalibrationJSON(monitorType.toString, startTime.getMillis, endTime.getMillis, zero_val,
+    CalibrationJSON(monitorType, startTime.getMillis, endTime.getMillis, zero_val,
       span_std, span_val)
   }
 }

@@ -59,7 +59,7 @@ export default [
   },
   {
     title: '系統管理',
-    icon: 'BookOpenIcon',
+    icon: 'SettingsIcon',
     children: [
       {
         title: '儀器管理',
