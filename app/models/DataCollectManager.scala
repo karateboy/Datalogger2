@@ -30,7 +30,9 @@ case class MonitorTypeData(mt: String, value: Double, status: String)
 
 case class ReportData(dataList: List[MonitorTypeData])
 
-case class ExecuteSeq(seq: Int, on: Boolean)
+case class ExecuteSeq(seqName: String, on: Boolean)
+
+case object PurgeSeq
 
 case object CalculateData
 
@@ -108,8 +110,8 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! ToggleTargetDO(id, bit, seconds)
   }
 
-  def executeSeq(seq: Int) {
-    manager ! ExecuteSeq(seq, true)
+  def executeSeq(seqName: String, on:Boolean) {
+    manager ! ExecuteSeq(seqName, on)
   }
 
   def getLatestData() = {
@@ -633,7 +635,7 @@ class DataCollectManager @Inject()
       if (calibratorOpt.isDefined)
         calibratorOpt.get ! msg
       else {
-        Logger.warn(s"Calibrator is not online! Ignore execute (${msg.seq} - ${msg.on}).")
+        Logger.warn(s"Calibrator is not online! Ignore execute (${msg.seqName} - ${msg.on}).")
       }
 
     case msg: WriteDO =>

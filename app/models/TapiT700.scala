@@ -49,8 +49,9 @@ class T700Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Monit
   override def reportData(regValue: ModelRegValue) = None
 
   import com.serotonin.modbus4j.locator.BaseLocator
-  override def executeSeq(seq: Int, on: Boolean) {
-    Logger.info(s"T700 execute $seq sequence.")
+  override def executeSeq(seqName: String, on: Boolean) {
+    Logger.info(s"T700 execute $seqName sequence.")
+    val seq = Integer.parseInt(seqName)
     if ((seq == lastSeqNo && lastSeqOp == on) && (DateTime.now() < lastSeqTime + 5.second)) {
       Logger.info(s"T700 in cold period, ignore same seq operation")
     } else {

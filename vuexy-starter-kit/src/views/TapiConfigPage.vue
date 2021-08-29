@@ -72,10 +72,7 @@
           label-for="downTime"
           label-cols-md="3"
         >
-          <b-form-input
-            v-model.number="paramObj.calibrateZeoSeq"
-            type="number"
-          ></b-form-input>
+          <b-form-input v-model="paramObj.calibrateZeoSeq"></b-form-input>
         </b-form-group>
       </b-col>
       <b-col cols="12">
@@ -84,10 +81,7 @@
           label-for="downTime"
           label-cols-md="3"
         >
-          <b-form-input
-            v-model.number="paramObj.calibrateSpanSeq"
-            type="number"
-          ></b-form-input>
+          <b-form-input v-model="paramObj.calibrateSpanSeq"></b-form-input>
         </b-form-group>
       </b-col>
       <b-col cols="12">
@@ -108,10 +102,7 @@
           label-for="downTime"
           label-cols-md="3"
         >
-          <b-form-input
-            v-model.number="paramObj.calibratorPurgeSeq"
-            type="number"
-          ></b-form-input>
+          <b-form-input v-model="paramObj.calibratorPurgeSeq"></b-form-input>
         </b-form-group>
       </b-col>
       <b-col cols="12">

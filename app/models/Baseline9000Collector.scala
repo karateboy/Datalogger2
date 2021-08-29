@@ -10,7 +10,7 @@ import play.api.libs.json.{JsError, Json}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 case class Baseline9000Config(calibrationTime: LocalTime,
-                              raiseTime: Int, downTime: Int, holdTime: Int, calibrateZeoSeq: Option[Int], calibrateSpanSeq: Option[Int])
+                              raiseTime: Int, downTime: Int, holdTime: Int, calibrateZeoSeq: Option[String], calibrateSpanSeq: Option[String])
 
 object Baseline9000Collector extends DriverOps {
 

@@ -287,7 +287,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentOp, monitorSta
   }
 
   // Only for T700
-  def executeSeq(seq: Int, on: Boolean) {}
+  def executeSeq(seq: String, on: Boolean) {}
 
   def startCalibration(calibrationType: CalibrationType, monitorTypes: List[String]) {
     import scala.concurrent.duration._

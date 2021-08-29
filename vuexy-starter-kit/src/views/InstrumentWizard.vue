@@ -160,6 +160,11 @@
             :param-str="form.param"
             @param-changed="onParamChange"
           />
+          <sabio-config
+            v-else-if="form.instType === 'sabio4010'"
+            :param-str="form.param"
+            @param-changed="onParamChange"
+          />
           <div v-else>TBD {{ form.instType }}</div>
         </validation-observer>
       </tab-content>
@@ -182,10 +187,7 @@
 <script lang="ts">
 import axios from 'axios';
 import Vue, { PropType } from 'vue';
-import { FormWizard, TabContent } from 'vue-form-wizard';
 import { ValidationObserver } from 'vee-validate';
-import vSelect from 'vue-select';
-import 'vue-form-wizard/dist/vue-form-wizard.min.css';
 import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
 import TapiConfigPage from './TapiConfigPage.vue';
 import Adam6017ConfigPage from './Adam6017ConfigPage.vue';
@@ -193,6 +195,7 @@ import MqttConfigPage from './MqttConfigPage.vue';
 import Mqtt2ConfigPage from './Mqtt2ConfigPage.vue';
 import Adam6066ConfigPage from './Adam6066ConfigPage.vue';
 import ThetaConfigPage from './ThetaConfigPage.vue';
+import SabioConfig from './SabioConfig.vue';
 interface ProtocolParam {
   protocol: 'tcp' | 'serial';
   host?: string;
@@ -221,7 +224,6 @@ interface Instrument {
 
 export default Vue.extend({
   components: {
-    vSelect,
     ValidationObserver,
     TapiConfigPage,
     Adam6017ConfigPage,
@@ -229,6 +231,7 @@ export default Vue.extend({
     Mqtt2ConfigPage,
     Adam6066ConfigPage,
     ThetaConfigPage,
+    SabioConfig,
   },
   props: {
     isNew: {

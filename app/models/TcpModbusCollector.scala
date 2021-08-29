@@ -284,7 +284,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
   }
 
   // Only for T700
-  def executeSeq(seq: Int, on: Boolean) {}
+  def executeSeq(seq: String, on: Boolean) {}
 
   def startCalibration(calibrationType: CalibrationType, monitorTypes: List[String]) {
     import scala.concurrent.duration._

@@ -60,8 +60,7 @@ PUT      /CalibrateInstrumentSpan/:ids                                          
 PUT      /CalibrateInstrument/:ids                                                controllers.HomeController.calibrateInstrumentFull(ids)
 PUT      /ResetInstrument/:ids                                                    controllers.HomeController.resetInstrument(ids)
 PUT      /WriteDO/:ids                                                            controllers.HomeController.writeDO(ids)
-GET      /ExecuteSeq/:ids/:seq                                                    controllers.HomeController.getExecuteSeq(ids, seq:Int)
-PUT      /ExecuteSeq/:ids/:seq                                                    controllers.HomeController.executeSeq(ids, seq:Int)
+GET      /ExecuteSeq/:seq/:on                                                    controllers.HomeController.getExecuteSeq(seq:String, on:Boolean)
 
 
 GET      /InstrumentStatusReport/:id/:start/:end                                  controllers.Query.instrumentStatusReport(id, start:Long, end:Long)

@@ -12,8 +12,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 case class Horiba370Config(calibrationTime: LocalTime,
                            raiseTime: Int, downTime: Int, holdTime: Int,
-                           calibrateZeoSeq: Option[Int], calibrateSpanSeq: Option[Int],
-                           calibratorPurgeSeq: Option[Int], calibratorPurgeTime: Option[Int])
+                           calibrateZeoSeq: Option[String], calibrateSpanSeq: Option[String],
+                           calibratorPurgeSeq: Option[String], calibratorPurgeTime: Option[Int])
 
 object Horiba370Collector extends DriverOps{
 

@@ -7,6 +7,8 @@ import java.io.OutputStream
 import jssc.SerialPort
 import play.api._
 
+import scala.collection.immutable
+
 case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputStream) {
   var readBuffer = Array.empty[Byte]
   def getLine = {
@@ -59,6 +61,25 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     splitLine(readBuffer)
   }
 
+  def getLine3(): Seq[String] = {
+    def splitLine(buf: Array[Byte]): List[String] = {
+      val idx = buf.indexOf('\r'.toByte)
+      if (idx == -1) {
+          readBuffer = buf
+          Nil
+      } else {
+        val (a, rest) = buf.splitAt(idx + 1)
+        new String(a) :: splitLine(rest)
+      }
+    }
+
+    val ret = port.readBytes()
+    if (ret != null)
+      readBuffer = readBuffer ++ ret
+
+    splitLine(readBuffer)
+  }
+
   def getLine2(timeout: Int):List[String] = {
     import com.github.nscala_time.time.Imports._
     var strList = getLine2
@@ -73,30 +94,18 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     strList
   }
 
-  def getLine3 = {
-    def splitLine(buf: Array[Byte]): List[String] = {
-      val idx = buf.indexOf('\n'.toByte)
-      if (idx == -1) {
-        val cr_idx = buf.indexOf('\r'.toByte)
-        if (cr_idx == -1) {
-          readBuffer = buf
-          Nil
-        } else {
-          val (a, rest) = buf.splitAt(cr_idx + 1)
-          new String(a).trim() :: splitLine(rest)
-        }
-      } else {
-        val (a, rest) = buf.splitAt(idx + 1)
-        new String(a) :: splitLine(rest)
+  def getLine3(timeout: Int):Seq[String] = {
+    import com.github.nscala_time.time.Imports._
+    var strList = getLine3
+    val startTime = DateTime.now
+    while (strList.length == 0) {
+      val elapsedTime = new Duration(startTime, DateTime.now)
+      if (elapsedTime.getStandardSeconds > timeout) {
+        throw new Exception("Read timeout!")
       }
+      strList = getLine3
     }
-
-    val ret = port.readBytes()
-    if (ret != null)
-      readBuffer = readBuffer ++ ret
-
-    Logger.info(s"readBuffer len=${readBuffer.length}")
-    splitLine(readBuffer)
+    strList
   }
 
   def close = {

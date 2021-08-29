@@ -8,14 +8,14 @@ import play.api.libs.json._
 
 case class TapiConfig(slaveID: Int, calibrationTime: Option[LocalTime], monitorTypes: Option[List[String]],
     raiseTime:Option[Int], downTime:Option[Int], holdTime:Option[Int], 
-    calibrateZeoSeq:Option[Int], calibrateSpanSeq:Option[Int], 
-    calibratorPurgeSeq:Option[Int], calibratorPurgeTime:Option[Int],
+    calibrateZeoSeq:Option[String], calibrateSpanSeq:Option[String],
+    calibratorPurgeSeq:Option[String], calibratorPurgeTime:Option[Int],
     calibrateZeoDO:Option[Int], calibrateSpanDO:Option[Int], skipInternalVault:Option[Boolean])
     
 
 object TapiTxx {
-  val T700_PURGE_SEQ = 100      
-  val T700_STANDBY_SEQ = 99
+  val T700_PURGE_SEQ = "100"
+  val T700_STANDBY_SEQ = "99"
 }
 
 abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {

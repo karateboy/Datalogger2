@@ -428,34 +428,16 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
         })
   }
 
-  def getExecuteSeq(instruments: String, seq: Int) = Security.Authenticated {
-    val ids = instruments.split(",")
+  def getExecuteSeq(seq: String, on:Boolean) = Security.Authenticated {
     try {
-      ids.map { id =>
-        dataCollectManagerOp.executeSeq(seq)
-      }
+        dataCollectManagerOp.executeSeq(seq, on)
     } catch {
       case ex: Throwable =>
         Logger.error(ex.getMessage, ex)
         Ok(ex.getMessage)
     }
 
-    Ok(s"Execute $instruments $seq")
-  }
-
-  def executeSeq(instruments: String, seq: Int) = Security.Authenticated {
-    val ids = instruments.split(",")
-    try {
-      ids.map { id =>
-        dataCollectManagerOp.executeSeq(seq)
-      }
-    } catch {
-      case ex: Throwable =>
-        Logger.error(ex.getMessage, ex)
-        Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
-    }
-
-    Ok(Json.obj("ok" -> true))
+    Ok(s"Execute $seq")
   }
 
   def monitorList = Security.Authenticated {
