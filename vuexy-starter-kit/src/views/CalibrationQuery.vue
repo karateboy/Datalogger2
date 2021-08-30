@@ -58,6 +58,19 @@ import 'vue2-datepicker/locale/zh-tw';
 const Ripple = require('vue-ripple-directive');
 import moment from 'moment';
 import axios from 'axios';
+import { mapActions, mapGetters } from 'vuex';
+
+interface CalibrationJSON {
+  monitorType: string;
+  startTime: number;
+  endTime: number;
+  // eslint-disable-next-line camelcase
+  zero_val?: number;
+  // eslint-disable-next-line camelcase
+  span_std?: number;
+  // eslint-disable-next-line camelcase
+  span_val?: number;
+}
 
 export default Vue.extend({
   components: {
@@ -69,9 +82,20 @@ export default Vue.extend({
 
   data() {
     const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
+    let me = this;
     return {
       display: false,
-      columns: [
+      rows: [],
+      form: {
+        range,
+      },
+    };
+  },
+  computed: {
+    ...mapGetters('monitorTypes', ['mtMap']),
+    columns(): Array<any> {
+      let me = this;
+      let ret = [
         {
           key: 'monitorType',
           label: '測項',
@@ -81,11 +105,13 @@ export default Vue.extend({
           key: 'startTime',
           label: '開始時間',
           sortable: true,
+          formatter: (v: number) => moment(v).format('lll'),
         },
         {
           key: 'endTime',
           label: '結束時間',
           sortable: true,
+          formatter: (v: number) => moment(v).format('lll'),
         },
         {
           key: 'zero_val',
@@ -96,20 +122,24 @@ export default Vue.extend({
           key: 'span_val',
           label: '全幅讀值',
           sortable: true,
+          formatter: function (v: number, key: string, item: CalibrationJSON) {
+            v.toFixed(me.mtMap.get(item.monitorType).prec);
+          },
         },
         {
           key: 'span_std',
           label: '全幅標準值',
           sortable: true,
         },
-      ],
-      rows: [],
-      form: {
-        range,
-      },
-    };
+      ];
+      return ret;
+    },
+  },
+  mounted() {
+    this.fetchMonitorTypes();
   },
   methods: {
+    ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     async query() {
       this.display = true;
       const url = `/CalibrationReport/${this.form.range[0]}/${this.form.range[1]}`;
@@ -120,5 +150,3 @@ export default Vue.extend({
   },
 });
 </script>
-
-<style></style>
