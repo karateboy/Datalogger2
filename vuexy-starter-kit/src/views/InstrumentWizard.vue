@@ -165,6 +165,12 @@
             :param-str="form.param"
             @param-changed="onParamChange"
           />
+          <duo-config
+            v-else-if="form.instType === 'duo'"
+            :host="form.protocol.host"
+            :param-str="form.param"
+            @param-changed="onParamChange"
+          />
           <div v-else>TBD {{ form.instType }}</div>
         </validation-observer>
       </tab-content>
@@ -196,6 +202,7 @@ import Mqtt2ConfigPage from './Mqtt2ConfigPage.vue';
 import Adam6066ConfigPage from './Adam6066ConfigPage.vue';
 import ThetaConfigPage from './ThetaConfigPage.vue';
 import SabioConfig from './SabioConfig.vue';
+import DuoConfig from './DuoConfig.vue';
 interface ProtocolParam {
   protocol: 'tcp' | 'serial';
   host?: string;
@@ -232,6 +239,7 @@ export default Vue.extend({
     Adam6066ConfigPage,
     ThetaConfigPage,
     SabioConfig,
+    DuoConfig,
   },
   props: {
     isNew: {

@@ -72,8 +72,6 @@ object ThetaCollector extends DriverOps {
 
   case object OpenComPort
 
-  case object ReadData
-
   case object ConnectHost
 
   case object Collect

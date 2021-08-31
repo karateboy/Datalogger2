@@ -1,22 +1,25 @@
 package controllers
 
 import com.github.nscala_time.time.Imports._
+import models.ModelHelper.errorHandler
 import models._
 import play.api._
 import play.api.data.Forms._
 import play.api.data._
 import play.api.libs.json._
+import play.api.libs.ws.WSClient
 import play.api.mvc._
 
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.xml.NodeSeq
 
 class HomeController @Inject()(environment: play.api.Environment, recordOp: RecordOp,
                                userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
                                monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorOp, groupOp: GroupOp,
                                instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp,
-                               sensorOp: MqttSensorOp, adam6066: Adam6066) extends Controller {
+                               sensorOp: MqttSensorOp, adam6066: Adam6066, WSClient: WSClient) extends Controller {
 
   val title = "資料擷取器"
 
@@ -608,5 +611,45 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       Ok(Json.toJson(user))
   }
 
+  def probeDuoMonitorTypes(host:String) = Security.Authenticated.async {
+    val f = WSClient.url(s"http://$host/pub/GetRealTimeValuesList.asp").get()
+    f onFailure(errorHandler)
+
+    for(ret<-f) yield {
+      val values = ret.xml \ "Values"
+      val spectrum = ret.xml \ "Spectrums"
+      val weather = ret.xml \ "Weather"
+      val instantMonitorTypes =
+        for(mtID <- values.text.split(";")) yield
+          DuoMonitorType(id=mtID, configID = mtID, instant = true, spectrum=false, weather=false)
+
+      val spectrumMonitorTypes =
+        for(mtID <- spectrum.text.split(";")) yield
+          DuoMonitorType(id=mtID, configID = mtID, instant = false, spectrum = true, weather = false)
+
+      val weatherMonitorTypes =
+        for(mtID <- weather.text.split(";")) yield {
+          val id = mtID match {
+            case "WindSpeed" =>
+              MonitorType.WIN_SPEED
+            case "WindDirection" =>
+              MonitorType.WIN_DIRECTION
+            case "AirTemperature" =>
+              MonitorType.TEMP
+            case "RelativeHumidity"=>
+              MonitorType.HUMID
+            case _=>
+              mtID
+          }
+
+          DuoMonitorType(id=id, configID = mtID, instant = false, spectrum = false, weather = true)
+        }
+
+      val monitorTypes = instantMonitorTypes ++ spectrumMonitorTypes ++ weatherMonitorTypes
+      implicit val writes = Json.writes[DuoMonitorType]
+
+      Ok(Json.toJson(monitorTypes))
+    }
+  }
   case class EditData(id: String, data: String)
 }
