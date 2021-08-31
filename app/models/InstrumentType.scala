@@ -58,7 +58,7 @@ class InstrumentTypeOp @Inject()
  t100Factory: T100Collector.Factory, t200Factory: T200Collector.Factory, t201Factory: T201Collector.Factory,
  t300Factory: T300Collector.Factory, t360Factory: T360Collector.Factory, t400Factory: T400Collector.Factory,
  t700Factory: T700Collector.Factory, environment: play.api.Environment,
- akDrvFactory: AkDrv.Factory,
+ akDrvFactory: AkDrv.Factory, duoFactory: Duo.Factory,
  tcpModbusFactory: TcpModbusDrv2.Factory, sabio4010Factory: Sabio4010.Factory,monitorTypeOp: MonitorTypeOp) extends InjectedActorSupport {
 
   import Protocol._
@@ -94,7 +94,9 @@ class InstrumentTypeOp @Inject()
     InstrumentType(T700Collector, t700Factory),
     InstrumentType(VerewaF701Collector, verewaF701Factory),
     InstrumentType(ThetaCollector, thetaFactory),
-    InstrumentType(Sabio4010, sabio4010Factory))
+    InstrumentType(Sabio4010, sabio4010Factory),
+    InstrumentType(Duo, duoFactory)
+  )
 
   val otherMap = otherDeviceList.map(dt=> dt.id->dt).toMap
   val map: Map[String, InstrumentType] = tcpModbusDeviceTypeMap ++ akDeviceTypeMap ++ otherMap
