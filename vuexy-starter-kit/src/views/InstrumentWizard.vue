@@ -165,6 +165,12 @@
             :param-str="form.param"
             @param-changed="onParamChange"
           />
+          <ak-config-page
+            v-else-if="isAkInstrument"
+            :inst-type="form.instType"
+            :param-str="form.param"
+            @param-changed="onParamChange"
+          />
           <div v-else>TBD {{ form.instType }}</div>
         </validation-observer>
       </tab-content>
@@ -196,8 +202,9 @@ import Mqtt2ConfigPage from './Mqtt2ConfigPage.vue';
 import Adam6066ConfigPage from './Adam6066ConfigPage.vue';
 import ThetaConfigPage from './ThetaConfigPage.vue';
 import SabioConfig from './SabioConfig.vue';
+import AkConfigPage from './AkConfigPage.vue';
 interface ProtocolParam {
-  protocol: 'tcp' | 'serial';
+  protocol?: 'tcp' | 'serial';
   host?: string;
   comPort?: number;
 }
@@ -232,6 +239,7 @@ export default Vue.extend({
     Adam6066ConfigPage,
     ThetaConfigPage,
     SabioConfig,
+    AkConfigPage,
   },
   props: {
     isNew: {
@@ -261,7 +269,7 @@ export default Vue.extend({
       _id: '',
       instType: '',
       protocol: {
-        protocol: 'tcp',
+        protocol: undefined,
         host: undefined,
         comPort: undefined,
       },
@@ -290,6 +298,9 @@ export default Vue.extend({
         if (this.form.instType === t) return true;
       }
       return this.form.instType.startsWith('TcpModbus.');
+    },
+    isAkInstrument(): boolean {
+      return this.form.instType.startsWith('AkProtocol.');
     },
     isAdam6017(): boolean {
       return this.form.instType === 'adam6017';

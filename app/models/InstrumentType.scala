@@ -58,6 +58,7 @@ class InstrumentTypeOp @Inject()
  t100Factory: T100Collector.Factory, t200Factory: T200Collector.Factory, t201Factory: T201Collector.Factory,
  t300Factory: T300Collector.Factory, t360Factory: T360Collector.Factory, t400Factory: T400Collector.Factory,
  t700Factory: T700Collector.Factory, environment: play.api.Environment,
+ akDrvFactory: AkDrv.Factory,
  tcpModbusFactory: TcpModbusDrv2.Factory, sabio4010Factory: Sabio4010.Factory,monitorTypeOp: MonitorTypeOp) extends InjectedActorSupport {
 
   import Protocol._
@@ -68,6 +69,10 @@ class InstrumentTypeOp @Inject()
   val tcpModbusDeviceTypeMap: Map[String, InstrumentType] =
     TcpModbusDrv2.getInstrumentTypeList(environment, tcpModbusFactory, monitorTypeOp)
       .map(dt => dt.id -> dt).toMap
+
+  val akDeviceTypeMap: Map[String, InstrumentType] =
+    AkDrv.getInstrumentTypeList(environment, akDrvFactory, monitorTypeOp)
+    .map(dt => dt.id -> dt).toMap
 
   val otherDeviceList = Seq(
     InstrumentType(adam4017Drv, adam4017Factory, true),
@@ -92,7 +97,7 @@ class InstrumentTypeOp @Inject()
     InstrumentType(Sabio4010, sabio4010Factory))
 
   val otherMap = otherDeviceList.map(dt=> dt.id->dt).toMap
-  val map: Map[String, InstrumentType] = tcpModbusDeviceTypeMap ++ otherMap
+  val map: Map[String, InstrumentType] = tcpModbusDeviceTypeMap ++ akDeviceTypeMap ++ otherMap
 
   val DoInstruments = otherDeviceList.filter(_.driver.isDoInstrument)
   var count = 0

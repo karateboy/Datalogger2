@@ -101,10 +101,10 @@ object TcpModbusDrv2 {
     }
 
     val dataRegList = {
-      val coilRegAnyList = driverConfig.getAnyRefList(s"Data")
+      val dataRegList = driverConfig.getAnyRefList(s"Data")
       for {
-        i <- 0 to coilRegAnyList.size() - 1
-        reg = coilRegAnyList.get(i)
+        i <- 0 to dataRegList.size() - 1
+        reg = dataRegList.get(i)
         v = reg.asInstanceOf[ArrayList[Any]]
       } yield {
         DataReg(v.get(0).asInstanceOf[String], v.get(1).asInstanceOf[Int])

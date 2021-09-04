@@ -15,8 +15,8 @@ class InstrumentStatusOp @Inject()(mongoDB: MongoDB) {
   val collection = mongoDB.database.getCollection(collectionName)
 
   case class Status(key: String, value: Double)
-  case class InstrumentStatusJSON(time:Long, instID: String, statusList: List[Status])
-  case class InstrumentStatus(time: DateTime, instID: String, statusList: List[Status]) {
+  case class InstrumentStatusJSON(time:Long, instID: String, statusList: Seq[Status])
+  case class InstrumentStatus(time: DateTime, instID: String, statusList: Seq[Status]) {
     def excludeNaN = {
       val validList = statusList.filter { s => !(s.value.isNaN() || s.value.isInfinite() || s.value.isNegInfinity) }
       InstrumentStatus(time, instID, validList)

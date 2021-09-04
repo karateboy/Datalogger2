@@ -108,6 +108,31 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     strList
   }
 
+  def getAkResponse(timeout: Int):String = {
+    import com.github.nscala_time.time.Imports._
+    def readCom()={
+      val ret = port.readBytes()
+      if (ret != null)
+        readBuffer = readBuffer ++ ret
+
+      readBuffer.indexOf('\n') >= 0 ;
+    }
+
+    val startTime = DateTime.now
+    while(!readCom()){
+      Thread.sleep(100)
+      val elapsedTime = new Duration(startTime, DateTime.now)
+      if (elapsedTime.getStandardSeconds > timeout) {
+        throw new Exception("Read timeout!")
+      }
+    }
+
+    val idx = readBuffer.indexOf('\n'.toByte)
+    val (a, rest) = readBuffer.splitAt(idx + 1)
+    readBuffer = rest
+    new String(a)
+  }
+
   def close = {
     Logger.info(s"port is closed")
     is.close
