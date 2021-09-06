@@ -9,6 +9,7 @@
       back-button-text="向前"
       next-button-text="向後"
       class="wizard-vertical vertical-steps steps-transparent"
+      @on-change="onStepChange"
       @on-complete="formSubmitted"
     >
       <!-- account datails tab -->
@@ -126,6 +127,7 @@
       <tab-content
         v-if="hasDetailConfig"
         title="細部設定"
+        :lazy="true"
         :before-change="validateDetailConfig"
       >
         <validation-observer ref="detailConfigRules">
@@ -174,6 +176,7 @@
             v-else-if="form.instType === 'duo'"
             :host="form.protocol.host"
             :param-str="form.param"
+            :loading="loadingDetailedConfig"
             @param-changed="onParamChange"
           />          <div v-else>TBD {{ form.instType }}</div>
         </validation-observer>
@@ -289,6 +292,7 @@ export default Vue.extend({
       form,
       instrumentTypes: [],
       instTypeMap: new Map<string, InstrumentTypeInfo>(),
+      loadingDetailedConfig: false,
     };
   },
   computed: {
@@ -434,6 +438,9 @@ export default Vue.extend({
     },
     onParamChange(v: string) {
       this.form.param = v;
+    },
+    onStepChange(prevIndex: number, nextIndex: number) {
+      console.log(`prev=${prevIndex} next=${nextIndex}`);
     },
     async formSubmitted(): Promise<void> {
       const res = await axios.post('/Instrument', this.form);
