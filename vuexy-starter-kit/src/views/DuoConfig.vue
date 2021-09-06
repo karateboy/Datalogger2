@@ -43,6 +43,10 @@ export default Vue.extend({
       type: String,
       default: ``,
     },
+    loading: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     let config: DuoConfig = {
@@ -58,8 +62,12 @@ export default Vue.extend({
       monitorTypes,
     };
   },
-  activated() {
-    console.log('activated!');
+  watch: {
+    loading(newValue: boolean) {
+      if (newValue) {
+        this.getSupportedMonitorTypes();
+      }
+    },
   },
   methods: {
     async getSupportedMonitorTypes() {
@@ -68,7 +76,10 @@ export default Vue.extend({
           params: { host: this.host },
         });
 
-        if (res.status === 200) this.monitorTypes = res.data;
+        if (res.status === 200) {
+          this.monitorTypes = res.data;
+          console.log(this.monitorTypes);
+        }
       } catch (err) {
         throw new Error(err);
       }

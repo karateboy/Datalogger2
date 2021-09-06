@@ -612,6 +612,8 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
   }
 
   def probeDuoMonitorTypes(host:String) = Security.Authenticated.async {
+    val url = s"http://$host/pub/GetRealTimeValuesList.asp"
+    Logger.info(url)
     val f = WSClient.url(s"http://$host/pub/GetRealTimeValuesList.asp").get()
     f onFailure(errorHandler)
 
@@ -648,6 +650,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       val monitorTypes = instantMonitorTypes ++ spectrumMonitorTypes ++ weatherMonitorTypes
       implicit val writes = Json.writes[DuoMonitorType]
 
+      Logger.info(monitorTypes.toString)
       Ok(Json.toJson(monitorTypes))
     }
   }
