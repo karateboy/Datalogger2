@@ -69,7 +69,11 @@
           hover
           :fields="columns"
           :items="rows"
+          show-empty
+          :per-page="15"
+          :current-page="currentPage"
           bordered
+          sticky-header="800px"
         >
           <template #custom-foot>
             <b-tr v-for="stat in statRows" :key="stat.name">
@@ -80,6 +84,16 @@
             </b-tr>
           </template>
         </b-table>
+        <b-pagination
+          v-model="currentPage"
+          :total-rows="rows.length"
+          :per-page="15"
+          first-text="⏮"
+          prev-text="⏪"
+          next-text="⏩"
+          last-text="⏭"
+          class="mt-4"
+        ></b-pagination>
       </div>
     </b-card>
   </div>
@@ -117,6 +131,7 @@ export default Vue.extend({
         instrument: {},
         range,
       },
+      currentPage: 1,
     };
   },
   mounted() {
@@ -156,7 +171,7 @@ export default Vue.extend({
         });
       }
       for (const row of report.rows) {
-        row.time = moment(row.time).format('lll');
+        row.time = moment(row.date).format('ll');
       }
       this.rows = report.rows;
       this.statRows = report.statRows;
