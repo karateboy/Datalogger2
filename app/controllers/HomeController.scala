@@ -613,7 +613,6 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
 
   def probeDuoMonitorTypes(host:String) = Security.Authenticated.async {
     val url = s"http://$host/pub/GetRealTimeValuesList.asp"
-    Logger.info(url)
     val f = WSClient.url(s"http://$host/pub/GetRealTimeValuesList.asp").get()
     f onFailure(errorHandler)
 
@@ -621,17 +620,19 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       val values = ret.xml \ "Values"
       val spectrum = ret.xml \ "Spectrums"
       val weather = ret.xml \ "Weather"
+      def getDesc(id:String)=
+        id.split("(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])").foldLeft("")((a,b)=>s"$a $b")
       val instantMonitorTypes =
-        for(mtID <- values.text.split(";")) yield
-          DuoMonitorType(id=mtID, configID = mtID, instant = true, spectrum=false, weather=false)
+        for((mtDesc, idx) <- values.text.split(";").zipWithIndex) yield
+          DuoMonitorType(id=mtDesc, desc = mtDesc, configID = s"V${idx+1}")
 
       val spectrumMonitorTypes =
-        for(mtID <- spectrum.text.split(";")) yield
-          DuoMonitorType(id=mtID, configID = mtID, instant = false, spectrum = true, weather = false)
+        for((mtDesc, idx) <- spectrum.text.split(";").zipWithIndex) yield
+          DuoMonitorType(id=mtDesc, desc = mtDesc, configID = s"V${idx+1}")
 
       val weatherMonitorTypes =
-        for(mtID <- weather.text.split(";")) yield {
-          val id = mtID match {
+        for((mtDesc, idx) <- weather.text.split(";").zipWithIndex) yield {
+          val id = mtDesc match {
             case "WindSpeed" =>
               MonitorType.WIN_SPEED
             case "WindDirection" =>
@@ -641,10 +642,10 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
             case "RelativeHumidity"=>
               MonitorType.HUMID
             case _=>
-              mtID
+              mtDesc
           }
 
-          DuoMonitorType(id=id, configID = mtID, instant = false, spectrum = false, weather = true)
+          DuoMonitorType(id=id, desc = mtDesc, configID=s"W${idx+1}")
         }
 
       val monitorTypes = instantMonitorTypes ++ spectrumMonitorTypes ++ weatherMonitorTypes
@@ -653,6 +654,34 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       Logger.info(monitorTypes.toString)
       Ok(Json.toJson(monitorTypes))
     }
+  }
+
+  def configureDuoMonitorTypes(host:String) = Security.Authenticated.async(BodyParsers.parse.json){
+    implicit request =>
+      import Duo._
+      val ret = request.body.validate[Seq[DuoMonitorType]]
+      ret.fold(err => {
+        Logger.error(JsError.toJson(err).toString())
+        Future {
+          BadRequest(JsError.toJson(err).toString())
+        }
+      },
+        monitorTypes => {
+          val params: Seq[String] = monitorTypes.map{ t=>
+            if(t.configID.startsWith("V")) s"V=${t.configID}"
+            else if(t.configID.startsWith("S")) s"S=${t.configID}"
+            else
+              s"W=${t.configID}"
+            }
+          val paramStr = params.foldLeft("")((a,b)=>{s"$a&$b"}).drop(1)
+          val url = s"http://$host/pub/ConfigureRealTimeValues.asp?$paramStr"
+          val f = WSClient.url(url).get()
+          f onFailure(errorHandler)
+          for(ret<-f)yield {
+            monitorTypes.foreach(t=>monitorTypeOp.ensureMonitorType(t.id))
+            Ok("")
+          }
+        })
   }
   case class EditData(id: String, data: String)
 }

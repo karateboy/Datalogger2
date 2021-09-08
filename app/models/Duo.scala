@@ -7,12 +7,15 @@ import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
 
-case class DuoMonitorType(id: String, configID:String, instant:Boolean, spectrum:Boolean, weather:Boolean)
+case class DuoMonitorType(id: String, desc:String, configID:String)
 
-case class DuoConfig(monitorTypes:Seq[String])
+case class DuoConfig(monitorTypes:Seq[DuoMonitorType])
 
 object Duo extends DriverOps {
+  implicit val readMt= Json.reads[DuoMonitorType]
+  implicit val writeMt = Json.writes[DuoMonitorType]
   implicit val reads = Json.reads[DuoConfig]
+  implicit val writes = Json.writes[DuoConfig]
 
   override def id: String = "duo"
 
@@ -41,7 +44,7 @@ object Duo extends DriverOps {
         throw new Exception(JsError.toJson(error).toString())
       },
       config => {
-        config.monitorTypes.toList
+        config.monitorTypes.map{_.id}.toList
       })
   }
 
