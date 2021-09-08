@@ -112,6 +112,7 @@ GET      /EvtOptHigh                                                            
 GET      /TestSpray                                                               controllers.HomeController.testSpray
 
 GET      /ProbeDuoMonitorTypes                      controllers.HomeController.probeDuoMonitorTypes(host)
+POST     /ConfigDuoMonitorTypes/:host               controllers.HomeController.configureDuoMonitorTypes(host)
 
 #GET		/WindRose				controllers.Query.windRose
 #GET		/MonitorTypeRose		controllers.Query.monitorTypeRose

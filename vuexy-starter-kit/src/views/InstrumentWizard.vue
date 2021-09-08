@@ -432,7 +432,7 @@ export default Vue.extend({
       this.form.param = v;
     },
     onStepChange(prevIndex: number, nextIndex: number) {
-      console.log(`prev=${prevIndex} next=${nextIndex}`);
+      if (nextIndex === 2) this.loadingDetailedConfig = true;
     },
     async formSubmitted(): Promise<void> {
       const res = await axios.post('/Instrument', this.form);

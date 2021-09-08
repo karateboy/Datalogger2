@@ -1,36 +1,36 @@
 <template>
   <b-form @submit.prevent @change="onChange">
-    <b-row>
-      <b-col cols="12">
-        <b-form-group label="測項" label-for="monitor" label-cols-md="3">
-          <v-select
-            id="monitorType"
-            v-model="config.monitorTypes"
-            label="configID"
-            multiple
-            :options="monitorTypes"
-          />
-          <b-button variant="gradient-primary" @click="getSupportedMonitorTypes"
-            >偵測測項</b-button
-          >
-        </b-form-group>
-      </b-col>
-    </b-row>
+    <b-table
+      :items="supportedMonitorTypes"
+      :fields="fields"
+      selectable
+      responsive
+      @row-selected="onSelected"
+    >
+      <template #cell(selected)="{ rowSelected }">
+        <template v-if="rowSelected">
+          <span aria-hidden="true">&check;</span>
+          <span class="sr-only">Selected</span>
+        </template>
+        <template v-else>
+          <span aria-hidden="true">&nbsp;</span>
+          <span class="sr-only">Not selected</span>
+        </template>
+      </template>
+    </b-table>
   </b-form>
 </template>
 <script lang="ts">
 import Vue from 'vue';
 import axios from 'axios';
-interface DuoMonitorTypeConfig {
+interface DuoMonitorType {
   id: string;
+  desc: string;
   configID: string;
-  instant: boolean;
-  spectrum: boolean;
-  weather: boolean;
 }
 
 interface DuoConfig {
-  monitorTypes: Array<DuoMonitorTypeConfig>;
+  monitorTypes: Array<DuoMonitorType>;
 }
 
 export default Vue.extend({
@@ -49,17 +49,29 @@ export default Vue.extend({
     },
   },
   data() {
+    let monitorTypes = Array<DuoMonitorType>();
     let config: DuoConfig = {
-      monitorTypes: [],
+      monitorTypes,
     };
 
     if (this.paramStr !== '{}') config = JSON.parse(this.paramStr);
 
-    let monitorTypes = Array<DuoMonitorTypeConfig>();
+    let supportedMonitorTypes = Array<DuoMonitorType>();
 
+    let fields = [
+      {
+        key: 'selected',
+        label: '選擇',
+      },
+      {
+        key: 'desc',
+        label: '測項名稱',
+      },
+    ];
     return {
       config,
-      monitorTypes,
+      supportedMonitorTypes,
+      fields,
     };
   },
   watch: {
@@ -77,17 +89,30 @@ export default Vue.extend({
         });
 
         if (res.status === 200) {
-          this.monitorTypes = res.data;
-          console.log(this.monitorTypes);
+          this.supportedMonitorTypes = res.data;
         }
       } catch (err) {
         throw new Error(err);
       }
     },
+    onSelected(items: Array<DuoMonitorType>) {
+      this.config.monitorTypes = items;
+      this.onChange();
+      this.onMonitorTypeChanged();
+    },
     justify() {},
     onChange() {
       this.justify();
       this.$emit('param-changed', JSON.stringify(this.config));
+    },
+    async onMonitorTypeChanged() {
+      try {
+        const url = `/ConfigDuoMonitorTypes/${this.host}`;
+        const res = await axios.post(url, this.config.monitorTypes);
+        if (res.status !== 200) this.$bvModal.msgBoxOk('無法設定Duo');
+      } catch (err) {
+        throw new Error(err);
+      }
     },
   },
 });
