@@ -120,7 +120,7 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
 
     val startTime = DateTime.now
     while(!readCom()){
-      Thread.sleep(100)
+      Thread.sleep(10)
       val elapsedTime = new Duration(startTime, DateTime.now)
       if (elapsedTime.getStandardSeconds > timeout) {
         throw new Exception("Read timeout!")

@@ -49,13 +49,6 @@
             @change="markDirty(row.item)"
           />
         </template>
-        <!-- <template #cell(zd_internal)="row">
-          <b-form-input
-            v-model.number="row.item.zd_internal"
-            size="sm"
-            @change="markDirty(row.item)"
-          />
-        </template> -->
         <template #cell(zd_law)="row">
           <b-form-input
             v-model.number="row.item.zd_law"
@@ -71,13 +64,6 @@
             @change="markDirty(row.item)"
           />
         </template>
-        <!-- <template #cell(span_dev_internal)="row">
-          <b-form-input
-            v-model.number="row.item.span_dev_internal"
-            size="sm"
-            @change="markDirty(row.item)"
-          />
-        </template> -->
         <template #cell(span_dev_law)="row">
           <b-form-input
             v-model.number="row.item.span_dev_law"
