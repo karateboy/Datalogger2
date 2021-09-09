@@ -7,7 +7,7 @@ import play.api._
 import play.api.data.Forms._
 import play.api.data._
 import play.api.libs.json._
-import play.api.libs.ws.WSClient
+import play.api.libs.ws.{WSClient, WSResponse}
 import play.api.mvc._
 
 import javax.inject._
@@ -620,15 +620,13 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       val values = ret.xml \ "Values"
       val spectrum = ret.xml \ "Spectrums"
       val weather = ret.xml \ "Weather"
-      def getDesc(id:String)=
-        id.split("(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])").foldLeft("")((a,b)=>s"$a $b")
       val instantMonitorTypes =
         for((mtDesc, idx) <- values.text.split(";").zipWithIndex) yield
           DuoMonitorType(id=mtDesc, desc = mtDesc, configID = s"V${idx+1}")
 
       val spectrumMonitorTypes =
         for((mtDesc, idx) <- spectrum.text.split(";").zipWithIndex) yield
-          DuoMonitorType(id=mtDesc, desc = mtDesc, configID = s"V${idx+1}")
+          DuoMonitorType(id=mtDesc, desc = mtDesc, configID = s"S${idx+1}", isSpectrum = true)
 
       val weatherMonitorTypes =
         for((mtDesc, idx) <- weather.text.split(";").zipWithIndex) yield {
@@ -677,11 +675,22 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
           val url = s"http://$host/pub/ConfigureRealTimeValues.asp?$paramStr"
           val f = WSClient.url(url).get()
           f onFailure(errorHandler)
-          for(ret<-f)yield {
-            monitorTypes.foreach(t=>monitorTypeOp.ensureMonitorType(t.id))
-            Ok("")
+          for(ret: WSResponse <-f)yield {
+            monitorTypes.foreach(t=>
+              if(t.isSpectrum){
+                Duo.ensureSpectrumTypes(t)(monitorTypeOp)
+              }else{
+                if(Duo.map.contains(t.id))
+                  monitorTypeOp.ensureMonitorType(Duo.map(t.id))
+                else
+                  monitorTypeOp.ensureMonitorType(t.id)
+              })
+
+            Ok(Json.obj("ok"->true))
           }
         })
   }
+
+
   case class EditData(id: String, data: String)
 }

@@ -67,6 +67,11 @@ export default Vue.extend({
         key: 'desc',
         label: '測項名稱',
       },
+      {
+        key: 'isSpectrum',
+        label: '頻譜',
+        formatter: (v: boolean) => (v ? '是' : '否'),
+      },
     ];
     return {
       config,

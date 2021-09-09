@@ -15,7 +15,8 @@ case class MonitorType(_id: String, desp: String, unit: String,
                        zd_internal: Option[Double] = None, zd_law: Option[Double] = None,
                        span: Option[Double] = None, span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None,
                        var measuringBy: Option[List[String]] = None,
-                       thresholdConfig: Option[ThresholdConfig] = None) {
+                       thresholdConfig: Option[ThresholdConfig] = None,
+                       acoustic: Option[Boolean] = None) {
   def defaultUpdate = {
     Updates.combine(
       Updates.setOnInsert("_id", _id),
@@ -249,6 +250,12 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
       newMonitorType(mt)
     }
   }
+
+  def ensureMonitorType(mt: MonitorType) = {
+    if(!map.contains(mt._id))
+      newMonitorType(mt)
+  }
+
   def getRawMonitorType(mt: String) =
     (rawMonitorTypeID(mt.toString()))
 
