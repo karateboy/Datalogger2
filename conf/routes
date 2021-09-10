@@ -113,6 +113,7 @@ GET      /TestSpray                                                             
 
 GET      /ProbeDuoMonitorTypes                      controllers.HomeController.probeDuoMonitorTypes(host)
 POST     /ConfigDuoMonitorTypes/:host               controllers.HomeController.configureDuoMonitorTypes(host)
+GET      /DuoFixedMonitorTypes                      controllers.HomeController.getDuoFixedMonitorTypes
 
 #GET		/WindRose				controllers.Query.windRose
 #GET		/MonitorTypeRose		controllers.Query.monitorTypeRose

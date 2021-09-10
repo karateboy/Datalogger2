@@ -11,7 +11,7 @@ import scala.language.postfixOps
 
 case class DuoMonitorType(id: String, desc: String, configID: String, isSpectrum: Boolean = false)
 
-case class DuoConfig(monitorTypes: Seq[DuoMonitorType])
+case class DuoConfig(fixed: Boolean, monitorTypes: Seq[DuoMonitorType])
 
 object Duo extends DriverOps {
   implicit val readMt = Json.reads[DuoMonitorType]
@@ -76,6 +76,8 @@ object Duo extends DriverOps {
 
   case object ReadData
 
+  case object ReadFixedData
+
   val monitorTypes: Seq[MonitorType] = Seq(
     // LAeq0.5s;LZeq0.5s;LCpeak;LAF;LZF;LAF0.5sMax;LAF0.5sMin
     // Leq0.5s;LF
@@ -109,13 +111,27 @@ object Duo extends DriverOps {
   )
   val map: Map[String, MonitorType] = monitorTypes.map(mt => mt._id -> mt).toMap
 
+  val fixedMonitorTypes: Seq[MonitorType] = Seq(
+    MonitorType(_id = "LeqAF", desp = "Leq fast A weighting", unit = "dB",
+      prec = 2, order = 100,
+      acoustic = Some(true)),
+    MonitorType(_id = "LeqA", desp = "Leq A weighting", unit = "dB",
+      prec = 2, order = 100,
+      acoustic = Some(true)),
+    MonitorType(_id = "LeqZ", desp = "Leq Z weighting", unit = "dB",
+      prec = 2, order = 100,
+      acoustic = Some(true))
+  )
+  val fixedMap: Map[String, MonitorType] = fixedMonitorTypes.map(mt => mt._id -> mt).toMap
+
+
   val ONE_THIRD_OCTAVE_BANDS_CENTER_FREQ: Seq[String] = Seq("6.3", "8", "10", "12.5", "16", "20", "25", "31.5",
     "40", "50", "63", "80", "100", "125", "160", "200", "250",
     "315", "400", "500", "630", "800", "1k", "1.25k", "1.6k",
     "2k", "2.5k", "3.15k", "4k", "5k", "6.3k", "8k", "10k", "12.5k", "16k", "20k")
 
   def getSpectrumMonitorTypes(duoMT: DuoMonitorType) = for (idx <- 0 to 35) yield
-    MonitorType(_id = s"${duoMT.configID}:${idx}", desp = s"${duoMT.desc} ${ONE_THIRD_OCTAVE_BANDS_CENTER_FREQ(idx)}",
+    MonitorType(_id = s"${duoMT.configID}:${idx}", desp = s"${duoMT.desc} ${ONE_THIRD_OCTAVE_BANDS_CENTER_FREQ(idx)}Hz",
       unit = "dB",
       prec = 2, order = 100,
       acoustic = Some(true))
@@ -136,7 +152,11 @@ class DuoCollector @Inject()
 
   import scala.concurrent.duration._
 
-  val timer = system.scheduler.schedule(Duration(1, SECONDS), Duration(1, SECONDS), self, ReadData)
+  val timer = if(config.fixed)
+    system.scheduler.schedule(Duration(1, SECONDS), Duration(1, SECONDS), self, ReadFixedData)
+  else
+    system.scheduler.schedule(Duration(1, SECONDS), Duration(1, SECONDS), self, ReadData)
+
   val host = protocolParam.host.get
 
   val valueTypes = config.monitorTypes.filter(p => p.configID.startsWith("V"))
@@ -209,6 +229,70 @@ class DuoCollector @Inject()
 
         if (weatherTypes.length != 0)
           dataList = dataList ++ getMonitorData("Weather", weatherTypes)
+
+        context.parent ! ReportData(dataList.toList)
+      }
+    case ReadFixedData =>
+      val f = wsClient.url(s"http://${host}/ajax/F_refresh.asp?Mode=RT").get()
+      var dataList = Seq.empty[MonitorTypeData]
+
+      for (ret <- f) {
+        def getMonitorTypeData(tag: String, mtList: Seq[DuoMonitorType]) = {
+          val valueNode = ret.xml \\ tag
+          val values = valueNode.text.split(";")
+            val dataOptList =
+              for {mt<- mtList} yield {
+                val vOpt = try {
+                  val pos = mt.configID.drop(1).toInt -1
+                  val valueStr = values(pos)
+                  Some(valueStr.toDouble)
+                } catch {
+                  case _: Throwable =>
+                    None
+                }
+                for (v <- vOpt) yield
+                  MonitorTypeData(mt.id, v, MonitorStatus.NormalStat)
+              }
+            dataOptList.flatten
+        }
+
+        def getSpectrumMonitorData(spectrumMT: DuoMonitorType) = {
+          val tag = s"spectrum"
+          val valueNode = ret.xml \\ tag
+          val values = valueNode.text.split(";")
+          if (values.length != 36) {
+            Logger.warn(s"spectrum length != 36")
+            Logger.info(valueNode.text)
+            Seq.empty[MonitorTypeData]
+          } else {
+            val mtIdList =
+              for (idx <- 0 to 35) yield
+                s"${spectrumMT.configID}:${idx}"
+
+            val dataOptList =
+              for ((mtID, valueStr) <- mtIdList.zip(values)) yield {
+                val vOpt = try {
+                  Some(valueStr.toDouble)
+                } catch {
+                  case _: Throwable =>
+                    None
+                }
+                for (v <- vOpt) yield
+                  MonitorTypeData(mtID, v, MonitorStatus.NormalStat)
+              }
+            dataOptList.flatten
+          }
+        }
+
+        if (valueTypes.length != 0)
+          dataList = dataList ++ getMonitorTypeData("instant", valueTypes)
+
+        for (spectrumType <- spectrumTypes)
+          dataList = dataList ++ getSpectrumMonitorData(spectrumType)
+
+        if (weatherTypes.length != 0)
+          dataList = dataList ++ getMonitorTypeData("weather", weatherTypes)
+
 
         context.parent ! ReportData(dataList.toList)
       }

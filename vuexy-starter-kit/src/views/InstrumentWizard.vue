@@ -167,12 +167,7 @@
             :param-str="form.param"
             @param-changed="onParamChange"
           />
-		  <ak-config-page
-            v-else-if="isAkInstrument"
-            :inst-type="form.instType"
-            :param-str="form.param"
-            @param-changed="onParamChange"
-          />		  <duo-config
+          <duo-config2
             v-else-if="form.instType === 'duo'"
             :host="form.protocol.host"
             :param-str="form.param"
@@ -209,9 +204,9 @@ import Mqtt2ConfigPage from './Mqtt2ConfigPage.vue';
 import Adam6066ConfigPage from './Adam6066ConfigPage.vue';
 import ThetaConfigPage from './ThetaConfigPage.vue';
 import SabioConfig from './SabioConfig.vue';
-import AkConfigPage from './AkConfigPage.vue';
-import DuoConfig from './DuoConfig.vue';interface ProtocolParam {
-  protocol?: 'tcp' | 'serial';
+import DuoConfig2 from './DuoConfig2.vue';
+interface ProtocolParam {
+  protocol: 'tcp' | 'serial';
   host?: string;
   comPort?: number;
 }
@@ -246,8 +241,7 @@ export default Vue.extend({
     Adam6066ConfigPage,
     ThetaConfigPage,
     SabioConfig,
-	AkConfigPage,
-	DuoConfig,
+    DuoConfig2,
   },
   props: {
     isNew: {
