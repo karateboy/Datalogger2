@@ -691,6 +691,44 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
         })
   }
 
+  def getDuoFixedMonitorTypes() = Security.Authenticated {
+    {
+      val instants = Seq("LeqAF", "LeqA", "LeqZ")
+      val spectrums = Seq("LeqZ")
+      val weathers = Seq(MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION, MonitorType.RAIN,
+        MonitorType.PRESS, MonitorType.TEMP, MonitorType.HUMID)
+      val instantMonitorTypes =
+        for((mtDesc, idx) <- instants.zipWithIndex) yield
+          DuoMonitorType(id=mtDesc, desc = mtDesc, configID = s"V${idx+1}")
+
+      instantMonitorTypes.foreach(t=>
+        if(t.isSpectrum){
+          Duo.ensureSpectrumTypes(t)(monitorTypeOp)
+        }else{
+          if(Duo.fixedMap.contains(t.id))
+            monitorTypeOp.ensureMonitorType(Duo.fixedMap(t.id))
+          else
+            monitorTypeOp.ensureMonitorType(t.id)
+        })
+
+      val spectrumMonitorTypes =
+        for((id, idx) <- spectrums.zipWithIndex) yield
+          DuoMonitorType(id=id, desc = s"$id 1/3 octave", configID = s"S${idx+1}", isSpectrum = true)
+
+      spectrumMonitorTypes.foreach(t=>Duo.ensureSpectrumTypes(t)(monitorTypeOp))
+
+      val weatherMonitorTypes =
+        for((id, idx) <- weathers.zipWithIndex) yield
+          DuoMonitorType(id=id, desc = monitorTypeOp.map(id).desp, configID=s"W${idx+1}")
+
+      val monitorTypes = instantMonitorTypes ++ spectrumMonitorTypes ++ weatherMonitorTypes
+      implicit val writes = Json.writes[DuoMonitorType]
+
+      Logger.info(monitorTypes.toString)
+      Ok(Json.toJson(monitorTypes))
+    }
+  }
+
 
   case class EditData(id: String, data: String)
 }
