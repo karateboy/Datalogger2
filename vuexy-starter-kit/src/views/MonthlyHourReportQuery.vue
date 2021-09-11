@@ -51,10 +51,23 @@
             <b-button
               v-ripple.400="'rgba(186, 191, 199, 0.15)'"
               type="reset"
+              class="mr-1"
               variant="outline-secondary"
             >
               取消
             </b-button>
+            <b-button
+              variant="outline-success"
+              size="sm"
+              :disabled="rows.length === 0"
+              @click="exportExcel"
+              ><b-img
+                v-b-tooltip.hover
+                src="../assets/excel_export.svg"
+                title="匯出 Excel"
+                width="20"
+                fluid
+            /></b-button>
           </b-col>
         </b-row>
       </b-form>
@@ -95,6 +108,8 @@ const Ripple = require('vue-ripple-directive');
 import { mapState, mapActions } from 'vuex';
 import moment from 'moment';
 import axios from 'axios';
+const excel = require('../libs/excel');
+const _ = require('lodash');
 
 export default Vue.extend({
   components: {
@@ -157,6 +172,28 @@ export default Vue.extend({
       }
       this.rows = report.rows;
       this.statRows = report.statRows;
+    },
+    exportExcel() {
+      const title = this.columns.map(e => e.label);
+      const key = this.columns.map(e => e.key);
+      for (let entry of this.rows) {
+        let e = entry as any;
+        for (let k of key) {
+          e[k] = _.get(entry, k);
+        }
+      }
+      let filename = `${moment(this.form.date).year()}年${
+        moment(this.form.date).month() + 1
+      }月分時報表`;
+
+      const params = {
+        title,
+        key,
+        data: this.rows,
+        autoWidth: true,
+        filename,
+      };
+      excel.export_array_to_excel(params);
     },
   },
 });

@@ -8,7 +8,6 @@
         :items="monitorTypes"
         bordered
         sticky-header
-        stacked="md"
         style="max-height: 600px"
       >
         <template #cell(desp)="row">
@@ -28,13 +27,6 @@
             @change="markDirty(row.item)"
           />
         </template>
-        <!--  <template #cell(std_internal)="row">
-          <b-form-input
-            v-model.number="row.item.std_internal"
-            size="sm"
-            @change="markDirty(row.item)"
-          />
-        </template> -->
         <template #cell(std_law)="row">
           <b-form-input
             v-model.number="row.item.std_law"
@@ -127,6 +119,10 @@ export default Vue.extend({
       {
         key: '_id',
         label: '代碼',
+        formatter: (v: string) => {
+          if (v === 'WD_SPEED' || v === 'WD_DIR') return `${v} (向量計算)`;
+          else return v;
+        },
       },
       {
         key: 'desp',
