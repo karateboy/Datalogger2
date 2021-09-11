@@ -8,7 +8,6 @@
         :items="monitorTypes"
         bordered
         sticky-header
-        stacked="md"
         style="max-height: 600px"
       >
         <template #cell(desp)="row">
@@ -28,13 +27,6 @@
             @change="markDirty(row.item)"
           />
         </template>
-        <!--  <template #cell(std_internal)="row">
-          <b-form-input
-            v-model.number="row.item.std_internal"
-            size="sm"
-            @change="markDirty(row.item)"
-          />
-        </template> -->
         <template #cell(std_law)="row">
           <b-form-input
             v-model.number="row.item.std_law"
@@ -49,13 +41,6 @@
             @change="markDirty(row.item)"
           />
         </template>
-        <!-- <template #cell(zd_internal)="row">
-          <b-form-input
-            v-model.number="row.item.zd_internal"
-            size="sm"
-            @change="markDirty(row.item)"
-          />
-        </template> -->
         <template #cell(zd_law)="row">
           <b-form-input
             v-model.number="row.item.zd_law"
@@ -71,13 +56,6 @@
             @change="markDirty(row.item)"
           />
         </template>
-        <!-- <template #cell(span_dev_internal)="row">
-          <b-form-input
-            v-model.number="row.item.span_dev_internal"
-            size="sm"
-            @change="markDirty(row.item)"
-          />
-        </template> -->
         <template #cell(span_dev_law)="row">
           <b-form-input
             v-model.number="row.item.span_dev_law"
@@ -141,6 +119,10 @@ export default Vue.extend({
       {
         key: '_id',
         label: '代碼',
+        formatter: (v: string) => {
+          if (v === 'WD_SPEED' || v === 'WD_DIR') return `${v} (向量計算)`;
+          else return v;
+        },
       },
       {
         key: 'desp',
