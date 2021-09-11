@@ -173,7 +173,8 @@
             :param-str="form.param"
             :loading="loadingDetailedConfig"
             @param-changed="onParamChange"
-          />          <div v-else>TBD {{ form.instType }}</div>
+          />
+          <div v-else>TBD {{ form.instType }}</div>
         </validation-observer>
       </tab-content>
 
@@ -206,7 +207,7 @@ import ThetaConfigPage from './ThetaConfigPage.vue';
 import SabioConfig from './SabioConfig.vue';
 import DuoConfig2 from './DuoConfig2.vue';
 interface ProtocolParam {
-  protocol: 'tcp' | 'serial';
+  protocol: 'tcp' | 'serial' | undefined;
   host?: string;
   comPort?: number;
 }

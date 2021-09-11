@@ -90,12 +90,10 @@ export default Vue.extend({
     loading(newValue: boolean) {
       if (newValue) {
         let duoMonitorTypes = this.$refs.duoMonitorTypes as any;
-        console.log(duoMonitorTypes);
         this.supportedMonitorTypes.forEach((t, idx) => {
           if (
             this.config.monitorTypes.find(mt => mt.id === t.id) !== undefined
           ) {
-            console.log(`${idx} ${t.id} `);
             duoMonitorTypes.selectRow(idx);
           }
         });
