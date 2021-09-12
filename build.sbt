@@ -2,7 +2,8 @@ name := """DataLogger2"""
 
 version := "1.2.21"
 
-lazy val root = (project in file(".")).enablePlugins(PlayScala, LauncherJarPlugin)
+lazy val root = (project in file("."))
+  .enablePlugins(PlayScala, LauncherJarPlugin, JavaAppPackaging, WindowsPlugin)
 
 scalaVersion := "2.11.12"
 
@@ -45,3 +46,13 @@ scalacOptions += "-feature"
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
 
 routesGenerator := InjectedRoutesGenerator
+
+//WIX setting
+// general package information (can be scoped to Windows)
+maintainer := "Aragorn Huang <karateboy@sagainfo.com.tw>"
+packageSummary := "Datalogger 2"
+packageDescription := """Datatlogger 2 Windows MSI."""
+
+// wix build information
+wixProductId := "2126D26F-2930-42F8-BBAD-5A06C00455B8"
+wixProductUpgradeId := "6AEB12FF-C949-42A8-B979-8C412FFCD1B0"
