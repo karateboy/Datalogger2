@@ -131,7 +131,7 @@ object Duo extends DriverOps {
     "2k", "2.5k", "3.15k", "4k", "5k", "6.3k", "8k", "10k", "12.5k", "16k", "20k")
 
   def getSpectrumMonitorTypes(duoMT: DuoMonitorType) = for (idx <- 0 to 35) yield
-    MonitorType(_id = s"${duoMT.configID}:${idx}", desp = s"${duoMT.desc} ${ONE_THIRD_OCTAVE_BANDS_CENTER_FREQ(idx)}Hz",
+    MonitorType(_id = s"${duoMT.configID}_${idx}", desp = s"${duoMT.desc} ${ONE_THIRD_OCTAVE_BANDS_CENTER_FREQ(idx)}Hz",
       unit = "dB",
       prec = 2, order = 100,
       acoustic = Some(true))
@@ -204,7 +204,7 @@ class DuoCollector @Inject()
           } else {
             val mtIdList =
               for (idx <- 0 to 35) yield
-                s"${spectrumMT.configID}:${idx}"
+                s"${spectrumMT.configID}_${idx}"
 
             val dataOptList =
               for ((mtID, valueStr) <- mtIdList.zip(values)) yield {
@@ -261,18 +261,20 @@ class DuoCollector @Inject()
           val valueNode = ret.xml \\ tag
           val values = valueNode.text.split(";")
           if (values.length != 36) {
-            Logger.warn(s"spectrum length != 36")
-            Logger.info(valueNode.text)
+            Logger.error(s"spectrum length != 36")
             Seq.empty[MonitorTypeData]
           } else {
             val mtIdList =
               for (idx <- 0 to 35) yield
-                s"${spectrumMT.configID}:${idx}"
+                s"${spectrumMT.configID}_${idx}"
 
             val dataOptList =
               for ((mtID, valueStr) <- mtIdList.zip(values)) yield {
                 val vOpt = try {
-                  Some(valueStr.toDouble)
+                  if(valueStr.startsWith("v"))
+                    Some(valueStr.drop(1).toDouble)
+                  else
+                    Some(valueStr.toDouble)
                 } catch {
                   case _: Throwable =>
                     None
@@ -284,15 +286,20 @@ class DuoCollector @Inject()
           }
         }
 
-        if (valueTypes.length != 0)
+        if (valueTypes.length != 0) {
+          val instantList = getMonitorTypeData("instant", valueTypes)
           dataList = dataList ++ getMonitorTypeData("instant", valueTypes)
+        }
 
-        for (spectrumType <- spectrumTypes)
+        for (spectrumType <- spectrumTypes) {
+          val spectrumList = getSpectrumMonitorData(spectrumType)
           dataList = dataList ++ getSpectrumMonitorData(spectrumType)
+        }
 
-        if (weatherTypes.length != 0)
-          dataList = dataList ++ getMonitorTypeData("weather", weatherTypes)
-
+        if (weatherTypes.length != 0) {
+          val weatherList = getMonitorTypeData("weather", weatherTypes)
+          dataList = dataList ++ weatherList
+        }
 
         context.parent ! ReportData(dataList.toList)
       }
