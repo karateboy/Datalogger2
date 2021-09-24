@@ -1,20 +1,24 @@
 <template>
   <b-row class="match-height">
-    <b-col lg="9" md="12">
-      <b-card title="即時監測資訊">
+    <b-col lg="2" md="12">
+      <b-card title="專案名稱">
+        <p>Project: ...</p>
+        <p>{{ currentTime }}</p>
+      </b-card>
+    </b-col>
+    <b-col lg="3" md="12">
+      <b-card title="健康度">
+        <div id="healthPie"></div>
+      </b-card>
+    </b-col>
+    <b-col lg="7" md="12">
+      <b-card title="即時噪音">
         <div id="realtimeChart"></div>
       </b-card>
-      <b-row>
-        <b-col v-for="mt in userInfo.monitorTypeOfInterest" :key="mt" cols="3">
-          <b-card>
-            <div :id="`history_${mt}`"></div>
-          </b-card>
-        </b-col>
-      </b-row>
     </b-col>
-    <b-col lg="3" class="text-center">
-      <b-card>
-        <b-table :fields="fields" :items="realTimeStatus" small> </b-table>
+    <b-col v-for="mt in mtInterest" :key="mt" lg="3" md="12">
+      <b-card :title="getMtName(mt)">
+        <div :id="`history_${mt}`"></div>
       </b-card>
     </b-col>
   </b-row>
@@ -24,10 +28,12 @@
 import Vue from 'vue';
 import { mapActions, mapGetters, mapState } from 'vuex';
 import axios from 'axios';
-import { MonitorTypeStatus } from './types';
+import { MonitorType, MonitorTypeStatus } from './types';
 import highcharts from 'highcharts';
 import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
+import moment from 'moment';
+import { Monitor } from '@/store/monitors/types';
 
 export default Vue.extend({
   data() {
@@ -61,6 +67,8 @@ export default Vue.extend({
     ];
     let chart: any;
     chart = null;
+    let currentTime = moment().format('lll');
+    let mtInterest = ['HUMID', 'PRESS', 'WD_SPEED', 'WD_DIR'];
     return {
       maxPoints: 30,
       fields,
@@ -69,6 +77,8 @@ export default Vue.extend({
       realTimeStatus: Array<MonitorTypeStatus>(),
       chartSeries: Array<highcharts.SeriesOptionsType>(),
       chart,
+      currentTime,
+      mtInterest,
     };
   },
   computed: {
@@ -89,15 +99,13 @@ export default Vue.extend({
     await this.getUserInfo();
     const me = this;
     for (const mt of this.userInfo.monitorTypeOfInterest) this.query(mt);
-    this.mtInterestTimer = setInterval(() => {
-      for (const mt of me.userInfo.monitorTypeOfInterest) me.query(mt);
-    }, 60000);
 
+    console.log(this.mtMap);
+    this.drawHealthPie();
     await this.initRealtimeChart();
   },
   beforeDestroy() {
     clearInterval(this.refreshTimer);
-    clearInterval(this.mtInterestTimer);
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
@@ -105,6 +113,7 @@ export default Vue.extend({
     ...mapActions('user', ['getUserInfo']),
     async refresh(): Promise<void> {
       this.plotLatestData();
+      this.currentTime = moment().format('lll');
     },
     async plotLatestData(): Promise<void> {
       await this.getRealtimeStatus();
@@ -112,6 +121,9 @@ export default Vue.extend({
 
       let chart = this.chart as highcharts.Chart;
       for (const mtStatus of this.realTimeStatus) {
+        let mt = this.mtMap.get(mtStatus._id) as MonitorType;
+        if (mt.acoustic !== true) continue;
+
         const series = chart.series.find(s => {
           return s.name === mtStatus.desp;
         });
@@ -137,11 +149,14 @@ export default Vue.extend({
       await this.getRealtimeStatus();
 
       for (const mtStatus of this.realTimeStatus) {
+        let mt = this.mtMap.get(mtStatus._id) as MonitorType;
+        if (mt.acoustic !== true) continue;
+
         let data = Array<{ x: number; y: number }>();
         const wind = ['WD_SPEED', 'WD_DIR'];
         const selectedMt = ['PM25'];
         const visible = selectedMt.indexOf(mtStatus._id) !== -1;
-        if (wind.indexOf(mtStatus._id) === -1) {
+        if (mt.spectrum !== true) {
           let series: highcharts.SeriesSplineOptions = {
             id: mtStatus._id,
             name: mtStatus.desp,
@@ -154,9 +169,9 @@ export default Vue.extend({
           };
           this.chartSeries.push(series);
         } else {
-          let series: highcharts.SeriesScatterOptions = {
+          let series: highcharts.SeriesColumnOptions = {
             name: mtStatus.desp,
-            type: 'scatter',
+            type: 'column',
             data,
             tooltip: {
               valueDecimals: this.mtMap.get(mtStatus._id).prec,
@@ -179,7 +194,7 @@ export default Vue.extend({
               load: () => {
                 me.refreshTimer = setInterval(() => {
                   me.refresh();
-                }, 3000);
+                }, 1000);
                 resolve(true);
               },
             },
@@ -222,6 +237,50 @@ export default Vue.extend({
         };
         me.chart = highcharts.chart('realtimeChart', chartOption);
       });
+    },
+    async drawHealthPie() {
+      const chartOption: highcharts.Options = {
+        title: undefined,
+        chart: {
+          type: 'pie',
+        },
+        plotOptions: {
+          pie: {
+            allowPointSelect: true,
+            cursor: 'pointer',
+            dataLabels: {
+              enabled: true,
+              format: '<b>{point.name}</b>: {point.percentage:.1f} %',
+            },
+          },
+        },
+        series: [
+          {
+            name: 'Brands',
+            type: 'pie',
+            colorByPoint: true,
+            data: [
+              {
+                name: '健康度',
+                y: 95,
+                sliced: true,
+              },
+              {
+                name: '未知度',
+                y: 5,
+              },
+            ],
+          },
+        ],
+        credits: {
+          enabled: false,
+          href: 'http://www.wecc.com.tw/',
+        },
+        exporting: {
+          enabled: false,
+        },
+      };
+      highcharts.chart('healthPie', chartOption);
     },
     async query(mt: string) {
       const now = new Date().getTime();
@@ -291,6 +350,10 @@ export default Vue.extend({
         timezoneOffset: -480,
       };
       highcharts.chart(`history_${mt}`, ret);
+    },
+    getMtName(id: string): string {
+      let mt = this.mtMap.get(id) as MonitorType;
+      return mt.desp;
     },
   },
 });

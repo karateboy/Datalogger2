@@ -24,6 +24,7 @@ export default {
       try {
         const res = await axios.get('/MonitorType');
         const payload = res && res.data;
+        console.log(payload);
         commit('updateMonitorTypes', payload);
       } catch (err) {
         throw new Error(err);

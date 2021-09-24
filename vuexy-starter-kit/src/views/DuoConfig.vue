@@ -89,7 +89,7 @@ export default Vue.extend({
   methods: {
     async getSupportedMonitorTypes() {
       try {
-        const res = await axios.get('/ProbeDuoMonitorTypes', {
+        const res = await axios.get('/DuoFixedMonitorTypes', {
           params: { host: this.host },
         });
 
