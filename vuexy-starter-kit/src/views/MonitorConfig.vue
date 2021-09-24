@@ -4,20 +4,64 @@
       <b-table
         responsive
         :fields="columns"
-        :items="monitors"
+        :items="editMonitors"
         bordered
         sticky-header
+        select-mode="single"
         style="min-height: 600px"
+        selectable
+        @row-selected="onInstSelected"
       >
-        <template #cell(operation)="row">
-          <p>
-            <b-button variant="gradient-danger" @click="deleteMonitor(row)"
-              >刪除</b-button
-            >
-          </p>
+        <template #thead-top
+          ><b-tr>
+            <b-td colspan="4">
+              <b-button variant="gradient-success" @click="addMonitor()"
+                >新增</b-button
+              >
+              <b-button
+                class="ml-2"
+                variant="gradient-danger"
+                :disabled="!Boolean(selected)"
+                @click="deleteMonitor()"
+                >刪除</b-button
+              >
+              <b-button
+                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                variant="primary"
+                class="ml-2"
+                @click="save"
+              >
+                儲存
+              </b-button>
+              <b-button
+                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                variant="primary"
+                class="ml-2"
+                @click="select"
+              >
+                切換測量目標
+              </b-button>
+            </b-td></b-tr
+          >
+        </template>
+        <template #cell(selected)="{ rowSelected }">
+          <template v-if="rowSelected">
+            <span aria-hidden="true">&check;</span>
+            <span class="sr-only">Selected</span>
+          </template>
+          <template v-else>
+            <span aria-hidden="true">&nbsp;</span>
+            <span class="sr-only">Not selected</span>
+          </template>
+        </template>
+        <template #cell(_id)="row">
+          <b-form-input v-model="row.item._id" @change="markDirty(row.item)" />
         </template>
         <template #cell(desc)="row">
           <b-form-input v-model="row.item.desc" @change="markDirty(row.item)" />
+        </template>
+        <template #cell(measuring)="row">
+          {{ activeID === row.item._id ? '是' : '否' }}
         </template>
         <template #cell(monitorTypes)="row">
           <v-select
@@ -31,26 +75,6 @@
           />
         </template>
       </b-table>
-      <b-row>
-        <b-col>
-          <b-button
-            v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-            variant="primary"
-            class="mr-1"
-            @click="save"
-          >
-            儲存
-          </b-button>
-          <b-button
-            v-ripple.400="'rgba(186, 191, 199, 0.15)'"
-            type="reset"
-            variant="outline-secondary"
-            @click="rollback"
-          >
-            取消
-          </b-button>
-        </b-col>
-      </b-row>
     </b-card>
   </div>
 </template>
@@ -58,35 +82,23 @@
 import Vue from 'vue';
 const Ripple = require('vue-ripple-directive');
 import { mapActions, mapState } from 'vuex';
+import { Monitor } from '../store/monitors/types';
 import axios from 'axios';
-/*
-interface MonitorType {
-  _id: string;
-  desp: string;
-  unit: string;
-  prec: number;
-  order: number;
-  signalType: boolean;
-  std_law?: number;
-  std_internal?: number;
-  zd_internal?: number;
-  zd_law?: number;
-  span?: number;
-  span_dev_internal?: number;
-  span_dev_law?: number;
-  measuringBy?: Array<string>;
-} */
 
+interface EditMonitor extends Monitor {
+  dirty: boolean;
+}
 export default Vue.extend({
   components: {},
   directives: {
     Ripple,
   },
   data() {
+    let me = this;
     const columns = [
       {
-        key: 'operation',
-        label: '',
+        key: 'selected',
+        label: '選擇',
       },
       {
         key: '_id',
@@ -98,31 +110,36 @@ export default Vue.extend({
         sortable: true,
       },
       {
-        key: 'monitorTypes',
-        label: '測項',
-        sortable: true,
+        key: 'measuring',
+        label: '測量中',
       },
     ];
 
+    let editMonitors = Array<EditMonitor>();
+    let selected: EditMonitor | undefined;
     return {
       display: false,
       columns,
+      editMonitors,
+      selected,
     };
   },
   computed: {
-    ...mapState('monitors', ['monitors']),
+    ...mapState('monitors', ['monitors', 'activeID']),
     ...mapState('monitorTypes', ['monitorTypes']),
   },
   async mounted() {
     await this.fetchMonitors();
     await this.fetchMonitorTypes();
+    await this.getActiveID();
+    this.copyMonitor();
   },
   methods: {
-    ...mapActions('monitors', ['fetchMonitors']),
+    ...mapActions('monitors', ['fetchMonitors', 'getActiveID', 'setActiveID']),
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     save() {
       const all = Array<any>();
-      for (const m of this.monitors) {
+      for (const m of this.editMonitors) {
         if (m.dirty) {
           all.push(axios.put(`/Monitor/${m._id}`, m));
         }
@@ -136,21 +153,48 @@ export default Vue.extend({
     rollback() {
       this.fetchMonitors();
     },
-    async deleteMonitor(row: any) {
+    copyMonitor() {
+      this.editMonitors.splice(0, this.editMonitors.length);
+      for (let m of this.monitors) {
+        this.editMonitors.push(Object.assign({ dirty: false }, m));
+      }
+    },
+    async deleteMonitor() {
+      if (this.selected === undefined) return;
+
+      if (this.editMonitors.length === 1) {
+        this.$bvModal.msgBoxOk('應至少有一個測點');
+        return;
+      }
+
       const confirm = await this.$bvModal.msgBoxConfirm(
-        `確定要刪除${row.item._id}?`,
+        `確定要刪除${this.selected._id}?`,
         { okTitle: '確認', cancelTitle: '取消' },
       );
 
       if (!confirm) return;
 
-      const _id = row.item._id;
+      const _id = this.selected._id;
       const res = await axios.delete(`/Monitor/${_id}`);
       if (res.status == 200) this.$bvModal.msgBoxOk('成功');
-      this.fetchMonitors();
+      await this.fetchMonitors();
+      this.copyMonitor();
+    },
+    addMonitor() {
+      this.editMonitors.push({
+        _id: `me${this.editMonitors.length}`,
+        desc: '',
+        dirty: true,
+      });
     },
     markDirty(item: any) {
       item.dirty = true;
+    },
+    onInstSelected(items: Array<EditMonitor>) {
+      this.selected = items[0];
+    },
+    select() {
+      this.setActiveID(this.selected?._id);
     },
   },
 });

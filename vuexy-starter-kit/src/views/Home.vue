@@ -1,22 +1,21 @@
 <template>
   <b-row class="match-height">
-    <b-col lg="2" md="12">
-      <b-card title="專案名稱">
-        <p>Project: ...</p>
-        <p>{{ currentTime }}</p>
-      </b-card>
-    </b-col>
     <b-col lg="3" md="12">
       <b-card title="健康度">
         <div id="healthPie"></div>
       </b-card>
     </b-col>
-    <b-col lg="7" md="12">
+    <b-col lg="6" md="12">
       <b-card title="即時噪音">
         <div id="realtimeChart"></div>
       </b-card>
     </b-col>
-    <b-col v-for="mt in mtInterest" :key="mt" lg="3" md="12">
+    <b-col
+      v-for="mt in userInfo.monitorTypeOfInterest"
+      :key="mt"
+      lg="3"
+      md="12"
+    >
       <b-card :title="getMtName(mt)">
         <div :id="`history_${mt}`"></div>
       </b-card>
@@ -33,7 +32,6 @@ import highcharts from 'highcharts';
 import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
 import moment from 'moment';
-import { Monitor } from '@/store/monitors/types';
 
 export default Vue.extend({
   data() {
@@ -68,7 +66,7 @@ export default Vue.extend({
     let chart: any;
     chart = null;
     let currentTime = moment().format('lll');
-    let mtInterest = ['HUMID', 'PRESS', 'WD_SPEED', 'WD_DIR'];
+    let mtInterest = ['TEMP', 'HUMID', 'PRESS', 'WD_SPEED', 'WD_DIR'];
     return {
       maxPoints: 30,
       fields,
@@ -82,6 +80,7 @@ export default Vue.extend({
     };
   },
   computed: {
+    ...mapState('monitors', ['activeID']),
     ...mapState('user', ['userInfo']),
     ...mapGetters('monitorTypes', ['mtMap']),
     skin() {
@@ -98,9 +97,8 @@ export default Vue.extend({
     await this.fetchMonitorTypes();
     await this.getUserInfo();
     const me = this;
-    for (const mt of this.userInfo.monitorTypeOfInterest) this.query(mt);
+    for (const mt of this.mtInterest) this.query(mt);
 
-    console.log(this.mtMap);
     this.drawHealthPie();
     await this.initRealtimeChart();
   },
@@ -285,7 +283,7 @@ export default Vue.extend({
     async query(mt: string) {
       const now = new Date().getTime();
       const oneHourBefore = now - 60 * 60 * 1000;
-      const monitors = 'me';
+      const monitors = this.activeID;
       const url = `/HistoryTrend/${monitors}/${mt}/Min/all/${oneHourBefore}/${now}`;
       const res = await axios.get(url);
       const ret: highcharts.Options = res.data;
@@ -300,7 +298,7 @@ export default Vue.extend({
         alignTicks: false,
       };
 
-      ret.title!.text = '分鐘趨勢圖';
+      ret.title = undefined;
 
       ret.colors = [
         '#7CB5EC',
@@ -349,11 +347,15 @@ export default Vue.extend({
       ret.time = {
         timezoneOffset: -480,
       };
+      ret.exporting = {
+        enabled: false,
+      };
       highcharts.chart(`history_${mt}`, ret);
     },
     getMtName(id: string): string {
-      let mt = this.mtMap.get(id) as MonitorType;
-      return mt.desp;
+      let mt = this.mtMap.get(id) as MonitorType | undefined;
+      if (mt === undefined) return '';
+      else return mt.desp;
     },
   },
 });

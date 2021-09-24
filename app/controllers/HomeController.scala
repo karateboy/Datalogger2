@@ -482,6 +482,18 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
   }
 
+  def getActiveMonitorID = Security.Authenticated {
+      Ok(Monitor.activeID)
+  }
+
+  def setActiveMonitorID(id:String) = Security.Authenticated {
+    if(monitorOp.map.contains(id)) {
+      Monitor.activeID = id
+      Ok(Json.obj("ok"->true))
+    }else
+      BadRequest("Invalid monitor ID")
+  }
+
   def monitorTypeList = Security.Authenticated {
     implicit request =>
       val userInfo = Security.getUserinfo(request).get
@@ -592,7 +604,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
         sensor => {
           for (ret <- sensorOp.upsert(sensor)) yield {
             //insert case
-            monitorOp.ensureMonitor(id, Seq(MonitorType.PM25, MonitorType.PM10))
+            monitorOp.ensureMonitor(id)
 
             Ok(Json.obj("ok" -> ret.wasAcknowledged()))
           }

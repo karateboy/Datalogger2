@@ -9,6 +9,7 @@ import { Module } from 'vuex';
 const namespaced: boolean = true;
 export const state: MonitorState = {
   monitors: [],
+  activeID: 'me',
 };
 
 const getters: GetterTree<MonitorState, RootState> = {
@@ -29,7 +30,28 @@ const actions: ActionTree<MonitorState, RootState> = {
         commit('setMonitors', res.data);
       }
     } catch (err) {
-      throw new Error(err);
+      console.error(err);
+      throw new Error('error at fetchMonitors');
+    }
+  },
+  async getActiveID({ commit }) {
+    try {
+      const res = await axios.get('/ActiveMonitor');
+      if (res.status === 200) {
+        commit('setActiveID', res.data);
+      }
+    } catch (err) {
+      throw new Error('error at getActiveID');
+    }
+  },
+  async setActiveID({ commit }, id: string) {
+    try {
+      const res = await axios.put(`/ActiveMonitor/${id}`, {});
+      if (res.status == 200) {
+        commit('setActiveID', id);
+      }
+    } catch (err) {
+      throw new Error('error at setActiveID');
     }
   },
 };
@@ -37,6 +59,9 @@ const actions: ActionTree<MonitorState, RootState> = {
 const mutations: MutationTree<MonitorState> = {
   setMonitors(state, val) {
     state.monitors = val;
+  },
+  setActiveID(state, val) {
+    state.activeID = val;
   },
 };
 

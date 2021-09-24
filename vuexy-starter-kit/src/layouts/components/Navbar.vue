@@ -14,7 +14,7 @@
       class="bookmark-wrapper align-items-center flex-grow-1 d-none d-lg-flex"
     >
       <dark-Toggler class="d-none d-lg-block" />
-      <p class="mt-1 mb-1">風力機噪音數據分析設備</p>
+      <h3 class="mt-1 mb-1">風力機噪音數據分析設備</h3>
     </div>
 
     <b-navbar-nav class="nav align-items-center ml-auto">
