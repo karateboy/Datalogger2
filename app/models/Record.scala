@@ -9,6 +9,7 @@ import play.api._
 import java.util.Date
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.util.Success
 
 case class MtRecord(mtName: String, value: Double, status: String)
 
@@ -41,6 +42,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
   implicit val writer = Json.writes[Record]
 
   val HourCollection = "hour_data"
+  val SixMinCollection = "six_min_data"
   val MinCollection = "min_data"
   val SecCollection = "sec_data"
 
@@ -56,23 +58,40 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
       if (!colNames.contains(HourCollection)) {
         val f = mongoDB.database.createCollection(HourCollection).toFuture()
         f.onFailure(errorHandler)
+        f.andThen({
+          case Success(_)=>
+            getCollection(HourCollection).createIndex(Indexes.descending("time", "monitor"), new IndexOptions().unique(true))
+        })
+      }
+
+      if(!colNames.contains(SixMinCollection)){
+        val f = mongoDB.database.createCollection(SixMinCollection).toFuture()
+        f.onFailure(errorHandler)
+        f.andThen({
+          case Success(_)=>
+            getCollection(SixMinCollection).createIndex(Indexes.descending("time", "monitor"), new IndexOptions().unique(true))
+        })
       }
 
       if (!colNames.contains(MinCollection)) {
         val f = mongoDB.database.createCollection(MinCollection).toFuture()
         f.onFailure(errorHandler)
+        f.andThen({
+          case Success(_)=>
+            getCollection(MinCollection).createIndex(Indexes.descending("time", "monitor"), new IndexOptions().unique(true))
+        })
       }
 
       if (!colNames.contains(SecCollection)) {
         val f = mongoDB.database.createCollection(SecCollection).toFuture()
         f.onFailure(errorHandler)
+        f.andThen({
+          case Success(_)=>
+            getCollection(SecCollection).createIndex(Indexes.descending("time", "monitor"), new IndexOptions().unique(true))
+        })
       }
     }
   }
-
-  getCollection(HourCollection).createIndex(Indexes.descending("time", "monitor"), new IndexOptions().unique(true))
-  getCollection(MinCollection).createIndex(Indexes.descending("time", "monitor"), new IndexOptions().unique(true))
-  getCollection(SecCollection).createIndex(Indexes.descending("time", "monitor"), new IndexOptions().unique(true))
 
   def upgrade() = {
     Logger.info("upgrade record!")

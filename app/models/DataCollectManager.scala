@@ -132,6 +132,39 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! EvtOperationOverThreshold
   }
 
+  def recalculateSixMinData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean)(mtList: Seq[String]) = {
+    val recordMap = recordOp.getRecordMap(recordOp.MinCollection)(monitor, mtList, current - 6.minute, current)
+
+    import scala.collection.mutable.ListBuffer
+    var mtMap = Map.empty[String, Map[String, ListBuffer[(DateTime, Double)]]]
+
+    for {
+      mtRecords <- recordMap
+      mt = mtRecords._1
+      r <- mtRecords._2
+    } {
+      var statusMap = mtMap.getOrElse(mt, {
+        val map = Map.empty[String, ListBuffer[(DateTime, Double)]]
+        mtMap = mtMap ++ Map(mt -> map)
+        map
+      })
+
+      val lb = statusMap.getOrElse(r.status, {
+        val l = ListBuffer.empty[(DateTime, Double)]
+        statusMap = statusMap ++ Map(r.status -> l)
+        mtMap = mtMap ++ Map(mt -> statusMap)
+        l
+      })
+
+      lb.append((r.time, r.value))
+    }
+
+    val mtDataList = calculateAvgMap(mtMap, alwaysValid)
+    val recordList = RecordList(current.minusMinutes(6), mtDataList.toSeq, monitor)
+    val f = recordOp.upsertRecord(recordList)(recordOp.SixMinCollection)
+    f
+  }
+
   def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean)(mtList: Seq[String]) = {
     val recordMap = recordOp.getRecordMap(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current)
 
@@ -159,7 +192,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
       lb.append((r.time, r.value))
     }
 
-    val mtDataList = calculateHourAvgMap(mtMap, alwaysValid)
+    val mtDataList = calculateAvgMap(mtMap, alwaysValid)
     val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
     val f = recordOp.upsertRecord(recordList)(recordOp.HourCollection)
     if (forward)
@@ -168,7 +201,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     f
   }
 
-  def calculateHourAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
+  def calculateAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
     for {
       mt <- mtMap.keys
       statusMap = mtMap(mt)
@@ -200,7 +233,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
             windAvg(windSpeed.toList, windDir.toList)
           } else { //assume wind speed is all equal
             val windSpeed =
-              for (r <- 1 to windDir.length)
+              for (_ <- 1 to windDir.length)
                 yield 1.0
             windAvg(windSpeed.toList, windDir.toList)
           }
@@ -567,23 +600,22 @@ class DataCollectManager @Inject()
         f.andThen({
           case Success(x) =>
             if (current.getMinuteOfHour == 0) {
-              dataCollectManagerOp.recalculateHourData(monitor = Monitor.SELF_ID,
-                current = current,
-                forward = false,
-                alwaysValid = false)(latestDataMap.keys.toList)
+              for (m <- monitorOp.mvList){
+                dataCollectManagerOp.recalculateHourData(monitor = m,
+                  current = current,
+                  forward = false,
+                  alwaysValid = false)(monitorTypeOp.realtimeMtvList)
+              }
+            }
+            if (current.getMinuteOfHour % 6 == 0){
+              for (m <- monitorOp.mvList) {
+                dataCollectManagerOp.recalculateSixMinData(monitor = Monitor.SELF_ID,
+                  current = current,
+                  forward = false,
+                  alwaysValid = false)(monitorTypeOp.realtimeMtvList)
+              }
             }
         })
-      }
-
-      if (current.getMinuteOfHour == 0) {
-        //calculate other monitors
-        for (m <- monitorOp.mvList) {
-          val monitor = monitorOp.map(m)
-          dataCollectManagerOp.recalculateHourData(monitor = monitor._id,
-            current = current,
-            forward = false,
-            alwaysValid = true)(monitor.monitorTypes.toList)
-        }
       }
     }
 

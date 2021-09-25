@@ -7,6 +7,7 @@ import org.mongodb.scala.model._
 import org.mongodb.scala.bson._
 import javax.inject._
 
+case class LogoImage(filename:String, image:Array[Byte])
 @Singleton
 class SysConfig @Inject()(mongoDB: MongoDB){
   val ColName = "sysConfig"
@@ -14,10 +15,11 @@ class SysConfig @Inject()(mongoDB: MongoDB){
 
   val valueKey = "value"
   val MonitorTypeVer = "Version"
-
+  val Logo = "Logo"
 
   val defaultConfig = Map(
-    MonitorTypeVer -> Document(valueKey -> 1))
+    MonitorTypeVer -> Document(valueKey -> 1),
+    Logo -> Document(valueKey->Array.empty[Byte], "filename"->""))
 
   def init() {
     for(colNames <- mongoDB.database.listCollectionNames().toFuture()) {
@@ -60,9 +62,26 @@ class SysConfig @Inject()(mongoDB: MongoDB){
     f.onFailure(errorHandler)
     for (ret <- f) yield {
       val doc = ret.getOrElse(defaultConfig(_id))
-      doc("value")
+      doc(valueKey)
     }
   }
 
   def set(_id: String, v: BsonValue) = upsert(_id, Document(valueKey -> v))
+
+  def getLogo = {
+    val f = collection.find(Filters.equal("_id", Logo)).headOption()
+    f onFailure(errorHandler())
+    for(ret<-f) yield {
+      val doc = ret.getOrElse(defaultConfig(Logo))
+      val image = doc(valueKey).asBinary().getData
+      val filename = doc("filename").asString().getValue
+      LogoImage(filename, image)
+    }
+  }
+  def setLogo(logo:LogoImage) = {
+    val doc = Document(valueKey->logo.image, "filename"->logo.filename)
+    val f = collection.replaceOne(Filters.equal("_id", Logo), doc).toFuture()
+    f onFailure(errorHandler)
+    f
+  }
 }

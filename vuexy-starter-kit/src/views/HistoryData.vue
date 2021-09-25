@@ -162,8 +162,8 @@ export default Vue.extend({
     return {
       dataTypes: [
         { txt: '小時資料', id: 'hour' },
+        { txt: '6分鐘資料', id: 'six_min' },
         { txt: '分鐘資料', id: 'min' },
-        // { txt: '秒資料', id: 'second' },
       ],
       form: {
         monitors: Array<any>(),

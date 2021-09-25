@@ -151,17 +151,16 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       val statusFilter = MonitorStatusFilter.withName(statusFilterStr)
       val (tabType, start, end) =
         if (reportUnit.id <= ReportUnit.Hour.id) {
-          val tab = if (reportUnit == ReportUnit.Hour)
-            TableType.hour
+          if (reportUnit == ReportUnit.Hour)
+            (TableType.hour, new DateTime(startNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0),
+              new DateTime(endNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0))
           else if (reportUnit == ReportUnit.Sec)
-            TableType.second
+            (TableType.second, new DateTime(startNum).withMillisOfSecond(0), new DateTime(endNum).withMillisOfSecond(0))
           else
-            TableType.min
-
-          (tab, new DateTime(startNum), new DateTime(endNum))
-        } else {
+            (TableType.min, new DateTime(startNum).withSecondOfMinute(0).withMillisOfSecond(0),
+              new DateTime(endNum).withSecondOfMinute(0).withMillisOfSecond(0))
+        } else
           (TableType.hour, new DateTime(startNum).withMillisOfDay(0), new DateTime(endNum).withMillisOfDay(0))
-        }
 
 
       val outputType = OutputType.withName(outputTypeStr)
@@ -192,8 +191,12 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       reportUnit match {
         case ReportUnit.Min =>
           1.minute
+        case ReportUnit.SixMin =>
+          6.minute
         case ReportUnit.TenMin =>
           10.minute
+        case ReportUnit.FifteenMin=>
+          15.minute
         case ReportUnit.Hour =>
           1.hour
         case ReportUnit.Day =>
@@ -265,7 +268,11 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       reportUnit match {
         case ReportUnit.Min =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
+        case ReportUnit.SixMin =>
+          s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
         case ReportUnit.TenMin =>
+          s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
+        case ReportUnit.FifteenMin=>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
         case ReportUnit.Hour =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
@@ -402,7 +409,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       for (recordList <- resultFuture) yield {
         import scala.collection.mutable.Map
         val timeMtMonitorMap = Map.empty[DateTime, Map[String, Map[String, CellData]]]
-        recordList map {
+        recordList foreach {
           r =>
             val stripedTime = new DateTime(r.time).withSecondOfMinute(0).withMillisOfSecond(0)
             val mtMonitorMap = timeMtMonitorMap.getOrElseUpdate(stripedTime, Map.empty[String, Map[String, CellData]])
