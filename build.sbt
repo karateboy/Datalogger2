@@ -11,14 +11,14 @@ libraryDependencies ++= Seq(
   ws,
   filters,
   "com.github.tototoshi" %% "scala-csv" % "1.3.5",
-  "net.sf.marineapi" % "marineapi" % "0.10.0"
+  "net.sf.marineapi" % "marineapi" % "0.11.0"
 )
 
 // https://mvnrepository.com/artifact/org.mongodb.scala/mongo-scala-driver
-libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "4.1.1"
+libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "4.3.2"
 
 // https://mvnrepository.com/artifact/com.github.nscala-time/nscala-time
-libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "2.26.0"
+libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "2.28.0"
 
 // https://mvnrepository.com/artifact/org.eclipse.paho/org.eclipse.paho.client.mqttv3
 libraryDependencies += "org.eclipse.paho" % "org.eclipse.paho.client.mqttv3" % "1.2.5"
@@ -26,20 +26,14 @@ libraryDependencies += "org.eclipse.paho" % "org.eclipse.paho.client.mqttv3" % "
 // https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml
 libraryDependencies += "org.apache.poi" % "poi-ooxml" % "5.0.0"
 
-// https://mvnrepository.com/artifact/net.jockx/test-jssc
-libraryDependencies += "net.jockx" % "test-jssc" % "2.9.3"
-
+// https://mvnrepository.com/artifact/io.github.java-native/jssc
+libraryDependencies += "io.github.java-native" % "jssc" % "2.9.4"
 
 routesGenerator := StaticRoutesGenerator
 
 mappings in Universal ++=
 (baseDirectory.value / "report_template" * "*" get) map
     (x => x -> ("report_template/" + x.getName))
-
-mappings in Universal ++=
-(baseDirectory.value / "importEPA" * "*" get) map
-    (x => x -> ("importEPA/" + x.getName))
-	
  	
 //libraryDependencies += "com.google.guava" % "guava" % "19.0"
 scalacOptions += "-feature"

@@ -5,11 +5,10 @@ import controllers.Highchart._
 import models.ModelHelper.windAvg
 import models._
 import play.api._
-import play.api.libs.json.{Json, _}
+import play.api.libs.json._
 import play.api.mvc._
 
 import javax.inject._
-import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -142,19 +141,6 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
 
   import models.ModelHelper._
 
-  def getPeriods(start: DateTime, endTime: DateTime, d: Period): List[DateTime] = {
-    import scala.collection.mutable.ListBuffer
-
-    val buf = ListBuffer[DateTime]()
-    var current = start
-    while (current < endTime) {
-      buf.append(current)
-      current += d
-    }
-
-    buf.toList
-  }
-
   def historyTrendChart(monitorStr: String, monitorTypeStr: String, reportUnitStr: String, statusFilterStr: String,
                         startNum: Long, endNum: Long, outputTypeStr: String) = Security.Authenticated {
     implicit request =>
@@ -173,10 +159,8 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
             TableType.min
 
           (tab, new DateTime(startNum), new DateTime(endNum))
-        } else if (reportUnit.id <= ReportUnit.Day.id) {
-          (TableType.hour, new DateTime(startNum), new DateTime(endNum))
         } else {
-          (TableType.hour, new DateTime(startNum), new DateTime(endNum))
+          (TableType.hour, new DateTime(startNum).withMillisOfDay(0), new DateTime(endNum).withMillisOfDay(0))
         }
 
 
@@ -254,7 +238,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
                 Seq(Some(time.getMillis.toDouble), None)
             }
           } else {
-            for(time <- valueMap.keys.toList.sorted) yield {
+            for (time <- valueMap.keys.toList.sorted) yield {
               Seq(Some(time.getMillis.toDouble), Some(valueMap(time)))
             }
           }
@@ -364,7 +348,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
     }
 
     val pairs =
-      if (period.getHours == 1) {
+      if ((tabType == TableType.hour && period.getHours == 1) || (tabType == TableType.min && period.getMinutes == 1)) {
         recordList.filter { r => MonitorStatusFilter.isMatched(statusFilter, r.status) }.map { r => r.time -> r.value }
       } else {
         for {
@@ -385,6 +369,19 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
     Map(pairs: _*)
   }
 
+  def getPeriods(start: DateTime, endTime: DateTime, d: Period): List[DateTime] = {
+    import scala.collection.mutable.ListBuffer
+
+    val buf = ListBuffer[DateTime]()
+    var current = start
+    while (current < endTime) {
+      buf.append(current)
+      current += d
+    }
+
+    buf.toList
+  }
+
   def historyData(monitorStr: String, monitorTypeStr: String, tabTypeStr: String,
                   startNum: Long, endNum: Long) = Security.Authenticated.async {
     implicit request =>
@@ -397,7 +394,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           val orignal_end = new DateTime(endNum)
           (orignal_start.withMinuteOfHour(0), orignal_end.withMinute(0) + 1.hour)
         } else {
-          ( new DateTime(startNum), new DateTime(endNum))
+          (new DateTime(startNum), new DateTime(endNum))
         }
 
       val resultFuture = recordOp.getRecordListFuture(TableType.mapCollection(tabType))(start, end, monitors)
@@ -409,31 +406,31 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           r =>
             val stripedTime = new DateTime(r.time).withSecondOfMinute(0).withMillisOfSecond(0)
             val mtMonitorMap = timeMtMonitorMap.getOrElseUpdate(stripedTime, Map.empty[String, Map[String, CellData]])
-            for(mt <- monitorTypes.toSeq){
+            for (mt <- monitorTypes.toSeq) {
               val monitorMap = mtMonitorMap.getOrElseUpdate(mt, Map.empty[String, CellData])
-              val cellData = if(r.mtMap.contains(mt)){
+              val cellData = if (r.mtMap.contains(mt)) {
                 val mtRecord = r.mtMap(mt)
                 CellData(monitorTypeOp.format(mt, Some(mtRecord.value)),
                   monitorTypeOp.getCssClassStr(mtRecord), Some(mtRecord.status))
-              }else
+              } else
                 emtpyCell
 
               monitorMap.update(r.monitor, cellData)
             }
         }
         val timeList = timeMtMonitorMap.keys.toList.sorted
-        val timeRows: Seq[RowData] = for(time<-timeList) yield {
+        val timeRows: Seq[RowData] = for (time <- timeList) yield {
           val mtMonitorMap = timeMtMonitorMap(time)
           var cellDataList = Seq.empty[CellData]
-          for{
+          for {
             mt <- monitorTypes
             m <- monitors
-                             } {
+          } {
             val monitorMap = mtMonitorMap(mt)
-            if(monitorMap.contains(m))
-              cellDataList = cellDataList:+(mtMonitorMap(mt)(m))
+            if (monitorMap.contains(m))
+              cellDataList = cellDataList :+ (mtMonitorMap(mt)(m))
             else
-              cellDataList = cellDataList:+(emtpyCell)
+              cellDataList = cellDataList :+ (emtpyCell)
           }
           RowData(time.getMillis, cellDataList)
         }
@@ -451,45 +448,47 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       val monitorTypes = monitorTypeStr.split(':')
       val tabType = TableType.withName(tabTypeStr)
 
-      val futures = for(m <- monitors.toSeq) yield
+      val futures = for (m <- monitors.toSeq) yield
         recordOp.getLatestRecordFuture(TableType.mapCollection(tabType))(m)
 
       val allFutures = Future.sequence(futures)
 
       val emtpyCell = CellData("-", Seq.empty[String])
       for (allRecordlist <- allFutures) yield {
-        val recordList = allRecordlist.fold(Seq.empty[RecordList])((a,b)=>{ a ++ b})
+        val recordList = allRecordlist.fold(Seq.empty[RecordList])((a, b) => {
+          a ++ b
+        })
         import scala.collection.mutable.Map
         val timeMtMonitorMap = Map.empty[DateTime, Map[String, Map[String, CellData]]]
         recordList map {
           r =>
             val stripedTime = new DateTime(r.time).withSecondOfMinute(0).withMillisOfSecond(0)
             val mtMonitorMap = timeMtMonitorMap.getOrElseUpdate(stripedTime, Map.empty[String, Map[String, CellData]])
-            for(mt <- monitorTypes.toSeq){
+            for (mt <- monitorTypes.toSeq) {
               val monitorMap = mtMonitorMap.getOrElseUpdate(mt, Map.empty[String, CellData])
-              val cellData = if(r.mtMap.contains(mt)){
+              val cellData = if (r.mtMap.contains(mt)) {
                 val mtRecord = r.mtMap(mt)
                 CellData(monitorTypeOp.format(mt, Some(mtRecord.value)),
                   monitorTypeOp.getCssClassStr(mtRecord), Some(mtRecord.status))
-              }else
+              } else
                 emtpyCell
 
               monitorMap.update(r.monitor, cellData)
             }
         }
         val timeList = timeMtMonitorMap.keys.toList.sorted
-        val timeRows: Seq[RowData] = for(time<-timeList) yield {
+        val timeRows: Seq[RowData] = for (time <- timeList) yield {
           val mtMonitorMap = timeMtMonitorMap(time)
           var cellDataList = Seq.empty[CellData]
-          for{
+          for {
             mt <- monitorTypes
             m <- monitors
           } {
             val monitorMap = mtMonitorMap(mt)
-            if(monitorMap.contains(m))
-              cellDataList = cellDataList:+(mtMonitorMap(mt)(m))
+            if (monitorMap.contains(m))
+              cellDataList = cellDataList :+ (mtMonitorMap(mt)(m))
             else
-              cellDataList = cellDataList:+(emtpyCell)
+              cellDataList = cellDataList :+ (emtpyCell)
           }
           RowData(time.getMillis, cellDataList)
         }
@@ -507,13 +506,15 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       val monitors = monitorOp.mvList
       val tabType = TableType.min
 
-      val futures = for(m <- monitors.toSeq) yield
+      val futures = for (m <- monitors.toSeq) yield
         recordOp.getLatestRecordFuture(TableType.mapCollection(tabType))(m)
 
       val allFutures = Future.sequence(futures)
 
       for (allRecordlist <- allFutures) yield {
-        val recordList = allRecordlist.fold(Seq.empty[RecordList])((a,b)=>{ a ++ b})
+        val recordList = allRecordlist.fold(Seq.empty[RecordList])((a, b) => {
+          a ++ b
+        })
 
         Ok(Json.toJson(recordList))
       }
@@ -718,101 +719,80 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       }
   }
 
+  def windRoseReport(monitor: String, monitorType: String, nWay: Int, start: Long, end: Long,
+                     level1: Double, level2: Double, level3: Double) = Security.Authenticated.async {
+    implicit request =>
+      assert(nWay == 8 || nWay == 16 || nWay == 32)
+      try {
+        val mtCase = monitorTypeOp.map(monitorType)
+        val level = List(level1, level2, level3)
+        val f = recordOp.getWindRose(monitor, monitorType, new DateTime(start), new DateTime(end), level, nWay)
+        f onFailure (errorHandler)
+        for (windMap <- f) yield {
+          assert(windMap.nonEmpty)
+
+          val dirMap =
+            Map(
+              (0 -> "北"), (1 -> "北北東"), (2 -> "東北"), (3 -> "東北東"), (4 -> "東"),
+              (5 -> "東南東"), (6 -> "東南"), (7 -> "南南東"), (8 -> "南"),
+              (9 -> "南南西"), (10 -> "西南"), (11 -> "西西南"), (12 -> "西"),
+              (13 -> "西北西"), (14 -> "西北"), (15 -> "北北西"))
+          val dirStrSeq =
+            for {
+              dir <- 0 to nWay - 1
+              dirKey = if (nWay == 8)
+                dir * 2
+              else if (nWay == 32) {
+                if (dir % 2 == 0) {
+                  dir / 2
+                } else
+                  dir + 16
+              } else
+                dir
+            } yield dirMap.getOrElse(dirKey, "")
+
+          var last = 0d
+          val speedLevel = level.flatMap { l =>
+            if (l == level.head) {
+              last = l
+              List(s"< ${l} ${mtCase.unit}")
+            } else if (l == level.last) {
+              val ret = List(s"${last}~${l} ${mtCase.unit}", s"> ${l} ${mtCase.unit}")
+              last = l
+              ret
+            } else {
+              val ret = List(s"${last}~${l} ${mtCase.unit}")
+              last = l
+              ret
+            }
+          }
+          val series = for {
+            level <- 0 to level.length
+          } yield {
+            val data =
+              for (dir <- 0 to nWay - 1)
+                yield Seq(Some(dir.toDouble), Some(windMap(dir)(level).toDouble))
+
+            seqData(speedLevel(level), data)
+          }
+
+          val title = s"${mtCase.desp}玫瑰圖"
+          val chart = HighchartData(
+            scala.collection.immutable.Map("polar" -> "true", "type" -> "column"),
+            scala.collection.immutable.Map("text" -> title),
+            XAxis(Some(dirStrSeq)),
+            Seq(YAxis(None, AxisTitle(Some(Some(""))), None)),
+            series)
+          Ok(Json.toJson(chart))
+        }
+      } catch {
+        case ex: Throwable =>
+          Logger.error(ex.getMessage, ex)
+          Future {
+            BadRequest("無資料")
+          }
+      }
+  }
+
   case class InstrumentReport(columnNames: Seq[String], rows: Seq[RowData])
-
-  //
-  //  def windRose() = Security.Authenticated {
-  //    implicit request =>
-  //      Ok(views.html.windRose(false))
-  //  }
-  //
-  //  def monitorTypeRose() = Security.Authenticated {
-  //    implicit request =>
-  //      Ok(views.html.windRose(true))
-  //  }
-  //
-  //  def windRoseReport(monitorStr: String, monitorTypeStr: String, nWay: Int, startStr: String, endStr: String) = Security.Authenticated {
-  //    val monitor = EpaMonitor.withName(monitorStr)
-  //    val monitorType = (monitorTypeStr)
-  //    val start = DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
-  //    val end = DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
-  //    val mtCase = monitorTypeOp.map(monitorType)
-  //    assert(nWay == 8 || nWay == 16 || nWay == 32)
-  //
-  //    try {
-  //      val level = List(1f, 2f, 5f, 15f)
-  //      val windMap = Record.getMtRose(monitor, monitorType, start, end, level, nWay)
-  //      val nRecord = windMap.values.map { _.length }.sum
-  //
-  //      val dirMap =
-  //        Map(
-  //          (0 -> "北"), (1 -> "北北東"), (2 -> "東北"), (3 -> "東北東"), (4 -> "東"),
-  //          (5 -> "東南東"), (6 -> "東南"), (7 -> "南南東"), (8 -> "南"),
-  //          (9 -> "南南西"), (10 -> "西南"), (11 -> "西西南"), (12 -> "西"),
-  //          (13 -> "西北西"), (14 -> "西北"), (15 -> "北北西"))
-  //
-  //      val dirStrSeq =
-  //        for {
-  //          dir <- 0 to nWay - 1
-  //          dirKey = if (nWay == 8)
-  //            dir * 2
-  //          else if (nWay == 32) {
-  //            if (dir % 2 == 0) {
-  //              dir / 2
-  //            } else
-  //              dir + 16
-  //          } else
-  //            dir
-  //        } yield dirMap.getOrElse(dirKey, "")
-  //
-  //      var last = 0f
-  //      val speedLevel = level.flatMap { l =>
-  //        if (l == level.head) {
-  //          last = l
-  //          List(s"< ${l} ${mtCase.unit}")
-  //        } else if (l == level.last) {
-  //          val ret = List(s"${last}~${l} ${mtCase.unit}", s"> ${l} ${mtCase.unit}")
-  //          last = l
-  //          ret
-  //        } else {
-  //          val ret = List(s"${last}~${l} ${mtCase.unit}")
-  //          last = l
-  //          ret
-  //        }
-  //      }
-  //
-  //      import Highchart._
-  //
-  //      val series = for {
-  //        level <- 0 to level.length
-  //      } yield {
-  //        val data =
-  //          for (dir <- 0 to nWay - 1)
-  //            yield Seq(Some(dir.toDouble), Some(windMap(dir)(level).toDouble))
-  //
-  //        seqData(speedLevel(level), data)
-  //      }
-  //
-  //      val title =
-  //        if (monitorType == "")
-  //          "風瑰圖"
-  //        else {
-  //          mtCase.desp + "玫瑰圖"
-  //        }
-  //
-  //      val chart = HighchartData(
-  //        scala.collection.immutable.Map("polar" -> "true", "type" -> "column"),
-  //        scala.collection.immutable.Map("text" -> title),
-  //        XAxis(Some(dirStrSeq)),
-  //        Seq(YAxis(None, AxisTitle(Some(Some(""))), None)),
-  //        series)
-  //
-  //      Results.Ok(Json.toJson(chart))
-  //    } catch {
-  //      case e: AssertionError =>
-  //        Logger.error(e.toString())
-  //        BadRequest("無資料")
-  //    }
-  //  }
-
 }

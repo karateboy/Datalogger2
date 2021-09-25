@@ -8,6 +8,7 @@ import play.api._
 
 import java.util.Date
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 case class MtRecord(mtName: String, value: Double, status: String)
 
@@ -135,6 +136,8 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     f
   }
 
+  def getCollection(colName: String) = mongoDB.database.getCollection[RecordList](colName).withCodecRegistry(codecRegistry)
+
   def upsertRecord(doc: RecordList)(colName: String) = {
     import org.mongodb.scala.model.ReplaceOptions
 
@@ -192,41 +195,6 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     Map(pairs: _*)
   }
 
-  def getRecord2Map(colName: String)(mtList: List[String], startTime: DateTime, endTime: DateTime, monitor: String = Monitor.SELF_ID)
-                   (skip: Int = 0, limit: Int = 500) = {
-    import org.mongodb.scala.model.Filters._
-    import org.mongodb.scala.model.Sorts._
-
-    val col = getCollection(colName)
-
-    val f = col.find(and(equal("monitor", monitor), gte("time", startTime.toDate()), lt("time", endTime.toDate())))
-      .sort(ascending("time")).skip(skip).limit(limit).toFuture()
-    val docs = waitReadyResult(f)
-
-    val pairs =
-      for {
-        mt <- mtList
-      } yield {
-        val list =
-          for {
-            doc <- docs
-            time = doc.time
-            mtMap = doc.mtMap if mtMap.contains(mt)
-          } yield {
-            Record(new DateTime(time.getTime), mtMap(mt).value, mtMap(mt).status, monitor)
-          }
-
-        mt -> list
-      }
-    Map(pairs: _*)
-  }
-
-  def getCollection(colName: String) = mongoDB.database.getCollection[RecordList](colName).withCodecRegistry(codecRegistry)
-
-  implicit val mtRecordWrite = Json.writes[MtRecord]
-  implicit val idWrite = Json.writes[RecordListID]
-  implicit val recordListWrite = Json.writes[RecordList]
-
   def getRecordListFuture(colName: String)(startTime: DateTime, endTime: DateTime, monitors: Seq[String] = Seq(Monitor.SELF_ID)) = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
@@ -236,6 +204,10 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     col.find(and(in("monitor", monitors: _*), gte("time", startTime.toDate()), lt("time", endTime.toDate())))
       .sort(ascending("time")).toFuture()
   }
+
+  implicit val mtRecordWrite = Json.writes[MtRecord]
+  implicit val idWrite = Json.writes[RecordListID]
+  implicit val recordListWrite = Json.writes[RecordList]
 
   def getRecordWithLimitFuture(colName: String)(startTime: DateTime, endTime: DateTime, limit: Int, monitor: String = Monitor.SELF_ID) = {
     import org.mongodb.scala.model.Filters._
@@ -254,6 +226,70 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     val col = getCollection(colName)
     col.find(equal("monitor", monitor))
       .sort(descending("time")).limit(1).toFuture()
+  }
+
+  def getWindRose(monitor: String, monitorType: String,
+                  start: DateTime, end: DateTime,
+                  level: List[Double], nDiv: Int = 16): Future[Map[Int, Array[Double]]] = {
+    for (windRecords <- getRecordValueSeqFuture(HourCollection)(Seq(MonitorType.WIN_DIRECTION, monitorType), start, end, monitor)) yield {
+      val step = 360f / nDiv
+      import scala.collection.mutable.ListBuffer
+      val windDirPair =
+        for (d <- 0 to nDiv - 1) yield
+          d -> ListBuffer.empty[Double]
+      val windMap: Map[Int, ListBuffer[Double]] = windDirPair.toMap
+      var total = 0
+      for (record <- windRecords) {
+        val dir = (Math.ceil((record(0).value - (step / 2)) / step).toInt) % nDiv
+        windMap(dir) += record(1).value
+        total += 1
+      }
+
+      def winSpeedPercent(winSpeedList: ListBuffer[Double]) = {
+        val count = new Array[Double](level.length + 1)
+
+        def getIdx(v: Double): Int = {
+          for (i <- 0 to level.length - 1) {
+            if (v < level(i))
+              return i
+          }
+          level.length
+        }
+
+        for (w <- winSpeedList) {
+          val i = getIdx(w)
+          count(i) += 1
+        }
+        assert(total != 0)
+        count.map(_ * 100 / total)
+      }
+
+      windMap.map(kv => (kv._1, winSpeedPercent(kv._2)))
+    }
+  }
+
+  def getRecordValueSeqFuture(colName: String)
+                             (mtList: Seq[String],
+                              startTime: DateTime,
+                              endTime: DateTime,
+                              monitor: String): Future[Seq[Seq[MtRecord]]] = {
+    import org.mongodb.scala.model.Filters._
+    import org.mongodb.scala.model.Sorts._
+
+    val col = getCollection(colName)
+
+    val f = col.find(and(equal("monitor", monitor), gte("time", startTime.toDate()), lt("time", endTime.toDate())))
+      .sort(ascending("time")).toFuture()
+    f onFailure (errorHandler)
+    for (docs <- f) yield {
+      for {
+        doc <- docs
+        mtMap = doc.mtMap if mtList.forall(doc.mtMap.contains(_))
+      } yield
+        mtList map {
+          mtMap
+        }
+    }
   }
 
   /*

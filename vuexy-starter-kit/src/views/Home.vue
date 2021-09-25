@@ -7,7 +7,7 @@
     </b-col>
     <b-col lg="6" md="12">
       <b-card title="即時噪音">
-        <div id="realtimeChart"></div>
+        <div id="realtimeNoiseChart"></div>
       </b-card>
     </b-col>
     <b-col
@@ -233,7 +233,8 @@ export default Vue.extend({
           },
           series: me.chartSeries,
         };
-        me.chart = highcharts.chart('realtimeChart', chartOption);
+        if (me.chartSeries.length !== 0)
+          me.chart = highcharts.chart('realtimeNoiseChart', chartOption);
       });
     },
     async drawHealthPie() {
