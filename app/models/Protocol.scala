@@ -4,7 +4,7 @@ import models.ModelHelper._
 
 
 object Protocol extends Enumeration{
-  case class ProtocolParam(protocol:Protocol.Value, host:Option[String], comPort:Option[Int])  
+  case class ProtocolParam(protocol:Protocol.Value, host:Option[String], comPort:Option[Int], speed:Option[Int])
   implicit val pReads: Reads[Protocol.Value] = EnumUtils.enumReads(Protocol)
   implicit val pWrites: Writes[Protocol.Value] = EnumUtils.enumWrites
   implicit val ppReader = Json.reads[ProtocolParam]

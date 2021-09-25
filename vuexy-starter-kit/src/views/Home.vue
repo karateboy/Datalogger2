@@ -5,7 +5,14 @@
         <div id="realtimeChart"></div>
       </b-card>
       <b-row>
-        <b-col v-for="mt in userInfo.monitorTypeOfInterest" :key="mt" cols="3">
+        <b-col
+          v-for="mt in userInfo.monitorTypeOfInterest"
+          :key="mt"
+          cols="12"
+          md="6"
+          lg="4"
+          xl="3"
+        >
           <b-card>
             <div :id="`history_${mt}`"></div>
           </b-card>

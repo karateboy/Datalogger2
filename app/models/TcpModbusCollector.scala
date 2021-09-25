@@ -3,9 +3,12 @@ package models
 import akka.actor._
 import com.google.inject.assistedinject.Assisted
 import com.serotonin.modbus4j.locator.BaseLocator
+import com.serotonin.modbus4j.serial.SerialPortWrapper
 import models.ModelHelper._
+import models.Protocol.ProtocolParam
 import play.api._
 
+import java.io.{InputStream, OutputStream}
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -13,7 +16,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
                                             alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
                                             calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
                                   (@Assisted("instId") instId: String, @Assisted modelReg: TcpModelReg,
-                                   @Assisted deviceConfig: DeviceConfig, @Assisted("host") host:String) extends Actor {
+                                   @Assisted deviceConfig: DeviceConfig, @Assisted("protocol") protocol: ProtocolParam) extends Actor {
   var timerOpt: Option[Cancellable] = None
   import TapiTxxCollector._
   import com.serotonin.modbus4j._
@@ -174,7 +177,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
   var connected = false
   var oldModelReg: Option[ModelRegValue] = None
 
-  def receive = normalReceive
+  def receive(): Receive = normalReceive
 
   import scala.concurrent.{Future, blocking}
   def readRegFuture(recordCalibration: Boolean) =
@@ -195,7 +198,10 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
             connected = false
         } finally {
           import scala.concurrent.duration._
-          timerOpt = Some(system.scheduler.scheduleOnce(Duration(2, SECONDS), self, ReadRegister))
+          timerOpt = if(protocol.protocol == Protocol.tcp)
+            Some(system.scheduler.scheduleOnce(Duration(2, SECONDS), self, ReadRegister))
+          else
+            Some(system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
         }
       }
     }
@@ -219,16 +225,21 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
 
   def normalReceive(): Receive = {
     case ConnectHost =>
-      Logger.info(s"${self.toString()}: connect $host")
+
       Future {
         blocking {
           try {
-            val ipParameters = new IpParameters()
-            ipParameters.setHost(host);
-            ipParameters.setPort(502);
             val modbusFactory = new ModbusFactory()
-
-            masterOpt = Some(modbusFactory.createTcpMaster(ipParameters, true))
+            if(protocol.protocol == Protocol.tcp){
+              val ipParameters = new IpParameters()
+              ipParameters.setHost(protocol.host.get);
+              ipParameters.setPort(502);
+              Logger.info(s"${self.toString()}: connect ${protocol.host.get}")
+              masterOpt = Some(modbusFactory.createTcpMaster(ipParameters, true))
+            }else{
+              val serialWrapper: SerialPortWrapper = TcpModbusDrv2.getSerialWrapper(protocol)
+              masterOpt = Some(modbusFactory.createRtuMaster(serialWrapper))
+            }
             masterOpt.get.setTimeout(4000)
             masterOpt.get.setRetries(1)
             masterOpt.get.setConnected(true)
@@ -484,10 +495,12 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
       }
 
       if (deviceConfig.skipInternalVault != Some(true)) {
-        masterOpt.get.setValue(BaseLocator.coilStatus(
-          deviceConfig.slaveID, modelReg.calibrationReg.zeroAddress), false)
-        masterOpt.get.setValue(BaseLocator.coilStatus(
-          deviceConfig.slaveID, modelReg.calibrationReg.spanAddress), false)
+        for(reg <-modelReg.calibrationReg){
+          masterOpt.get.setValue(BaseLocator.coilStatus(
+            deviceConfig.slaveID, reg.zeroAddress), false)
+          masterOpt.get.setValue(BaseLocator.coilStatus(
+            deviceConfig.slaveID, reg.spanAddress), false)
+        }
       }
     } catch {
       case ex: Exception =>
@@ -507,8 +520,10 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
       }
 
       if (deviceConfig.skipInternalVault != Some(true)) {
-        val locator = BaseLocator.coilStatus(deviceConfig.slaveID, modelReg.calibrationReg.zeroAddress)
-        masterOpt.get.setValue(locator, v)
+        for(reg<-modelReg.calibrationReg){
+          val locator = BaseLocator.coilStatus(deviceConfig.slaveID, reg.zeroAddress)
+          masterOpt.get.setValue(locator, v)
+        }
       }
     } catch {
       case ex: Exception =>
@@ -528,8 +543,11 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
       }
 
       if (deviceConfig.skipInternalVault != Some(true)) {
-        val locator = BaseLocator.coilStatus(deviceConfig.slaveID, modelReg.calibrationReg.spanAddress)
-        masterOpt.get.setValue(locator, v)
+        for(reg<-modelReg.calibrationReg){
+          val locator = BaseLocator.coilStatus(deviceConfig.slaveID, reg.spanAddress)
+          masterOpt.get.setValue(locator, v)
+        }
+
       }
     } catch {
       case ex: Exception =>

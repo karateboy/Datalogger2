@@ -32,6 +32,10 @@ export default [
         resource: 'Data',
       },
       {
+        title: '風瑰圖查詢',
+        route: 'wind-rose-query',
+      },
+      {
         title: '校正資料查詢',
         route: 'calibration-query',
       },

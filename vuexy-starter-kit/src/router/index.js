@@ -111,6 +111,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/wind-rose-query',
+      name: 'wind-rose-query',
+      component: () => import('@/views/WindRose.vue'),
+      meta: {
+        pageTitle: '風瑰圖查詢',
+        breadcrumb: [
+          {
+            text: '數據查詢',
+            active: true,
+          },
+          {
+            text: '風瑰圖查詢',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/report',
       name: 'report',
       component: () => import('@/views/ReportQuery.vue'),
