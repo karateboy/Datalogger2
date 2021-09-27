@@ -190,7 +190,9 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
             monitorTypeOp.stopMeasuring(newInstrument._id)
 
             val mtList = instType.driver.getMonitorTypes(instParam)
+
             for (mt <- mtList) {
+              monitorTypeOp.ensureMonitorType(mt)
               monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog)
             }
             if (newInstrument.active)

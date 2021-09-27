@@ -8,16 +8,16 @@ import models.ModelHelper._
 import models.Protocol.ProtocolParam
 import play.api._
 
-import java.io.{InputStream, OutputStream}
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-                                            alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
-                                            calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
+                                   alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                                   calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
                                   (@Assisted("instId") instId: String, @Assisted modelReg: TcpModelReg,
                                    @Assisted deviceConfig: DeviceConfig, @Assisted("protocol") protocol: ProtocolParam) extends Actor {
   var timerOpt: Option[Cancellable] = None
+
   import TapiTxxCollector._
   import com.serotonin.modbus4j._
   import com.serotonin.modbus4j.ip.IpParameters
@@ -46,7 +46,10 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
 
     def probeInputReg(addr: Int, desc: String) = {
       try {
-        val locator = BaseLocator.inputRegister(deviceConfig.slaveID, addr, DataType.FOUR_BYTE_FLOAT)
+        val locator = if (protocol.protocol == Protocol.tcp)
+          BaseLocator.inputRegister(deviceConfig.slaveID, addr, DataType.FOUR_BYTE_FLOAT)
+        else
+          BaseLocator.inputRegister(deviceConfig.slaveID, addr, DataType.FOUR_BYTE_FLOAT_SWAPPED)
         masterOpt.get.getValue(locator)
         true
       } catch {
@@ -82,7 +85,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
     }
 
     val inputRegs =
-      for { r <- modelReg.inputRegs if probeInputReg(r.addr, r.desc) }
+      for {r <- modelReg.inputRegs if probeInputReg(r.addr, r.desc)}
         yield r
 
     val inputRegStatusType =
@@ -151,7 +154,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
       for {
         st_idx <- statusTypeList.zipWithIndex if st_idx._1.key.startsWith(InputKey)
         idx = st_idx._2
-      } yield (st_idx._1, results.getFloatValue(idx).toFloat)
+      } yield (st_idx._1, results.getFloatValue(idx).toFloat * modelReg.mulitipler)
 
     val holdings =
       for {
@@ -180,6 +183,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
   def receive(): Receive = normalReceive
 
   import scala.concurrent.{Future, blocking}
+
   def readRegFuture(recordCalibration: Boolean) =
     Future {
       blocking {
@@ -198,7 +202,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
             connected = false
         } finally {
           import scala.concurrent.duration._
-          timerOpt = if(protocol.protocol == Protocol.tcp)
+          timerOpt = if (protocol.protocol == Protocol.tcp)
             Some(system.scheduler.scheduleOnce(Duration(2, SECONDS), self, ReadRegister))
           else
             Some(system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
@@ -230,31 +234,37 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
         blocking {
           try {
             val modbusFactory = new ModbusFactory()
-            if(protocol.protocol == Protocol.tcp){
+            if (protocol.protocol == Protocol.tcp) {
               val ipParameters = new IpParameters()
               ipParameters.setHost(protocol.host.get);
               ipParameters.setPort(502);
               Logger.info(s"${self.toString()}: connect ${protocol.host.get}")
               masterOpt = Some(modbusFactory.createTcpMaster(ipParameters, true))
-            }else{
-              val serialWrapper: SerialPortWrapper = TcpModbusDrv2.getSerialWrapper(protocol)
-              masterOpt = Some(modbusFactory.createRtuMaster(serialWrapper))
+              masterOpt.get.setTimeout(4000)
+              masterOpt.get.setRetries(1)
+              masterOpt.get.setConnected(true)
+              masterOpt.get.init();
+            } else {
+              if (masterOpt.isEmpty) {
+                Logger.info(protocol.toString)
+                val serialWrapper: SerialPortWrapper = TcpModbusDrv2.getSerialWrapper(protocol)
+                masterOpt = Some(modbusFactory.createRtuMaster(serialWrapper))
+                masterOpt.get.init();
+              }
             }
-            masterOpt.get.setTimeout(4000)
-            masterOpt.get.setRetries(1)
-            masterOpt.get.setConnected(true)
 
-            masterOpt.get.init();
             connected = true
 
             if (instrumentStatusTypesOpt.isEmpty) {
               val statusTypeList = probeInstrumentStatusType.toList
-              if(modelReg.dataRegs.forall(reg=> statusTypeList.exists(statusType=> statusType.addr == reg.address))){
+              if (modelReg.dataRegs.forall(reg => statusTypeList.exists(statusType => statusType.addr == reg.address))) {
                 // Data register must included in the list
                 instrumentStatusTypesOpt = Some(probeInstrumentStatusType.toList)
                 instrumentOp.updateStatusType(instId, instrumentStatusTypesOpt.get)
-              }else
-                throw new Exception("Probe register failed. Data register is not in there...");
+              } else {
+
+                throw new Exception("Probe register failed. Data register is not in there...")
+              };
             }
             import scala.concurrent.duration._
             timerOpt = Some(system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
@@ -324,6 +334,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
   }
 
   import com.github.nscala_time.time.Imports._
+
   def calibration(calibrationType: CalibrationType, startTime: DateTime, recordCalibration: Boolean, calibrationReadingList: List[ReportData],
                   zeroReading: List[(String, Double)],
                   endState: String, timer: Cancellable): Receive = {
@@ -413,10 +424,12 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
         blocking {
           Logger.info(s"$self =>$calibrationType CalibrateEnd")
 
-          val values = for { mt <- deviceConfig.monitorTypes.get} yield {
+          val values = for {mt <- deviceConfig.monitorTypes.get} yield {
             val calibrations = calibrationReadingList.flatMap {
               reading =>
-                reading.dataList.filter { _.mt == mt }.map { r => r.value }
+                reading.dataList.filter {
+                  _.mt == mt
+                }.map { r => r.value }
             }
 
             if (calibrations.length == 0) {
@@ -495,7 +508,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
       }
 
       if (deviceConfig.skipInternalVault != Some(true)) {
-        for(reg <-modelReg.calibrationReg){
+        for (reg <- modelReg.calibrationReg) {
           masterOpt.get.setValue(BaseLocator.coilStatus(
             deviceConfig.slaveID, reg.zeroAddress), false)
           masterOpt.get.setValue(BaseLocator.coilStatus(
@@ -520,7 +533,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
       }
 
       if (deviceConfig.skipInternalVault != Some(true)) {
-        for(reg<-modelReg.calibrationReg){
+        for (reg <- modelReg.calibrationReg) {
           val locator = BaseLocator.coilStatus(deviceConfig.slaveID, reg.zeroAddress)
           masterOpt.get.setValue(locator, v)
         }
@@ -543,7 +556,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
       }
 
       if (deviceConfig.skipInternalVault != Some(true)) {
-        for(reg<-modelReg.calibrationReg){
+        for (reg <- modelReg.calibrationReg) {
           val locator = BaseLocator.coilStatus(deviceConfig.slaveID, reg.spanAddress)
           masterOpt.get.setValue(locator, v)
         }
@@ -585,6 +598,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
 
       now.withHourOfDay(hour).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0) + nextDay.day
     }
+
     // suppose every 10 min
     val period = 30
     val nextTime = getNextTime(period)
@@ -674,9 +688,9 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
     }
 
     val monitorTypeData = optValues.flatten.map(
-      t=> MonitorTypeData(t._1, t._2._2.toDouble, collectorState))
+      t => MonitorTypeData(t._1, t._2._2.toDouble, collectorState))
 
-    if(monitorTypeData.isEmpty)
+    if (monitorTypeData.isEmpty)
       None
     else
       Some(ReportData(monitorTypeData.toList))

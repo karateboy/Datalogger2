@@ -21,7 +21,14 @@
     </b-col>
     <b-col lg="3" class="text-center">
       <b-card>
-        <b-table :fields="fields" :items="realTimeStatus" small> </b-table>
+        <b-table
+          :fields="fields"
+          :items="realTimeStatus"
+          small
+          head-variant="primary"
+          head-row-variant="primary"
+        >
+        </b-table>
       </b-card>
     </b-col>
   </b-row>

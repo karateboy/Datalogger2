@@ -23,7 +23,8 @@ case class CalibrationReg(zeroAddress: Int, spanAddress: Int)
 
 case class TcpModelReg(dataRegs: List[DataReg], calibrationReg: Option[CalibrationReg],
                        inputRegs: List[InputReg], holdingRegs: List[HoldingReg],
-                       modeRegs: List[DiscreteInputReg], warnRegs: List[DiscreteInputReg], coilRegs: List[CoilReg])
+                       modeRegs: List[DiscreteInputReg], warnRegs: List[DiscreteInputReg],
+                       coilRegs: List[CoilReg], mulitipler: Float = 1)
 
 case class TcpModbusDeviceModel(id: String, description: String, tcpModelReg: TcpModelReg, protocols: Seq[Protocol.Value])
 
@@ -56,6 +57,13 @@ object TcpModbusDrv2 {
     } catch {
       case _: Throwable =>
         Seq(Protocol.tcp)
+    }
+
+    val mulitipler: Float = try {
+      driverConfig.getDouble("mulitipler").toFloat
+    } catch {
+      case _: Throwable =>
+        1f
     }
 
     val inputRegList = {
@@ -124,20 +132,20 @@ object TcpModbusDrv2 {
       }
     }
 
-    val calibrationReg:Option[CalibrationReg] = {
-      try{
+    val calibrationReg: Option[CalibrationReg] = {
+      try {
         val addressList = driverConfig.getAnyRefList(s"Calibration")
         Some(CalibrationReg(addressList.get(0).asInstanceOf[Int],
           addressList.get(1).asInstanceOf[Int]))
-      }catch{
-        case _:Throwable=>
+      } catch {
+        case _: Throwable =>
           None
       }
     }
 
     TcpModbusDeviceModel(id = id, description = description, protocols = protocols,
       tcpModelReg = TcpModelReg(dataRegList.toList, calibrationReg, inputRegList.toList,
-        holdingRegList.toList, modeRegList.toList, warnRegList.toList, coilRegList.toList))
+        holdingRegList.toList, modeRegList.toList, warnRegList.toList, coilRegList.toList, mulitipler))
   }
 
   trait Factory {
@@ -149,7 +157,9 @@ object TcpModbusDrv2 {
     assert(protocolParam.protocol == Protocol.serial)
     new SerialPortWrapper {
       var comm: SerialComm = null
+
       override def close(): Unit = comm.close
+
       override def open(): Unit = {
         comm = SerialComm.open(protocolParam.comPort.get, protocolParam.speed.getOrElse(9600))
       }

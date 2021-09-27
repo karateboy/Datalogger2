@@ -171,15 +171,50 @@ class SerialOutputStream(port: SerialPort) extends OutputStream {
   override def write(b: Int) = {
     port.writeByte(b.toByte)
   }
+
+  override def write(b: Array[Byte]): Unit = {
+    write(b, 0, b.length)
+  }
+
+  override def write(b: Array[Byte], off: Int, len: Int): Unit = {
+    val buffer = new Array[Byte](len)
+    val target = b.drop(off)
+    target.copyToArray(buffer, len)
+    port.writeBytes(buffer)
+  }
 }
 
 class SerialInputStream(serialPort: jssc.SerialPort) extends InputStream {
   override def read() = {
-    val retArray = serialPort.readBytes(1)
+    val retArray = serialPort.readBytes(1, 100)
     if(retArray.length == 0)
       -1
     else
       retArray(0)
+  }
+
+  override def read(b: Array[Byte]): Int = {
+    read(b, 0, b.length)
+  }
+
+  override def read(b: Array[Byte], off: Int, len: Int): Int = {
+    var actualLen = if(b.length < off + len)
+      b.length - off
+    else
+      len
+
+    if(actualLen > serialPort.getInputBufferBytesCount)
+      actualLen = serialPort.getInputBufferBytesCount
+
+    val ret = serialPort.readBytes(actualLen)
+    ret.copyToArray(b, off)
+
+    actualLen
+  }
+
+  override def available(): Int = {
+    val ret = serialPort.getInputBufferBytesCount
+    ret
   }
 }
 

@@ -29,6 +29,9 @@ libraryDependencies += "org.apache.poi" % "poi-ooxml" % "5.0.0"
 // https://mvnrepository.com/artifact/io.github.java-native/jssc
 libraryDependencies += "io.github.java-native" % "jssc" % "2.9.4"
 
+// https://mvnrepository.com/artifact/org.rxtx/rxtx
+libraryDependencies += "org.rxtx" % "rxtx" % "2.1.7"
+
 routesGenerator := StaticRoutesGenerator
 
 mappings in Universal ++=
