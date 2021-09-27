@@ -726,14 +726,21 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       }
   }
 
-  def windRoseReport(monitor: String, monitorType: String, nWay: Int, start: Long, end: Long,
+  def windRoseReport(monitor: String, monitorType: String, tabTypeStr:String, nWay: Int, start: Long, end: Long,
                      level1: Double, level2: Double, level3: Double) = Security.Authenticated.async {
     implicit request =>
       assert(nWay == 8 || nWay == 16 || nWay == 32)
       try {
         val mtCase = monitorTypeOp.map(monitorType)
         val level = List(level1, level2, level3)
-        val f = recordOp.getWindRose(monitor, monitorType, new DateTime(start), new DateTime(end), level, nWay)
+        val tableType = TableType.withName(tabTypeStr)
+        val colName:String = tableType match {
+          case TableType.hour=>
+            recordOp.HourCollection
+          case TableType.min=>
+            recordOp.MinCollection
+        }
+        val f = recordOp.getWindRose(colName)(monitor, monitorType, new DateTime(start), new DateTime(end), level, nWay)
         f onFailure (errorHandler)
         for (windMap <- f) yield {
           assert(windMap.nonEmpty)

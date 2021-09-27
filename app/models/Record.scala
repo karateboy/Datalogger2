@@ -247,10 +247,10 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
       .sort(descending("time")).limit(1).toFuture()
   }
 
-  def getWindRose(monitor: String, monitorType: String,
+  def getWindRose(colName: String)(monitor: String, monitorType: String,
                   start: DateTime, end: DateTime,
                   level: List[Double], nDiv: Int = 16): Future[Map[Int, Array[Double]]] = {
-    for (windRecords <- getRecordValueSeqFuture(HourCollection)(Seq(MonitorType.WIN_DIRECTION, monitorType), start, end, monitor)) yield {
+    for (windRecords <- getRecordValueSeqFuture(colName)(Seq(MonitorType.WIN_DIRECTION, monitorType), start, end, monitor)) yield {
       val step = 360f / nDiv
       import scala.collection.mutable.ListBuffer
       val windDirPair =

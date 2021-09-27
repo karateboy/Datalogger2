@@ -1,47 +1,68 @@
 <template>
   <b-row class="match-height">
     <b-col lg="9" md="12">
-      <b-card title="即時監測資訊">
+      <b-card
+        class="text-center"
+        header="即時監測資訊"
+        header-class="h4 display text-center"
+        border-variant="primary"
+        header-bg-variant="primary"
+        header-text-variant="white"
+      >
         <div id="realtimeChart"></div>
       </b-card>
-      <b-row>
-        <b-col
-          v-for="mt in userInfo.monitorTypeOfInterest"
-          :key="mt"
-          cols="12"
-          md="6"
-          lg="4"
-          xl="3"
-        >
-          <b-card>
-            <div :id="`history_${mt}`"></div>
-          </b-card>
-        </b-col>
-      </b-row>
     </b-col>
     <b-col lg="3" class="text-center">
-      <b-card>
+      <b-card no-body>
         <b-table
           :fields="fields"
           :items="realTimeStatus"
           small
-          head-variant="primary"
-          head-row-variant="primary"
+          head-variant="light"
+          head-row-variant="success"
         >
         </b-table>
       </b-card>
     </b-col>
+    <b-col
+      v-for="mt in userInfo.monitorTypeOfInterest"
+      :key="mt"
+      cols="12"
+      md="6"
+      lg="4"
+      xl="3"
+    >
+      <b-card>
+        <div :id="`history_${mt}`"></div>
+      </b-card>
+    </b-col>
+    <b-col
+      v-for="mt in windRoseList"
+      :key="`rose${mt}`"
+      cols="12"
+      md="6"
+      lg="4"
+      xl="3"
+    >
+      <b-card
+        :header="`${getMtName(mt)}風瑰圖`"
+        header-bg-variant="success"
+        header-text-variant="white"
+      >
+        <div :id="`rose_${mt}`">尚無資料</div>
+      </b-card>
+    </b-col>
   </b-row>
 </template>
-<style scoped></style>
 <script lang="ts">
 import Vue from 'vue';
 import { mapActions, mapGetters, mapState } from 'vuex';
 import axios from 'axios';
-import { MonitorTypeStatus } from './types';
+import { MonitorType, MonitorTypeStatus } from './types';
 import highcharts from 'highcharts';
 import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
+import highchartMore from 'highcharts/highcharts-more';
 
 export default Vue.extend({
   data() {
@@ -92,6 +113,11 @@ export default Vue.extend({
       const { skin } = useAppConfig();
       return skin;
     },
+    windRoseList(): Array<string> {
+      let mtInterest = this.userInfo.monitorTypeOfInterest as Array<string>;
+      let ret = mtInterest.filter(mt => mt !== 'WD_DIR');
+      return ret;
+    },
   },
   async mounted() {
     const { skin } = useAppConfig();
@@ -105,6 +131,7 @@ export default Vue.extend({
     for (const mt of this.userInfo.monitorTypeOfInterest) this.query(mt);
     this.mtInterestTimer = setInterval(() => {
       for (const mt of me.userInfo.monitorTypeOfInterest) me.query(mt);
+      for (const mt of me.windRoseList) me.queryWindRose(mt);
     }, 60000);
 
     await this.initRealtimeChart();
@@ -255,7 +282,8 @@ export default Vue.extend({
         alignTicks: false,
       };
 
-      ret.title!.text = '分鐘趨勢圖';
+      let mtInfo = this.mtMap.get(mt) as MonitorType;
+      ret.title!.text = `${mtInfo.desp}分鐘趨勢圖`;
 
       ret.colors = [
         '#7CB5EC',
@@ -280,6 +308,9 @@ export default Vue.extend({
         href: 'http://www.wecc.com.tw/',
       };
 
+      ret.exporting = {
+        enabled: false,
+      };
       let xAxis: highcharts.XAxisOptions = ret.xAxis as highcharts.XAxisOptions;
       xAxis.type = 'datetime';
 
@@ -304,7 +335,78 @@ export default Vue.extend({
       ret.time = {
         timezoneOffset: -480,
       };
+      ret.exporting = {
+        enabled: false,
+      };
       highcharts.chart(`history_${mt}`, ret);
+    },
+    getMtName(mt: string): string {
+      let mtInfo = this.mtMap.get(mt) as MonitorType;
+      if (mtInfo !== undefined) return mtInfo.desp;
+      else return '';
+    },
+    async queryWindRose(mt: string) {
+      let level1 = 3;
+      let level2 = 10;
+      let level3 = 15;
+      const now = new Date().getTime();
+      const oneHourBefore = now - 60 * 60 * 1000;
+      const monitors = 'me';
+
+      try {
+        const url = `/WindRose/me/${mt}/min/16/${oneHourBefore}/${now}/${level1}/${level2}/${level3}`;
+        const res = await axios.get(url);
+        const ret = res.data;
+        ret.pane = {
+          size: '90%',
+        };
+
+        ret.legend = {
+          align: 'right',
+          verticalAlign: 'top',
+          y: 100,
+          layout: 'vertical',
+        };
+        ret.yAxis = {
+          min: 0,
+          endOnTick: false,
+          showLastLabel: true,
+          title: {
+            text: '頻率 (%)',
+          },
+          labels: {
+            formatter(this: any) {
+              return this.value + '%';
+            },
+          },
+          reversedStacks: false,
+        };
+
+        ret.tooltip = {
+          valueDecimals: 2,
+          valueSuffix: '%',
+        };
+
+        ret.plotOptions = {
+          series: {
+            stacking: 'normal',
+            shadow: false,
+            groupPadding: 0,
+            pointPlacement: 'on',
+          },
+        };
+
+        ret.credits = {
+          enabled: false,
+          href: 'http://www.wecc.com.tw/',
+        };
+
+        ret.title.x = -70;
+        highchartMore(highcharts);
+        highcharts.chart(`rose_${mt}`, ret);
+      } catch (err) {
+      } finally {
+      }
     },
   },
 });

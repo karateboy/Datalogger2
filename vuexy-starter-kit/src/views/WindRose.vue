@@ -169,11 +169,9 @@ export default Vue.extend({
       let level3 = this.form.level3;
 
       try {
-        const url = `/WindRose/${this.form.monitor}/${this.form.monitorType}/${this.form.nWay}/${this.form.range[0]}/${this.form.range[1]}/${level1}/${level2}/${level3}`;
+        const url = `/WindRose/${this.form.monitor}/${this.form.monitorType}/hour/${this.form.nWay}/${this.form.range[0]}/${this.form.range[1]}/${level1}/${level2}/${level3}`;
         const res = await axios.get(url);
         const ret = res.data;
-        // ret.colors = ['#2233333', '#443333', '#663333', '#883333', '#AA3333'];
-
         ret.pane = {
           size: '90%',
         };
@@ -184,11 +182,6 @@ export default Vue.extend({
           y: 100,
           layout: 'vertical',
         };
-        /*
-		        result.xAxis={
-		            tickmarkPlacement: 'on'
-		        };
-				*/
         ret.yAxis = {
           min: 0,
           endOnTick: false,
@@ -227,7 +220,7 @@ export default Vue.extend({
         highchartMore(highcharts);
         highcharts.chart('chart_container', ret);
       } catch (err) {
-        throw new Error(err);
+        this.$bvModal.msgBoxOk('沒有資料');
       } finally {
         this.setLoading({ loading: false });
       }

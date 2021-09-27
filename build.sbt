@@ -1,6 +1,6 @@
 name := """DataLogger2"""
 
-version := "1.3.1"
+version := "1.3.2"
 
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala, LauncherJarPlugin, JavaAppPackaging, WindowsPlugin)
@@ -28,9 +28,6 @@ libraryDependencies += "org.apache.poi" % "poi-ooxml" % "5.0.0"
 
 // https://mvnrepository.com/artifact/io.github.java-native/jssc
 libraryDependencies += "io.github.java-native" % "jssc" % "2.9.4"
-
-// https://mvnrepository.com/artifact/org.rxtx/rxtx
-libraryDependencies += "org.rxtx" % "rxtx" % "2.1.7"
 
 routesGenerator := StaticRoutesGenerator
 
