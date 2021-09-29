@@ -11,18 +11,23 @@
       </b-card>
     </b-col>
     <b-col
-      v-for="mt in userInfo.monitorTypeOfInterest"
-      :key="mt"
-      lg="3"
-      md="12"
+      v-for="mt in realtimeMtList"
+      :key="`realtime${mt}`"
+      cols="12"
+      md="6"
+      lg="4"
+      xl="3"
     >
-      <b-card :title="getMtName(mt)">
-        <div :id="`history_${mt}`"></div>
+      <b-card
+        :header="`${getMtName(mt)}即時圖`"
+        header-bg-variant="success"
+        header-text-variant="white"
+      >
+        <div :id="`realtime_${mt}`">尚無資料</div>
       </b-card>
     </b-col>
   </b-row>
 </template>
-<style scoped></style>
 <script lang="ts">
 import Vue from 'vue';
 import { mapActions, mapGetters, mapState } from 'vuex';
@@ -65,25 +70,26 @@ export default Vue.extend({
     ];
     let chart: any;
     chart = null;
+    let realtimeMtList = ['TEMP', 'HUMID', 'PRESS', 'WD_SPEED', 'WD_DIR'];
     let currentTime = moment().format('lll');
-    let mtInterest = ['TEMP', 'HUMID', 'PRESS', 'WD_SPEED', 'WD_DIR'];
     return {
       maxPoints: 30,
       fields,
       refreshTimer: 0,
-      mtInterestTimer: 0,
       realTimeStatus: Array<MonitorTypeStatus>(),
-      chartSeries: Array<highcharts.SeriesOptionsType>(),
+      realtimeCharts: Array<highcharts.Chart>(),
+      realtimeChartSeries: Array<Array<highcharts.SeriesOptionsType>>(),
       chart,
+      chartSeries: Array<highcharts.SeriesOptionsType>(),
       currentTime,
-      mtInterest,
+      realtimeMtList,
     };
   },
   computed: {
     ...mapState('monitors', ['activeID']),
     ...mapState('user', ['userInfo']),
     ...mapGetters('monitorTypes', ['mtMap']),
-    skin() {
+    skin(): any {
       const { skin } = useAppConfig();
       return skin;
     },
@@ -97,7 +103,6 @@ export default Vue.extend({
     await this.fetchMonitorTypes();
     await this.getUserInfo();
     const me = this;
-    for (const mt of this.mtInterest) this.query(mt);
 
     this.drawHealthPie();
     await this.initRealtimeChart();
@@ -120,7 +125,7 @@ export default Vue.extend({
       let chart = this.chart as highcharts.Chart;
       for (const mtStatus of this.realTimeStatus) {
         let mt = this.mtMap.get(mtStatus._id) as MonitorType;
-        if (mt.acoustic !== true) continue;
+        //if (mt.acoustic !== true) continue;
 
         const series = chart.series.find(s => {
           return s.name === mtStatus.desp;
@@ -135,15 +140,29 @@ export default Vue.extend({
             }
           }
         }
-      }
+        for (let rtChart of this.realtimeCharts) {
+          const series = rtChart.series.find(s => {
+            return s.name === mtStatus.desp;
+          });
 
+          if (series) {
+            let value = parseFloat(mtStatus.value);
+            if (!isNaN(value)) {
+              series.addPoint([now, value], false, false, true);
+              while (series.data.length >= this.maxPoints) {
+                series.removePoint(0, false);
+              }
+            }
+          }
+        }
+      }
       chart.redraw();
     },
     async getRealtimeStatus(): Promise<void> {
       const ret = await axios.get('/MonitorTypeStatusList');
       this.realTimeStatus = ret.data;
     },
-    async initRealtimeChart(): Promise<boolean> {
+    async initRealtimeChart(): Promise<any> {
       await this.getRealtimeStatus();
 
       for (const mtStatus of this.realTimeStatus) {
@@ -152,7 +171,7 @@ export default Vue.extend({
 
         let data = Array<{ x: number; y: number }>();
         const wind = ['WD_SPEED', 'WD_DIR'];
-        const selectedMt = ['PM25'];
+        const selectedMt = ['LeqZ'];
         const visible = selectedMt.indexOf(mtStatus._id) !== -1;
         if (mt.spectrum !== true) {
           let series: highcharts.SeriesSplineOptions = {
@@ -180,21 +199,39 @@ export default Vue.extend({
         }
       }
 
-      const me = this;
+      for (let mt of this.realtimeMtList) {
+        let mtInfo = this.mtMap.get(mt);
+        if (mtInfo == undefined) continue;
 
-      return new Promise(function (resolve, reject) {
+        const visible = true;
+        let data = Array<{ x: number; y: number }>();
+        let series: highcharts.SeriesSplineOptions = {
+          id: mt,
+          name: mtInfo.desp,
+          type: 'spline',
+          data: data,
+          tooltip: {
+            valueDecimals: mtInfo.prec,
+          },
+          visible,
+        };
+        this.realtimeChartSeries.push([series]);
+      }
+      /*
+      me.refreshTimer = setInterval(() => {
+                  me.refresh();
+                }, 1000);
+      */
+      const me = this;
+      let allP = Array<Promise<boolean>>();
+      let p1: Promise<boolean> = new Promise(function (resolve, reject) {
         const chartOption: highcharts.Options = {
           chart: {
             type: 'spline',
             marginRight: 10,
             height: 300,
             events: {
-              load: () => {
-                me.refreshTimer = setInterval(() => {
-                  me.refresh();
-                }, 1000);
-                resolve(true);
-              },
+              load: () => resolve(true),
             },
           },
           navigation: {
@@ -235,6 +272,73 @@ export default Vue.extend({
         };
         if (me.chartSeries.length !== 0)
           me.chart = highcharts.chart('realtimeNoiseChart', chartOption);
+      });
+      allP.push(p1);
+      let i = 0;
+      for (let mt of this.realtimeMtList) {
+        allP.push(this.getRealtimeMt(mt, i));
+        i++;
+      }
+      try {
+        const ret = await Promise.all(allP);
+        me.refreshTimer = setInterval(() => {
+          me.refresh();
+        }, 1000);
+      } catch (err) {
+        throw new Error(err);
+      }
+    },
+    getRealtimeMt(mt: string, index: number): Promise<boolean> {
+      let me = this;
+      let mtInfo = this.mtMap.get(mt) as MonitorType;
+      return new Promise(function (resolve, reject) {
+        const chartOption: highcharts.Options = {
+          chart: {
+            type: 'spline',
+            marginRight: 10,
+            height: 300,
+            events: {
+              load: () => resolve(true),
+            },
+          },
+          navigation: {
+            buttonOptions: {
+              enabled: true,
+            },
+          },
+          credits: {
+            enabled: false,
+          },
+
+          title: {
+            text: `${mtInfo.desp}`,
+          },
+          xAxis: {
+            type: 'datetime',
+            tickPixelInterval: 150,
+          },
+          yAxis: {
+            title: {
+              text: 'value',
+            },
+            plotLines: [
+              {
+                value: 0,
+                width: 1,
+                color: '#808080',
+              },
+            ],
+          },
+          time: {
+            timezoneOffset: -480,
+          },
+          exporting: {
+            enabled: false,
+          },
+          series: me.realtimeChartSeries[index],
+        };
+        if (me.realtimeChartSeries[index].length !== 0)
+          me.chart = highcharts.chart(`realtime_${mt}`, chartOption);
       });
     },
     async drawHealthPie() {
