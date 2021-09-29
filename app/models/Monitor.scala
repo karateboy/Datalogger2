@@ -7,12 +7,16 @@ import play.api.libs.json._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-case class Monitor(_id: String, desc: String, monitorTypes: Seq[String] = Seq.empty[String])
+case class Monitor(_id: String, desc: String)
 
 import javax.inject._
 object Monitor{
   val SELF_ID = "me"
   val selfMonitor = Monitor(SELF_ID, "本站")
+  var activeID = SELF_ID
+  def setActiveMonitor(m:Monitor): Unit ={
+    activeID = m._id
+  }
 }
 @Singleton
 class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: MqttSensorOp) {
@@ -46,7 +50,7 @@ class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: Mqt
       f.onFailure(errorHandler)
     }
 
-    val ret = waitReadyResult(collection.countDocuments(Filters.equal("_id", SELF_ID)).toFuture())
+    val ret = waitReadyResult(collection.countDocuments(Filters.exists("_id")).toFuture())
     if (ret == 0) {
       waitReadyResult(collection.insertOne(selfMonitor).toFuture())
     }
@@ -55,10 +59,7 @@ class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: Mqt
   init
   refresh
 
-  def mvList = mList.map(_._id).filter({
-    p =>
-      hasSelfMonitor || p != SELF_ID
-  })
+  def mvList = mList.map(_._id)
 
   def ensureMonitor(_id: String) = {
     if (!map.contains(_id)) {
@@ -66,23 +67,11 @@ class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: Mqt
     }
   }
 
-  def ensureMonitor(_id: String, monitorTypes: Seq[String]) = {
-    if (!map.contains(_id)) {
-      newMonitor(Monitor(_id, _id, monitorTypes))
-    }
-  }
-
-  def newMonitor(m: Monitor) = {
-    Logger.debug(s"Create monitor value ${m._id}!")
+  def newMonitor(m: Monitor):Unit = {
     map = map + (m._id -> m)
 
     val f = collection.insertOne(m).toFuture()
-    f.onFailure(errorHandler)
-    f.onSuccess({
-      case _: Seq[t] =>
-    })
-    waitReadyResult(f)
-    m._id
+    f onFailure(errorHandler)
   }
 
   def format(v: Option[Double]) = {
@@ -95,8 +84,7 @@ class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: Mqt
   def upsert(m: Monitor) = {
     val f = collection.replaceOne(Filters.equal("_id", m._id), m, ReplaceOptions().upsert(true)).toFuture()
     f.onFailure(errorHandler)
-    waitReadyResult(f)
-    refresh
+    map = map + (m._id -> m)
   }
 
   def refresh {

@@ -43,7 +43,7 @@ export default {
   },
   mounted() {
     this.getRealtimeData();
-    this.timer = setInterval(this.getRealtimeData, 3000);
+    this.timer = setInterval(this.getRealtimeData, 1000);
   },
   beforeDestroy() {
     clearInterval(this.timer);

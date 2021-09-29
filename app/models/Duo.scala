@@ -7,6 +7,7 @@ import models.Protocol.ProtocolParam
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
+
 import scala.language.postfixOps
 
 case class DuoMonitorType(id: String, desc: String, configID: String, isSpectrum: Boolean = false)
@@ -18,6 +19,54 @@ object Duo extends DriverOps {
   implicit val writeMt = Json.writes[DuoMonitorType]
   implicit val reads = Json.reads[DuoConfig]
   implicit val writes = Json.writes[DuoConfig]
+  val monitorTypes: Seq[MonitorType] = Seq(
+    // LAeq0.5s;LZeq0.5s;LCpeak;LAF;LZF;LAF0.5sMax;LAF0.5sMin
+    // Leq0.5s;LF
+    MonitorType(_id = "LAeq0.5s", desp = "LAeq 0.5s", unit = "dB",
+      prec = 2, order = 100,
+      acoustic = Some(true)),
+    MonitorType(_id = "LZeq0.5s", desp = "LZeq 0.5s", unit = "dB",
+      prec = 2, order = 100,
+      acoustic = Some(true)),
+    MonitorType(_id = "LCpeak", desp = "LC peak", unit = "dB",
+      prec = 2, order = 100,
+      acoustic = Some(true)),
+    MonitorType(_id = "LAF", desp = "LAF", unit = "dB",
+      prec = 2, order = 100,
+      acoustic = Some(true)),
+    MonitorType(_id = "LZF", desp = "LZF", unit = "dB",
+      prec = 2, order = 100,
+      acoustic = Some(true)),
+    MonitorType(_id = "LAF0.5sMax", desp = "LAF 0.5sMax", unit = "dB",
+      prec = 2, order = 100,
+      acoustic = Some(true)),
+    MonitorType(_id = "LAF0.5sMin", desp = "LAF 0.5sMin", unit = "dB",
+      prec = 2, order = 100,
+      acoustic = Some(true)),
+    MonitorType(_id = "Leq0.5s", desp = "Leq 0.5s", unit = "dB",
+      prec = 2, order = 100,
+      acoustic = Some(true)),
+    MonitorType(_id = "LF", desp = "LF", unit = "dB",
+      prec = 2, order = 100,
+      acoustic = Some(true))
+  )
+  val map: Map[String, MonitorType] = monitorTypes.map(mt => mt._id -> mt).toMap
+  val fixedMonitorTypes: Seq[MonitorType] = Seq(
+    MonitorType(_id = "LeqAF", desp = "Leq fast A weighting", unit = "dB",
+      prec = 2, order = 100,
+      acoustic = Some(true)),
+    MonitorType(_id = "LeqA", desp = "Leq A weighting", unit = "dB",
+      prec = 2, order = 100,
+      acoustic = Some(true)),
+    MonitorType(_id = "LeqZ", desp = "Leq Z weighting", unit = "dB",
+      prec = 2, order = 100,
+      acoustic = Some(true))
+  )
+  val fixedMap: Map[String, MonitorType] = fixedMonitorTypes.map(mt => mt._id -> mt).toMap
+  val ONE_THIRD_OCTAVE_BANDS_CENTER_FREQ: Seq[String] = Seq("6.3", "8", "10", "12.5", "16", "20", "25", "31.5",
+    "40", "50", "63", "80", "100", "125", "160", "200", "250",
+    "315", "400", "500", "630", "800", "1k", "1.25k", "1.6k",
+    "2k", "2.5k", "3.15k", "4k", "5k", "6.3k", "8k", "10k", "12.5k", "16k", "20k")
 
   override def id: String = "duo"
 
@@ -63,10 +112,6 @@ object Duo extends DriverOps {
 
   override def getCalibrationTime(param: String): Option[Imports.LocalTime] = None
 
-  trait Factory {
-    def apply(instId: String, protocolParam: ProtocolParam, config: DuoConfig): Actor
-  }
-
   override def factory(id: String, protocolParam: Protocol.ProtocolParam, param: String)(f: AnyRef): Actor = {
     assert(f.isInstanceOf[Duo.Factory])
     val f2 = f.asInstanceOf[Duo.Factory]
@@ -74,71 +119,23 @@ object Duo extends DriverOps {
     f2(id, protocolParam, config)
   }
 
-  case object ReadData
-
-  case object ReadFixedData
-
-  val monitorTypes: Seq[MonitorType] = Seq(
-    // LAeq0.5s;LZeq0.5s;LCpeak;LAF;LZF;LAF0.5sMax;LAF0.5sMin
-    // Leq0.5s;LF
-    MonitorType(_id = "LAeq0.5s", desp = "LAeq 0.5s", unit = "dB",
-      prec = 2, order = 100,
-      acoustic = Some(true)),
-    MonitorType(_id = "LZeq0.5s", desp = "LZeq 0.5s", unit = "dB",
-      prec = 2, order = 100,
-      acoustic = Some(true)),
-    MonitorType(_id = "LCpeak", desp = "LC peak", unit = "dB",
-      prec = 2, order = 100,
-      acoustic = Some(true)),
-    MonitorType(_id = "LAF", desp = "LAF", unit = "dB",
-      prec = 2, order = 100,
-      acoustic = Some(true)),
-    MonitorType(_id = "LZF", desp = "LZF", unit = "dB",
-      prec = 2, order = 100,
-      acoustic = Some(true)),
-    MonitorType(_id = "LAF0.5sMax", desp = "LAF 0.5sMax", unit = "dB",
-      prec = 2, order = 100,
-      acoustic = Some(true)),
-    MonitorType(_id = "LAF0.5sMin", desp = "LAF 0.5sMin", unit = "dB",
-      prec = 2, order = 100,
-      acoustic = Some(true)),
-    MonitorType(_id = "Leq0.5s", desp = "Leq 0.5s", unit = "dB",
-      prec = 2, order = 100,
-      acoustic = Some(true)),
-    MonitorType(_id = "LF", desp = "LF", unit = "dB",
-      prec = 2, order = 100,
-      acoustic = Some(true))
-  )
-  val map: Map[String, MonitorType] = monitorTypes.map(mt => mt._id -> mt).toMap
-
-  val fixedMonitorTypes: Seq[MonitorType] = Seq(
-    MonitorType(_id = "LeqAF", desp = "Leq fast A weighting", unit = "dB",
-      prec = 2, order = 100,
-      acoustic = Some(true)),
-    MonitorType(_id = "LeqA", desp = "Leq A weighting", unit = "dB",
-      prec = 2, order = 100,
-      acoustic = Some(true)),
-    MonitorType(_id = "LeqZ", desp = "Leq Z weighting", unit = "dB",
-      prec = 2, order = 100,
-      acoustic = Some(true))
-  )
-  val fixedMap: Map[String, MonitorType] = fixedMonitorTypes.map(mt => mt._id -> mt).toMap
-
-
-  val ONE_THIRD_OCTAVE_BANDS_CENTER_FREQ: Seq[String] = Seq("6.3", "8", "10", "12.5", "16", "20", "25", "31.5",
-    "40", "50", "63", "80", "100", "125", "160", "200", "250",
-    "315", "400", "500", "630", "800", "1k", "1.25k", "1.6k",
-    "2k", "2.5k", "3.15k", "4k", "5k", "6.3k", "8k", "10k", "12.5k", "16k", "20k")
+  def ensureSpectrumTypes(duoMT: DuoMonitorType)(monitorTypeOp: MonitorTypeOp) =
+    for (mt <- getSpectrumMonitorTypes(duoMT))
+      monitorTypeOp.ensureMonitorType(mt)
 
   def getSpectrumMonitorTypes(duoMT: DuoMonitorType) = for (idx <- 0 to 35) yield
     MonitorType(_id = s"${duoMT.configID}_${idx}", desp = s"${duoMT.desc} ${ONE_THIRD_OCTAVE_BANDS_CENTER_FREQ(idx)}Hz",
       unit = "dB",
       prec = 2, order = 100,
-      acoustic = Some(true))
+      acoustic = Some(true), spectrum = Some(true))
 
-  def ensureSpectrumTypes(duoMT: DuoMonitorType)(monitorTypeOp: MonitorTypeOp) =
-    for (mt <- getSpectrumMonitorTypes(duoMT))
-      monitorTypeOp.ensureMonitorType(mt)
+  trait Factory {
+    def apply(instId: String, protocolParam: ProtocolParam, config: DuoConfig): Actor
+  }
+
+  case object ReadData
+
+  case object ReadFixedData
 }
 
 import javax.inject._
@@ -152,7 +149,7 @@ class DuoCollector @Inject()
 
   import scala.concurrent.duration._
 
-  val timer = if(config.fixed)
+  val timer = if (config.fixed)
     system.scheduler.schedule(Duration(1, SECONDS), Duration(1, SECONDS), self, ReadFixedData)
   else
     system.scheduler.schedule(Duration(1, SECONDS), Duration(1, SECONDS), self, ReadData)
@@ -240,20 +237,23 @@ class DuoCollector @Inject()
         def getMonitorTypeData(tag: String, mtList: Seq[DuoMonitorType]) = {
           val valueNode = ret.xml \\ tag
           val values = valueNode.text.split(";")
-            val dataOptList =
-              for {mt<- mtList} yield {
-                val vOpt = try {
-                  val pos = mt.configID.drop(1).toInt -1
-                  val valueStr = values(pos)
+          val dataOptList =
+            for {mt <- mtList} yield {
+              val vOpt = try {
+                val pos = mt.configID.drop(1).toInt - 1
+                val valueStr = values(pos)
+                if (valueStr.startsWith("v"))
+                  Some(valueStr.drop(1).toDouble)
+                else
                   Some(valueStr.toDouble)
-                } catch {
-                  case _: Throwable =>
-                    None
-                }
-                for (v <- vOpt) yield
-                  MonitorTypeData(mt.id, v, MonitorStatus.NormalStat)
+              } catch {
+                case _: Throwable =>
+                  None
               }
-            dataOptList.flatten
+              for (v <- vOpt) yield
+                MonitorTypeData(mt.id, v, MonitorStatus.NormalStat)
+            }
+          dataOptList.flatten
         }
 
         def getSpectrumMonitorData(spectrumMT: DuoMonitorType) = {
@@ -271,7 +271,7 @@ class DuoCollector @Inject()
             val dataOptList =
               for ((mtID, valueStr) <- mtIdList.zip(values)) yield {
                 val vOpt = try {
-                  if(valueStr.startsWith("v"))
+                  if (valueStr.startsWith("v"))
                     Some(valueStr.drop(1).toDouble)
                   else
                     Some(valueStr.toDouble)

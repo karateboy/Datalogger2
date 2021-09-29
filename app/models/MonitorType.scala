@@ -16,7 +16,8 @@ case class MonitorType(_id: String, desp: String, unit: String,
                        span: Option[Double] = None, span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None,
                        var measuringBy: Option[List[String]] = None,
                        thresholdConfig: Option[ThresholdConfig] = None,
-                       acoustic: Option[Boolean] = None) {
+                       acoustic: Option[Boolean] = None,
+                       spectrum: Option[Boolean] = None) {
   def defaultUpdate = {
     Updates.combine(
       Updates.setOnInsert("_id", _id),
@@ -28,26 +29,17 @@ case class MonitorType(_id: String, desp: String, unit: String,
   }
 
   def addMeasuring(instrumentId: String, append: Boolean) = {
-    val newMeasuringBy =
       if (measuringBy.isEmpty)
-        List(instrumentId)
+        measuringBy = Some(List(instrumentId))
       else {
-        val currentMeasuring = measuringBy.get
-        if (currentMeasuring.contains(instrumentId))
-          currentMeasuring
-        else {
+        val current = measuringBy.get
+        if (!current.contains(instrumentId)) {
           if (append)
-            measuringBy.get ++ List(instrumentId)
+            measuringBy = Some(current:+(instrumentId))
           else
-            instrumentId :: measuringBy.get
+            measuringBy = Some(current.+:(instrumentId))
         }
       }
-
-    MonitorType(_id, desp, unit,
-      prec, order, signalType, std_law, std_internal,
-      zd_internal, zd_law,
-      span, span_dev_internal, span_dev_law,
-      Some(newMeasuringBy))
   }
 
   def stopMeasuring(instrumentId: String) = {
@@ -337,9 +329,8 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
   def activeMtvList = mtvList.filter { mt => map(mt).measuringBy.isDefined }
 
   def addMeasuring(mt: String, instrumentId: String, append: Boolean) = {
-    val newMt = map(mt).addMeasuring(instrumentId, append)
-    map = map + (mt -> newMt)
-    upsertMonitorTypeFuture(newMt)
+    map(mt).addMeasuring(instrumentId, append)
+    upsertMonitorTypeFuture(map(mt))
   }
 
   def stopMeasuring(instrumentId: String) = {

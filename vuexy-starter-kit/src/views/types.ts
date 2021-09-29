@@ -57,6 +57,8 @@ export interface MonitorType {
   span_dev_law?: number;
   measuringBy?: Array<string>;
   thresholdConfig?: ThresholdConfig;
+  acoustic?: boolean;
+  spectrum?: boolean;
 }
 
 export interface CellData {

@@ -97,6 +97,8 @@ GET      /SignalValues                                                          
 GET      /Monitors                                                                controllers.HomeController.monitorList
 PUT      /Monitor/:id                                                             controllers.HomeController.upsertMonitor(id)
 DELETE   /Monitor/:id                                                             controllers.HomeController.deleteMonitor(id)
+GET      /ActiveMonitor                                                           controllers.HomeController.getActiveMonitorID
+PUT      /ActiveMonitor/:id                                                       controllers.HomeController.setActiveMonitorID(id)
 
 
 GET      /Record/:monitorType/:start/:end                                         controllers.Query.recordList(monitorType, start:Long, end:Long)
