@@ -121,11 +121,9 @@ export default Vue.extend({
     async plotLatestData(): Promise<void> {
       await this.getRealtimeStatus();
       const now = new Date().getTime();
-
       let chart = this.chart as highcharts.Chart;
       for (const mtStatus of this.realTimeStatus) {
         let mt = this.mtMap.get(mtStatus._id) as MonitorType;
-        //if (mt.acoustic !== true) continue;
 
         const series = chart.series.find(s => {
           return s.name === mtStatus.desp;
@@ -140,6 +138,7 @@ export default Vue.extend({
             }
           }
         }
+
         for (let rtChart of this.realtimeCharts) {
           const series = rtChart.series.find(s => {
             return s.name === mtStatus.desp;
@@ -157,6 +156,7 @@ export default Vue.extend({
         }
       }
       chart.redraw();
+      for (let rtChart of this.realtimeCharts) rtChart.redraw();
     },
     async getRealtimeStatus(): Promise<void> {
       const ret = await axios.get('/MonitorTypeStatusList');
@@ -167,6 +167,7 @@ export default Vue.extend({
 
       for (const mtStatus of this.realTimeStatus) {
         let mt = this.mtMap.get(mtStatus._id) as MonitorType;
+
         if (mt.acoustic !== true) continue;
 
         let data = Array<{ x: number; y: number }>();
@@ -217,11 +218,7 @@ export default Vue.extend({
         };
         this.realtimeChartSeries.push([series]);
       }
-      /*
-      me.refreshTimer = setInterval(() => {
-                  me.refresh();
-                }, 1000);
-      */
+
       const me = this;
       let allP = Array<Promise<boolean>>();
       let p1: Promise<boolean> = new Promise(function (resolve, reject) {
@@ -270,6 +267,7 @@ export default Vue.extend({
           },
           series: me.chartSeries,
         };
+
         if (me.chartSeries.length !== 0)
           me.chart = highcharts.chart('realtimeNoiseChart', chartOption);
       });
@@ -319,7 +317,7 @@ export default Vue.extend({
           },
           yAxis: {
             title: {
-              text: 'value',
+              text: `${mtInfo.desp} (${mtInfo.unit})`,
             },
             plotLines: [
               {
@@ -338,7 +336,9 @@ export default Vue.extend({
           series: me.realtimeChartSeries[index],
         };
         if (me.realtimeChartSeries[index].length !== 0)
-          me.chart = highcharts.chart(`realtime_${mt}`, chartOption);
+          me.realtimeCharts.push(
+            highcharts.chart(`realtime_${mt}`, chartOption),
+          );
       });
     },
     async drawHealthPie() {

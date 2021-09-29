@@ -30,7 +30,6 @@ const actions: ActionTree<MonitorState, RootState> = {
         commit('setMonitors', res.data);
       }
     } catch (err) {
-      console.error(err);
       throw new Error('error at fetchMonitors');
     }
   },

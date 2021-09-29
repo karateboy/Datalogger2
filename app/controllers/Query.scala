@@ -190,6 +190,8 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
                   reportUnit: ReportUnit.Value, start: DateTime, end: DateTime, showActual: Boolean = false)(statusFilter: MonitorStatusFilter.Value) = {
     val period: Period =
       reportUnit match {
+        case ReportUnit.Sec =>
+          1.second
         case ReportUnit.Min =>
           1.minute
         case ReportUnit.TenMin =>
@@ -263,6 +265,8 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
 
     val title =
       reportUnit match {
+        case ReportUnit.Sec =>
+          s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
         case ReportUnit.Min =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
         case ReportUnit.TenMin =>
