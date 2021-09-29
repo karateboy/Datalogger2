@@ -31,34 +31,6 @@ export default [
         action: 'read',
         resource: 'Data',
       },
-      {
-        title: '風瑰圖查詢',
-        route: 'wind-rose-query',
-      },
-      {
-        title: '校正資料查詢',
-        route: 'calibration-query',
-      },
-      {
-        title: '警報記錄查詢',
-        route: 'alarm-query',
-        action: 'read',
-        resource: 'Data',
-      },
-    ],
-  },
-  {
-    title: '報表查詢',
-    icon: 'BookOpenIcon',
-    children: [
-      {
-        title: '監測報表',
-        route: 'report',
-      },
-      {
-        title: '月份時報表',
-        route: 'monthly-hour-report',
-      },
     ],
   },
   {
@@ -68,10 +40,6 @@ export default [
       {
         title: '儀器管理',
         route: 'instrument-management',
-      },
-      {
-        title: '儀器狀態查詢',
-        route: 'instrument-status',
       },
       {
         title: '測點管理',
@@ -84,26 +52,6 @@ export default [
         route: 'monitor-type-config',
         action: 'set',
         resource: 'Alarm',
-      },
-      {
-        title: '人工資料註記',
-        route: 'manual-audit',
-      },
-      {
-        title: '人工註記查詢',
-        route: 'audit-log-query',
-      },
-      {
-        title: '使用者管理',
-        route: 'user-management',
-      },
-      {
-        title: '群組管理',
-        route: 'group-management',
-      },
-      {
-        title: '資料管理',
-        route: 'data-management',
       },
     ],
   },

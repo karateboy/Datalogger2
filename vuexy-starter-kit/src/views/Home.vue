@@ -1,13 +1,23 @@
 <template>
   <b-row class="match-height">
-    <b-col lg="3" md="12">
-      <b-card title="健康度">
-        <div id="healthPie"></div>
-      </b-card>
-    </b-col>
     <b-col lg="6" md="12">
       <b-card title="即時噪音">
         <div id="realtimeNoiseChart"></div>
+      </b-card>
+    </b-col>
+    <b-col lg="6" md="12">
+      <b-card title="即時頻譜">
+        <div id="realtimeSpectrumChart"></div>
+      </b-card>
+    </b-col>
+    <b-col lg="6" md="12">
+      <b-card title="歷史頻譜比較">
+        <div id="historySpectrumChart"></div>
+      </b-card>
+    </b-col>
+    <b-col lg="3" md="12">
+      <b-card title="健康度">
+        <div id="healthPie"></div>
       </b-card>
     </b-col>
     <b-col
@@ -68,8 +78,9 @@ export default Vue.extend({
         label: '狀態',
       },
     ];
-    let chart: any;
-    chart = null;
+    let chart: highcharts.Chart | undefined;
+    let spectrumChart: highcharts.Chart | undefined;
+    let compareSpectrumChart: highcharts.Chart | undefined;
     let realtimeMtList = ['TEMP', 'HUMID', 'PRESS', 'WD_SPEED', 'WD_DIR'];
     let currentTime = moment().format('lll');
     return {
@@ -81,6 +92,11 @@ export default Vue.extend({
       realtimeChartSeries: Array<Array<highcharts.SeriesOptionsType>>(),
       chart,
       chartSeries: Array<highcharts.SeriesOptionsType>(),
+      spectrumChart,
+      spectrumNames: Array<string>(),
+      spectrumData: Array<number>(),
+      compareSpectrumChart,
+      historySpectrumData: Array<number>(),
       currentTime,
       realtimeMtList,
     };
@@ -121,41 +137,55 @@ export default Vue.extend({
     async plotLatestData(): Promise<void> {
       await this.getRealtimeStatus();
       const now = new Date().getTime();
-      let chart = this.chart as highcharts.Chart;
+      this.spectrumData.splice(0, this.spectrumData.length);
       for (const mtStatus of this.realTimeStatus) {
         let mt = this.mtMap.get(mtStatus._id) as MonitorType;
+        if (mt.acoustic) {
+          if (!mt.spectrum) {
+            let chart = this.chart as highcharts.Chart;
+            const series = chart.series.find(s => {
+              return s.name === mtStatus.desp;
+            });
 
-        const series = chart.series.find(s => {
-          return s.name === mtStatus.desp;
-        });
-
-        if (series) {
-          let value = parseFloat(mtStatus.value);
-          if (!isNaN(value)) {
-            series.addPoint([now, value], false, false, true);
-            while (series.data.length >= this.maxPoints) {
-              series.removePoint(0, false);
+            if (series) {
+              let value = parseFloat(mtStatus.value);
+              if (!isNaN(value)) {
+                series.addPoint([now, value], false, false, true);
+                while (series.data.length >= this.maxPoints) {
+                  series.removePoint(0, false);
+                }
+              }
             }
-          }
-        }
-
-        for (let rtChart of this.realtimeCharts) {
-          const series = rtChart.series.find(s => {
-            return s.name === mtStatus.desp;
-          });
-
-          if (series) {
+          } else {
+            let chart = this.spectrumChart as highcharts.Chart;
             let value = parseFloat(mtStatus.value);
             if (!isNaN(value)) {
-              series.addPoint([now, value], false, false, true);
-              while (series.data.length >= this.maxPoints) {
-                series.removePoint(0, false);
+              this.spectrumData.push(value);
+            }
+          }
+        } else {
+          for (let rtChart of this.realtimeCharts) {
+            const series = rtChart.series.find(s => {
+              return s.name === mtStatus.desp;
+            });
+
+            if (series) {
+              let value = parseFloat(mtStatus.value);
+              if (!isNaN(value)) {
+                series.addPoint([now, value], false, false, true);
+                while (series.data.length >= this.maxPoints) {
+                  series.removePoint(0, false);
+                }
               }
             }
           }
         }
       }
-      chart.redraw();
+      this.chart!.redraw();
+      this.spectrumChart!.series[0].setData(this.spectrumData);
+      this.spectrumChart!.redraw();
+      this.compareSpectrumChart!.series[0].setData(this.spectrumData);
+
       for (let rtChart of this.realtimeCharts) rtChart.redraw();
     },
     async getRealtimeStatus(): Promise<void> {
@@ -184,19 +214,14 @@ export default Vue.extend({
               valueDecimals: this.mtMap.get(mtStatus._id).prec,
             },
             visible,
+            selected: true,
           };
           this.chartSeries.push(series);
         } else {
-          let series: highcharts.SeriesColumnOptions = {
-            name: mtStatus.desp,
-            type: 'column',
-            data,
-            tooltip: {
-              valueDecimals: this.mtMap.get(mtStatus._id).prec,
-            },
-            visible,
-          };
-          this.chartSeries.push(series);
+          let parts = mtStatus.desp.split(' ');
+          this.spectrumNames.push(parts[parts.length - 1]);
+          this.spectrumData.push(parseFloat(mtStatus.value));
+          this.historySpectrumData.push(parseFloat(mtStatus.value));
         }
       }
 
@@ -215,18 +240,20 @@ export default Vue.extend({
             valueDecimals: mtInfo.prec,
           },
           visible,
+          selected: true,
         };
         this.realtimeChartSeries.push([series]);
       }
 
       const me = this;
       let allP = Array<Promise<boolean>>();
-      let p1: Promise<boolean> = new Promise(function (resolve, reject) {
+      let pRealtimeLeq: Promise<boolean> = new Promise(function (
+        resolve,
+        reject,
+      ) {
         const chartOption: highcharts.Options = {
           chart: {
             type: 'spline',
-            marginRight: 10,
-            height: 300,
             events: {
               load: () => resolve(true),
             },
@@ -249,7 +276,7 @@ export default Vue.extend({
           },
           yAxis: {
             title: {
-              text: 'value',
+              text: '聲壓值 (dB)',
             },
             plotLines: [
               {
@@ -271,7 +298,142 @@ export default Vue.extend({
         if (me.chartSeries.length !== 0)
           me.chart = highcharts.chart('realtimeNoiseChart', chartOption);
       });
-      allP.push(p1);
+
+      let pRealtimeSpectrum: Promise<boolean> = new Promise(function (
+        resolve,
+        reject,
+      ) {
+        const chartOption: highcharts.Options = {
+          chart: {
+            type: 'column',
+            zoomType: 'y',
+            events: {
+              load: () => resolve(true),
+            },
+          },
+
+          title: {
+            text: '三分之一頻譜',
+            align: 'center',
+          },
+          xAxis: {
+            categories: me.spectrumNames,
+            crosshair: true,
+          },
+          yAxis: {
+            title: {
+              text: '聲壓值 (dB)',
+            },
+          },
+
+          tooltip: {
+            headerFormat:
+              '<span style="font-size:10px">{point.key} Hz</span><table>',
+            pointFormat:
+              '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
+              '<td style="padding:0"><b>{point.y:.1f} dB</b></td></tr>',
+            footerFormat: '</table>',
+            shared: true,
+            useHTML: true,
+          },
+
+          credits: {
+            enabled: false,
+          },
+          exporting: {
+            enabled: false,
+          },
+          plotOptions: {},
+          series: [
+            {
+              type: 'column',
+              name: '三分之一頻譜',
+              data: me.spectrumData,
+              pointPadding: 0,
+              borderWidth: 0.5,
+              groupPadding: 0,
+            },
+          ],
+        };
+        me.spectrumChart = highcharts.chart(
+          'realtimeSpectrumChart',
+          chartOption,
+        );
+      });
+
+      let pHistoryCompareSpectrum: Promise<boolean> = new Promise(function (
+        resolve,
+        reject,
+      ) {
+        const chartOption: highcharts.Options = {
+          chart: {
+            type: 'column',
+            zoomType: 'y',
+            events: {
+              load: () => resolve(true),
+            },
+          },
+
+          title: {
+            text: '三分之一頻譜',
+            align: 'center',
+          },
+          xAxis: {
+            categories: me.spectrumNames,
+            crosshair: true,
+          },
+          yAxis: {
+            title: {
+              text: '聲壓值 (dB)',
+            },
+          },
+
+          tooltip: {
+            headerFormat:
+              '<span style="font-size:10px">{point.key} Hz</span><table>',
+            pointFormat:
+              '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
+              '<td style="padding:0"><b>{point.y:.1f} dB</b></td></tr>',
+            footerFormat: '</table>',
+            shared: true,
+            useHTML: true,
+          },
+
+          credits: {
+            enabled: false,
+          },
+          exporting: {
+            enabled: false,
+          },
+          plotOptions: {},
+          series: [
+            {
+              type: 'column',
+              name: '現在頻譜',
+              data: me.spectrumData,
+              pointPadding: 0,
+              borderWidth: 0.5,
+              groupPadding: 0,
+            },
+            {
+              type: 'column',
+              name: '歷史頻譜',
+              data: me.historySpectrumData,
+              pointPadding: 0,
+              borderWidth: 0.5,
+              groupPadding: 0,
+            },
+          ],
+        };
+        me.compareSpectrumChart = highcharts.chart(
+          'historySpectrumChart',
+          chartOption,
+        );
+      });
+
+      allP.push(pRealtimeLeq);
+      allP.push(pRealtimeSpectrum);
+      allP.push(pHistoryCompareSpectrum);
       let i = 0;
       for (let mt of this.realtimeMtList) {
         allP.push(this.getRealtimeMt(mt, i));
