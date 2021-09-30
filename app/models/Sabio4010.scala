@@ -171,9 +171,9 @@ class Sabio4010Collector @Inject()(system: ActorSystem, instrumentOp: Instrument
 
           def getStatus(subType: String, statusType: String, limit: Int): Unit = {
             comm.os.write(getCmdString("GS", subType).getBytes)
-            var lines = comm.getLine3(timeout = 1)
+            var lines = comm.getLine3(timeout = 3)
             if (lines.size == 1)
-              lines = comm.getLine3(timeout = 1)
+              lines = comm.getLine3(timeout = 3)
             else
               lines = lines.drop(1)
 

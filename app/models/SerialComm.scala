@@ -186,7 +186,7 @@ class SerialOutputStream(port: SerialPort) extends OutputStream {
 
 class SerialInputStream(serialPort: jssc.SerialPort) extends InputStream {
   override def read() = {
-    val retArray = serialPort.readBytes(1, 100)
+    val retArray = serialPort.readBytes(1)
     if(retArray.length == 0)
       -1
     else
