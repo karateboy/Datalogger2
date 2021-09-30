@@ -103,6 +103,7 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
       if (elapsedTime.getStandardSeconds > timeout) {
         throw new Exception("Read timeout!")
       }
+      Thread.sleep(50)
       strList = getLine3
     }
     strList
@@ -157,6 +158,8 @@ object SerialComm {
       SerialPort.STOPBITS_1,
       SerialPort.PARITY_NONE); //Set params. Also you can set params by this string: serialPort.setParams(9600, 8, 1, 0);
 
+    port.setFlowControlMode(SerialPort.FLOWCONTROL_NONE)
+
     val is = new SerialInputStream(port)
     val os = new SerialOutputStream(port)
     SerialComm(port, is, os)
@@ -177,10 +180,8 @@ class SerialOutputStream(port: SerialPort) extends OutputStream {
   }
 
   override def write(b: Array[Byte], off: Int, len: Int): Unit = {
-    val buffer = new Array[Byte](len)
-    val target = b.drop(off)
-    target.copyToArray(buffer, len)
-    port.writeBytes(buffer)
+    val actual = b.drop(off).take(len)
+    port.writeBytes(actual)
   }
 }
 
