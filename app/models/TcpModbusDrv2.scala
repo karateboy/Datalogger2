@@ -60,7 +60,7 @@ object TcpModbusDrv2 {
     }
 
     val mulitipler: Float = try {
-      driverConfig.getDouble("mulitipler").toFloat
+      driverConfig.getDouble("multiplier").toFloat
     } catch {
       case _: Throwable =>
         1f
@@ -149,7 +149,7 @@ object TcpModbusDrv2 {
   }
 
   trait Factory {
-    def apply(@Assisted("instId") instId: String, modelReg: TcpModelReg, config: DeviceConfig,
+    def apply(@Assisted("instId") instId: String, @Assisted("desc") desc:String,modelReg: TcpModelReg, config: DeviceConfig,
               @Assisted("protocol") protocol: ProtocolParam): Actor
   }
 
@@ -224,7 +224,7 @@ class TcpModbusDrv2(_id: String, desp: String, protocols: List[Protocol.Value], 
     assert(f.isInstanceOf[TcpModbusDrv2.Factory])
     val f2 = f.asInstanceOf[TcpModbusDrv2.Factory]
     val config = validateParam(param)
-    f2(id, tcpModelReg, config, protocol: ProtocolParam)
+    f2(id, desp, tcpModelReg, config, protocol: ProtocolParam)
   }
 
   def validateParam(json: String): DeviceConfig = {

@@ -129,6 +129,8 @@ export default Vue.extend({
     await this.getUserInfo();
     const me = this;
     for (const mt of this.userInfo.monitorTypeOfInterest) this.query(mt);
+    for (const mt of me.windRoseList) me.queryWindRose(mt);
+    
     this.mtInterestTimer = setInterval(() => {
       for (const mt of me.userInfo.monitorTypeOfInterest) me.query(mt);
       for (const mt of me.windRoseList) me.queryWindRose(mt);
@@ -396,6 +398,9 @@ export default Vue.extend({
           },
         };
 
+        ret.exporting = {
+          enabled: false,
+        };
         ret.credits = {
           enabled: false,
           href: 'http://www.wecc.com.tw/',

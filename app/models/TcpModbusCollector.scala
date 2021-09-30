@@ -14,7 +14,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
                                    alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
                                    calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
-                                  (@Assisted("instId") instId: String, @Assisted modelReg: TcpModelReg,
+                                  (@Assisted("instId") instId: String, @Assisted("desc") desc:String, @Assisted modelReg: TcpModelReg,
                                    @Assisted deviceConfig: DeviceConfig, @Assisted("protocol") protocol: ProtocolParam) extends Actor {
   var timerOpt: Option[Cancellable] = None
 
@@ -54,7 +54,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
         true
       } catch {
         case ex: Throwable =>
-          Logger.error(ex.getMessage, ex)
+          Logger.error(s"${instId}:${desc}=> ${ex.getMessage}", ex)
           Logger.info(s"$addr $desc is not supported.")
           false
       }
@@ -66,8 +66,8 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
         masterOpt.get.getValue(locator)
         true
       } catch {
-        case ex: Throwable =>
-          Logger.info(s"$addr $desc is not supported.")
+        case _: Throwable =>
+          Logger.info(s"${instId}:${desc}=>$addr $desc is not supported.")
           false
       }
     }
@@ -78,8 +78,8 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
         masterOpt.get.getValue(locator)
         true
       } catch {
-        case ex: Throwable =>
-          Logger.info(s"$addr $desc is not supported.")
+        case _: Throwable =>
+          Logger.info(s"${instId}:${desc}=>$addr $desc is not supported.")
           false
       }
     }
@@ -154,7 +154,15 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
       for {
         st_idx <- statusTypeList.zipWithIndex if st_idx._1.key.startsWith(InputKey)
         idx = st_idx._2
-      } yield (st_idx._1, results.getFloatValue(idx).toFloat * modelReg.mulitipler)
+      } yield{
+        try{
+          (st_idx._1, results.getFloatValue(idx).toFloat * modelReg.mulitipler)
+        }catch{
+          case ex:Exception=>
+            Logger.error(s"failed at ${idx}")
+            throw ex
+        }
+      }
 
     val holdings =
       for {
@@ -195,7 +203,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
           connected = true
         } catch {
           case ex: Exception =>
-            Logger.error(ex.getMessage, ex)
+            Logger.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
             if (connected)
               alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
 
@@ -239,22 +247,25 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
               ipParameters.setHost(protocol.host.get);
               ipParameters.setPort(502);
               Logger.info(s"${self.toString()}: connect ${protocol.host.get}")
-              masterOpt = Some(modbusFactory.createTcpMaster(ipParameters, true))
-              masterOpt.get.setTimeout(4000)
-              masterOpt.get.setRetries(1)
-              masterOpt.get.setConnected(true)
-              masterOpt.get.init();
+              val master = modbusFactory.createTcpMaster(ipParameters, true)
+              master.setTimeout(4000)
+              master.setRetries(1)
+              master.setConnected(true)
+              master.init();
+              masterOpt = Some(master)
             } else {
               if (masterOpt.isEmpty) {
                 Logger.info(protocol.toString)
                 val serialWrapper: SerialPortWrapper = TcpModbusDrv2.getSerialWrapper(protocol)
-                masterOpt = Some(modbusFactory.createRtuMaster(serialWrapper))
-                masterOpt.get.init();
+                val master = modbusFactory.createRtuMaster(serialWrapper)
+                master.init()
+                masterOpt = Some(master)
+              }else{
+                masterOpt.get.init()
               }
             }
 
             connected = true
-
             if (instrumentStatusTypesOpt.isEmpty) {
               val statusTypeList = probeInstrumentStatusType.toList
               if (modelReg.dataRegs.forall(reg => statusTypeList.exists(statusType => statusType.addr == reg.address))) {
@@ -262,7 +273,6 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
                 instrumentStatusTypesOpt = Some(probeInstrumentStatusType.toList)
                 instrumentOp.updateStatusType(instId, instrumentStatusTypesOpt.get)
               } else {
-
                 throw new Exception("Probe register failed. Data register is not in there...")
               };
             }
@@ -270,7 +280,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
             timerOpt = Some(system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
           } catch {
             case ex: Exception =>
-              Logger.error(ex.getMessage, ex)
+              Logger.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
               alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
