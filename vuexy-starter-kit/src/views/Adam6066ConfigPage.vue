@@ -51,7 +51,7 @@ export default Vue.extend({
     }
     let paramObj = { chs };
 
-    if (this.paramStr !== '') paramObj = JSON.parse(this.paramStr);
+    if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr);
 
     const fields = [
       'index',

@@ -132,14 +132,15 @@
       >
         <validation-observer ref="detailConfigRules">
           <tapi-config-page
-            v-if="isTapiInstrument"
+            v-if="isCalibratable"
             :inst-type="form.instType"
             :param-str="form.param"
             @param-changed="onParamChange"
           />
           <adam-6017-config-page
-            v-else-if="isAdam6017"
+            v-else-if="is8ChAnalogInput"
             :param-str="form.param"
+            :has-addr="analogInputHasAddr"
             @param-changed="onParamChange"
           />
           <mqtt-config-page
@@ -296,9 +297,18 @@ export default Vue.extend({
 
       return true;
     },
-    isTapiInstrument(): boolean {
-      const tapi = ['t100', 't200', 't201', 't300', 't360', 't400', 't700'];
-      for (const t of tapi) {
+    isCalibratable(): boolean {
+      const compatible = [
+        't100',
+        't200',
+        't201',
+        't300',
+        't360',
+        't400',
+        'baseline9000',
+        'horiba370',
+      ];
+      for (const t of compatible) {
         if (this.form.instType === t) return true;
       }
       return this.form.instType.startsWith('TcpModbus.');
@@ -306,8 +316,19 @@ export default Vue.extend({
     isAkInstrument(): boolean {
       return this.form.instType.startsWith('AkProtocol.');
     },
-    isAdam6017(): boolean {
-      return this.form.instType === 'adam6017';
+    is8ChAnalogInput(): boolean {
+      const compatible = ['adam6017', 'MOXAE1240'];
+      for (const t of compatible) {
+        if (this.form.instType === t) return true;
+      }
+      return false;
+    },
+    analogInputHasAddr(): boolean {
+      const compatible = ['MOXAE1240'];
+      for (const t of compatible) {
+        if (this.form.instType === t) return true;
+      }
+      return false;
     },
     isMqtt(): boolean {
       return this.form.instType === 'mqtt_client';
@@ -334,7 +355,7 @@ export default Vue.extend({
         desc += `網址:${this.form.protocol.host}\n`;
       else desc += `COM:${this.form.protocol.comPort}\n`;
 
-      if (this.isTapiInstrument) return (desc += this.tapiSummary());
+      if (this.isCalibratable) return (desc += this.calibrationSummary());
 
       return formNewline(desc);
     },
@@ -343,29 +364,28 @@ export default Vue.extend({
     this.getInstrumentTypes();
   },
   methods: {
-    tapiSummary() {
+    calibrationSummary() {
       let desc = '';
       const param = JSON.parse(this.form.param);
       desc += 'slave ID:' + param.slaveID + '\n';
-      if (this.form.instType !== 't700') {
-        desc += '校正時間:' + param.calibrationTime + '\n';
-        desc += '校正上升時間:' + param.raiseTime + '\n';
-        desc += '校正持續時間:' + param.holdTime + '\n';
-        desc += '校正下降時間:' + param.downTime + '\n';
-        if (param.calibrateZeoSeq)
-          desc += '零點校正執行程序:' + param.calibrateZeoSeq + '\n';
-        if (param.calibrateSpanSeq)
-          desc += '全幅校正執行程序:' + param.calibrateSpanSeq + '\n';
-        if (param.calibratorPurgeTime)
-          desc += '校正器清空時間:' + param.calibratorPurgeTime + '\n';
-        if (param.calibratorPurgeSeq)
-          desc += '校正器清空執行程序:' + param.calibratorPurgeSeq + '\n';
-        if (param.calibrateZeoDO)
-          desc += '零點校正DO:' + param.calibrateZeoDO + '\n';
-        if (param.calibrateSpanDO)
-          desc += '全幅校正DO:' + param.calibrateSpanDO + '\n';
-        if (param.skipInternalVault) desc += '不切換校正電磁閥::不切換';
-      }
+      if (param.calibrationTime) desc += `校正時間: ${param.calibrationTime}\n`;
+      if (param.raiseTime) desc += `校正上升時間: ${param.raiseTime}\n`;
+      if (param.holdTime) desc += `校正持續時間: ${param.holdTime} \n`;
+      if (param.downTime) desc += `校正下降時間: ${param.downTime} \n`;
+      if (param.calibrateZeoSeq)
+        desc += '零點校正執行程序:' + param.calibrateZeoSeq + '\n';
+      if (param.calibrateSpanSeq)
+        desc += '全幅校正執行程序:' + param.calibrateSpanSeq + '\n';
+      if (param.calibratorPurgeTime)
+        desc += '校正器清空時間:' + param.calibratorPurgeTime + '\n';
+      if (param.calibratorPurgeSeq)
+        desc += '校正器清空執行程序:' + param.calibratorPurgeSeq + '\n';
+      if (param.calibrateZeoDO)
+        desc += '零點校正DO:' + param.calibrateZeoDO + '\n';
+      if (param.calibrateSpanDO)
+        desc += '全幅校正DO:' + param.calibrateSpanDO + '\n';
+      if (param.skipInternalVault) desc += '不切換校正電磁閥::不切換';
+
       return desc;
     },
     async getInstrumentTypes(): Promise<void> {

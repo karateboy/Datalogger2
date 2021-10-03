@@ -31,27 +31,12 @@ object Baseline9000Collector extends DriverOps {
   }
 
   override def getMonitorTypes(param: String): List[String] = {
-    List(("CH4"), ("NMHC"), ("THC"))
+    List("CH4", "NMHC", "THC")
   }
 
   override def getCalibrationTime(param: String) = {
     val config = validateParam(param)
     Some(config.calibrationTime)
-  }
-
-  def start(id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext): ActorRef = {
-    val config = validateParam(param)
-
-    Baseline9000Collector.start(id, protocol, config)
-  }
-
-  def start(id: String, protocolParam: ProtocolParam, config: Baseline9000Config)(implicit context: ActorContext) = {
-    val actorName = s"Baseline_${count}"
-    count += 1
-    val collector = context.actorOf(Props(classOf[Baseline9000Collector], id, protocolParam, config), name = actorName)
-    Logger.info(s"$actorName is created.")
-
-    collector
   }
 
   def validateParam(json: String) = {

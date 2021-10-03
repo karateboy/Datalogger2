@@ -266,6 +266,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
       val rawMonitorType = rangeType(
         rawMonitorTypeID(mtCase._id),
         s"${mtCase.desp}(原始值)", unit, 3)
+      map = map + (rawMonitorType._id -> rawMonitorType)
       newMonitorType(rawMonitorType)
     }
   }

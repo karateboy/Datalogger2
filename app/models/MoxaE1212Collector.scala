@@ -55,7 +55,7 @@ class MoxaE1212Collector @Inject()
   def decodeDiCounter(values: Seq[Int], collectorState: String) = {
     val dataOptList =
       for {
-        cfg <- param.ch.zipWithIndex
+        cfg <- param.chs.zipWithIndex
         chCfg = cfg._1 if chCfg.enable && chCfg.mt.isDefined
         idx = cfg._2
         mt = chCfg.mt.get
@@ -147,7 +147,7 @@ class MoxaE1212Collector @Inject()
                 for (idx <- 0 to 7) yield rawResult.getValue(idx).asInstanceOf[Boolean]
 
               for {
-                cfg <- param.ch.zipWithIndex
+                cfg <- param.chs.zipWithIndex
                 chCfg = cfg._1 if chCfg.enable && chCfg.mt.isDefined
                 mt = chCfg.mt.get
                 idx = cfg._2
@@ -183,7 +183,7 @@ class MoxaE1212Collector @Inject()
         val resetRegAddr = 272
 
         for {
-          ch_idx <- param.ch.zipWithIndex if ch_idx._1.enable && ch_idx._1.mt == Some(MonitorType.RAIN)
+          ch_idx <- param.chs.zipWithIndex if ch_idx._1.enable && ch_idx._1.mt == Some(MonitorType.RAIN)
           ch = ch_idx._1
           idx = ch_idx._2
         } {

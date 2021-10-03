@@ -10,8 +10,8 @@ import play.api.libs.json.{JsError, Json}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-case class Horiba370Config(calibrationTime: LocalTime,
-                           raiseTime: Int, downTime: Int, holdTime: Int,
+case class Horiba370Config(calibrationTime: Option[LocalTime],
+                           raiseTime: Option[Int], downTime: Option[Int], holdTime: Option[Int],
                            calibrateZeoSeq: Option[String], calibrateSpanSeq: Option[String],
                            calibratorPurgeSeq: Option[String], calibratorPurgeTime: Option[Int])
 
@@ -24,16 +24,6 @@ object Horiba370Collector extends DriverOps{
 
   trait Factory {
     def apply(id: String, protocol: ProtocolParam, param: Horiba370Config): Actor
-  }
-
-
-  def start(id: String, protocolParam: ProtocolParam, config: Horiba370Config)(implicit context: ActorContext) = {
-    val actorName = s"Horiba_${count}"
-    count += 1
-    val collector = context.actorOf(Props(classOf[Horiba370Collector], id, protocolParam.host.get, config), name = actorName)
-    Logger.info(s"$actorName is created.")
-
-    collector
   }
 
   def getNextLoggingStatusTime = {
@@ -70,7 +60,7 @@ object Horiba370Collector extends DriverOps{
   }
 
   override def getMonitorTypes(param: String): List[String] = {
-    List(("CH4"), ("NMHC"), ("THC"))
+    List("CH4", "NMHC", "THC")
   }
 
   def validateParam(json: String) = {
@@ -85,17 +75,12 @@ object Horiba370Collector extends DriverOps{
 
   override def getCalibrationTime(param: String) = {
     val config = validateParam(param)
-    Some(config.calibrationTime)
+    config.calibrationTime
   }
 
 
   import Protocol.ProtocolParam
   import akka.actor._
-
-  def start(id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext): ActorRef = {
-    val config = validateParam(param)
-    Horiba370Collector.start(id, protocol, config)
-  }
 
   override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor ={
     assert(f.isInstanceOf[Horiba370Collector.Factory])
@@ -534,8 +519,8 @@ class Horiba370Collector @Inject()
 
               reqSpanCalibration(connection)
             }
-
-          calibrateTimerOpt = Some(actorSystem.scheduler.scheduleOnce(Duration(config.raiseTime, SECONDS), self, HoldStart))
+          for(raiseTime<-config.raiseTime)
+            calibrateTimerOpt = Some(actorSystem.scheduler.scheduleOnce(Duration(raiseTime, SECONDS), self, HoldStart))
         }
       }
 
@@ -548,7 +533,8 @@ class Horiba370Collector @Inject()
       Logger.debug(s"${calibrationType} HoldStart")
       context become calibrationHandler(connection, calibrationType, startTime, true,
         calibrationDataList, zeroMap)
-      calibrateTimerOpt = Some(system.scheduler.scheduleOnce(Duration(config.holdTime, SECONDS), self, DownStart))
+      for(holdTime<-config.holdTime)
+        calibrateTimerOpt = Some(system.scheduler.scheduleOnce(Duration(holdTime, SECONDS), self, DownStart))
 
     case DownStart =>
       Logger.debug(s"${calibrationType} DownStart")
@@ -575,8 +561,8 @@ class Horiba370Collector @Inject()
           else {
             collectorState = MonitorStatus.CalibrationResume
             instrumentOp.setState(id, collectorState)
-
-            Some(system.scheduler.scheduleOnce(Duration(config.downTime, SECONDS), self, CalibrateEnd))
+            for(downTime<-config.downTime) yield
+              system.scheduler.scheduleOnce(Duration(downTime, SECONDS), self, CalibrateEnd)
           }
         }
       }
