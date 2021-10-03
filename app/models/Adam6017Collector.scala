@@ -47,7 +47,6 @@ class Adam6017Collector @Inject()
     val ret = for (v <- values) yield
       "%.5f".format(v)
 
-    Logger.info(ret.toString())
     val dataPairList =
       for {
         cfg <- param.chs.zipWithIndex

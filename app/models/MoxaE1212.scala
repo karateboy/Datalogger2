@@ -9,7 +9,7 @@ import javax.inject._
 
 case class E1212ChannelCfg(enable: Boolean, mt: Option[String], scale: Option[Double], repairMode: Option[Boolean])
 
-case class MoxaE1212Param(addr: Int, ch: Seq[E1212ChannelCfg])
+case class MoxaE1212Param(addr: Int, chs: Seq[E1212ChannelCfg])
 
 @Singleton
 class MoxaE1212 @Inject()
@@ -21,7 +21,7 @@ class MoxaE1212 @Inject()
 
   override def getMonitorTypes(param: String) = {
     val e1212Param = validateParam(param)
-    e1212Param.ch.filter {
+    e1212Param.chs.filter {
       _.enable
     }.flatMap {
       _.mt
@@ -49,11 +49,11 @@ class MoxaE1212 @Inject()
         throw new Exception(JsError.toJson(error).toString())
       },
       param => {
-        if (param.ch.length != 8) {
+        if (param.chs.length != 8) {
           throw new Exception("ch # shall be 8")
         }
 
-        for (cfg <- param.ch) {
+        for (cfg <- param.chs) {
           if (cfg.enable) {
             assert(cfg.mt.isDefined)
             assert(cfg.scale.isDefined && cfg.scale.get != 0)

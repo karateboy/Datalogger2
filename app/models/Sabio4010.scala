@@ -12,8 +12,7 @@ import play.api.libs.json.{JsError, Json}
 
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{Duration, MINUTES, SECONDS}
-import scala.concurrent.{Future, blocking}
+import scala.concurrent.duration.{Duration, MINUTES}
 
 case class Sabio4010Config(address: String)
 
@@ -99,7 +98,7 @@ object Sabio4010Collector {
 
 class Sabio4010Collector @Inject()(system: ActorSystem, instrumentOp: InstrumentOp, instrumentStatusOp: InstrumentStatusOp)
                                   (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: Sabio4010Config) extends Actor {
-  val statusTimerOpt: Option[Cancellable] = Some(system.scheduler.schedule(Duration(10, SECONDS), Duration(10, MINUTES),
+  val statusTimerOpt: Option[Cancellable] = Some(system.scheduler.schedule(Duration(5, MINUTES), Duration(10, MINUTES),
     self, CollectStatus))
   var cancelable: Cancellable = _
   var comm: SerialComm = _
@@ -134,76 +133,82 @@ class Sabio4010Collector @Inject()(system: ActorSystem, instrumentOp: Instrument
       }
 
     case ExecuteSeq(seq, on) =>
-      Future {
-        blocking {
-          def readResponse(): Unit = {
-            val char = comm.is.read()
-            if (char == 0x6)
-              Logger.info(s"Execute $seq successfully.")
-            else {
-              Logger.error(s"Execute $seq failed")
-            }
+      def readResponse(): Unit = {
+        val resp = comm.getLine3()
+        if (resp.nonEmpty) {
+          val ret = resp(0)
+          val char = ret(0)
+          if (char == 0x6)
+            Logger.info(s"Execute $seq successfully.")
+          else {
+            val err = ret.substring(1)
+            Logger.error(s"Execute $seq failed with ${err}")
           }
+        }
+      }
 
-          if (on) {
-            if (seq.toUpperCase == "PURGE") {
-              val cmd = getCmdString("P", "")
-              comm.os.write(cmd.getBytes)
-              readResponse()
-            } else {
-              val cmd = getCmdString("MS", seq)
-              comm.os.write(cmd.getBytes)
-              readResponse()
-            }
-          } else {
-            val cmd = getCmdString("S", "")
+      try {
+        if (on) {
+          if (seq.toUpperCase == "PURGE") {
+            val cmd = getCmdString("P", "")
             comm.os.write(cmd.getBytes)
+            Thread.sleep(100)
+            readResponse()
+          } else {
+            val cmd = getCmdString("MS", seq)
+            comm.os.write(cmd.getBytes)
+            Thread.sleep(100)
             readResponse()
           }
+        } else {
+          val cmd = getCmdString("S", "")
+          comm.os.write(cmd.getBytes)
+          Thread.sleep(100)
+          readResponse()
         }
+      } catch {
+        case ex: Throwable =>
+          Logger.error(s"failed at ${seq}, ${on}", ex)
       }
     case CollectStatus =>
-      Future {
-        blocking {
-          import instrumentStatusOp._
-          var statusList = Seq.empty[Status]
-          Logger.info("Collect Sabio status")
+      import instrumentStatusOp._
+      var statusList = Seq.empty[Status]
+      Logger.info("Collect Sabio status")
 
-          def getStatus(subType: String, statusType: String, limit: Int): Unit = {
-            comm.os.write(getCmdString("GS", subType).getBytes)
-            var lines = comm.getLine3(timeout = 1)
-            if (lines.size == 1)
-              lines = comm.getLine3(timeout = 1)
-            else
-              lines = lines.drop(1)
+      def getStatus(subType: String, statusType: String, limit: Int): Unit = {
+        comm.os.write(getCmdString("GS", subType).getBytes)
 
-            val tokens = lines(0).split(",")
-            val dilutionStatuses =
-              for ((token, idx) <- tokens.zipWithIndex if idx < limit) yield
-                Status(s"$statusType${idx + 1}", token.toDouble)
-            statusList = statusList ++ dilutionStatuses
-          }
+        var lines = comm.getLine3(timeout = 3)
+        if (lines.size == 1)
+          lines = comm.getLine3(timeout = 3)
+        else
+          lines = lines.drop(1)
 
-          try {
-            getStatus("D", Dilution, 8)
-            Logger.info(s"Collect D status ${statusList.size}")
-            getStatus("O", Ozone, 7)
-            Logger.info(s"Collect O status ${statusList.size}")
-            getStatus("P", Lamp, 10)
-            Logger.info(s"Collect P status ${statusList.size}")
-            getStatus("V", Perm, 4)
-            Logger.info(s"Collect V status ${statusList.size}")
-            getStatus("G", Gas, 1)
-            Logger.info(s"Collect G status ${statusList.size}")
-            val is = instrumentStatusOp.InstrumentStatus(DateTime.now(), id, statusList.toList)
-            instrumentStatusOp.log(is)
-          } catch {
-            case ex: Exception =>
-              Logger.error("failed to get status", ex)
-          }
-
-        }
+        val tokens = lines(0).split(",")
+        val dilutionStatuses =
+          for ((token, idx) <- tokens.zipWithIndex if idx < limit) yield
+            Status(s"$statusType${idx + 1}", token.toDouble)
+        statusList = statusList ++ dilutionStatuses
       }
+
+      try {
+        getStatus("D", Dilution, 8)
+        Logger.info(s"Collect D status ${statusList.size}")
+        getStatus("O", Ozone, 7)
+        Logger.info(s"Collect O status ${statusList.size}")
+        getStatus("P", Lamp, 10)
+        Logger.info(s"Collect P status ${statusList.size}")
+        getStatus("V", Perm, 4)
+        Logger.info(s"Collect V status ${statusList.size}")
+        getStatus("G", Gas, 1)
+        Logger.info(s"Collect G status ${statusList.size}")
+        val is = instrumentStatusOp.InstrumentStatus(DateTime.now(), id, statusList.toList)
+        instrumentStatusOp.log(is)
+      } catch {
+        case ex: Exception =>
+          Logger.error("failed to get status", ex)
+      }
+
   }
 
   def getCmdString(cmd: String, param: String): String = {

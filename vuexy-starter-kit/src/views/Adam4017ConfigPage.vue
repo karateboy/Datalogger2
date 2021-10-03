@@ -1,47 +1,34 @@
 <template>
-  <div>
-    <b-form-group
-      v-if="hasAddr"
-      label="位址"
-      label-for="address"
-      label-cols-md="3"
-    >
-      <b-form-input
-        v-model.number="paramObj.addr"
-        @change="onChange"
-      ></b-form-input>
-    </b-form-group>
-    <b-table :fields="fields" :items="paramObj.chs">
-      <template #cell(enable)="row">
-        <b-form-checkbox v-model="row.item.enable" @change="onChange" />
-      </template>
-      <template #cell(repairMode)="row">
-        <b-form-checkbox v-model="row.item.repairMode" @change="onChange" />
-      </template>
-      <template #cell(mt)="row">
-        <v-select
-          id="monitorType"
-          v-model="row.item.mt"
-          label="desp"
-          :reduce="mt => mt._id"
-          :options="monitorTypes"
-          @input="onChange"
-        />
-      </template>
-      <template #cell(max)="row">
-        <b-form-input v-model.number="row.item.max" @change="onChange" />
-      </template>
-      <template #cell(min)="row">
-        <b-form-input v-model.number="row.item.min" @change="onChange" />
-      </template>
-      <template #cell(mtMax)="row">
-        <b-form-input v-model.number="row.item.mtMax" @change="onChange" />
-      </template>
-      <template #cell(mtMin)="row">
-        <b-form-input v-model.number="row.item.mtMin" @change="onChange" />
-      </template>
-    </b-table>
-  </div>
+  <b-table :fields="fields" :items="paramObj.chs">
+    <template #cell(enable)="row">
+      <b-form-checkbox v-model="row.item.enable" @change="onChange" />
+    </template>
+    <template #cell(repairMode)="row">
+      <b-form-checkbox v-model="row.item.repairMode" @change="onChange" />
+    </template>
+    <template #cell(mt)="row">
+      <v-select
+        id="monitorType"
+        v-model="row.item.mt"
+        label="desp"
+        :reduce="mt => mt._id"
+        :options="monitorTypes"
+        @input="onChange"
+      />
+    </template>
+    <template #cell(max)="row">
+      <b-form-input v-model.number="row.item.max" @change="onChange" />
+    </template>
+    <template #cell(min)="row">
+      <b-form-input v-model.number="row.item.min" @change="onChange" />
+    </template>
+    <template #cell(mtMax)="row">
+      <b-form-input v-model.number="row.item.mtMax" @change="onChange" />
+    </template>
+    <template #cell(mtMin)="row">
+      <b-form-input v-model.number="row.item.mtMin" @change="onChange" />
+    </template>
+  </b-table>
 </template>
 <style lang="scss">
 @import '@core/scss/vue/libs/vue-select.scss';
@@ -60,10 +47,6 @@ export default Vue.extend({
       type: String,
       default: ``,
     },
-    hasAddr: {
-      type: Boolean,
-      default: false,
-    },
   },
   data() {
     let chs = [];
@@ -78,8 +61,9 @@ export default Vue.extend({
         repairMode: false,
       });
     }
-    let addr = 1;
-    let paramObj = { addr, chs };
+
+    const empty
+    let paramObj = { chs };
 
     if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr);
 

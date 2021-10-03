@@ -16,14 +16,6 @@ object MoxaE1240Collector {
   case object Collect
 
   var count = 0
-  def start(id: String, protocolParam: ProtocolParam, param: MoxaE1240Param)(implicit context: ActorContext) = {
-    val prop = Props(classOf[MoxaE1240Collector], id, protocolParam, param)
-    val collector = context.actorOf(prop, name = "MoxaE1240Collector" + count)
-    count += 1
-    assert(protocolParam.protocol == Protocol.tcp)
-    collector ! ConnectHost
-    collector
-  }
 
   trait Factory {
     def apply(id: String, protocol: ProtocolParam, param: MoxaE1240Param): Actor
@@ -40,10 +32,12 @@ class MoxaE1240Collector @Inject()
 
   var cancelable: Cancellable = _
 
+  self ! ConnectHost
+
   def decode(values: Seq[Float], collectorState: String) = {
     val dataPairList =
       for {
-        cfg <- param.ch.zipWithIndex
+        cfg <- param.chs.zipWithIndex
         chCfg = cfg._1 if chCfg.enable
         idx = cfg._2
         rawValue = values(idx)

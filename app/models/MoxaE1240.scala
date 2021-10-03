@@ -7,13 +7,13 @@ import play.api.libs.json._
 
 import javax.inject._
 
-case class MoxaE1240Param(addr: Int, ch: Seq[AiChannelCfg])
+case class MoxaE1240Param(addr: Int, chs: Seq[AiChannelCfg])
 
 @Singleton
 class MoxaE1240 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
   override def getMonitorTypes(param: String) = {
     val e1240Param = validateParam(param)
-    val mtList = e1240Param.ch.filter {
+    val mtList = e1240Param.chs.filter {
       _.enable
     }.flatMap {
       _.mt
@@ -35,11 +35,11 @@ class MoxaE1240 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
         throw new Exception(JsError.toJson(error).toString())
       },
       param => {
-        if (param.ch.length != 8) {
+        if (param.chs.length != 8) {
           throw new Exception("ch # shall be 8")
         }
 
-        for (cfg <- param.ch) {
+        for (cfg <- param.chs) {
           if (cfg.enable) {
             assert(cfg.mt.isDefined)
             assert(cfg.max.get > cfg.min.get)
