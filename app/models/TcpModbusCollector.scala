@@ -692,8 +692,10 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
   def reportData(regValue: ModelRegValue) = {
     val optValues: Seq[Option[(String, (InstrumentStatusType, Float))]] = {
       for (dataReg <- modelReg.dataRegs) yield {
-        for (idx <- findDataRegIdx(regValue)(dataReg.address)) yield
-          (dataReg.monitorType, regValue.inputRegs(idx))
+        for (idx <- findDataRegIdx(regValue)(dataReg.address)) yield {
+          val rawValue: (InstrumentStatusType, Float) = regValue.inputRegs(idx)
+          (dataReg.monitorType, (rawValue._1, rawValue._2 * dataReg.multiplier))
+        }
       }
     }
 

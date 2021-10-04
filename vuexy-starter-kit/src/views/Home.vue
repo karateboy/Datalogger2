@@ -179,12 +179,28 @@ export default Vue.extend({
     async initRealtimeChart(): Promise<boolean> {
       await this.getRealtimeStatus();
 
+      let yAxisList = Array<highcharts.YAxisOptions>();
+      let yAxisMap = new Map<string, number>();
+      let yAxisOpposite = false;
       for (const mtStatus of this.realTimeStatus) {
         let data = Array<{ x: number; y: number }>();
         const wind = ['WD_SPEED', 'WD_DIR'];
         const selectedMt = ['PM25'];
         const visible = selectedMt.indexOf(mtStatus._id) !== -1;
         if (wind.indexOf(mtStatus._id) === -1) {
+          let yAxisIndex: number;
+          if (yAxisMap.has(mtStatus.unit)) {
+            yAxisIndex = yAxisMap.get(mtStatus.unit) as number;
+          } else {
+            yAxisList.push({
+              title: {
+                text: mtStatus.unit,
+              },
+            });
+            yAxisIndex = yAxisList.length - 1;
+            yAxisMap.set(mtStatus.unit, yAxisIndex);
+          }
+
           let series: highcharts.SeriesSplineOptions = {
             id: mtStatus._id,
             name: mtStatus.desp,
@@ -193,6 +209,7 @@ export default Vue.extend({
             tooltip: {
               valueDecimals: this.mtMap.get(mtStatus._id).prec,
             },
+            yAxis: yAxisIndex,
             visible,
           };
           this.chartSeries.push(series);
@@ -211,7 +228,10 @@ export default Vue.extend({
       }
 
       const me = this;
-
+      const pointFormatter = function pointFormatter(this: any) {
+        const d = new Date(this.x);
+        return `${d.toLocaleString()}:${Math.round(this.y)}度`;
+      };
       return new Promise(function (resolve, reject) {
         const chartOption: highcharts.Options = {
           chart: {
@@ -243,6 +263,8 @@ export default Vue.extend({
             type: 'datetime',
             tickPixelInterval: 150,
           },
+          yAxis: yAxisList,
+          /*
           yAxis: {
             title: {
               text: 'value',
@@ -254,12 +276,19 @@ export default Vue.extend({
                 color: '#808080',
               },
             ],
-          },
+          },*/
           time: {
             timezoneOffset: -480,
           },
           exporting: {
             enabled: false,
+          },
+          plotOptions: {
+            scatter: {
+              tooltip: {
+                pointFormatter,
+              },
+            },
           },
           series: me.chartSeries,
         };

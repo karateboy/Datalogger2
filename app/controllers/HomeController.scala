@@ -508,8 +508,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
         //val pm25 = monitorTypeOp.mtvList.filter(p => p == "PM25")
         //pm25 map monitorTypeOp.map
       }
-
-      Ok(Json.toJson(mtList))
+      Ok(Json.toJson(mtList.sortBy(_.order)))
   }
 
   def upsertMonitorType(id: String) = Security.Authenticated(BodyParsers.parse.json) {

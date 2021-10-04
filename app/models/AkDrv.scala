@@ -121,7 +121,11 @@ object AkDrv {
     val dataRegs =
       getRegList("Data") map {
         v=>
-        DataReg(v.get(0).asInstanceOf[String], v.get(1).asInstanceOf[Int])
+          val multiplier = if(v.size() <3 )
+            1f
+          else
+            v.get(2).asInstanceOf[Double].toFloat
+        DataReg(v.get(0).asInstanceOf[String], v.get(1).asInstanceOf[Int], multiplier)
       }
 
     AkDeviceModel(id, description,
