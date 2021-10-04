@@ -264,9 +264,11 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
       }
 
       val mtRecordList: Seq[MtRecord] = windRecords.map(r=>r(1)).sortBy(r=>r.value)
+      val percentages = Seq(0.2, 0.3, 0.5)
       val len = mtRecordList.length
-      val percentages = Seq(0.2, 0.3, 0.4)
-      val levels = percentages.map(p=>(mtRecordList((len*p).toInt).value))
+      val min = mtRecordList(0).value
+      val max = mtRecordList.last.value
+      val levels = percentages.map(p=>(min + (max-min)*p))
 
       def winSpeedPercent(winSpeedList: ListBuffer[Double]) = {
         val count = new Array[Double](levels.length + 1)

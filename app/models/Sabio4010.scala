@@ -12,8 +12,8 @@ import play.api.libs.json.{JsError, Json}
 
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Future, blocking}
 import scala.concurrent.duration.{Duration, MINUTES}
+import scala.concurrent.{Future, blocking}
 
 case class Sabio4010Config(address: String)
 
@@ -99,9 +99,9 @@ object Sabio4010Collector {
 
 class Sabio4010Collector @Inject()(system: ActorSystem, instrumentOp: InstrumentOp, instrumentStatusOp: InstrumentStatusOp)
                                   (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: Sabio4010Config) extends Actor {
-  //val statusTimerOpt: Option[Cancellable] = None
-  val statusTimerOpt: Option[Cancellable] = Some(system.scheduler.schedule(Duration(5, MINUTES), Duration(10, MINUTES),
-    self, CollectStatus))
+  val statusTimerOpt: Option[Cancellable] = None
+  //val statusTimerOpt: Option[Cancellable] = Some(system.scheduler.schedule(Duration(5, MINUTES), Duration(10, MINUTES),
+  //  self, CollectStatus))
   var cancelable: Cancellable = _
   var comm: SerialComm = _
   var (collectorState, instrumentStatusTypesOpt) = {
@@ -135,19 +135,22 @@ class Sabio4010Collector @Inject()(system: ActorSystem, instrumentOp: Instrument
       }
 
     case ExecuteSeq(seq, on) =>
-      Future{
-        blocking{
+      Future {
+        blocking {
           def readResponse(): Unit = {
-            val lines = comm.getLine3(timeout = 3)
-            if (lines.size == 1) {
-              val ret = lines(0)
-              val char = ret(0)
-              if (char == 0x6)
+            var ret = Array.empty[Byte]
+            do {
+              ret = comm.port.readBytes()
+            } while (ret == null)
+
+            val char = ret(0)
+            if (char == 0x6) {
+              if(on)
                 Logger.info(s"Execute $seq successfully.")
-              else {
-                val err = ret.substring(1)
-                Logger.error(s"Execute $seq failed with ${err}")
-              }
+              else
+                Logger.info(s"Execute STOP successfully.")
+            } else {
+              Logger.error(s"Execute $seq failed")
             }
           }
 
