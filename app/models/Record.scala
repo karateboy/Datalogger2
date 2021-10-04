@@ -248,8 +248,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
   }
 
   def getWindRose(colName: String)(monitor: String, monitorType: String,
-                  start: DateTime, end: DateTime,
-                  level: List[Double], nDiv: Int = 16): Future[Map[Int, Array[Double]]] = {
+                  start: DateTime, end: DateTime, nDiv: Int = 16): Future[(Map[Int, Array[Double]], Seq[Double])] = {
     for (windRecords <- getRecordValueSeqFuture(colName)(Seq(MonitorType.WIN_DIRECTION, monitorType), start, end, monitor)) yield {
       val step = 360f / nDiv
       import scala.collection.mutable.ListBuffer
@@ -264,15 +263,20 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
         total += 1
       }
 
+      val mtRecordList: Seq[MtRecord] = windRecords.map(r=>r(1)).sortBy(r=>r.value)
+      val len = mtRecordList.length
+      val percentages = Seq(0.2, 0.3, 0.4)
+      val levels = percentages.map(p=>(mtRecordList((len*p).toInt).value))
+
       def winSpeedPercent(winSpeedList: ListBuffer[Double]) = {
-        val count = new Array[Double](level.length + 1)
+        val count = new Array[Double](levels.length + 1)
 
         def getIdx(v: Double): Int = {
-          for (i <- 0 to level.length - 1) {
-            if (v < level(i))
+          for (i <- 0 to levels.length - 1) {
+            if (v < levels(i))
               return i
           }
-          level.length
+          levels.length
         }
 
         for (w <- winSpeedList) {
@@ -283,7 +287,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
         count.map(_ * 100 / total)
       }
 
-      windMap.map(kv => (kv._1, winSpeedPercent(kv._2)))
+      (windMap.map(kv => (kv._1, winSpeedPercent(kv._2))), levels)
     }
   }
 

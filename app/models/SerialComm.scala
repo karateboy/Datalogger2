@@ -103,7 +103,6 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
       if (elapsedTime.getStandardSeconds > timeout) {
         throw new Exception("Read timeout!")
       }
-      Thread.sleep(50)
       strList = getLine3
     }
     strList

@@ -25,9 +25,9 @@ class Realtime @Inject()
           instrumentMap <- instrumentOp.getInstrumentMap()
           dataMap <- dataCollectManagerOp.getLatestData()
         } yield {
-          val list =
+          val list = {
             for {
-              mt <- monitorTypeOp.realtimeMtvList
+              mt <- monitorTypeOp.realtimeMtvList.sortBy(monitorTypeOp.map(_).order)
               recordOpt = dataMap.get(mt)
             } yield {
               val mCase = monitorTypeOp.map(mt)
@@ -75,6 +75,8 @@ class Realtime @Inject()
                   Seq("abnormal_status"), mCase.order)
               }
             }
+          }
+
           Ok(Json.toJson(list))
         }
 

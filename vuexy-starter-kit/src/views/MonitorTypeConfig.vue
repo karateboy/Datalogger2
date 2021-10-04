@@ -27,6 +27,13 @@
             @change="markDirty(row.item)"
           />
         </template>
+        <template #cell(order)="row">
+          <b-form-input
+            v-model.number="row.item.order"
+            size="sm"
+            @change="markDirty(row.item)"
+          />
+        </template>
         <template #cell(std_law)="row">
           <b-form-input
             v-model.number="row.item.std_law"
@@ -137,6 +144,11 @@ export default Vue.extend({
       {
         key: 'prec',
         label: '小數點位數',
+        sortable: true,
+      },
+      {
+        key: 'order',
+        label: '順序',
         sortable: true,
       },
       {

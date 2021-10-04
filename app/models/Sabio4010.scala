@@ -12,6 +12,7 @@ import play.api.libs.json.{JsError, Json}
 
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Future, blocking}
 import scala.concurrent.duration.{Duration, MINUTES}
 
 case class Sabio4010Config(address: String)
@@ -98,6 +99,7 @@ object Sabio4010Collector {
 
 class Sabio4010Collector @Inject()(system: ActorSystem, instrumentOp: InstrumentOp, instrumentStatusOp: InstrumentStatusOp)
                                   (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: Sabio4010Config) extends Actor {
+  //val statusTimerOpt: Option[Cancellable] = None
   val statusTimerOpt: Option[Cancellable] = Some(system.scheduler.schedule(Duration(5, MINUTES), Duration(10, MINUTES),
     self, CollectStatus))
   var cancelable: Cancellable = _
@@ -133,43 +135,45 @@ class Sabio4010Collector @Inject()(system: ActorSystem, instrumentOp: Instrument
       }
 
     case ExecuteSeq(seq, on) =>
-      def readResponse(): Unit = {
-        val resp = comm.getLine3()
-        if (resp.nonEmpty) {
-          val ret = resp(0)
-          val char = ret(0)
-          if (char == 0x6)
-            Logger.info(s"Execute $seq successfully.")
-          else {
-            val err = ret.substring(1)
-            Logger.error(s"Execute $seq failed with ${err}")
+      Future{
+        blocking{
+          def readResponse(): Unit = {
+            val lines = comm.getLine3(timeout = 3)
+            if (lines.size == 1) {
+              val ret = lines(0)
+              val char = ret(0)
+              if (char == 0x6)
+                Logger.info(s"Execute $seq successfully.")
+              else {
+                val err = ret.substring(1)
+                Logger.error(s"Execute $seq failed with ${err}")
+              }
+            }
+          }
+
+          try {
+            if (on) {
+              if (seq.toUpperCase == "PURGE") {
+                val cmd = getCmdString("P", "")
+                comm.os.write(cmd.getBytes)
+                readResponse()
+              } else {
+                val cmd = getCmdString("MS", seq)
+                comm.os.write(cmd.getBytes)
+                readResponse()
+              }
+            } else {
+              val cmd = getCmdString("S", "")
+              comm.os.write(cmd.getBytes)
+              readResponse()
+            }
+          } catch {
+            case ex: Throwable =>
+              Logger.error(s"failed at ${seq}, ${on}", ex)
           }
         }
       }
 
-      try {
-        if (on) {
-          if (seq.toUpperCase == "PURGE") {
-            val cmd = getCmdString("P", "")
-            comm.os.write(cmd.getBytes)
-            Thread.sleep(100)
-            readResponse()
-          } else {
-            val cmd = getCmdString("MS", seq)
-            comm.os.write(cmd.getBytes)
-            Thread.sleep(100)
-            readResponse()
-          }
-        } else {
-          val cmd = getCmdString("S", "")
-          comm.os.write(cmd.getBytes)
-          Thread.sleep(100)
-          readResponse()
-        }
-      } catch {
-        case ex: Throwable =>
-          Logger.error(s"failed at ${seq}, ${on}", ex)
-      }
     case CollectStatus =>
       import instrumentStatusOp._
       var statusList = Seq.empty[Status]

@@ -17,7 +17,7 @@ case class DeviceConfig(slaveID: Int, calibrationTime: Option[LocalTime], monito
                         calibratorPurgeSeq: Option[String], calibratorPurgeTime: Option[Int],
                         calibrateZeoDO: Option[Int], calibrateSpanDO: Option[Int], skipInternalVault: Option[Boolean])
 
-case class DataReg(monitorType: String, address: Int)
+case class DataReg(monitorType: String, address: Int, multiplier: Float)
 
 case class CalibrationReg(zeroAddress: Int, spanAddress: Int)
 
@@ -128,7 +128,11 @@ object TcpModbusDrv2 {
         reg = dataRegList.get(i)
         v = reg.asInstanceOf[ArrayList[Any]]
       } yield {
-        DataReg(v.get(0).asInstanceOf[String], v.get(1).asInstanceOf[Int])
+        val multiplier = if(v.size() <3 )
+          1f
+        else
+          v.get(2).asInstanceOf[Double].toFloat
+        DataReg(v.get(0).asInstanceOf[String], v.get(1).asInstanceOf[Int], multiplier)
       }
     }
 

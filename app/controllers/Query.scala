@@ -732,7 +732,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       assert(nWay == 8 || nWay == 16 || nWay == 32)
       try {
         val mtCase = monitorTypeOp.map(monitorType)
-        val level = List(level1, level2, level3)
+        //val level = List(level1, level2, level3)
         val tableType = TableType.withName(tabTypeStr)
         val colName:String = tableType match {
           case TableType.hour=>
@@ -740,9 +740,9 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           case TableType.min=>
             recordOp.MinCollection
         }
-        val f = recordOp.getWindRose(colName)(monitor, monitorType, new DateTime(start), new DateTime(end), level, nWay)
+        val f = recordOp.getWindRose(colName)(monitor, monitorType, new DateTime(start), new DateTime(end), nWay)
         f onFailure (errorHandler)
-        for (windMap <- f) yield {
+        for ((windMap, levels) <- f) yield {
           assert(windMap.nonEmpty)
 
           val dirMap =
@@ -766,22 +766,27 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
             } yield dirMap.getOrElse(dirKey, "")
 
           var last = 0d
-          val speedLevel = level.flatMap { l =>
-            if (l == level.head) {
+          val speedLevel = levels.flatMap { l =>
+            if (l == levels.head) {
               last = l
-              List(s"< ${l} ${mtCase.unit}")
-            } else if (l == level.last) {
-              val ret = List(s"${last}~${l} ${mtCase.unit}", s"> ${l} ${mtCase.unit}")
+              List("< %s %s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit))
+            } else if (l == levels.last) {
+              val s1 = "%s %s %s".format(monitorTypeOp.format(monitorType, Some(last)),
+                monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
+              val s2 = "> %s %s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
+              val ret = List(s1, s2)
               last = l
               ret
             } else {
-              val ret = List(s"${last}~${l} ${mtCase.unit}")
+              val s1 = "%s~%s %s".format(monitorTypeOp.format(monitorType, Some(last)),
+                monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
+              val ret = List(s1)
               last = l
               ret
             }
           }
           val series = for {
-            level <- 0 to level.length
+            level <- 0 to levels.length
           } yield {
             val data =
               for (dir <- 0 to nWay - 1)
@@ -790,7 +795,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
             seqData(speedLevel(level), data)
           }
 
-          val title = s"${mtCase.desp}玫瑰圖"
+          val title = ""
           val chart = HighchartData(
             scala.collection.immutable.Map("polar" -> "true", "type" -> "column"),
             scala.collection.immutable.Map("text" -> title),
