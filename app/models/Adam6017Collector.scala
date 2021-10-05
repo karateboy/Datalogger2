@@ -101,7 +101,6 @@ class Adam6017Collector @Inject()
             context become handler(collectorState, Some(master))
             import scala.concurrent.duration._
             cancelable = system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
-            self ! WriteDO(bit = 16, on = false)
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)
