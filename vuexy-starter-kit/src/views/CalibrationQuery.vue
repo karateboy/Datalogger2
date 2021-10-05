@@ -117,19 +117,44 @@ export default Vue.extend({
           key: 'zero_val',
           label: '零點讀值',
           sortable: true,
+          formatter: function (
+            v: number | null,
+            key: string,
+            item: CalibrationJSON,
+          ) {
+            if (v !== null) {
+              let value = v as number;
+              return value.toFixed(me.mtMap.get(item.monitorType).prec);
+            } else {
+              return '-';
+            }
+          },
         },
         {
           key: 'span_val',
           label: '全幅讀值',
           sortable: true,
           formatter: function (v: number, key: string, item: CalibrationJSON) {
-            v.toFixed(me.mtMap.get(item.monitorType).prec);
+            if (v !== null) {
+              let value = v as number;
+              return value.toFixed(me.mtMap.get(item.monitorType).prec);
+            } else {
+              return '-';
+            }
           },
         },
         {
           key: 'span_std',
           label: '全幅標準值',
           sortable: true,
+          formatter: function (v: number, key: string, item: CalibrationJSON) {
+            if (v !== null) {
+              let value = v as number;
+              return value.toFixed(me.mtMap.get(item.monitorType).prec);
+            } else {
+              return '-';
+            }
+          },
         },
       ];
       return ret;
@@ -141,11 +166,16 @@ export default Vue.extend({
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     async query() {
-      this.display = true;
-      const url = `/CalibrationReport/${this.form.range[0]}/${this.form.range[1]}`;
-      const res = await axios.get(url);
-      const ret = res.data;
-      this.rows = ret;
+      try {
+        const url = `/CalibrationReport/${this.form.range[0]}/${this.form.range[1]}`;
+        const res = await axios.get(url);
+        const ret = res.data;
+        this.rows = ret;
+      } catch (err) {
+        throw new Error(err);
+      } finally {
+        this.display = true;
+      }
     },
   },
 });

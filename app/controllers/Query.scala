@@ -51,11 +51,12 @@ case class UpdateRecordParam(time: Long, mt: String, status: String)
 class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp,
                       instrumentStatusOp: InstrumentStatusOp, instrumentOp: InstrumentOp,
                       alarmOp: AlarmOp, calibrationOp: CalibrationOp,
-                      manualAuditLogOp: ManualAuditLogOp, excelUtility: ExcelUtility) extends Controller {
+                      manualAuditLogOp: ManualAuditLogOp, excelUtility: ExcelUtility, configuration: Configuration) extends Controller {
 
   implicit val cdWrite = Json.writes[CellData]
   implicit val rdWrite = Json.writes[RowData]
   implicit val dtWrite = Json.writes[DataTab]
+  val trendShowActual = configuration.getBoolean("trendShowActual").getOrElse(false)
 
   def getPeriodCount(start: DateTime, endTime: DateTime, p: Period) = {
     var count = 0
@@ -164,7 +165,8 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
 
 
       val outputType = OutputType.withName(outputTypeStr)
-      val chart = trendHelper(monitors, monitorTypes, tabType, reportUnit, start, end)(statusFilter)
+      val chart = trendHelper(monitors, monitorTypes, tabType,
+        reportUnit, start, end, trendShowActual)(statusFilter)
 
       if (outputType == OutputType.excel) {
         import java.nio.file.Files
@@ -186,7 +188,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
   }
 
   def trendHelper(monitors: Seq[String], monitorTypes: Seq[String], tabType: TableType.Value,
-                  reportUnit: ReportUnit.Value, start: DateTime, end: DateTime, showActual: Boolean = false)(statusFilter: MonitorStatusFilter.Value) = {
+                  reportUnit: ReportUnit.Value, start: DateTime, end: DateTime, showActual: Boolean)(statusFilter: MonitorStatusFilter.Value) = {
     val period: Period =
       reportUnit match {
         case ReportUnit.Sec =>
@@ -730,13 +732,11 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       }
   }
 
-  def windRoseReport(monitor: String, monitorType: String, tabTypeStr:String, nWay: Int, start: Long, end: Long,
-                     level1: Double, level2: Double, level3: Double) = Security.Authenticated.async {
+  def windRoseAutoLevel(monitor: String, monitorType: String, tabTypeStr:String, nWay: Int, start: Long, end: Long) = Security.Authenticated.async {
     implicit request =>
       assert(nWay == 8 || nWay == 16 || nWay == 32)
       try {
         val mtCase = monitorTypeOp.map(monitorType)
-        val level = List(level1, level2, level3)
         val tableType = TableType.withName(tabTypeStr)
         val colName:String = tableType match {
           case TableType.hour=>
@@ -744,7 +744,94 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           case TableType.min=>
             recordOp.MinCollection
         }
-        val f = recordOp.getWindRose(colName)(monitor, monitorType, new DateTime(start), new DateTime(end), level, nWay)
+        val f = recordOp.getWindRoseWithAutoLevel(colName)(monitor, monitorType, new DateTime(start), new DateTime(end), nWay)
+        f onFailure (errorHandler)
+        for ((windMap, levels) <- f) yield {
+          assert(windMap.nonEmpty)
+
+          val dirMap =
+            Map(
+              (0 -> "北"), (1 -> "北北東"), (2 -> "東北"), (3 -> "東北東"), (4 -> "東"),
+              (5 -> "東南東"), (6 -> "東南"), (7 -> "南南東"), (8 -> "南"),
+              (9 -> "南南西"), (10 -> "西南"), (11 -> "西西南"), (12 -> "西"),
+              (13 -> "西北西"), (14 -> "西北"), (15 -> "北北西"))
+          val dirStrSeq =
+            for {
+              dir <- 0 to nWay - 1
+              dirKey = if (nWay == 8)
+                dir * 2
+              else if (nWay == 32) {
+                if (dir % 2 == 0) {
+                  dir / 2
+                } else
+                  dir + 16
+              } else
+                dir
+            } yield dirMap.getOrElse(dirKey, "")
+
+          var last = 0d
+          val speedLevel = levels.flatMap { l =>
+            if (l == levels.head) {
+              last = l
+              List("< %s %s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit))
+            } else if (l == levels.last) {
+              val s1 = "%s %s %s".format(monitorTypeOp.format(monitorType, Some(last)),
+                monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
+              val s2 = "> %s %s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
+              val ret = List(s1, s2)
+              last = l
+              ret
+            } else {
+              val s1 = "%s~%s %s".format(monitorTypeOp.format(monitorType, Some(last)),
+                monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
+              val ret = List(s1)
+              last = l
+              ret
+            }
+          }
+          val series = for {
+            level <- 0 to levels.length
+          } yield {
+            val data =
+              for (dir <- 0 to nWay - 1)
+                yield Seq(Some(dir.toDouble), Some(windMap(dir)(level).toDouble))
+
+            seqData(speedLevel(level), data)
+          }
+
+          val title = ""
+          val chart = HighchartData(
+            scala.collection.immutable.Map("polar" -> "true", "type" -> "column"),
+            scala.collection.immutable.Map("text" -> title),
+            XAxis(Some(dirStrSeq)),
+            Seq(YAxis(None, AxisTitle(Some(Some(""))), None)),
+            series)
+          Ok(Json.toJson(chart))
+        }
+      } catch {
+        case ex: Throwable =>
+          Logger.error(ex.getMessage, ex)
+          Future {
+            BadRequest("無資料")
+          }
+      }
+  }
+
+  def windRoseReport(monitor: String, monitorType: String, tabTypeStr:String, nWay: Int, start: Long, end: Long,
+                     level1: Double, level2: Double, level3: Double) = Security.Authenticated.async {
+    implicit request =>
+      assert(nWay == 8 || nWay == 16 || nWay == 32)
+      try {
+        val mtCase = monitorTypeOp.map(monitorType)
+        val levels = List(level1, level2, level3)
+        val tableType = TableType.withName(tabTypeStr)
+        val colName:String = tableType match {
+          case TableType.hour=>
+            recordOp.HourCollection
+          case TableType.min=>
+            recordOp.MinCollection
+        }
+        val f = recordOp.getWindRose(colName)(monitor, monitorType, new DateTime(start), new DateTime(end), levels, nWay)
         f onFailure (errorHandler)
         for (windMap <- f) yield {
           assert(windMap.nonEmpty)
@@ -770,22 +857,27 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
             } yield dirMap.getOrElse(dirKey, "")
 
           var last = 0d
-          val speedLevel = level.flatMap { l =>
-            if (l == level.head) {
+          val speedLevel = levels.flatMap { l =>
+            if (l == levels.head) {
               last = l
-              List(s"< ${l} ${mtCase.unit}")
-            } else if (l == level.last) {
-              val ret = List(s"${last}~${l} ${mtCase.unit}", s"> ${l} ${mtCase.unit}")
+              List("< %s %s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit))
+            } else if (l == levels.last) {
+              val s1 = "%s %s %s".format(monitorTypeOp.format(monitorType, Some(last)),
+                monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
+              val s2 = "> %s %s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
+              val ret = List(s1, s2)
               last = l
               ret
             } else {
-              val ret = List(s"${last}~${l} ${mtCase.unit}")
+              val s1 = "%s~%s %s".format(monitorTypeOp.format(monitorType, Some(last)),
+                monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
+              val ret = List(s1)
               last = l
               ret
             }
           }
           val series = for {
-            level <- 0 to level.length
+            level <- 0 to levels.length
           } yield {
             val data =
               for (dir <- 0 to nWay - 1)
@@ -794,7 +886,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
             seqData(speedLevel(level), data)
           }
 
-          val title = s"${mtCase.desp}玫瑰圖"
+          val title = ""
           val chart = HighchartData(
             scala.collection.immutable.Map("polar" -> "true", "type" -> "column"),
             scala.collection.immutable.Map("text" -> title),

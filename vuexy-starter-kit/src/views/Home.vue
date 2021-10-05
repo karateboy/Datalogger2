@@ -181,9 +181,9 @@ export default Vue.extend({
 
       let yAxisList = Array<highcharts.YAxisOptions>();
       let yAxisMap = new Map<string, number>();
-      let yAxisOpposite = false;
       for (const mtStatus of this.realTimeStatus) {
         let data = Array<{ x: number; y: number }>();
+        //data.push({ x: 1, y: 1 });
         const wind = ['WD_SPEED', 'WD_DIR'];
         const selectedMt = ['PM25'];
         const visible = selectedMt.indexOf(mtStatus._id) !== -1;
@@ -196,6 +196,7 @@ export default Vue.extend({
               title: {
                 text: mtStatus.unit,
               },
+              showEmpty: false,
             });
             yAxisIndex = yAxisList.length - 1;
             yAxisMap.set(mtStatus.unit, yAxisIndex);
@@ -226,6 +227,9 @@ export default Vue.extend({
           this.chartSeries.push(series);
         }
       }
+      // Make last yAxis oppsite
+      //yAxisList[yAxisList.length - 1].opposite = true;
+      //console.log(yAxisList);
 
       const me = this;
       const pointFormatter = function pointFormatter(this: any) {
@@ -237,7 +241,7 @@ export default Vue.extend({
           chart: {
             type: 'spline',
             marginRight: 10,
-            height: 300,
+            //height: 300,
             events: {
               load: () => {
                 me.refreshTimer = setInterval(() => {
@@ -377,27 +381,18 @@ export default Vue.extend({
       else return '';
     },
     async queryWindRose(mt: string) {
-      let level1 = 3;
-      let level2 = 10;
-      let level3 = 15;
       const now = new Date().getTime();
       const oneHourBefore = now - 60 * 60 * 1000;
       const monitors = 'me';
 
       try {
-        const url = `/WindRose/me/${mt}/min/16/${oneHourBefore}/${now}/${level1}/${level2}/${level3}`;
+        const url = `/WindRose/me/${mt}/min/16/${oneHourBefore}/${now}`;
         const res = await axios.get(url);
         const ret = res.data;
         ret.pane = {
           size: '90%',
         };
 
-        ret.legend = {
-          align: 'right',
-          verticalAlign: 'top',
-          y: 100,
-          layout: 'vertical',
-        };
         ret.yAxis = {
           min: 0,
           endOnTick: false,
