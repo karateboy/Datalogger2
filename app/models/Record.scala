@@ -248,6 +248,46 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
   }
 
   def getWindRose(colName: String)(monitor: String, monitorType: String,
+                                   start: DateTime, end: DateTime,
+                                   level: List[Double], nDiv: Int = 16): Future[Map[Int, Array[Double]]] = {
+    for (windRecords <- getRecordValueSeqFuture(colName)(Seq(MonitorType.WIN_DIRECTION, monitorType), start, end, monitor)) yield {
+      val step = 360f / nDiv
+      import scala.collection.mutable.ListBuffer
+      val windDirPair =
+        for (d <- 0 to nDiv - 1) yield
+          d -> ListBuffer.empty[Double]
+      val windMap: Map[Int, ListBuffer[Double]] = windDirPair.toMap
+      var total = 0
+      for (record <- windRecords) {
+        val dir = (Math.ceil((record(0).value - (step / 2)) / step).toInt) % nDiv
+        windMap(dir) += record(1).value
+        total += 1
+      }
+
+      def winSpeedPercent(winSpeedList: ListBuffer[Double]) = {
+        val count = new Array[Double](level.length + 1)
+
+        def getIdx(v: Double): Int = {
+          for (i <- 0 to level.length - 1) {
+            if (v < level(i))
+              return i
+          }
+          level.length
+        }
+
+        for (w <- winSpeedList) {
+          val i = getIdx(w)
+          count(i) += 1
+        }
+        assert(total != 0)
+        count.map(_ * 100 / total)
+      }
+
+      windMap.map(kv => (kv._1, winSpeedPercent(kv._2)))
+    }
+  }
+
+  def getWindRoseWithAutoLevel(colName: String)(monitor: String, monitorType: String,
                   start: DateTime, end: DateTime, nDiv: Int = 16): Future[(Map[Int, Array[Double]], Seq[Double])] = {
     for (windRecords <- getRecordValueSeqFuture(colName)(Seq(MonitorType.WIN_DIRECTION, monitorType), start, end, monitor)) yield {
       val step = 360f / nDiv

@@ -314,8 +314,8 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
       executeSeq(seq, on)
   }
 
-  // Only for T700
-  def executeSeq(seq: String, on: Boolean) {}
+  // FIXME not implemented
+  def executeSeq(str: String, bool: Boolean): Unit = ???
 
   def startCalibration(calibrationType: CalibrationType, monitorTypes: List[String]) {
     import scala.concurrent.duration._
@@ -515,6 +515,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
 
       deviceConfig.calibrateSpanSeq map {
         seq =>
+          context.parent ! ExecuteSeq(seq, false)
       }
 
       if (deviceConfig.skipInternalVault != Some(true)) {
@@ -540,6 +541,8 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
 
       deviceConfig.calibrateZeoSeq map {
         seq =>
+            context.parent ! ExecuteSeq(seq, v)
+
       }
 
       if (deviceConfig.skipInternalVault != Some(true)) {
@@ -563,6 +566,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
 
       deviceConfig.calibrateSpanSeq map {
         seq =>
+          context.parent ! ExecuteSeq(seq, v)
       }
 
       if (deviceConfig.skipInternalVault != Some(true)) {
@@ -589,10 +593,9 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
 
   def triggerCalibratorPurge(v: Boolean) {
     try {
-      // FIXME
-      Logger.info("calibrate purge not defined yet")
-      if (v && deviceConfig.calibratorPurgeSeq.isDefined)
-        context.parent ! ExecuteSeq(deviceConfig.calibratorPurgeSeq.get, v)
+      for(seq <-deviceConfig.calibratorPurgeSeq){
+        context.parent ! ExecuteSeq(seq, v)
+      }
     } catch {
       case ex: Exception =>
         ModelHelper.logException(ex)

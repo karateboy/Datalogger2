@@ -117,6 +117,9 @@ export default Vue.extend({
           key: 'zero_val',
           label: '零點讀值',
           sortable: true,
+          formatter: function (v: number, key: string, item: CalibrationJSON) {
+            v.toFixed(me.mtMap.get(item.monitorType).prec);
+          },
         },
         {
           key: 'span_val',
