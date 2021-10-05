@@ -130,8 +130,17 @@ object TcpModbusDrv2 {
       } yield {
         val multiplier = if(v.size() <3 )
           1f
-        else
-          v.get(2).asInstanceOf[Double].toFloat
+        else {
+          val test = v.get(2)
+          test match {
+            case _: Int =>
+              test.asInstanceOf[Int].toFloat
+            case _: Double =>
+              test.asInstanceOf[Double].toFloat
+            case _: Float =>
+              test.asInstanceOf[Float]
+          }
+        }
         DataReg(v.get(0).asInstanceOf[String], v.get(1).asInstanceOf[Int], multiplier)
       }
     }
