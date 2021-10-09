@@ -17,7 +17,9 @@ case class MonitorType(_id: String, desp: String, unit: String,
                        var measuringBy: Option[List[String]] = None,
                        thresholdConfig: Option[ThresholdConfig] = None,
                        acoustic: Option[Boolean] = None,
-                       spectrum: Option[Boolean] = None) {
+                       spectrum: Option[Boolean] = None,
+                       levels: Option[Seq[Double]] = None,
+                       calibrate: Option[Boolean] = None) {
   def defaultUpdate = {
     Updates.combine(
       Updates.setOnInsert("_id", _id),

@@ -59,6 +59,7 @@ export interface MonitorType {
   thresholdConfig?: ThresholdConfig;
   acoustic?: boolean;
   spectrum?: boolean;
+  levels?: Array<number>;
 }
 
 export interface CellData {

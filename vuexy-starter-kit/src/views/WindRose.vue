@@ -16,7 +16,7 @@
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="測項"
+              label="測項 (需先定義分級)"
               label-for="monitorType"
               label-cols-md="3"
             >
@@ -25,9 +25,10 @@
                 v-model="form.monitorType"
                 label="desp"
                 :reduce="mt => mt._id"
-                :options="monitorTypes"
+                :options="levelMt"
               />
             </b-form-group>
+            <small class="text-danger">{{ errorMsg }}</small>
           </b-col>
           <b-col cols="12">
             <b-form-group label="方位" label-for="nWay" label-cols-md="3">
@@ -57,13 +58,6 @@
               />
             </b-form-group>
           </b-col>
-          <b-col cols="12">
-            <b-form-group label="分級" label-for="level" label-cols-md="3">
-              <b-input v-model.number="form.level1" type="number" />
-              <b-input v-model.number="form.level2" type="number" />
-              <b-input v-model.number="form.level3" type="number" />
-            </b-form-group>
-          </b-col>
           <!-- submit and reset -->
           <b-col offset-md="3">
             <b-button
@@ -71,6 +65,7 @@
               type="submit"
               variant="primary"
               class="mr-1"
+              :disabled="!canQuery"
               @click="query"
             >
               查詢
@@ -100,13 +95,14 @@ import DatePicker from 'vue2-datepicker';
 import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
 const Ripple = require('vue-ripple-directive');
-import { mapState, mapActions, mapMutations } from 'vuex';
+import { mapState, mapActions, mapMutations, mapGetters } from 'vuex';
 import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
 import moment from 'moment';
 import axios from 'axios';
 import highcharts from 'highcharts';
 import highchartMore from 'highcharts/highcharts-more';
+import { MonitorType } from './types';
 
 export default Vue.extend({
   components: {
@@ -121,6 +117,7 @@ export default Vue.extend({
     let monitor: string | undefined;
     let monitorType: string = 'me';
     let nWays = [8, 16, 32];
+    let errorMsg: string = '';
     return {
       display: false,
       form: {
@@ -128,18 +125,25 @@ export default Vue.extend({
         monitorType,
         nWay: 8,
         range,
-        level1: 5,
-        level2: 10,
-        level3: 15,
       },
       nWays,
+      errorMsg,
     };
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapState('monitors', ['monitors']),
+    canQuery(): boolean {
+      if (this.form.monitorType == undefined) return false;
+
+      return true;
+    },
+    levelMt(): Array<MonitorType> {
+      return this.monitorTypes.filter(
+        (mt: MonitorType) => mt.levels !== undefined,
+      );
+    },
   },
-  watch: {},
   async mounted() {
     const { skin } = useAppConfig();
     if (skin.value == 'dark') {
@@ -164,12 +168,9 @@ export default Vue.extend({
     async query() {
       this.setLoading({ loading: true });
       this.display = true;
-      let level1 = this.form.level1;
-      let level2 = this.form.level2;
-      let level3 = this.form.level3;
 
       try {
-        const url = `/WindRose/${this.form.monitor}/${this.form.monitorType}/hour/${this.form.nWay}/${this.form.range[0]}/${this.form.range[1]}/${level1}/${level2}/${level3}`;
+        const url = `/WindRose/${this.form.monitor}/${this.form.monitorType}/hour/${this.form.nWay}/${this.form.range[0]}/${this.form.range[1]}`;
         const res = await axios.get(url);
         const ret = res.data;
         ret.pane = {

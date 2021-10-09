@@ -732,11 +732,13 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       }
   }
 
-  def windRoseAutoLevel(monitor: String, monitorType: String, tabTypeStr:String, nWay: Int, start: Long, end: Long) = Security.Authenticated.async {
+  def windRoseAutoLevel(monitor: String, monitorType: String, tabTypeStr:String, nWay: Int, start: Long, end: Long): Action[AnyContent] = Security.Authenticated.async {
     implicit request =>
       assert(nWay == 8 || nWay == 16 || nWay == 32)
       try {
         val mtCase = monitorTypeOp.map(monitorType)
+        assert(mtCase.levels.isDefined)
+
         val tableType = TableType.withName(tabTypeStr)
         val colName:String = tableType match {
           case TableType.hour=>
@@ -745,68 +747,74 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
             recordOp.MinCollection
         }
         val f = recordOp.getWindRoseWithAutoLevel(colName)(monitor, monitorType, new DateTime(start), new DateTime(end), nWay)
-        f onFailure (errorHandler)
+        f onFailure {
+          case _:Throwable=>
+            NotAcceptable("無合適資料")
+        }
         for ((windMap, levels) <- f) yield {
-          assert(windMap.nonEmpty)
-
-          val dirMap =
-            Map(
-              (0 -> "北"), (1 -> "北北東"), (2 -> "東北"), (3 -> "東北東"), (4 -> "東"),
-              (5 -> "東南東"), (6 -> "東南"), (7 -> "南南東"), (8 -> "南"),
-              (9 -> "南南西"), (10 -> "西南"), (11 -> "西西南"), (12 -> "西"),
-              (13 -> "西北西"), (14 -> "西北"), (15 -> "北北西"))
-          val dirStrSeq =
-            for {
-              dir <- 0 to nWay - 1
-              dirKey = if (nWay == 8)
-                dir * 2
-              else if (nWay == 32) {
-                if (dir % 2 == 0) {
-                  dir / 2
+          try{
+            val dirMap =
+              Map(
+                (0 -> "北"), (1 -> "北北東"), (2 -> "東北"), (3 -> "東北東"), (4 -> "東"),
+                (5 -> "東南東"), (6 -> "東南"), (7 -> "南南東"), (8 -> "南"),
+                (9 -> "南南西"), (10 -> "西南"), (11 -> "西西南"), (12 -> "西"),
+                (13 -> "西北西"), (14 -> "西北"), (15 -> "北北西"))
+            val dirStrSeq =
+              for {
+                dir <- 0 to nWay - 1
+                dirKey = if (nWay == 8)
+                  dir * 2
+                else if (nWay == 32) {
+                  if (dir % 2 == 0) {
+                    dir / 2
+                  } else
+                    dir + 16
                 } else
-                  dir + 16
-              } else
-                dir
-            } yield dirMap.getOrElse(dirKey, "")
+                  dir
+              } yield dirMap.getOrElse(dirKey, "")
 
-          var last = 0d
-          val speedLevel = levels.flatMap { l =>
-            if (l == levels.head) {
-              last = l
-              List("< %s %s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit))
-            } else if (l == levels.last) {
-              val s1 = "%s %s %s".format(monitorTypeOp.format(monitorType, Some(last)),
-                monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
-              val s2 = "> %s %s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
-              val ret = List(s1, s2)
-              last = l
-              ret
-            } else {
-              val s1 = "%s~%s %s".format(monitorTypeOp.format(monitorType, Some(last)),
-                monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
-              val ret = List(s1)
-              last = l
-              ret
+            var last = 0d
+            val speedLevel = levels.flatMap { l =>
+              if (l == levels.head) {
+                last = l
+                List("< %s %s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit))
+              } else if (l == levels.last) {
+                val s1 = "%s %s %s".format(monitorTypeOp.format(monitorType, Some(last)),
+                  monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
+                val s2 = "> %s %s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
+                val ret = List(s1, s2)
+                last = l
+                ret
+              } else {
+                val s1 = "%s~%s %s".format(monitorTypeOp.format(monitorType, Some(last)),
+                  monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
+                val ret = List(s1)
+                last = l
+                ret
+              }
             }
-          }
-          val series = for {
-            level <- 0 to levels.length
-          } yield {
-            val data =
-              for (dir <- 0 to nWay - 1)
-                yield Seq(Some(dir.toDouble), Some(windMap(dir)(level).toDouble))
+            val series = for {
+              level <- 0 to levels.length
+            } yield {
+              val data =
+                for (dir <- 0 to nWay - 1)
+                  yield Seq(Some(dir.toDouble), Some(windMap(dir)(level).toDouble))
 
-            seqData(speedLevel(level), data)
-          }
+              seqData(speedLevel(level), data)
+            }
 
-          val title = ""
-          val chart = HighchartData(
-            scala.collection.immutable.Map("polar" -> "true", "type" -> "column"),
-            scala.collection.immutable.Map("text" -> title),
-            XAxis(Some(dirStrSeq)),
-            Seq(YAxis(None, AxisTitle(Some(Some(""))), None)),
-            series)
-          Ok(Json.toJson(chart))
+            val title = ""
+            val chart = HighchartData(
+              scala.collection.immutable.Map("polar" -> "true", "type" -> "column"),
+              scala.collection.immutable.Map("text" -> title),
+              XAxis(Some(dirStrSeq)),
+              Seq(YAxis(None, AxisTitle(Some(Some(""))), None)),
+              series)
+            Ok(Json.toJson(chart))
+          }catch{
+            case _:Throwable=>
+              NotAcceptable("無資料")
+          }
         }
       } catch {
         case ex: Throwable =>
@@ -817,13 +825,12 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       }
   }
 
-  def windRoseReport(monitor: String, monitorType: String, tabTypeStr:String, nWay: Int, start: Long, end: Long,
-                     level1: Double, level2: Double, level3: Double) = Security.Authenticated.async {
+  def windRoseReport(monitor: String, monitorType: String, tabTypeStr:String, nWay: Int, start: Long, end: Long) = Security.Authenticated.async {
     implicit request =>
       assert(nWay == 8 || nWay == 16 || nWay == 32)
       try {
         val mtCase = monitorTypeOp.map(monitorType)
-        val levels = List(level1, level2, level3)
+        val levels = monitorTypeOp.map(monitorType).levels.getOrElse(Seq(1.0, 2.0, 3.0))
         val tableType = TableType.withName(tabTypeStr)
         val colName:String = tableType match {
           case TableType.hour=>
@@ -831,7 +838,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           case TableType.min=>
             recordOp.MinCollection
         }
-        val f = recordOp.getWindRose(colName)(monitor, monitorType, new DateTime(start), new DateTime(end), levels, nWay)
+        val f = recordOp.getWindRose(colName)(monitor, monitorType, new DateTime(start), new DateTime(end), levels.toList, nWay)
         f onFailure (errorHandler)
         for (windMap <- f) yield {
           assert(windMap.nonEmpty)
@@ -856,23 +863,26 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
                 dir
             } yield dirMap.getOrElse(dirKey, "")
 
-          var last = 0d
-          val speedLevel = levels.flatMap { l =>
-            if (l == levels.head) {
-              last = l
-              List("< %s %s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit))
+          var previous = 0d
+          val concLevels = levels.flatMap { l =>
+            if (l == levels.head && l == levels.last) {
+              previous = l
+              val s1 = "< %s%s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
+              val s2 = "> %s%s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
+              List(s1, s2)
+            } else if (l == levels.head){
+              previous = l
+              List("< %s%s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit))
             } else if (l == levels.last) {
-              val s1 = "%s %s %s".format(monitorTypeOp.format(monitorType, Some(last)),
+              val s1 = "%s~%s%s".format(monitorTypeOp.format(monitorType, Some(previous)),
                 monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
-              val s2 = "> %s %s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
-              val ret = List(s1, s2)
-              last = l
-              ret
+              val s2 = "> %s%s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
+              List(s1, s2)
             } else {
-              val s1 = "%s~%s %s".format(monitorTypeOp.format(monitorType, Some(last)),
+              val s1 = "%s~%s%s".format(monitorTypeOp.format(monitorType, Some(previous)),
                 monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
               val ret = List(s1)
-              last = l
+              previous = l
               ret
             }
           }
@@ -883,7 +893,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
               for (dir <- 0 to nWay - 1)
                 yield Seq(Some(dir.toDouble), Some(windMap(dir)(level).toDouble))
 
-            seqData(speedLevel(level), data)
+            seqData(concLevels(level), data)
           }
 
           val title = ""

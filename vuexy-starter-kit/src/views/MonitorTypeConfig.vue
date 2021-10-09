@@ -70,6 +70,16 @@
             @change="markDirty(row.item)"
           />
         </template>
+        <template #cell(levelSeq)="row">
+          <b-form-input
+            v-model="row.item.levelSeq"
+            size="sm"
+            @change="
+              markDirty(row.item);
+              checkLevel(row.item.levelSeq);
+            "
+          />
+        </template>
       </b-table>
       <b-row>
         <b-col>
@@ -99,7 +109,6 @@
       ok-title="確認"
       @ok="setMtThresholdConfig"
     >
-      <b-form> asdf </b-form>
     </b-modal>
   </div>
 </template>
@@ -114,6 +123,7 @@ import { MonitorType, ThresholdConfig } from './types';
 
 interface EditMonitorType extends MonitorType {
   dirty?: boolean;
+  levelSeq?: string;
 }
 
 export default Vue.extend({
@@ -169,6 +179,10 @@ export default Vue.extend({
         label: '全幅值偏移法規',
       },
       {
+        key: 'levelSeq',
+        label: '分級(以逗點分隔)',
+      },
+      {
         key: 'measuringBy',
         label: '測量儀器',
         formatter: (
@@ -210,6 +224,10 @@ export default Vue.extend({
         for (const mt of this.monitorTypes) {
           if (mt.thresholdConfig === undefined)
             mt.thresholdConfig = { elapseTime: 30 };
+
+          if (mt.levels !== undefined) {
+            mt.levelSeq = mt.levels.join(',');
+          }
         }
       });
     },
@@ -231,6 +249,29 @@ export default Vue.extend({
       if (mt.zd_law === '') mt.zd_law = null;
       if (mt.std_internal === '') mt.std_internal = null;
       if (mt.std_law === '') mt.std_law = null;
+      if (mt.levelSeq) {
+        try {
+          let levelSeq = mt.levelSeq as string;
+          let levels = levelSeq.split(',').map(t => parseFloat(t));
+          mt.levels = levels;
+        } catch (err) {}
+      }
+    },
+    checkLevel(levelSeq: string | undefined): boolean {
+      try {
+        if (levelSeq === undefined) return true;
+
+        let levels = levelSeq.split(',').map(t => parseFloat(t));
+
+        if (levels.length >= 1 && levels.every(l => !isNaN(l))) return true;
+        else {
+          this.$bvModal.msgBoxOk(`${levelSeq}不是有效的分級!`);
+          return false;
+        }
+      } catch (err) {
+        this.$bvModal.msgBoxOk(`${levelSeq}不是有效的分級!`);
+        return false;
+      }
     },
     save() {
       const all = [];
