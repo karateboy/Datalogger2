@@ -80,6 +80,13 @@
             "
           />
         </template>
+        <template #cell(calbrate)="row">
+          <b-form-checkbox
+            v-model="row.item.calibrate"
+            switch
+            @change="markDirty(row.item)"
+          />
+        </template>
       </b-table>
       <b-row>
         <b-col>
@@ -181,6 +188,11 @@ export default Vue.extend({
       {
         key: 'levelSeq',
         label: '分級(以逗點分隔)',
+      },
+      {
+        key: 'calbrate',
+        label: '校正回歸',
+        tdClass: { 'text-center': true },
       },
       {
         key: 'measuringBy',

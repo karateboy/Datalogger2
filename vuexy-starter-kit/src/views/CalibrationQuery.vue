@@ -59,6 +59,8 @@ const Ripple = require('vue-ripple-directive');
 import moment from 'moment';
 import axios from 'axios';
 import { mapActions, mapGetters } from 'vuex';
+import { MonitorType } from './types';
+import { Monitor } from '@/store/monitors/types';
 
 interface CalibrationJSON {
   monitorType: string;
@@ -95,6 +97,7 @@ export default Vue.extend({
     ...mapGetters('monitorTypes', ['mtMap']),
     columns(): Array<any> {
       let me = this;
+      let mtMap = this.mtMap as Map<string, MonitorType>;
       let ret = [
         {
           key: 'monitorType',
@@ -117,9 +120,16 @@ export default Vue.extend({
           key: 'zero_val',
           label: '零點讀值',
           sortable: true,
+          tdClass: function (
+            v: number | null,
+            _key: string,
+            item: CalibrationJSON,
+          ) {
+            return { 'text-danger': !me.getZeroStatus(item) };
+          },
           formatter: function (
             v: number | null,
-            key: string,
+            _key: string,
             item: CalibrationJSON,
           ) {
             if (v !== null) {
@@ -131,9 +141,34 @@ export default Vue.extend({
           },
         },
         {
+          key: 'zero_law',
+          label: '零點偏移法規值',
+          formatter: function (
+            v: number | null,
+            _key: string,
+            item: CalibrationJSON,
+          ) {
+            if (mtMap.has(item.monitorType)) {
+              let mtCase = mtMap.get(item.monitorType) as MonitorType;
+              if (mtCase.zd_law !== undefined) {
+                return mtCase.zd_law.toFixed(
+                  me.mtMap.get(item.monitorType).prec,
+                );
+              } else return '-';
+            } else return '-';
+          },
+        },
+        {
           key: 'span_val',
           label: '全幅讀值',
           sortable: true,
+          tdClass: function (
+            v: number | null,
+            _key: string,
+            item: CalibrationJSON,
+          ) {
+            return { 'text-danger': !me.getSpanStatus(item) };
+          },
           formatter: function (v: number, key: string, item: CalibrationJSON) {
             if (v !== null) {
               let value = v as number;
@@ -156,6 +191,121 @@ export default Vue.extend({
             }
           },
         },
+        {
+          key: 'span_dev',
+          label: '偏移率(%)',
+          sortable: true,
+          tdClass: function (
+            v: number | null,
+            _key: string,
+            item: CalibrationJSON,
+          ) {
+            return { 'text-danger': !me.getSpanStatus(item) };
+          },
+          formatter: function (
+            _v: number,
+            _key: string,
+            item: CalibrationJSON,
+          ) {
+            if (
+              item.span_std !== undefined &&
+              item.span_std !== 0 &&
+              item.span_val !== undefined
+            ) {
+              let v = Math.abs(
+                ((item.span_val - item.span_std) / item.span_std) * 100,
+              );
+              return v.toFixed(2);
+            } else {
+              return '-';
+            }
+          },
+        },
+        {
+          key: 'span_dev_law',
+          label: '偏移率法規值(%)',
+          sortable: true,
+          formatter: function (
+            _v: number,
+            _key: string,
+            item: CalibrationJSON,
+          ) {
+            if (mtMap.has(item.monitorType)) {
+              let mtCase = mtMap.get(item.monitorType) as MonitorType;
+              if (mtCase.span_dev_law !== undefined) {
+                return mtCase.span_dev_law.toFixed(2);
+              } else return '-';
+            } else return '-';
+          },
+        },
+        {
+          key: 'm',
+          label: 'M值',
+          formatter: function (
+            _v: number,
+            _key: string,
+            item: CalibrationJSON,
+          ) {
+            if (
+              item.zero_val !== undefined &&
+              item.span_val !== undefined &&
+              item.span_std !== undefined
+            ) {
+              if (item.span_val - item.zero_val !== 0) {
+                let m = item.span_std / (item.span_val - item.zero_val);
+                return m.toFixed(2);
+              }
+            }
+
+            return '-';
+          },
+        },
+        {
+          key: 'b',
+          label: 'B值',
+          formatter: function (
+            _v: number,
+            _key: string,
+            item: CalibrationJSON,
+          ) {
+            if (
+              item.zero_val !== undefined &&
+              item.span_val !== undefined &&
+              item.span_std !== undefined
+            ) {
+              if (item.span_val - item.zero_val !== 0) {
+                let b =
+                  (-item.zero_val * item.span_std) /
+                  (item.span_val - item.zero_val);
+                return b.toFixed(2);
+              }
+            }
+
+            return '-';
+          },
+        },
+        {
+          key: 'success',
+          label: '校正狀態',
+          tdClass: function (
+            v: number | null,
+            _key: string,
+            item: CalibrationJSON,
+          ) {
+            return {
+              'text-danger': !me.getStatus(item),
+              'text-success': me.getStatus(item),
+            };
+          },
+          formatter: function (
+            _v: number,
+            _key: string,
+            item: CalibrationJSON,
+          ) {
+            if (me.getStatus(item)) return '成功';
+            else return '失敗';
+          },
+        },
       ];
       return ret;
     },
@@ -176,6 +326,33 @@ export default Vue.extend({
       } finally {
         this.display = true;
       }
+    },
+    getZeroStatus(item: CalibrationJSON): boolean {
+      let mtMap = this.mtMap as Map<string, MonitorType>;
+      let mtCase = mtMap.get(item.monitorType) as MonitorType;
+      if (mtCase.zd_law === undefined || item.zero_val === undefined)
+        return true;
+
+      return Math.abs(item.zero_val) < Math.abs(mtCase.zd_law);
+    },
+    getSpanStatus(item: CalibrationJSON): boolean {
+      let mtMap = this.mtMap as Map<string, MonitorType>;
+      let mtCase = mtMap.get(item.monitorType) as MonitorType;
+      if (
+        mtCase.span_dev_law !== undefined &&
+        item.span_val !== undefined &&
+        item.span_std !== undefined
+      ) {
+        // eslint-disable-next-line camelcase
+        let span_dev = Math.abs(
+          ((item.span_val - item.span_std) / item.span_std) * 100,
+        );
+        // eslint-disable-next-line camelcase
+        return span_dev < mtCase.span_dev_law;
+      } else return true;
+    },
+    getStatus(item: CalibrationJSON): boolean {
+      return this.getZeroStatus(item) && this.getSpanStatus(item);
     },
   },
 });

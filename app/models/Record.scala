@@ -18,12 +18,38 @@ object RecordList {
     RecordList(time, mtDataList, monitor, RecordListID(time, monitor))
 }
 
-case class RecordList(time: Date, mtDataList: Seq[MtRecord], monitor: String, _id: RecordListID) {
+case class RecordList(time: Date, var mtDataList: Seq[MtRecord], monitor: String, _id: RecordListID) {
   def mtMap = {
     val pairs =
       mtDataList map { data => data.mtName -> data }
     pairs.toMap
+  }
 
+  def doCalibrate(monitorTypeOp: MonitorTypeOp, calibrationMap: Map[String, List[(DateTime, Calibration)]]): Unit = {
+    def canCalibrate(mt: String) = {
+      calibrationMap.contains(mt) &&
+        findCalibration(calibrationMap(mt)).isDefined
+    }
+
+    def findCalibration(calibrationList: List[(DateTime, Calibration)]) = {
+      val recordTime: DateTime = new DateTime(time)
+      val candidate = calibrationList.takeWhile(p => p._1 < recordTime)
+      if (candidate.length == 0)
+        None
+      else
+        Some(candidate.last)
+    }
+
+    var calibratedMtDataList = Seq.empty[MtRecord]
+    mtDataList.foreach(rec => {
+      if (monitorTypeOp.map(rec.mtName).calibrate.getOrElse(false)
+        && canCalibrate(rec.mtName)) {
+        val calibratedValue = findCalibration(calibrationMap(rec.mtName)).get._2.calibrate(rec.value)
+        calibratedMtDataList = calibratedMtDataList.:+(MtRecord(rec.mtName, calibratedValue, rec.status))
+      } else
+        calibratedMtDataList = calibratedMtDataList.:+(rec)
+    })
+    mtDataList = calibratedMtDataList
   }
 }
 
@@ -34,7 +60,7 @@ case class Record(time: DateTime, value: Double, status: String, monitor: String
 import javax.inject._
 
 @Singleton
-class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp) {
+class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibrationOp: CalibrationOp) {
 
   import org.mongodb.scala.model._
   import play.api.libs.json._
@@ -42,7 +68,6 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
   implicit val writer = Json.writes[Record]
 
   val HourCollection = "hour_data"
-  val SixMinCollection = "six_min_data"
   val MinCollection = "min_data"
   val SecCollection = "sec_data"
 
@@ -59,17 +84,8 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
         val f = mongoDB.database.createCollection(HourCollection).toFuture()
         f.onFailure(errorHandler)
         f.andThen({
-          case Success(_)=>
+          case Success(_) =>
             getCollection(HourCollection).createIndex(Indexes.descending("time", "monitor"), new IndexOptions().unique(true))
-        })
-      }
-
-      if(!colNames.contains(SixMinCollection)){
-        val f = mongoDB.database.createCollection(SixMinCollection).toFuture()
-        f.onFailure(errorHandler)
-        f.andThen({
-          case Success(_)=>
-            getCollection(SixMinCollection).createIndex(Indexes.descending("time", "monitor"), new IndexOptions().unique(true))
         })
       }
 
@@ -77,7 +93,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
         val f = mongoDB.database.createCollection(MinCollection).toFuture()
         f.onFailure(errorHandler)
         f.andThen({
-          case Success(_)=>
+          case Success(_) =>
             getCollection(MinCollection).createIndex(Indexes.descending("time", "monitor"), new IndexOptions().unique(true))
         })
       }
@@ -86,7 +102,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
         val f = mongoDB.database.createCollection(SecCollection).toFuture()
         f.onFailure(errorHandler)
         f.andThen({
-          case Success(_)=>
+          case Success(_) =>
             getCollection(SecCollection).createIndex(Indexes.descending("time", "monitor"), new IndexOptions().unique(true))
         })
       }
@@ -155,8 +171,6 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     f
   }
 
-  def getCollection(colName: String) = mongoDB.database.getCollection[RecordList](colName).withCodecRegistry(codecRegistry)
-
   def upsertRecord(doc: RecordList)(colName: String) = {
     import org.mongodb.scala.model.ReplaceOptions
 
@@ -184,6 +198,8 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     f
   }
 
+  def getCollection(colName: String) = mongoDB.database.getCollection[RecordList](colName).withCodecRegistry(codecRegistry)
+
   def getID(time: Long, monitor: String) = Document("time" -> new BsonDateTime(time), "monitor" -> monitor)
 
   def getRecordMap(colName: String)
@@ -192,10 +208,24 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     import org.mongodb.scala.model.Sorts._
 
     val col = getCollection(colName)
-
     val f = col.find(and(equal("monitor", monitor), gte("time", startTime.toDate()), lt("time", endTime.toDate())))
       .sort(ascending("time")).toFuture()
-    val docs = waitReadyResult(f)
+
+    val needCalibration = mtList.map { mt => monitorTypeOp.map(mt).calibrate.getOrElse(false) }.exists(p => p)
+    val allF =
+      if (needCalibration) {
+        val f2 = calibrationOp.getCalibrationMap(startTime, endTime)(monitorTypeOp)
+        for {
+          docs <- f
+          calibrationMap <- f2
+        } yield {
+          docs.foreach(_.doCalibrate(monitorTypeOp, calibrationMap))
+          docs
+        }
+      } else
+        f
+
+    val docs = waitReadyResult(allF)
     val pairs =
       for {
         mt <- mtList
@@ -220,8 +250,21 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
 
     val col = getCollection(colName)
 
-    col.find(and(in("monitor", monitors: _*), gte("time", startTime.toDate()), lt("time", endTime.toDate())))
+    val f = col.find(and(in("monitor", monitors: _*), gte("time", startTime.toDate()), lt("time", endTime.toDate())))
       .sort(ascending("time")).toFuture()
+    f onFailure errorHandler
+    val needCalibration = monitorTypeOp.mtvList.map { mt => monitorTypeOp.map(mt).calibrate.getOrElse(false) }.exists(p => p)
+    if (needCalibration) {
+      val f2 = calibrationOp.getCalibrationMap(startTime, endTime)(monitorTypeOp)
+      for {
+        docs <- f
+        calibrationMap <- f2
+      } yield {
+        docs.foreach(_.doCalibrate(monitorTypeOp, calibrationMap))
+        docs
+      }
+    } else
+      f
   }
 
   implicit val mtRecordWrite = Json.writes[MtRecord]
@@ -287,55 +330,6 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     }
   }
 
-  def getWindRoseWithAutoLevel(colName: String)(monitor: String, monitorType: String,
-                  start: DateTime, end: DateTime, nDiv: Int = 16): Future[(Map[Int, Array[Double]], Seq[Double])] = {
-    for (windRecords <- getRecordValueSeqFuture(colName)(Seq(MonitorType.WIN_DIRECTION, monitorType), start, end, monitor)) yield {
-      val step = 360f / nDiv
-      import scala.collection.mutable.ListBuffer
-      val windDirPair =
-        for (d <- 0 to nDiv - 1) yield
-          d -> ListBuffer.empty[Double]
-      val windMap: Map[Int, ListBuffer[Double]] = windDirPair.toMap
-      var total = 0
-      for (record <- windRecords) {
-        val dir = (Math.ceil((record(0).value - (step / 2)) / step).toInt) % nDiv
-        windMap(dir) += record(1).value
-        total += 1
-      }
-
-      val mtRecordList: Seq[MtRecord] = windRecords.map(r=>r(1)).sortBy(r=>r.value)
-      val percentages = Seq(0.2, 0.3, 0.5)
-      val len = mtRecordList.length
-      if(len == 0)
-        throw new Exception("No Data!")
-
-      val min = mtRecordList(0).value
-      val max = mtRecordList.last.value
-      val levels = percentages.map(p=>(min + (max-min)*p))
-
-      def winSpeedPercent(winSpeedList: ListBuffer[Double]) = {
-        val count = new Array[Double](levels.length + 1)
-
-        def getIdx(v: Double): Int = {
-          for (i <- 0 to levels.length - 1) {
-            if (v < levels(i))
-              return i
-          }
-          levels.length
-        }
-
-        for (w <- winSpeedList) {
-          val i = getIdx(w)
-          count(i) += 1
-        }
-        assert(total != 0)
-        count.map(_ * 100 / total)
-      }
-
-      (windMap.map(kv => (kv._1, winSpeedPercent(kv._2))), levels)
-    }
-  }
-
   def getRecordValueSeqFuture(colName: String)
                              (mtList: Seq[String],
                               startTime: DateTime,
@@ -345,18 +339,35 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     import org.mongodb.scala.model.Sorts._
 
     val col = getCollection(colName)
-
     val f = col.find(and(equal("monitor", monitor), gte("time", startTime.toDate()), lt("time", endTime.toDate())))
       .sort(ascending("time")).toFuture()
     f onFailure (errorHandler)
-    for (docs <- f) yield {
+    val needCalibration = mtList.map { mt => monitorTypeOp.map(mt).calibrate.getOrElse(false) }.exists(p => p)
+    if (needCalibration) {
+      val f2 = calibrationOp.getCalibrationMap(startTime, endTime)(monitorTypeOp)
       for {
-        doc <- docs
-        mtMap = doc.mtMap if mtList.forall(doc.mtMap.contains(_))
-      } yield
-        mtList map {
-          mtMap
+        calibrationMap <- f2
+        docs <- f} yield {
+        for {
+          doc <- docs if mtList.forall(doc.mtMap.contains(_))
+        } yield {
+          doc.doCalibrate(monitorTypeOp, calibrationMap)
+          val mtMap = doc.mtMap
+          mtList.map {
+            mtMap
+          }
         }
+      }
+    } else {
+      for (docs <- f) yield {
+        for {
+          doc <- docs
+          mtMap = doc.mtMap if mtList.forall(doc.mtMap.contains(_))
+        } yield
+          mtList map {
+            mtMap
+          }
+      }
     }
   }
 

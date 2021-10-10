@@ -18,11 +18,8 @@ class MoxaE1240 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
     }.flatMap {
       _.mt
     }.toList
-    val rawMtList = mtList map {
-      monitorTypeOp.getRawMonitorType(_)
-    }
 
-    mtList ++ rawMtList
+    mtList
   }
 
   override def verifyParam(json: String) = {
@@ -44,7 +41,6 @@ class MoxaE1240 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
             assert(cfg.mt.isDefined)
             assert(cfg.max.get > cfg.min.get)
             assert(cfg.mtMax.get > cfg.mtMin.get)
-            monitorTypeOp.ensureRawMonitorType(cfg.mt.get, "V")
           }
         }
         json

@@ -229,6 +229,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
 
     updateMt
   }
+
   init
 
   def BFName(mt: String) = {
@@ -250,27 +251,10 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
       newMonitorType(mt)
   }
 
-  def getRawMonitorType(mt: String) =
-    (rawMonitorTypeID(mt.toString()))
-
-  def ensureRawMonitorType(mt: String, unit: String) {
-    val mtCase = map(mt)
-
-    if (!map.contains(s"${mtCase._id}_raw")) {
-      val rawMonitorType = rangeType(
-        rawMonitorTypeID(mtCase._id),
-        s"${mtCase.desp}(原始值)", unit, 3)
-      map = map + (rawMonitorType._id -> rawMonitorType)
-      newMonitorType(rawMonitorType)
-    }
-  }
-
   def rangeType(_id: String, desp: String, unit: String, prec: Int) = {
     rangeOrder += 1
     MonitorType(_id, desp, unit, prec, rangeOrder)
   }
-
-  def rawMonitorTypeID(_id: String) = s"${_id}_raw"
 
   def newMonitorType(mt: MonitorType) = {
     val f = collection.insertOne(mt).toFuture()

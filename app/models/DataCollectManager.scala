@@ -132,39 +132,6 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! EvtOperationOverThreshold
   }
 
-  def recalculateSixMinData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean)(mtList: Seq[String]) = {
-    val recordMap = recordOp.getRecordMap(recordOp.MinCollection)(monitor, mtList, current - 6.minute, current)
-
-    import scala.collection.mutable.ListBuffer
-    var mtMap = Map.empty[String, Map[String, ListBuffer[(DateTime, Double)]]]
-
-    for {
-      mtRecords <- recordMap
-      mt = mtRecords._1
-      r <- mtRecords._2
-    } {
-      var statusMap = mtMap.getOrElse(mt, {
-        val map = Map.empty[String, ListBuffer[(DateTime, Double)]]
-        mtMap = mtMap ++ Map(mt -> map)
-        map
-      })
-
-      val lb = statusMap.getOrElse(r.status, {
-        val l = ListBuffer.empty[(DateTime, Double)]
-        statusMap = statusMap ++ Map(r.status -> l)
-        mtMap = mtMap ++ Map(mt -> statusMap)
-        l
-      })
-
-      lb.append((r.time, r.value))
-    }
-
-    val mtDataList = calculateAvgMap(mtMap, alwaysValid)
-    val recordList = RecordList(current.minusMinutes(6), mtDataList.toSeq, monitor)
-    val f = recordOp.upsertRecord(recordList)(recordOp.SixMinCollection)
-    f
-  }
-
   def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean)(mtList: Seq[String]) = {
     val recordMap = recordOp.getRecordMap(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current)
 
@@ -602,14 +569,6 @@ class DataCollectManager @Inject()
             if (current.getMinuteOfHour == 0) {
               for (m <- monitorOp.mvList){
                 dataCollectManagerOp.recalculateHourData(monitor = m,
-                  current = current,
-                  forward = false,
-                  alwaysValid = false)(monitorTypeOp.realtimeMtvList)
-              }
-            }
-            if (current.getMinuteOfHour % 6 == 0){
-              for (m <- monitorOp.mvList) {
-                dataCollectManagerOp.recalculateSixMinData(monitor = Monitor.SELF_ID,
                   current = current,
                   forward = false,
                   alwaysValid = false)(monitorTypeOp.realtimeMtvList)

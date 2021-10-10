@@ -26,10 +26,7 @@ class Adam4017 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
   override def getMonitorTypes(param: String) = {
     val paramList = validateParam(param)
     val mtList = paramList.flatMap { p => p.ch.filter { _.enable }.flatMap { _.mt }.toList }
-    val rawMtList = mtList map {
-      monitorTypeOp.getRawMonitorType(_)
-    }
-    mtList ++ rawMtList
+    mtList
   }
 
   override def verifyParam(json: String) = {
@@ -48,7 +45,6 @@ class Adam4017 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
               assert(cfg.mt.isDefined)
               assert(cfg.max.get > cfg.min.get)
               assert(cfg.mtMax.get > cfg.mtMin.get)
-              monitorTypeOp.ensureRawMonitorType(cfg.mt.get, "V")
             }
           }
         }
