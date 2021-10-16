@@ -579,7 +579,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
 
   def calibrationReport(startNum: Long, endNum: Long) = Security.Authenticated {
     import calibrationOp.jsonWrites
-    val (start, end) = (new DateTime(startNum), new DateTime(endNum) + 1.day)
+    val (start, end) = (new DateTime(startNum), new DateTime(endNum))
     val report: Seq[Calibration] = calibrationOp.calibrationReport(start, end)
     val jsonReport = report map {
       _.toJSON

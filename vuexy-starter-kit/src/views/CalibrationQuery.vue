@@ -84,10 +84,10 @@ export default Vue.extend({
 
   data() {
     const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
-    let me = this;
+    let rows = Array<CalibrationJSON>();
     return {
       display: false,
-      rows: [],
+      rows,
       form: {
         range,
       },

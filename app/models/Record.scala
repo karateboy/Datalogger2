@@ -1,5 +1,6 @@
 package models
 
+import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import org.mongodb.scala._
@@ -19,33 +20,37 @@ object RecordList {
 }
 
 case class RecordList(time: Date, var mtDataList: Seq[MtRecord], monitor: String, _id: RecordListID) {
-  def mtMap = {
+  def mtMap: Map[String, MtRecord] = {
     val pairs =
       mtDataList map { data => data.mtName -> data }
     pairs.toMap
   }
 
   def doCalibrate(monitorTypeOp: MonitorTypeOp, calibrationMap: Map[String, List[(DateTime, Calibration)]]): Unit = {
-    def canCalibrate(mt: String) = {
-      calibrationMap.contains(mt) &&
-        findCalibration(calibrationMap(mt)).isDefined
-    }
+    def getCalibrateItem(mt: String) = {
+      def findCalibration(calibrationList: List[(DateTime, Calibration)]): Option[(Imports.DateTime, Calibration)] = {
+        val recordTime: DateTime = new DateTime(time)
+        val candidate = calibrationList.takeWhile(p => p._1 < recordTime)
+        if (candidate.length == 0)
+          None
+        else
+          Some(candidate.last)
+      }
 
-    def findCalibration(calibrationList: List[(DateTime, Calibration)]) = {
-      val recordTime: DateTime = new DateTime(time)
-      val candidate = calibrationList.takeWhile(p => p._1 < recordTime)
-      if (candidate.length == 0)
-        None
+      if (calibrationMap.contains(mt))
+        findCalibration(calibrationMap(mt))
       else
-        Some(candidate.last)
+        None
     }
 
     var calibratedMtDataList = Seq.empty[MtRecord]
     mtDataList.foreach(rec => {
-      if (monitorTypeOp.map(rec.mtName).calibrate.getOrElse(false)
-        && canCalibrate(rec.mtName)) {
-        val calibratedValue = findCalibration(calibrationMap(rec.mtName)).get._2.calibrate(rec.value)
-        calibratedMtDataList = calibratedMtDataList.:+(MtRecord(rec.mtName, calibratedValue, rec.status))
+      if (monitorTypeOp.map(rec.mtName).calibrate.getOrElse(false)) {
+        val calibratedValue =
+          for (calibrationItem <- getCalibrateItem(rec.mtName)) yield
+            calibrationItem._2.calibrate(rec.value)
+
+        calibratedMtDataList = calibratedMtDataList.:+(MtRecord(rec.mtName, calibratedValue.getOrElse(rec.value), rec.status))
       } else
         calibratedMtDataList = calibratedMtDataList.:+(rec)
     })
@@ -198,8 +203,6 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     f
   }
 
-  def getCollection(colName: String) = mongoDB.database.getCollection[RecordList](colName).withCodecRegistry(codecRegistry)
-
   def getID(time: Long, monitor: String) = Document("time" -> new BsonDateTime(time), "monitor" -> monitor)
 
   def getRecordMap(colName: String)
@@ -267,10 +270,6 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
       f
   }
 
-  implicit val mtRecordWrite = Json.writes[MtRecord]
-  implicit val idWrite = Json.writes[RecordListID]
-  implicit val recordListWrite = Json.writes[RecordList]
-
   def getRecordWithLimitFuture(colName: String)(startTime: DateTime, endTime: DateTime, limit: Int, monitor: String = Monitor.SELF_ID) = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
@@ -281,6 +280,10 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
 
   }
 
+  implicit val mtRecordWrite = Json.writes[MtRecord]
+  implicit val idWrite = Json.writes[RecordListID]
+  implicit val recordListWrite = Json.writes[RecordList]
+
   def getLatestRecordFuture(colName: String)(monitor: String) = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
@@ -289,6 +292,8 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     col.find(equal("monitor", monitor))
       .sort(descending("time")).limit(1).toFuture()
   }
+
+  def getCollection(colName: String) = mongoDB.database.getCollection[RecordList](colName).withCodecRegistry(codecRegistry)
 
   def getWindRose(colName: String)(monitor: String, monitorType: String,
                                    start: DateTime, end: DateTime,
