@@ -118,6 +118,20 @@
                   <small class="text-danger">{{ errors[0] }}</small>
                 </validation-provider>
               </b-form-group>
+              <b-form-group label="Speed" label-for="speed" label-cols-md="3">
+                <validation-provider
+                  v-slot="{ errors }"
+                  name="速度"
+                  rules="required"
+                >
+                  <b-form-select
+                    v-model="form.protocol.speed"
+                    :options="serialSpeed"
+                  >
+                  </b-form-select>
+                  <small class="text-danger">{{ errors[0] }}</small>
+                </validation-provider>
+              </b-form-group>
             </b-col>
           </b-row>
         </validation-observer>
@@ -207,10 +221,13 @@ import Adam6066ConfigPage from './Adam6066ConfigPage.vue';
 import ThetaConfigPage from './ThetaConfigPage.vue';
 import SabioConfig from './SabioConfig.vue';
 import DuoConfig2 from './DuoConfig2.vue';
+import { TextStrValue } from './types';
+
 interface ProtocolParam {
   protocol: 'tcp' | 'serial' | undefined;
   host?: string;
   comPort?: number;
+  speed?: number;
 }
 
 interface ProtocolInfo {
@@ -260,6 +277,7 @@ export default Vue.extend({
             protocol: 'tcp',
             host: undefined,
             comPort: undefined,
+            speed: undefined,
           },
           param: '{}',
           active: true,
@@ -276,6 +294,7 @@ export default Vue.extend({
         protocol: undefined,
         host: undefined,
         comPort: undefined,
+        speed: 9600,
       },
       param: '{}',
       active: true,
@@ -283,12 +302,34 @@ export default Vue.extend({
     };
 
     let form: Instrument = this.isNew ? emptyForm : this.inst;
-
+    let serialSpeed: Array<TextStrValue> = [
+      {
+        value: 9600,
+        text: '9600',
+      },
+      {
+        value: 19200,
+        text: '19200',
+      },
+      {
+        value: 38400,
+        text: '38400',
+      },
+      {
+        value: 38400,
+        text: '38400',
+      },
+      {
+        value: 115200,
+        text: '115200',
+      },
+    ];
     return {
       form,
       instrumentTypes: [],
       instTypeMap: new Map<string, InstrumentTypeInfo>(),
       loadingDetailedConfig: false,
+      serialSpeed,
     };
   },
   computed: {

@@ -23,7 +23,7 @@ export interface Group {
 
 export interface TextStrValue {
   text: string;
-  value: string;
+  value: string | number;
 }
 
 export interface MonitorTypeStatus {
