@@ -11,11 +11,21 @@ import play.api.libs.json._
 
 import java.io.{File, InputStream, OutputStream}
 
-case class DeviceConfig(slaveID: Int, calibrationTime: Option[LocalTime], monitorTypes: Option[List[String]],
-                        raiseTime: Option[Int], downTime: Option[Int], holdTime: Option[Int],
-                        calibrateZeoSeq: Option[String], calibrateSpanSeq: Option[String],
-                        calibratorPurgeSeq: Option[String], calibratorPurgeTime: Option[Int],
-                        calibrateZeoDO: Option[Int], calibrateSpanDO: Option[Int], skipInternalVault: Option[Boolean])
+case class DeviceConfig(slaveID: Int, calibrationTime: Option[LocalTime] = None,
+                        monitorTypes: Option[List[String]] = None,
+                        raiseTime: Option[Int]= None,
+                        downTime: Option[Int]= None,
+                        holdTime: Option[Int]= None,
+                        calibrateZeoSeq: Option[String]= None,
+                        calibrateSpanSeq: Option[String]= None,
+                        calibratorPurgeSeq: Option[String]= None,
+                        calibratorPurgeTime: Option[Int]= None,
+                        calibrateZeoDO: Option[Int]= None,
+                        calibrateSpanDO: Option[Int]= None,
+                        skipInternalVault: Option[Boolean]= None)
+object DeviceConfig{
+  val default = DeviceConfig(1)
+}
 
 case class DataReg(monitorType: String, address: Int, multiplier: Float)
 

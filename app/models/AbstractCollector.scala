@@ -49,7 +49,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
 
   def probeInstrumentStatusType: Seq[InstrumentStatusType]
 
-  def readReg(statusTypeList: List[InstrumentStatusType]): ModelRegValue2
+  def readReg(statusTypeList: List[InstrumentStatusType]): Option[ModelRegValue2]
 
   import scala.concurrent.{Future, blocking}
 
@@ -60,8 +60,8 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
       blocking {
         try {
           if (instrumentStatusTypesOpt.isDefined) {
-            val regValues = readReg(instrumentStatusTypesOpt.get)
-            regValueReporter(regValues)(recordCalibration)
+            for(regValues <-readReg(instrumentStatusTypesOpt.get))
+              regValueReporter(regValues)(recordCalibration)
           }
           connected = true
         } catch {

@@ -3,25 +3,32 @@ package models
 import akka.actor.{Actor, ActorSystem}
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
+import play.api.Logger
 
 import javax.inject.Inject
 
 object Tca08Drv extends AbstractDrv(_id = "tca08", desp = "Total Carbon Analyzer TCA08",
-  protocols = List(Protocol.serial, Protocol.tcp)) {
+  protocols = List(Protocol.serial)) {
   val predefinedIST = List(
-    InstrumentStatusType(key = "N2O", addr = 1, desc = "N2O", "ppm"),
-    InstrumentStatusType(key = "NH3", addr = 2, desc = "NH3", "ppm"),
-    InstrumentStatusType(key = "H2O", addr = 3, desc = "H2O", "ppm"),
-    InstrumentStatusType(key = "CH4", addr = 4, desc = "CH4", "ppm"),
-    InstrumentStatusType(key = "CO2", addr = 5, desc = "CO2", "ppm"))
+    InstrumentStatusType(key = "TCconc", addr = 0, desc = "TC mass divided by a volume of sampled air", ""),
+    InstrumentStatusType(key = "Volume", addr = 6, desc = "Volume of sampled air", "")
+  )
 
-  val dataAddress = List(1, 2, 3, 4, 5)
+  val dataAddress = List(0)
+
+  override def getMonitorTypes(param: String): List[String] = {
+    List(predefinedIST(0).key)
+  }
+
+  override def verifyParam(json: String) = json
 
   override def getDataRegList: List[DataReg] =
     predefinedIST.filter(p => dataAddress.contains(p.addr)).map {
       ist =>
         DataReg(monitorType = ist.key, ist.addr, multiplier = 1)
     }
+
+  override def getCalibrationTime(param: String) = None
 
   trait Factory {
     def apply(@Assisted("instId") instId: String, @Assisted("desc") desc: String, @Assisted("config") config: DeviceConfig,
@@ -30,7 +37,7 @@ object Tca08Drv extends AbstractDrv(_id = "tca08", desp = "Total Carbon Analyzer
 
   override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
     val f2 = f.asInstanceOf[Tca08Drv.Factory]
-    val config = validateParam(param)
+    val config = DeviceConfig.default
     f2(id, desc = super.description, config, protocol)
   }
 }
@@ -48,31 +55,62 @@ class Tca08Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = Tca08Drv.predefinedIST
 
-  override def readReg(statusTypeList: List[InstrumentStatusType]): ModelRegValue2 = {
+  override def readReg(statusTypeList: List[InstrumentStatusType]): Option[ModelRegValue2] = {
+    val ret = {
+      for (serial <- serialOpt) yield {
+        val cmd = "\u0002DA\u0003"
+        val bytes = cmd.getBytes("UTF-8")
+        serial.port.writeBytes(bytes)
+        val resp = serial.getMessageUntilEtx()
+        if (resp.nonEmpty) {
+          val tokens = resp(0).split(" ")
+          val inputs =
+            for (ist <- Tca08Drv.predefinedIST) yield {
+              val mtStr = tokens.drop(1 + 6 * ist.addr).take(6).mkString(" ")
 
-    val inputs = Tca08Drv.predefinedIST map { ist => (ist, 1.0) }
-
-    ModelRegValue2(inputRegs = inputs,
-      modeRegs = List.empty[(InstrumentStatusType, Boolean)],
-      warnRegs = List.empty[(InstrumentStatusType, Boolean)])
+              val valueStr = tokens(2 + 6 * ist.addr)
+              val keys = valueStr.split("\\u002b")
+              // Logger.debug(s"${valueStr} keys #=${keys.length}")
+              val v = try{
+                if(keys.length == 3)
+                  keys(1).toInt.toDouble/1000 * Math.pow(10, keys(2).toInt)
+                else
+                  0d
+              }catch{
+                case _:Throwable=>
+                  0d
+              }
+              (ist, v)
+            }
+          Some(ModelRegValue2(inputRegs = inputs,
+            modeRegs = List.empty[(InstrumentStatusType, Boolean)],
+            warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
+        }else
+          None
+      }
+    }
+    ret.flatten
   }
 
 
+  var serialOpt: Option[SerialComm] = None
+
   override def connectHost: Unit = {
-    protocolParam.protocol match {
-      case Protocol.tcp =>
-
-      case Protocol.serial =>
-
-    }
+    serialOpt =
+      Some(SerialComm.open(protocolParam.comPort.get, protocolParam.speed.getOrElse(115200)))
   }
 
   override def getDataRegList: Seq[DataReg] = Tca08Drv.getDataRegList
 
   override def getCalibrationReg: Option[CalibrationReg] = None
 
-  override def setCalibrationReg(address: Int, on: Boolean): Unit = {
+  override def setCalibrationReg(address: Int, on: Boolean): Unit = {}
 
+  override def postStop(): Unit = {
+    for (serial <- serialOpt)
+      serial.port.closePort()
+
+    super.postStop()
   }
 }
 

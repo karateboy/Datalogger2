@@ -334,7 +334,8 @@ export default Vue.extend({
   },
   computed: {
     hasDetailConfig(): boolean {
-      if (this.form.instType === 'gps') return false;
+      let list = ['tca08', 'gps'];
+      if (list.indexOf(this.form.instType) !== -1) return false;
 
       return true;
     },
@@ -348,7 +349,6 @@ export default Vue.extend({
         't400',
         'baseline9000',
         'horiba370',
-        'tca08',
         'picarroG2401',
       ];
       for (const t of types) {
