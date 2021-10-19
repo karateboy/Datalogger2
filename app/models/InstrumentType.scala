@@ -74,32 +74,10 @@ class InstrumentTypeOp @Inject()
     AkDrv.getInstrumentTypeList(environment, akDrvFactory, monitorTypeOp)
     .map(dt => dt.id -> dt).toMap
 
-  val otherDeviceList = Seq(
-    InstrumentType(adam4017Drv, adam4017Factory, true),
-    InstrumentType(Adam4068, adam4068Factory, true),
-    InstrumentType(adam6017Drv, adam6017Factory, true),
-    InstrumentType(adam6066Drv, adam6066Factory, true),
-    InstrumentType(Baseline9000Collector, baseline9000Factory),
-    InstrumentType(GpsCollector, gpsFactory),
-    InstrumentType(Horiba370Collector, horiba370Factory),
-    InstrumentType(moxaE1240Drv, moxaE1240Factory),
-    InstrumentType(moxaE1212Drv, moxaE1212Factory),
-    InstrumentType(MqttCollector2, mqtt2Factory),
-    InstrumentType(T100Collector, t100Factory),
-    InstrumentType(T200Collector, t200Factory),
-    InstrumentType(T201Collector, t201Factory),
-    InstrumentType(T300Collector, t300Factory),
-    InstrumentType(T360Collector, t360Factory),
-    InstrumentType(T400Collector, t400Factory),
-    InstrumentType(T700Collector, t700Factory),
-    InstrumentType(VerewaF701Collector, verewaF701Factory),
-    InstrumentType(ThetaCollector, thetaFactory),
-    InstrumentType(Sabio4010, sabio4010Factory),
-    InstrumentType(Duo, duoFactory)
-  )
+  val otherDeviceList = Seq(InstrumentType(Duo, duoFactory))
 
   val otherMap = otherDeviceList.map(dt=> dt.id->dt).toMap
-  val map: Map[String, InstrumentType] = tcpModbusDeviceTypeMap ++ akDeviceTypeMap ++ otherMap
+  val map: Map[String, InstrumentType] = otherMap
 
   val DoInstruments = otherDeviceList.filter(_.driver.isDoInstrument)
   var count = 0
