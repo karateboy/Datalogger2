@@ -41,8 +41,11 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bindActorFactory[ThetaCollector, ThetaCollector.Factory]
     bindActorFactory[TcpModbusCollector, TcpModbusDrv2.Factory]
     bindActorFactory[Sabio4010Collector, Sabio4010.Factory]
-	bindActorFactory[AkDrvCollector, AkDrv.Factory]
-	bindActorFactory[DuoCollector, Duo.Factory]
+    bindActorFactory[Tca08Collector, Tca08Drv.Factory]
+    bindActorFactory[PicarroG2401Collector, PicarroG2401.Factory]
+
+  	bindActorFactory[AkDrvCollector, AkDrv.Factory]
+	  bindActorFactory[DuoCollector, Duo.Factory]
     //bind(classOf[ForwardManager])
     // Use the system clock as the default implementation of Clock
     //bind(classOf[Clock]).toInstance(Clock.systemDefaultZone)

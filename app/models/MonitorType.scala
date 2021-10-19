@@ -257,11 +257,8 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
   }
 
   def newMonitorType(mt: MonitorType) = {
+    map = map + (mt._id->mt)
     val f = collection.insertOne(mt).toFuture()
-    f.onSuccess({
-      case x =>
-        refreshMtv
-    })
   }
 
   def refreshMtv: (List[String], List[String], Map[String, MonitorType]) = {

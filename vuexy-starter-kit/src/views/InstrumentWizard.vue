@@ -339,7 +339,7 @@ export default Vue.extend({
       return true;
     },
     isCalibratable(): boolean {
-      const compatible = [
+      const types = [
         't100',
         't200',
         't201',
@@ -348,8 +348,10 @@ export default Vue.extend({
         't400',
         'baseline9000',
         'horiba370',
+        'tca08',
+        'picarroG2401',
       ];
-      for (const t of compatible) {
+      for (const t of types) {
         if (this.form.instType === t) return true;
       }
       return this.form.instType.startsWith('TcpModbus.');

@@ -8,7 +8,7 @@
         :items="monitorTypes"
         bordered
         sticky-header
-        style="max-height: 600px"
+        style="max-height: 450px"
       >
         <template #cell(desp)="row">
           <b-form-input v-model="row.item.desp" @change="markDirty(row.item)" />

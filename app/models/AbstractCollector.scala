@@ -9,6 +9,10 @@ import play.api._
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
+case class ModelRegValue2(inputRegs: List[(InstrumentStatusType, Double)],
+                         modeRegs: List[(InstrumentStatusType, Boolean)],
+                          warnRegs: List[(InstrumentStatusType, Boolean)])
+
 abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
                                            alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
                                            calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
@@ -26,7 +30,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
       (MonitorStatus.NormalStat, None)
   }
   var connected = false
-  var oldModelReg: Option[ModelRegValue] = None
+  var oldModelReg: Option[ModelRegValue2] = None
   var nextLoggingStatusTime = {
     def getNextTime(period: Int) = {
       import com.github.nscala_time.time.Imports._
@@ -45,7 +49,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
 
   def probeInstrumentStatusType: Seq[InstrumentStatusType]
 
-  def readReg(statusTypeList: List[InstrumentStatusType]): ModelRegValue
+  def readReg(statusTypeList: List[InstrumentStatusType]): ModelRegValue2
 
   import scala.concurrent.{Future, blocking}
 
@@ -436,7 +440,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
 
   def getLoggingStatusPeriod: Int = 10
 
-  def regValueReporter(regValue: ModelRegValue)(recordCalibration: Boolean) = {
+  def regValueReporter(regValue: ModelRegValue2)(recordCalibration: Boolean) = {
     for (report <- reportData(regValue)) {
       context.parent ! report
       if (recordCalibration)
@@ -485,7 +489,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
     oldModelReg = Some(regValue)
   }
 
-  def logInstrumentStatus(regValue: ModelRegValue) = {
+  def logInstrumentStatus(regValue: ModelRegValue2) = {
     val isList = regValue.inputRegs.map {
       kv =>
         val k = kv._1
@@ -496,7 +500,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
     instrumentStatusOp.log(instStatus)
   }
 
-  def findDataRegIdx(regValue: ModelRegValue)(addr: Int) = {
+  def findDataRegIdx(regValue: ModelRegValue2)(addr: Int) = {
     val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
     if (dataReg.isEmpty) {
       Logger.warn("Cannot found Data register!")
@@ -506,11 +510,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
   }
 
 
-  def reportData(regValue: ModelRegValue) = {
-    val optValues: Seq[Option[(String, (InstrumentStatusType, Float))]] = {
+  def reportData(regValue: ModelRegValue2) = {
+    val optValues: Seq[Option[(String, (InstrumentStatusType, Double))]] = {
       for (dataReg <- getDataRegList) yield {
         for (idx <- findDataRegIdx(regValue)(dataReg.address)) yield {
-          val rawValue: (InstrumentStatusType, Float) = regValue.inputRegs(idx)
+          val rawValue: (InstrumentStatusType, Double) = regValue.inputRegs(idx)
           (dataReg.monitorType, (rawValue._1, rawValue._2 * dataReg.multiplier))
         }
       }
