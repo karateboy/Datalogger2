@@ -6,7 +6,8 @@ import models.Protocol.ProtocolParam
 import play.api.Logger
 
 import javax.inject.Inject
-
+import scala.concurrent.{Future, blocking}
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object PicarroG2401 extends AbstractDrv(_id = "picarroG2401", desp = "Picarro G2401",
   protocols = List(Protocol.serial)) {
@@ -77,38 +78,41 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = predefinedIST
 
-  override def readReg(statusTypeList: List[InstrumentStatusType]): Option[ModelRegValue2] = {
+  override def readReg(statusTypeList: List[InstrumentStatusType]): Future[Option[ModelRegValue2]] =
+    Future {
+      blocking {
+        val ret = {
+          for (serial <- serialOpt) yield {
+            val cmd = "_Meas_GetConc\r"
+            val bytes = cmd.getBytes("UTF-8")
+            serial.port.writeBytes(bytes)
+            val resp = serial.getMessageUntilCR(1)
+            if (resp.nonEmpty) {
+              val tokens = resp(0).split(";")
+              if (tokens.length != predefinedIST.length)
+                Logger.error(s"Data length ${tokens.length} != ${predefinedIST.length}")
 
-    val ret = {
-      for (serial <- serialOpt) yield {
-        val cmd = "_Meas_GetConc\r"
-        val bytes = cmd.getBytes("UTF-8")
-        serial.port.writeBytes(bytes)
-        val resp = serial.getMessageUntilCR()
-        if (resp.nonEmpty) {
-          val tokens = resp(0).split(";")
-          if(tokens.length != predefinedIST.length)
-            Logger.error(s"Data length ${tokens.length} != ${predefinedIST.length}")
-
-          val inputs =
-            for (ist <- predefinedIST if ist.addr < tokens.length) yield {
-              val v = try {
-                tokens(ist.addr).toDouble
-              } catch {
-                case _: Throwable =>
-                  0d
-              }
-              (ist, v)
-            }
-          Some(ModelRegValue2(inputRegs = inputs,
-            modeRegs = List.empty[(InstrumentStatusType, Boolean)],
-            warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
-        } else
-          None
+              val inputs =
+                for (ist <- predefinedIST if ist.addr < tokens.length) yield {
+                  val v = try {
+                    tokens(ist.addr).toDouble
+                  } catch {
+                    case _: Throwable =>
+                      0d
+                  }
+                  (ist, v)
+                }
+              Some(ModelRegValue2(inputRegs = inputs,
+                modeRegs = List.empty[(InstrumentStatusType, Boolean)],
+                warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
+            } else
+              None
+          }
+        }
+        ret.flatten
       }
     }
-    ret.flatten
-  }
+
 
   var serialOpt: Option[SerialComm] = None
 

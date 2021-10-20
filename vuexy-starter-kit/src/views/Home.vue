@@ -45,7 +45,9 @@
       xl="3"
     >
       <b-card
-        :header="`${getMtName(mt)}風瑰圖`"
+        :header="`${getMtName(mt)}玫瑰圖`"
+        header-class="h4 display text-center"
+        border-variant="primary"
         header-bg-variant="success"
         header-text-variant="white"
       >
@@ -80,9 +82,6 @@ export default Vue.extend({
           if (isNaN(v)) return `-`;
           else return `${item.value}`;
         },
-        tdClass: (value: string, key: string, item: MonitorTypeStatus) => {
-          return item.classStr;
-        },
         sortable: true,
       },
       {
@@ -92,6 +91,9 @@ export default Vue.extend({
       {
         key: 'status',
         label: '狀態',
+        tdClass: (value: string, key: string, item: MonitorTypeStatus) => {
+          return item.classStr;
+        },
       },
     ];
     let chart: any;

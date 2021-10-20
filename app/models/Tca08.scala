@@ -6,7 +6,8 @@ import models.Protocol.ProtocolParam
 import play.api.Logger
 
 import javax.inject.Inject
-
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Future, blocking}
 object Tca08Drv extends AbstractDrv(_id = "tca08", desp = "Total Carbon Analyzer TCA08",
   protocols = List(Protocol.serial)) {
   val predefinedIST = List(
@@ -55,47 +56,50 @@ class Tca08Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = Tca08Drv.predefinedIST
 
-  override def readReg(statusTypeList: List[InstrumentStatusType]): Option[ModelRegValue2] = {
-    val ret = {
-      for (serial <- serialOpt) yield {
-        val cmd = "\u0002DA\u0003"
-        val bytes = cmd.getBytes("UTF-8")
-        serial.port.writeBytes(bytes)
-        val resp = serial.getMessageUntilEtx()
-        if (resp.nonEmpty) {
-          val tokens = resp(0).split(" ")
-          val inputs =
-            for (ist <- Tca08Drv.predefinedIST) yield {
-              val valueStr = tokens(2 + 6 * ist.addr)
-              val keys = valueStr.split("\\u002b")
-              val v = try{
-                if(keys.length == 3) {
-                  val v = keys(1).toInt.toDouble
-                  val mantissaExp = Math.log10(v).toInt
-                  val exp = keys(2).toInt
-                  v * Math.exp(exp - mantissaExp)
-                } else if (keys.length == 2) { //minus case
-                  val v = keys(0).toInt.toDouble
-                  val mantissaExp = Math.log10(v).toInt
-                  val exp = keys(1).toInt
-                  v * Math.exp(exp - mantissaExp)
-                }else
-                  0d
-              }catch{
-                case _:Throwable=>
-                  0d
-              }
-              (ist, v)
-            }
-          Some(ModelRegValue2(inputRegs = inputs,
-            modeRegs = List.empty[(InstrumentStatusType, Boolean)],
-            warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
-        }else
-          None
+  override def readReg(statusTypeList: List[InstrumentStatusType]): Future[Option[ModelRegValue2]] =
+    Future{
+      blocking{
+        val ret = {
+          for (serial <- serialOpt) yield {
+            val cmd = "\u0002DA\u0003"
+            val bytes = cmd.getBytes("UTF-8")
+            serial.port.writeBytes(bytes)
+            val resp = serial.getMessageWithTimeout(serial.getMessageUntilEtx)(1)
+            if (resp.nonEmpty) {
+              val tokens = resp(0).split(" ")
+              val inputs =
+                for (ist <- Tca08Drv.predefinedIST) yield {
+                  val valueStr = tokens(2 + 6 * ist.addr)
+                  val keys = valueStr.split("\\u002b")
+                  val v = try{
+                    if(keys.length == 3) {
+                      val v = keys(1).toInt.toDouble
+                      val mantissaExp = Math.log10(v).toInt
+                      val exp = keys(2).toInt
+                      v * Math.exp(exp - mantissaExp)
+                    } else if (keys.length == 2) { //minus case
+                      val v = keys(0).toInt.toDouble
+                      val mantissaExp = Math.log10(v).toInt
+                      val exp = keys(1).toInt
+                      v * Math.exp(exp - mantissaExp)
+                    }else
+                      0d
+                  }catch{
+                    case _:Throwable=>
+                      0d
+                  }
+                  (ist, v)
+                }
+              Some(ModelRegValue2(inputRegs = inputs,
+                modeRegs = List.empty[(InstrumentStatusType, Boolean)],
+                warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
+            }else
+              None
+          }
+        }
+        ret.flatten
       }
     }
-    ret.flatten
-  }
 
 
   var serialOpt: Option[SerialComm] = None

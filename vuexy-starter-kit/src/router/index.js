@@ -115,7 +115,7 @@ const router = new VueRouter({
       name: 'wind-rose-query',
       component: () => import('@/views/WindRose.vue'),
       meta: {
-        pageTitle: '風瑰圖查詢',
+        pageTitle: '玫瑰圖查詢',
         breadcrumb: [
           {
             text: '數據查詢',

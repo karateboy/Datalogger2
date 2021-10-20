@@ -176,6 +176,7 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     }
     strList
   }
+
   def close = {
     Logger.info(s"port is closed")
     is.close

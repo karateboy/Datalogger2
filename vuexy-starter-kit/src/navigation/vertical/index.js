@@ -32,7 +32,7 @@ export default [
         resource: 'Data',
       },
       {
-        title: '風瑰圖查詢',
+        title: '玫瑰圖查詢',
         route: 'wind-rose-query',
       },
       {

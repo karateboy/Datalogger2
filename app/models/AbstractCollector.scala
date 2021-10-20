@@ -8,6 +8,7 @@ import play.api._
 
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 case class ModelRegValue2(inputRegs: List[(InstrumentStatusType, Double)],
                          modeRegs: List[(InstrumentStatusType, Boolean)],
@@ -49,37 +50,37 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
 
   def probeInstrumentStatusType: Seq[InstrumentStatusType]
 
-  def readReg(statusTypeList: List[InstrumentStatusType]): Option[ModelRegValue2]
+  def readReg(statusTypeList: List[InstrumentStatusType]): Future[Option[ModelRegValue2]]
 
   import scala.concurrent.{Future, blocking}
 
   def receive(): Receive = normalPhase
 
-  def readRegFuture(recordCalibration: Boolean): Future[Any] =
-    Future {
-      blocking {
-        try {
-          if (instrumentStatusTypesOpt.isDefined) {
-            for(regValues <-readReg(instrumentStatusTypesOpt.get))
-              regValueReporter(regValues)(recordCalibration)
+  def readRegHanlder(recordCalibration: Boolean) = {
+    try {
+      for(instrumentStatusTypes<-instrumentStatusTypesOpt){
+        for (regValueOpt <- readReg(instrumentStatusTypes)) {
+          for(regValues<-regValueOpt) {
+            regValueReporter(regValues)(recordCalibration)
           }
-          connected = true
-        } catch {
-          case ex: Exception =>
-            Logger.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
-            if (connected)
-              alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
-
-            connected = false
-        } finally {
-          import scala.concurrent.duration._
-          timerOpt = if (protocol.protocol == Protocol.tcp)
-            Some(system.scheduler.scheduleOnce(Duration(2, SECONDS), self, ReadRegister))
-          else
-            Some(system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
         }
       }
+      connected = true
+    } catch {
+      case ex: Exception =>
+        Logger.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
+        if (connected)
+          alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
+
+        connected = false
+    } finally {
+      import scala.concurrent.duration._
+      timerOpt = if (protocol.protocol == Protocol.tcp)
+        Some(system.scheduler.scheduleOnce(Duration(2, SECONDS), self, ReadRegister))
+      else
+        Some(system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
     }
+  }
 
   def executeCalibration(calibrationType: CalibrationType) {
     if (deviceConfig.monitorTypes.isEmpty)
@@ -133,7 +134,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
       }
 
     case ReadRegister =>
-      readRegFuture(false)
+      readRegHanlder(false)
 
     case SetState(id, state) =>
       if (state == MonitorStatus.ZeroCalibrationStat) {
@@ -194,7 +195,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
       Logger.error("unexpected ConnectHost msg")
 
     case ReadRegister =>
-      readRegFuture(recordCalibration)
+      readRegHanlder(recordCalibration)
 
     case SetState(_, targetState) =>
       if (targetState == MonitorStatus.ZeroCalibrationStat) {
