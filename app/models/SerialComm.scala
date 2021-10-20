@@ -11,7 +11,7 @@ import scala.collection.immutable
 
 case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputStream) {
   var readBuffer = Array.empty[Byte]
-  def getLine = {
+  def getLine:List[String] = {
     def splitLine(buf: Array[Byte]): List[String] = {
       val idx = buf.indexOf('\n'.toByte)
       if (idx == -1) {
@@ -36,7 +36,7 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     splitLine(readBuffer)
   }
 
-  def getLine2 = {
+  def getLine2():List[String] = {
     def splitLine(buf: Array[Byte]): List[String] = {
       val idx = buf.indexOf('\n'.toByte)
       if (idx == -1) {
@@ -61,7 +61,7 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     splitLine(readBuffer)
   }
 
-  def getLine3(): Seq[String] = {
+  def getLine3(): List[String] = {
     def splitLine(buf: Array[Byte]): List[String] = {
       val idx = buf.indexOf('\r'.toByte)
       if (idx == -1) {
@@ -80,33 +80,23 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     splitLine(readBuffer)
   }
 
-  def getLine2(timeout: Int):List[String] = {
+  def getMessageWithTimeout(readFunction:()=>List[String])(timeout:Int):List[String] = {
     import com.github.nscala_time.time.Imports._
-    var strList = getLine2
+    var strList = getMessageUntilCR()
     val startTime = DateTime.now
     while (strList.length == 0) {
       val elapsedTime = new Duration(startTime, DateTime.now)
       if (elapsedTime.getStandardSeconds > timeout) {
         throw new Exception("Read timeout!")
       }
-      strList = getLine2
+      strList = readFunction()
     }
     strList
   }
 
-  def getLine3(timeout: Int):Seq[String] = {
-    import com.github.nscala_time.time.Imports._
-    var strList = getLine3
-    val startTime = DateTime.now
-    while (strList.length == 0) {
-      val elapsedTime = new Duration(startTime, DateTime.now)
-      if (elapsedTime.getStandardSeconds > timeout) {
-        throw new Exception("Read timeout!")
-      }
-      strList = getLine3
-    }
-    strList
-  }
+  //def getLine2(timeout: Int):List[String] = getMessageWithTimeout(getLine2)(_)
+
+  //def getLine3(timeout: Int):List[String] = getMessageWithTimeout(getLine3)
 
   def getAkResponse(timeout: Int):String = {
     import com.github.nscala_time.time.Imports._
@@ -133,7 +123,7 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     new String(a)
   }
 
-  def getMessageUntilEtx() = {
+  def getMessageUntilEtx(): List[String] = {
     def splitMessage(buf: Array[Byte]): List[String] = {
       val idx = buf.indexOf(3.toByte)
       if (idx == -1) {
@@ -141,6 +131,7 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
           Nil
       } else {
         val (a, rest) = buf.splitAt(idx + 1)
+        readBuffer = rest
         new String(a) :: splitMessage(rest)
       }
     }
@@ -168,7 +159,6 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     val ret = port.readBytes()
     if (ret != null)
       readBuffer = readBuffer ++ ret
-
 
     splitMessage(readBuffer)
   }

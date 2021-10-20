@@ -203,25 +203,27 @@ class VerewaF701Collector @Inject()
       Future {
         blocking {
           val cmd = HessenProtocol.dataQuery
-          serialOpt.get.port.writeBytes(cmd)
-          val replies = serialOpt.get.getLine2(timeout = 3)
-          for (reply <- replies) {
-            val measureList = HessenProtocol.decode(reply)
-            for {
-              ma_ch <- measureList.zipWithIndex
-              measure = ma_ch._1
-              channel = ma_ch._2
-            } {
-              if (channel == 0) {
-                checkStatus(measure.status)
-                //Logger.debug(s"$mt, $measure.value, $collectorStatus")
-                context.parent ! ReportData(List(MonitorTypeData(mt, measure.value, collectorStatus)))
+          for(serial<-serialOpt){
+            serial.port.writeBytes(cmd)
+            val replies = serial.getMessageWithTimeout(serial.getLine2)(timeout = 3)
+            for (reply <- replies) {
+              val measureList = HessenProtocol.decode(reply)
+              for {
+                ma_ch <- measureList.zipWithIndex
+                measure = ma_ch._1
+                channel = ma_ch._2
+              } {
+                if (channel == 0) {
+                  checkStatus(measure.status)
+                  //Logger.debug(s"$mt, $measure.value, $collectorStatus")
+                  context.parent ! ReportData(List(MonitorTypeData(mt, measure.value, collectorStatus)))
+                }
+
+                checkErrorStatus(channel, measure.error)
               }
+              //Log instrument status...
 
-              checkErrorStatus(channel, measure.error)
             }
-            //Log instrument status...
-
           }
         }
       } onFailure errorHandler

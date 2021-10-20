@@ -170,7 +170,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
 
       if (outputType == OutputType.excel) {
         import java.nio.file.Files
-        val excelFile = excelUtility.exportChartData(chart, monitorTypes, reportUnit == ReportUnit.Sec)
+        val excelFile = excelUtility.exportChartData(chart, monitorTypes, true)
         val downloadFileName =
           if (chart.downloadFileName.isDefined)
             chart.downloadFileName.get

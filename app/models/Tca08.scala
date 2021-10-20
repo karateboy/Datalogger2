@@ -66,15 +66,20 @@ class Tca08Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
           val tokens = resp(0).split(" ")
           val inputs =
             for (ist <- Tca08Drv.predefinedIST) yield {
-              val mtStr = tokens.drop(1 + 6 * ist.addr).take(6).mkString(" ")
-
               val valueStr = tokens(2 + 6 * ist.addr)
               val keys = valueStr.split("\\u002b")
-              // Logger.debug(s"${valueStr} keys #=${keys.length}")
               val v = try{
-                if(keys.length == 3)
-                  keys(1).toInt.toDouble/1000 * Math.pow(10, keys(2).toInt)
-                else
+                if(keys.length == 3) {
+                  val v = keys(1).toInt.toDouble
+                  val mantissaExp = Math.log10(v).toInt
+                  val exp = keys(2).toInt
+                  v * Math.exp(exp - mantissaExp)
+                } else if (keys.length == 2) { //minus case
+                  val v = keys(0).toInt.toDouble
+                  val mantissaExp = Math.log10(v).toInt
+                  val exp = keys(1).toInt
+                  v * Math.exp(exp - mantissaExp)
+                }else
                   0d
               }catch{
                 case _:Throwable=>
