@@ -86,7 +86,7 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
             val cmd = "_Meas_GetConc\r"
             val bytes = cmd.getBytes("UTF-8")
             serial.port.writeBytes(bytes)
-            val resp = serial.getMessageUntilCR(1)
+            val resp = serial.getMessageUntilCR()
             if (resp.nonEmpty) {
               val tokens = resp(0).split(";")
               if (tokens.length != predefinedIST.length)

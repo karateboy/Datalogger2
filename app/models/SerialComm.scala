@@ -169,9 +169,9 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     val startTime = DateTime.now
     while (strList.length == 0) {
       val elapsedTime = new Duration(startTime, DateTime.now)
-      if (elapsedTime.getStandardSeconds > timeout) {
+      if (elapsedTime.getStandardSeconds > timeout)
         throw new Exception("Read timeout!")
-      }
+
       strList = getMessageUntilCR()
     }
     strList

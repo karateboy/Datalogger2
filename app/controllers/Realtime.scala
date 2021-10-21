@@ -36,44 +36,38 @@ class Realtime @Inject()
                   instrumentList.mkString(",")
               }.getOrElse("??")
 
+              def instrumentStatus() = {
+                val ret =
+                  for (measuringBy <- mCase.measuringBy) yield {
+                    val instruments: List[Instrument] =
+                      measuringBy.map(instrumentMap.get(_)).flatten
+
+                    if (instruments.exists(inst => !inst.active))
+                      "停用"
+                    else
+                      "斷線"
+                  }
+                ret.getOrElse("設備啟動中")
+              }
+
               if (recordOpt.isDefined) {
                 val record = recordOpt.get
                 val duration = new Duration(record.time, DateTime.now())
                 val (overInternal, overLaw) = monitorTypeOp.overStd(mt, record.value)
                 val status = if (duration.getStandardSeconds <= overTimeLimit)
                   monitorStatusOp.map(record.status).desp
-                else {
-                  if (mCase.measuringBy.isDefined) {
-                    val instruments: Seq[Instrument] = mCase.measuringBy.get map {
-                      instrumentMap
-                    }
-                    if (instruments.exists(inst => !inst.active))
-                      "停用"
-                    else
-                      "斷線"
-                  } else
-                    "斷線"
-                }
+                else
+                  instrumentStatus
 
-                MonitorTypeStatus(_id = mCase._id, desp = mCase.desp, monitorTypeOp.format(mt, Some(record.value)), mCase.unit, measuringByStr,
+                MonitorTypeStatus(_id = mCase._id, desp = mCase.desp, monitorTypeOp.format(mt, Some(record.value)),
+                  mCase.unit, measuringByStr,
                   status,
                   MonitorStatus.getCssClassStr(record.status, overInternal, overLaw), mCase.order)
-              } else {
-                val status = if (mCase.measuringBy.isDefined) {
-                  val instruments: Seq[Instrument] = mCase.measuringBy.get map {
-                    instrumentMap
-                  }
-                  if (instruments.exists(inst => !inst.active))
-                    "停用"
-                  else
-                    "斷線"
-                } else
-                  "斷線"
-
-                MonitorTypeStatus(_id = mCase._id, mCase.desp, monitorTypeOp.format(mt, None), mCase.unit, measuringByStr,
-                  status,
+              } else
+                MonitorTypeStatus(_id = mCase._id, mCase.desp, monitorTypeOp.format(mt, None),
+                  mCase.unit, measuringByStr,
+                  instrumentStatus,
                   Seq("abnormal_status"), mCase.order)
-              }
             }
           }
 
