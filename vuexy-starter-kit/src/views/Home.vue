@@ -138,6 +138,7 @@ export default Vue.extend({
       await this.getRealtimeStatus();
       const now = new Date().getTime();
       this.spectrumData.splice(0, this.spectrumData.length);
+
       for (const mtStatus of this.realTimeStatus) {
         let mt = this.mtMap.get(mtStatus._id) as MonitorType;
         if (mt.acoustic) {
@@ -157,7 +158,6 @@ export default Vue.extend({
               }
             }
           } else {
-            let chart = this.spectrumChart as highcharts.Chart;
             let value = parseFloat(mtStatus.value);
             if (!isNaN(value)) {
               this.spectrumData.push(value);
@@ -181,6 +181,7 @@ export default Vue.extend({
           }
         }
       }
+
       this.chart!.redraw();
       this.spectrumChart!.series[0].setData(this.spectrumData);
       this.spectrumChart!.redraw();
@@ -295,8 +296,13 @@ export default Vue.extend({
           series: me.chartSeries,
         };
 
-        if (me.chartSeries.length !== 0)
-          me.chart = highcharts.chart('realtimeNoiseChart', chartOption);
+        if (me.chartSeries.length !== 0) {
+          try {
+            me.chart = highcharts.chart('realtimeNoiseChart', chartOption);
+          } catch (err) {
+            throw new Error('failed to init realtimeNoiseChart' + err);
+          }
+        }
       });
 
       let pRealtimeSpectrum: Promise<boolean> = new Promise(function (
@@ -355,10 +361,14 @@ export default Vue.extend({
             },
           ],
         };
-        me.spectrumChart = highcharts.chart(
-          'realtimeSpectrumChart',
-          chartOption,
-        );
+        try {
+          me.spectrumChart = highcharts.chart(
+            'realtimeSpectrumChart',
+            chartOption,
+          );
+        } catch (err) {
+          throw new Error('failed to init realtimeSpectrumChart' + err);
+        }
       });
 
       let pHistoryCompareSpectrum: Promise<boolean> = new Promise(function (
@@ -425,10 +435,14 @@ export default Vue.extend({
             },
           ],
         };
-        me.compareSpectrumChart = highcharts.chart(
-          'historySpectrumChart',
-          chartOption,
-        );
+        try {
+          me.compareSpectrumChart = highcharts.chart(
+            'historySpectrumChart',
+            chartOption,
+          );
+        } catch (err) {
+          throw new Error('failed to init historySpectrumChart');
+        }
       });
 
       allP.push(pRealtimeLeq);
@@ -445,7 +459,7 @@ export default Vue.extend({
           me.refresh();
         }, 1000);
       } catch (err) {
-        throw new Error(err);
+        throw new Error('failed to finish all promise...' + err);
       }
     },
     getRealtimeMt(mt: string, index: number): Promise<boolean> {

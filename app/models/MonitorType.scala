@@ -131,7 +131,8 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     rangeType(WIN_DIRECTION, "風向", "degrees", 2),
     rangeType(TEMP, "溫度", "℃", 2),
     rangeType(HUMID, "濕度", "%", 2),
-    rangeType(PRESS, "氣壓", "hPa", 2)
+    rangeType(PRESS, "氣壓", "hPa", 2),
+    rangeType(RAIN, "雨量", "mm/hr", 2)
   )
 
   var (mtvList, signalMtvList, map) = refreshMtv

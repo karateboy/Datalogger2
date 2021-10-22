@@ -145,16 +145,20 @@ export default Vue.extend({
         sortable: true,
       },
       {
-        key: 'zd_law',
-        label: '零點偏移法規',
+        key: 'acoustic',
+        label: '聲學測項',
+        formatter: (value: null | boolean) => {
+          if (value !== null && value === true) return '是';
+          else return '否';
+        },
       },
       {
-        key: 'span',
-        label: '全幅值',
-      },
-      {
-        key: 'span_dev_law',
-        label: '全幅值偏移法規',
+        key: 'spectrum',
+        label: '頻譜',
+        formatter: (value: null | boolean) => {
+          if (value !== null && value === true) return '是';
+          else return '否';
+        },
       },
       {
         key: 'measuringBy',
