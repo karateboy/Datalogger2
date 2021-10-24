@@ -11,7 +11,7 @@ import scala.collection.immutable
 
 case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputStream) {
   var readBuffer = Array.empty[Byte]
-  def getLine:List[String] = {
+  def getLine():List[String] = {
     def splitLine(buf: Array[Byte]): List[String] = {
       val idx = buf.indexOf('\n'.toByte)
       if (idx == -1) {
@@ -21,36 +21,13 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
           Nil
         } else {
           val (a, rest) = buf.splitAt(cr_idx + 1)
+          readBuffer = rest
           new String(a).trim() :: splitLine(rest)
         }
       } else {
         val (a, rest) = buf.splitAt(idx + 1)
+        readBuffer = rest
         new String(a).trim() :: splitLine(rest)
-      }
-    }
-
-    val ret = port.readBytes()
-    if (ret != null)
-      readBuffer = readBuffer ++ ret
-
-    splitLine(readBuffer)
-  }
-
-  def getLine2():List[String] = {
-    def splitLine(buf: Array[Byte]): List[String] = {
-      val idx = buf.indexOf('\n'.toByte)
-      if (idx == -1) {
-        val cr_idx = buf.indexOf('\r'.toByte)
-        if (cr_idx == -1) {
-          readBuffer = readBuffer ++ buf
-          Nil
-        } else {
-          val (a, rest) = buf.splitAt(cr_idx + 1)
-          new String(a).trim() :: splitLine(rest)
-        }
-      } else {
-        val (a, rest) = buf.splitAt(idx + 1)
-        new String(a) :: splitLine(rest)
       }
     }
 
@@ -69,6 +46,7 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
           Nil
       } else {
         val (a, rest) = buf.splitAt(idx + 1)
+        readBuffer = rest
         new String(a) :: splitLine(rest)
       }
     }

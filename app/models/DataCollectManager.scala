@@ -206,8 +206,6 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
           }
         } else if (mt == MonitorType.RAIN) {
           values.max
-        } else if (mt == MonitorType.PM10 || mt == MonitorType.PM25) {
-          values.last
         } else {
           values.sum / values.length
         }

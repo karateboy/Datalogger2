@@ -105,11 +105,13 @@
               查詢
             </b-button>
             <b-button
-              v-ripple.400="'rgba(186, 191, 199, 0.15)'"
-              type="reset"
-              variant="outline-secondary"
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              type="submit"
+              variant="primary"
+              class="mr-1"
+              @click="downloadExcel"
             >
-              取消
+              下載Excel
             </b-button>
           </b-col>
         </b-row>
@@ -299,6 +301,18 @@ export default Vue.extend({
         };
       }
       highcharts.chart('chart_container', ret);
+    },
+    async downloadExcel() {
+      const baseUrl =
+        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '';
+      const monitors = this.form.monitors.join(':');
+      const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
+        ':',
+      )}/${this.form.reportUnit}/${this.form.statusFilter}/${
+        this.form.range[0]
+      }/${this.form.range[1]}`;
+
+      window.open(url);
     },
   },
 });
