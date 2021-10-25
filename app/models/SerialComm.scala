@@ -17,7 +17,6 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
       if (idx == -1) {
         val cr_idx = buf.indexOf('\r'.toByte)
         if (cr_idx == -1) {
-          readBuffer = readBuffer ++ buf
           Nil
         } else {
           val (a, rest) = buf.splitAt(cr_idx + 1)
@@ -42,7 +41,6 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     def splitLine(buf: Array[Byte]): List[String] = {
       val idx = buf.indexOf('\r'.toByte)
       if (idx == -1) {
-          readBuffer = readBuffer ++ buf
           Nil
       } else {
         val (a, rest) = buf.splitAt(idx + 1)
@@ -71,10 +69,6 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     }
     strList
   }
-
-  //def getLine2(timeout: Int):List[String] = getMessageWithTimeout(getLine2)(_)
-
-  //def getLine3(timeout: Int):List[String] = getMessageWithTimeout(getLine3)
 
   def getAkResponse(timeout: Int):String = {
     import com.github.nscala_time.time.Imports._
@@ -105,7 +99,6 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     def splitMessage(buf: Array[Byte]): List[String] = {
       val idx = buf.indexOf(3.toByte)
       if (idx == -1) {
-        readBuffer = readBuffer ++ buf
           Nil
       } else {
         val (a, rest) = buf.splitAt(idx + 1)
@@ -125,7 +118,6 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     def splitMessage(buf: Array[Byte]): List[String] = {
       val idx = buf.indexOf('\r')
       if (idx == -1) {
-        readBuffer = readBuffer ++ buf
         Nil
       } else {
         val (a, rest) = buf.splitAt(idx + 1)
