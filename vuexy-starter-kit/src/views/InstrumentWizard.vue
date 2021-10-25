@@ -189,6 +189,11 @@
             :loading="loadingDetailedConfig"
             @param-changed="onParamChange"
           />
+          <ak-config-page
+            v-else-if="isAkInstrument"
+            :param-str="form.param"
+            @param-changed="onParamChange"
+          ></ak-config-page>
           <div v-else>TBD {{ form.instType }}</div>
         </validation-observer>
       </tab-content>
@@ -222,6 +227,7 @@ import ThetaConfigPage from './ThetaConfigPage.vue';
 import SabioConfig from './SabioConfig.vue';
 import DuoConfig2 from './DuoConfig2.vue';
 import { TextStrValue } from './types';
+import AkConfigPage from './AkConfigPage.vue';
 
 interface ProtocolParam {
   protocol: 'tcp' | 'serial' | undefined;
@@ -261,6 +267,7 @@ export default Vue.extend({
     ThetaConfigPage,
     SabioConfig,
     DuoConfig2,
+    AkConfigPage,
   },
   props: {
     isNew: {
