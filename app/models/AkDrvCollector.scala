@@ -251,7 +251,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
         case _: Throwable =>
           Logger.error("Log instrument status failed")
       }
-      nextLoggingStatusTime = nextLoggingStatusTime + 10.minute
+      nextLoggingStatusTime = nextLoggingStatusTime + 6.minute
     }
 
     oldModelReg = Some(regValue)

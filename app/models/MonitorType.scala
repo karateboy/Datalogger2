@@ -258,6 +258,11 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
 
   def newMonitorType(mt: MonitorType) = {
     map = map + (mt._id->mt)
+    if(mt.signalType)
+      signalMtvList = signalMtvList.:+(mt._id)
+    else
+      mtvList = mtvList.:+(mt._id)
+
     val f = collection.insertOne(mt).toFuture()
   }
 

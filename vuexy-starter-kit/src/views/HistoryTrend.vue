@@ -304,7 +304,7 @@ export default Vue.extend({
     },
     async downloadExcel() {
       const baseUrl =
-        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '';
+        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
       const monitors = this.form.monitors.join(':');
       const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
         ':',
