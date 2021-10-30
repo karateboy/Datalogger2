@@ -83,17 +83,14 @@
               取消
             </b-button>
             <b-button
-              variant="outline-success"
-              size="sm"
-              :disabled="rows.length === 0"
-              @click="exportExcel"
-              ><b-img
-                v-b-tooltip.hover
-                src="../assets/excel_export.svg"
-                title="匯出 Excel"
-                width="20"
-                fluid
-            /></b-button>
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              type="submit"
+              variant="primary"
+              class="mr-1"
+              @click="downloadExcel"
+            >
+              下載Excel
+            </b-button>
           </b-col>
         </b-row>
       </b-form>
@@ -249,6 +246,19 @@ export default Vue.extend({
       }
 
       return ret;
+    },
+    async downloadExcel() {
+      const baseUrl =
+        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
+      const monitors = this.form.monitors.join(':');
+      let reportUnit = 'Min';
+      if (this.form.dataType === 'hour') reportUnit = 'Hour';
+
+      const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
+        ':',
+      )}/${reportUnit}/all/${this.form.range[0]}/${this.form.range[1]}`;
+
+      window.open(url);
     },
     exportExcel() {
       const title = this.columns.map(e => e.label);

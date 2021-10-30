@@ -8,6 +8,7 @@ import org.apache.poi.xssf.usermodel._
 import java.io._
 import java.nio.file.{Files, _}
 import javax.inject._
+import scala.math.BigDecimal.RoundingMode
 
 @Singleton
 class ExcelUtility @Inject()
@@ -35,7 +36,7 @@ class ExcelUtility @Inject()
 
     new File(reportFilePath.toAbsolutePath().toString())
   }
-  
+
   import controllers.Highchart._
   def exportChartData(chart: HighchartData, monitorTypes: Array[String], showSec:Boolean): File = {
     val precArray = monitorTypes.map { mt => monitorTypeOp.map(mt).prec }
@@ -61,7 +62,11 @@ class ExcelUtility @Inject()
     }
 
     val styles = precArray.map { prec =>
-      val format_str = "0." + "0" * prec
+      val format_str:String = if(prec != 0)
+        "0." + "0" * prec
+      else
+        "0"
+
       val style = wb.createCellStyle();
       style.setDataFormat(format.getFormat(format_str))
       style
@@ -83,14 +88,10 @@ class ExcelUtility @Inject()
           cell.setCellStyle(styles(col - 1))
 
           val pair = series.data(rowNo - 1)
-          if (pair.length == 2 && pair(1).isDefined) {
-            cell.setCellValue(pair(1).get)
+          for (v <- pair(1)) {
+            val d = BigDecimal(v).setScale(precArray(col - 1), RoundingMode.HALF_EVEN)
+            cell.setCellValue(d.toFloat)
           }
-          //val pOpt = series.data(rowNo-1)
-          //if(pOpt.isDefined){
-          //  cell.setCellValue(pOpt.get)
-          //}
-
         }
       }
     } else {
@@ -115,9 +116,10 @@ class ExcelUtility @Inject()
             else
               timeCell.setCellValue(dt.toString("YYYY/MM/dd HH:mm:ss"))
           }
-          if (pair(1).isDefined) {
-            cell.setCellValue(pair(1).get)
-          }                    
+          for (v <- pair(1)) {
+            val d = BigDecimal(v).setScale(precArray(col - 1), RoundingMode.HALF_EVEN)
+            cell.setCellValue(d.toDouble)
+          }
         }
       }
     }
