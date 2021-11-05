@@ -76,12 +76,12 @@ class Tca08Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
                       val v = keys(1).toInt.toDouble
                       val mantissaExp = Math.log10(v).toInt
                       val exp = keys(2).toInt
-                      v * Math.exp(exp - mantissaExp)
+                      v * Math.pow(10, exp - mantissaExp)
                     } else if (keys.length == 2) { //minus case
                       val v = keys(0).toInt.toDouble
                       val mantissaExp = Math.log10(v).toInt
                       val exp = keys(1).toInt
-                      v * Math.exp(exp - mantissaExp)
+                      v * Math.pow(10, exp - mantissaExp)
                     }else
                       0d
                   }catch{
