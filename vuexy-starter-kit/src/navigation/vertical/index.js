@@ -12,6 +12,8 @@ export default [
       {
         title: '即時數據',
         route: 'realtime-data',
+        action: 'read',
+        resource: 'Dashboard',
       },
     ],
   },
@@ -54,10 +56,14 @@ export default [
       {
         title: '監測報表',
         route: 'report',
+        action: 'read',
+        resource: 'Data',
       },
       {
         title: '月份時報表',
         route: 'monthly-hour-report',
+        action: 'read',
+        resource: 'Data',
       },
     ],
   },
@@ -76,14 +82,10 @@ export default [
       {
         title: '測點管理',
         route: 'monitor-config',
-        action: 'set',
-        resource: 'Alarm',
       },
       {
         title: '測項管理',
         route: 'monitor-type-config',
-        action: 'set',
-        resource: 'Alarm',
       },
       {
         title: '人工資料註記',

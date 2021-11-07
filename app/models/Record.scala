@@ -354,7 +354,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
         calibrationMap <- f2
         docs <- f} yield {
         for {
-          doc <- docs if mtList.forall(doc.mtMap.contains(_))
+          doc <- docs if mtList.forall(mt=>{doc.mtMap.contains(mt) && MonitorStatusFilter.isMatched(MonitorStatusFilter.ValidData, doc.mtMap(mt).status) })
         } yield {
           doc.doCalibrate(monitorTypeOp, calibrationMap)
           val mtMap = doc.mtMap

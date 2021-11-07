@@ -20,6 +20,10 @@
           small
           head-variant="light"
           head-row-variant="success"
+          responsive
+          :sticky-header="true"
+          :no-border-collapse="true"
+          style="max-height: 500px"
         >
         </b-table>
       </b-card>

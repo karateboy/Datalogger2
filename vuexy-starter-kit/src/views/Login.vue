@@ -107,7 +107,6 @@
 /* eslint-disable global-require */
 import { ValidationProvider, ValidationObserver } from 'vee-validate';
 import VuexyLogo from '@core/layouts/components/Logo.vue';
-import jscookie from 'js-cookie';
 
 import { required, email } from '@validations';
 import { togglePasswordVisibility } from '@core/mixins/ui/forms';
@@ -126,8 +125,8 @@ export default {
   data() {
     return {
       status: '',
-      password: 'abc123',
-      userEmail: 'sales@wecc.com.tw',
+      password: '',
+      userEmail: '',
       sideImg: require('@/assets/images/pages/login-v2.svg'),
       // validation rulesimport store from '@/store/index'
       required,
@@ -147,9 +146,7 @@ export default {
       return this.sideImg;
     },
   },
-  mounted() {
-    this.validationForm();
-  },
+  mounted() {},
   methods: {
     ...mapMutations(['setLogin']),
     ...mapMutations('user', ['setUserInfo']),
