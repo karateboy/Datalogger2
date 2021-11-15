@@ -666,6 +666,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     }
   }
 
+  /*
   def configureDuoMonitorTypes(host:String) = Security.Authenticated.async(BodyParsers.parse.json){
     implicit request =>
       import Duo._
@@ -702,6 +703,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
           }
         })
   }
+  */
 
   def getDuoFixedMonitorTypes() = Security.Authenticated {
     {

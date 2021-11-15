@@ -114,7 +114,7 @@ GET      /EvtOptHigh                                                            
 GET      /TestSpray                                                               controllers.HomeController.testSpray
 
 GET      /ProbeDuoMonitorTypes                      controllers.HomeController.probeDuoMonitorTypes(host)
-POST     /ConfigDuoMonitorTypes/:host               controllers.HomeController.configureDuoMonitorTypes(host)
+#POST     /ConfigDuoMonitorTypes/:host               controllers.HomeController.configureDuoMonitorTypes(host)
 GET      /DuoFixedMonitorTypes                      controllers.HomeController.getDuoFixedMonitorTypes
 
 GET		/WindRose/:monitor/:monitorType/:nWay/:start/:end/:level1/:level2/:level3   controllers.Query.windRoseReport(monitor: String, monitorType: String, nWay: Int, start: Long, end: Long, level1: Double, level2: Double, level3: Double)

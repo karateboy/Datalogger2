@@ -2,6 +2,7 @@ package models
 
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
+import org.mongodb.scala.model.Filters.equal
 import org.mongodb.scala.model._
 import play.api._
 import play.api.libs.json._
@@ -181,7 +182,12 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
 
       f.onFailure(errorHandler)
       f.onComplete { x =>
-        refreshMtv
+        {
+          val update = refreshMtv
+          mtvList = update._1
+          signalMtvList = update._2
+          map = update._3
+        }
       }
       f
     }
@@ -206,15 +212,20 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
   def exist(mt: MonitorType) = map.contains(mt._id)
 
   def ensureMonitorType(id:String) = {
+    Logger.warn(s"String MT $id is applied!")
+    throw new Exception(s"String MT $id is applied!")
+    /*
     if(!map.contains(id)){
       val mt = rangeType(id, id, "??", 2)
       newMonitorType(mt)
     }
+
+     */
   }
 
   def ensureMonitorType(mt: MonitorType) = {
-    if(!map.contains(mt._id))
-      newMonitorType(mt)
+    map = map + (mt._id -> mt)
+    newMonitorType(mt)
   }
 
   def getRawMonitorType(mt: String) =
@@ -239,10 +250,17 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
   def rawMonitorTypeID(_id: String) = s"${_id}_raw"
 
   def newMonitorType(mt: MonitorType) = {
-    val f = collection.insertOne(mt).toFuture()
+
+    import org.mongodb.scala.model.ReplaceOptions
+
+    val f = collection.replaceOne(equal("_id", mt._id), mt, ReplaceOptions().upsert(true)).toFuture()
+    f.onFailure(errorHandler)
     f.onSuccess({
       case x =>
-        refreshMtv
+        val update = refreshMtv
+        mtvList = update._1
+        signalMtvList = update._2
+        map = update._3
     })
   }
 
