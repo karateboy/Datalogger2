@@ -15,7 +15,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.xml.NodeSeq
 
-class HomeController @Inject()(environment: play.api.Environment, recordOp: RecordOp,
+class HomeController @Inject()(environment: play.api.Environment, recordOp: RecordOp, mongoDB: MongoDB,
                                userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
                                monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorOp, groupOp: GroupOp,
                                instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp,
@@ -743,6 +743,32 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     }
   }
 
+  def getLatestEvaluation() = Security.Authenticated.async {
+    import SoundEvaluation._
+    val f = SoundEvaluation.getLatestEvaluation(mongoDB)
+    for(ret<-f) yield {
+      Ok(Json.toJson(ret(0)))
+    }
+  }
+  def toggleDuo() = Security.Authenticated {
+    val duoList = instrumentOp.getInstrumentList().filter(inst=>inst.instType == Duo.id)
 
+    try {
+      duoList.foreach(inst =>{
+        if(inst.active) {
+          instrumentOp.deactivate(inst._id)
+          dataCollectManagerOp.stopCollect(inst._id)
+        } else
+          instrumentOp.activate(inst._id)
+        dataCollectManagerOp.startCollect(inst._id)
+      })
+    } catch {
+      case ex: Throwable =>
+        Logger.error(ex.getMessage, ex)
+        Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
+    }
+
+    Ok(Json.obj("ok" -> true))
+  }
   case class EditData(id: String, data: String)
 }

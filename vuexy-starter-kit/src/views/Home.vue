@@ -16,7 +16,12 @@
       </b-card>
     </b-col>
     <b-col lg="3" md="12">
-      <b-card title="健康度">
+      <b-card
+        header-tag="h3"
+        header="健康度"
+        header-bg-variant="info"
+        header-text-variant="white"
+      >
         <div id="healthPie"></div>
       </b-card>
     </b-col>
@@ -30,6 +35,7 @@
     >
       <b-card
         :header="`${getMtName(mt)}即時圖`"
+        header-tag="h3"
         header-bg-variant="success"
         header-text-variant="white"
       >
@@ -47,6 +53,14 @@ import highcharts from 'highcharts';
 import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
 import moment from 'moment';
+
+interface Health {
+  me: number;
+}
+interface Evaluation {
+  Time: number;
+  Health: Health;
+}
 
 export default Vue.extend({
   data() {
@@ -518,48 +532,55 @@ export default Vue.extend({
       });
     },
     async drawHealthPie() {
-      const chartOption: highcharts.Options = {
-        title: undefined,
-        chart: {
-          type: 'pie',
-        },
-        plotOptions: {
-          pie: {
-            allowPointSelect: true,
-            cursor: 'pointer',
-            dataLabels: {
-              enabled: true,
-              format: '<b>{point.name}</b>: {point.percentage:.1f} %',
+      try {
+        const resp = await axios.get('/LatestEvaluation');
+        const ret = resp.data as Evaluation;
+        let dtString = moment(ret.Time).format('lll');
+        const chartOption: highcharts.Options = {
+          title: undefined,
+          chart: {
+            type: 'pie',
+          },
+          plotOptions: {
+            pie: {
+              allowPointSelect: true,
+              cursor: 'pointer',
+              dataLabels: {
+                enabled: true,
+                format: '<b>{point.name}</b>: {point.percentage:.1f} %',
+              },
             },
           },
-        },
-        series: [
-          {
-            name: 'Brands',
-            type: 'pie',
-            colorByPoint: true,
-            data: [
-              {
-                name: '健康度',
-                y: 95,
-                sliced: true,
-              },
-              {
-                name: '未知度',
-                y: 5,
-              },
-            ],
+          series: [
+            {
+              name: 'Brands',
+              type: 'pie',
+              colorByPoint: true,
+              data: [
+                {
+                  name: `健康度${dtString}`,
+                  y: ret.Health.me,
+                  sliced: true,
+                },
+                {
+                  name: '未知度',
+                  y: 100 - ret.Health.me,
+                },
+              ],
+            },
+          ],
+          credits: {
+            enabled: false,
+            href: 'http://www.wecc.com.tw/',
           },
-        ],
-        credits: {
-          enabled: false,
-          href: 'http://www.wecc.com.tw/',
-        },
-        exporting: {
-          enabled: false,
-        },
-      };
-      highcharts.chart('healthPie', chartOption);
+          exporting: {
+            enabled: false,
+          },
+        };
+        highcharts.chart('healthPie', chartOption);
+      } catch (err) {
+        throw new Error('Fail to get latest evaluation');
+      }
     },
     async query(mt: string) {
       const now = new Date().getTime();

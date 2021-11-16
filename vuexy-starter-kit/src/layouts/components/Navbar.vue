@@ -15,6 +15,9 @@
     >
       <dark-Toggler class="d-none d-lg-block" />
       <h3 class="mt-1 mb-1">風力機噪音數據分析設備</h3>
+      <b-button variant="primary" size="lg" class="ml-3" @click="toggleDuo"
+        >啟用/停用切換</b-button
+      >
     </div>
 
     <b-navbar-nav class="nav align-items-center ml-auto">
@@ -101,6 +104,14 @@ export default {
         jscookie.remove('authentication');
         this.$router.push('/login');
       });
+    },
+    async toggleDuo() {
+      try {
+        const res = await axios.get('/ToggleDuo');
+        if (res.status == 200) alert('成功');
+      } catch (err) {
+        throw new Error('failed to toggle Duo');
+      }
     },
   },
 };
