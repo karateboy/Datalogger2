@@ -379,6 +379,29 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     }
   }
 
+  def upsertManyRecords(colName: String)(records:Seq[RecordList])(): Future[BulkWriteResult] = {
+    val pullUpdates: Seq[UpdateOneModel[Nothing]] =
+      for(record<-records) yield {
+        val mtDataPullUdates = record.mtDataList.map(mtr=>Updates.pullByFilter(Document("mtDataList"->Document("mtName"->mtr.mtName))))
+        val updates = Updates.combine(mtDataPullUdates:_*)
+        UpdateOneModel(Filters.equal("_id", RecordListID(record.time, record.monitor)), updates, UpdateOptions().upsert(true))
+      }
+
+    val setUpdates = for(record<-records) yield {
+      val mtDataUpdates = record.mtDataList.map(mtr=>Updates.addToSet("mtDataList", mtr))
+      val updates = Updates.combine(
+        Seq(mtDataUpdates,
+          Seq(Updates.setOnInsert("time", record.time))).flatten:_*
+      )
+      UpdateOneModel(Filters.equal("_id", RecordListID(record.time, record.monitor)), updates, UpdateOptions().upsert(true))
+    }
+
+
+    val collection = getCollection(colName)
+    val f = collection.bulkWrite(pullUpdates ++ setUpdates, BulkWriteOptions().ordered(true)).toFuture()
+    f onFailure errorHandler
+    f
+  }
   /*
   def updateMtRecord(colName: String)(mtName: String, updateList: Seq[(DateTime, Double)], monitor: String = monitorOp.SELF_ID) = {
     import org.mongodb.scala.bson._

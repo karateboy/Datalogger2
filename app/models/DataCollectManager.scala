@@ -224,11 +224,16 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 class DataCollectManager @Inject()
 (config: Configuration, system: ActorSystem, recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp,
  dataCollectManagerOp: DataCollectManagerOp,
- instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmOp, instrumentOp: InstrumentOp) extends Actor with InjectedActorSupport {
+ instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmOp, instrumentOp: InstrumentOp, sysConfig: SysConfig) extends Actor with InjectedActorSupport {
   val effectivRatio = 0.75
   val storeSecondData = config.getBoolean("storeSecondData").getOrElse(false)
   Logger.info(s"store second data = $storeSecondData")
 
+  def startReaders() = {
+    SpectrumReader.start(config, system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
+  }
+
+  startReaders()
   val timer = {
     import scala.concurrent.duration._
     //Try to trigger at 30 sec

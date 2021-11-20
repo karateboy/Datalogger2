@@ -45,7 +45,7 @@
                 v-model="form.range"
                 :range="true"
                 type="datetime"
-                format="YYYY-MM-DD HH:mm"
+                format="YYYY-MM-DD HH:00"
                 value-type="timestamp"
                 :show-second="false"
               />
@@ -126,7 +126,7 @@
 <style lang="scss">
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
-<script>
+<script lang="ts">
 import Vue from 'vue';
 import vSelect from 'vue-select';
 import DatePicker from 'vue2-datepicker';
@@ -152,7 +152,6 @@ export default Vue.extend({
       dataTypes: [
         { txt: '小時資料', id: 'hour' },
         { txt: '分鐘資料', id: 'min' },
-        { txt: '秒資料', id: 'second' },
       ],
       form: {
         monitorTypes: [],

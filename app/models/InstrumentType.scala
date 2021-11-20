@@ -65,6 +65,7 @@ class InstrumentTypeOp @Inject()
  sabio4010Factory: Sabio4010.Factory,
  tca08Factory: Tca08Drv.Factory,
  picarroG2401Factory: PicarroG2401.Factory,
+ ma350Factory: Ma350Drv.Factory,
  monitorTypeOp: MonitorTypeOp) extends InjectedActorSupport {
 
   import Protocol._
@@ -103,7 +104,8 @@ class InstrumentTypeOp @Inject()
     InstrumentType(Sabio4010, sabio4010Factory),
     InstrumentType(Duo, duoFactory),
     InstrumentType(Tca08Drv, tca08Factory),
-    InstrumentType(PicarroG2401, picarroG2401Factory)
+    InstrumentType(PicarroG2401, picarroG2401Factory),
+    InstrumentType(Ma350Drv, ma350Factory)
   )
 
   val otherMap = otherDeviceList.map(dt=> dt.id->dt).toMap

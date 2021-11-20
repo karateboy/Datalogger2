@@ -55,4 +55,5 @@ object HessenProtocol {
       Measure(channel, getValue(valueStr), status, error, serialStr, freeStr)
     }
   }
+
 }
