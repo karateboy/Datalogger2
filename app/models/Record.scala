@@ -327,8 +327,11 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
           val i = getIdx(w)
           count(i) += 1
         }
-        assert(total != 0)
-        count.map(_ * 100 / total)
+        //assert(total != 0)
+        if(total != 0)
+          count.map(_ * 100 / total)
+        else
+          count
       }
 
       windMap.map(kv => (kv._1, winSpeedPercent(kv._2)))

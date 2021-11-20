@@ -38,6 +38,8 @@ trait DriverOps {
   def isDoInstrument: Boolean = false
 
   def isCalibrator:Boolean = false
+
+  def timeAdjustment : Period = Period.seconds(0)
 }
 
 import javax.inject._

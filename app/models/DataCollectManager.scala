@@ -110,7 +110,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! ToggleTargetDO(id, bit, seconds)
   }
 
-  def executeSeq(seqName: String, on:Boolean) {
+  def executeSeq(seqName: String, on: Boolean) {
     manager ! ExecuteSeq(seqName, on)
   }
 
@@ -156,7 +156,8 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         l
       })
 
-      lb.append((r.time, r.value))
+      if (!r.value.isNaN)
+        lb.append((r.time, r.value))
     }
 
     val mtDataList = calculateAvgMap(mtMap, alwaysValid)
@@ -211,7 +212,10 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         }
         (avg, statusKV._1)
       }
-      MtRecord(mt, minuteAvg._1, minuteAvg._2)
+      if (minuteAvg._1.isNaN)
+        MtRecord(mt, 0, MonitorStatus.InvalidDataStat)
+      else
+        MtRecord(mt, minuteAvg._1, minuteAvg._2)
     }
   }
 }
@@ -259,7 +263,7 @@ class DataCollectManager @Inject()
         _._2.size
       }.sum if total != 0
     } yield {
-      val minuteAvg = {
+      val minuteAvg: (Double, String) = {
         val totalSize = statusMap map {
           _._2.length
         } sum
@@ -294,8 +298,13 @@ class DataCollectManager @Inject()
         } else {
           values.sum / values.length
         }
-        (avg, statusKV._1)
+
+        if (avg.isNaN)
+          (0, MonitorStatus.InvalidDataStat)
+        else
+          (avg, statusKV._1)
       }
+
       MtRecord(mt, minuteAvg._1, minuteAvg._2)
     }
   }
@@ -331,9 +340,9 @@ class DataCollectManager @Inject()
                mtDataList: List[(DateTime, String, List[MonitorTypeData])],
                restartList: Seq[String]): Receive = {
     case StartInstrument(inst) =>
-      if(!instrumentTypeOp.map.contains(inst.instType)){
+      if (!instrumentTypeOp.map.contains(inst.instType)) {
         Logger.error(s"${inst._id} of ${inst.instType} is unknown!")
-      }else{
+      } else {
         val instType = instrumentTypeOp.map(inst.instType)
         val collector = instrumentTypeOp.start(inst.instType, inst._id, inst.protocol, inst.param)
         val monitorTypes = instType.driver.getMonitorTypes(inst.param)
@@ -351,7 +360,7 @@ class DataCollectManager @Inject()
             Duration(1, DAYS), self, AutoCalibration(inst._id))
         }
 
-        val instrumentParam = InstrumentParam(collector, monitorTypes, timerOpt)
+        val instrumentParam = InstrumentParam(collector, monitorTypes, timerOpt, instType.driver.timeAdjustment)
         if (instType.driver.isCalibrator) {
           calibratorOpt = Some(collector)
         } else if (instType.driver.isDoInstrument) {
@@ -365,12 +374,12 @@ class DataCollectManager @Inject()
       }
 
     case StopInstrument(id: String) =>
-      val paramOpt = instrumentMap.get(id)
-      if (paramOpt.isDefined) {
-        val param = paramOpt.get
+      for (param <- instrumentMap.get(id)) {
         Logger.info(s"Stop collecting instrument $id ")
-        Logger.info(s"remove ${param.mtList.toString()}")
-        param.calibrationTimerOpt.map { timer => timer.cancel() }
+        Logger.info(s"remove ${param.mtList}")
+        for (timer <- param.calibrationTimerOpt)
+          timer.cancel()
+
         param.actor ! PoisonPill
 
         if (calibratorOpt == Some(param.actor)) {
@@ -428,9 +437,9 @@ class DataCollectManager @Inject()
       import scala.collection.mutable.ListBuffer
 
       def flushSecData(recordMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]]) {
-        import scala.collection.mutable.Map
 
         if (recordMap.nonEmpty) {
+          import scala.collection.mutable.Map
           val secRecordMap = Map.empty[DateTime, ListBuffer[(String, (Double, String))]]
           for {
             mt_pair <- recordMap
@@ -455,7 +464,7 @@ class DataCollectManager @Inject()
                 sameDataList.toList
             }
 
-            val mtList = statusMap.flatMap { status_pair =>
+            val mtList: Iterable[(DateTime, Double, String)] = statusMap.flatMap { status_pair =>
               val status = status_pair._1
               val recordList = status_pair._2
               val adjustedRecList = recordList map { rec => (rec._1.withMillisOfSecond(0), rec._2) }
@@ -467,7 +476,7 @@ class DataCollectManager @Inject()
             val completeList = if (!mtSortedList.isEmpty) {
               val head = mtSortedList.head
               if (head._1.getSecondOfMinute == 0)
-                fillList(head, mtSortedList.tail.toList)
+                fillList(head, mtSortedList.tail)
               else
                 fillList((head._1.withSecondOfMinute(0), head._2, head._3), mtSortedList)
             } else
@@ -505,12 +514,7 @@ class DataCollectManager @Inject()
             map
           })
 
-          val lb = statusMap.getOrElse(data.status, {
-            val l = ListBuffer.empty[(String, DateTime, Double)]
-            statusMap.put(data.status, l)
-            l
-          })
-
+          val lb = statusMap.getOrElseUpdate(data.status, ListBuffer.empty[(String, DateTime, Double)])
           lb.append((instrumentId, dl._1, data.value))
         }
 
@@ -565,7 +569,7 @@ class DataCollectManager @Inject()
         f.andThen({
           case Success(x) =>
             if (current.getMinuteOfHour == 0) {
-              for (m <- monitorOp.mvList){
+              for (m <- monitorOp.mvList) {
                 dataCollectManagerOp.recalculateHourData(monitor = m,
                   current = current,
                   forward = false,
@@ -681,6 +685,8 @@ class DataCollectManager @Inject()
     }
   }
 
-  case class InstrumentParam(actor: ActorRef, mtList: List[String], calibrationTimerOpt: Option[Cancellable])
+  case class InstrumentParam(actor: ActorRef, mtList: List[String],
+                             calibrationTimerOpt: Option[Cancellable],
+                             timeAdjust: Period = Period.seconds(0))
 
 }

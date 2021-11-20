@@ -19,7 +19,7 @@ object Highchart {
       floor:Option[Int]=None, ceiling:Option[Int]=None, min:Option[Int]=None, max:Option[Int]=None, tickInterval:Option[Int]=None, 
       gridLineWidth:Option[Int]=None, gridLineColor:Option[String]=None)
       
-  case class seqData(name: String, data: Seq[Seq[Option[Double]]], yAxis:Int=0, chartType:Option[String]=None)
+  case class seqData(name: String, data: Seq[(Long, Option[Double])], yAxis:Int=0, chartType:Option[String]=None)
   case class HighchartData(chart: Map[String, String],
                            title: Map[String, String],
                            xAxis: XAxis,
@@ -33,11 +33,29 @@ object Highchart {
   implicit val axisLineWrite = Json.writes[AxisLine]
   implicit val axisTitleWrite = Json.writes[AxisTitle]
   implicit val yaWrite = Json.writes[YAxis]
-  type lof = (Long, Option[Float])
-          
+  type LOD = (Long, Option[Double])
+
+  implicit val lof:Writes[LOD] = new Writes[(Long, Option[Double])] {
+    override def writes(o: (Long, Option[Double])): JsValue = {
+      try{
+        if(o._2.nonEmpty) {
+          if(o._2.get.isNaN)
+            JsArray(Seq(JsNumber(o._1), JsNumber(0)))
+          else
+            JsArray(Seq(JsNumber(o._1), JsNumber(o._2.get)))
+        } else
+          JsArray(Seq(JsNumber(o._1), JsNull))
+      }catch{
+        case  ex: java.lang.NumberFormatException =>
+          Logger.error(s"(${o._1}, ${o._2} ")
+          throw ex
+      }
+    }
+  }
+
   implicit val seqDataWrite:Writes[seqData] = (
     (__ \ "name").write[String] and
-    (__ \ "data").write[Seq[Seq[Option[Double]]]] and
+    (__ \ "data").write[Seq[(Long, Option[Double])]] and
     (__ \ "yAxis").write[Int] and
     (__ \ "type").write[Option[String]]
   )(unlift(seqData.unapply))

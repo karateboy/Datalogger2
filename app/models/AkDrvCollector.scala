@@ -85,17 +85,20 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
         val cmd = AkProtocol.AskRegCmd(deviceConfig.stationNo, deviceConfig.channelNum, st.addr).getCmd
         comm.os.write(cmd)
         val ret: AkProtocol.AkResponse = AkProtocol.handleAkResponse(comm.getAkResponse(1))
-        inputs = inputs:+((st, ret.value.toFloat))
+        if(ret.success)
+          inputs = inputs:+((st, ret.value.toFloat))
       } else if (st.key.startsWith(HoldingKey)) {
         val cmd = AkProtocol.AskRegCmd(deviceConfig.stationNo, deviceConfig.channelNum, st.addr).getCmd
         comm.os.write(cmd)
         val ret: AkProtocol.AkResponse = AkProtocol.handleAkResponse(comm.getAkResponse(1))
-        modes = modes:+((st, ret.value.toBoolean))
+        if(ret.success)
+          modes = modes:+((st, ret.value.toBoolean))
       } else if (st.key.startsWith(ModeKey) || st.key.startsWith(WarnKey)) {
         val cmd = AkProtocol.AskRegCmd(deviceConfig.stationNo, deviceConfig.channelNum, st.addr).getCmd
         comm.os.write(cmd)
         val ret: AkProtocol.AkResponse = AkProtocol.handleAkResponse(comm.getAkResponse(1))
-        warnings = warnings:+((st, ret.value.toBoolean))
+        if(ret.success)
+          warnings = warnings:+((st, ret.value.toBoolean))
       } else {
         throw new Exception(s"Unexpected key ${st.key}")
       }

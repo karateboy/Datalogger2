@@ -199,7 +199,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           6.minute
         case ReportUnit.TenMin =>
           10.minute
-        case ReportUnit.FifteenMin=>
+        case ReportUnit.FifteenMin =>
           15.minute
         case ReportUnit.Hour =>
           1.hour
@@ -236,17 +236,17 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
         mt <- monitorTypes
         valueMap = monitorReportMap(m)(mt)
       } yield {
-        val timeData =
+        val timeData: List[(Long, Option[Double])] =
           if (showActual) {
             timeSeq.map { time =>
               if (valueMap.contains(time))
-                Seq(Some(time.getMillis.toDouble), Some(valueMap(time)))
+                (time.getMillis, Some(valueMap(time)))
               else
-                Seq(Some(time.getMillis.toDouble), None)
+                (time.getMillis, None)
             }
           } else {
             for (time <- valueMap.keys.toList.sorted) yield {
-              Seq(Some(time.getMillis.toDouble), Some(valueMap(time)))
+              (time.getMillis, Some(valueMap(time)))
             }
           }
 
@@ -278,7 +278,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
         case ReportUnit.TenMin =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
-        case ReportUnit.FifteenMin=>
+        case ReportUnit.FifteenMin =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
         case ReportUnit.Hour =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
@@ -732,17 +732,17 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       }
   }
 
-  def windRoseReport(monitor: String, monitorType: String, tabTypeStr:String, nWay: Int, start: Long, end: Long) = Security.Authenticated.async {
+  def windRoseReport(monitor: String, monitorType: String, tabTypeStr: String, nWay: Int, start: Long, end: Long) = Security.Authenticated.async {
     implicit request =>
       assert(nWay == 8 || nWay == 16 || nWay == 32)
       try {
         val mtCase = monitorTypeOp.map(monitorType)
         val levels = monitorTypeOp.map(monitorType).levels.getOrElse(Seq(1.0, 2.0, 3.0))
         val tableType = TableType.withName(tabTypeStr)
-        val colName:String = tableType match {
-          case TableType.hour=>
+        val colName: String = tableType match {
+          case TableType.hour =>
             recordOp.HourCollection
-          case TableType.min=>
+          case TableType.min =>
             recordOp.MinCollection
         }
         val f = recordOp.getWindRose(colName)(monitor, monitorType, new DateTime(start), new DateTime(end).plusDays(1), levels.toList, nWay)
@@ -777,7 +777,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
               val s1 = "< %s%s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
               val s2 = "> %s%s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit)
               List(s1, s2)
-            } else if (l == levels.head){
+            } else if (l == levels.head) {
               previous = l
               List("< %s%s".format(monitorTypeOp.format(monitorType, Some(l)), mtCase.unit))
             } else if (l == levels.last) {
@@ -798,7 +798,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           } yield {
             val data =
               for (dir <- 0 to nWay - 1)
-                yield Seq(Some(dir.toDouble), Some(windMap(dir)(level).toDouble))
+                yield (dir.toLong, Some(windMap(dir)(level)))
 
             seqData(concLevels(level), data)
           }

@@ -88,9 +88,9 @@ class ExcelUtility @Inject()
           cell.setCellStyle(styles(col - 1))
 
           val pair = series.data(rowNo - 1)
-          for (v <- pair(1)) {
+          for (v <- pair._2) {
             val d = BigDecimal(v).setScale(precArray(col - 1), RoundingMode.HALF_EVEN)
-            cell.setCellValue(d.toFloat)
+            cell.setCellValue(d.doubleValue())
           }
         }
       }
@@ -110,15 +110,15 @@ class ExcelUtility @Inject()
 
           val pair = series.data(row - 1)
           if (col == 1) {
-            val dt = new DateTime(pair(0).get.toLong)
+            val dt = new DateTime(pair._1)
             if(!showSec)
               timeCell.setCellValue(dt.toString("YYYY/MM/dd HH:mm"))
             else
               timeCell.setCellValue(dt.toString("YYYY/MM/dd HH:mm:ss"))
           }
-          for (v <- pair(1)) {
+          for (v <- pair._2) {
             val d = BigDecimal(v).setScale(precArray(col - 1), RoundingMode.HALF_EVEN)
-            cell.setCellValue(d.toDouble)
+            cell.setCellValue(d.doubleValue())
           }
         }
       }
