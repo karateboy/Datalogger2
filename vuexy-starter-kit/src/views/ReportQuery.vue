@@ -166,6 +166,7 @@ export default Vue.extend({
         this.columns.push({
           key: `cellData[${i}].v`,
           label: `${report.columnNames[i]}`,
+          tdClass: this.cellDataTd(i),
           sortable: true,
         });
       }
@@ -178,6 +179,10 @@ export default Vue.extend({
       }
       this.rows = report.hourRows;
       this.statRows = report.statRows;
+    },
+    cellDataTd(i: number) {
+      return (_value: any, _key: any, item: any) =>
+        item.cellData[i].cellClassName;
     },
     exportExcel() {
       const title = this.columns.map(e => e.label);

@@ -112,7 +112,31 @@
         </b-row>
       </b-form>
       <br />
-      <b-table striped hover :fields="columns" :items="rows" show-empty>
+      <b-table
+        striped
+        hover
+        :fields="columns"
+        :items="rows"
+        show-empty
+        :per-page="15"
+        :current-page="currentPage"
+        responsive
+        sticky-header="800px"
+      >
+        <template #thead-top>
+          <b-tr>
+            <b-th></b-th>
+            <b-th></b-th>
+            <b-th
+              v-for="mt in form.monitorTypes"
+              :key="mt"
+              :colspan="form.monitors.length"
+              class="text-center"
+              style="text-transform: none"
+              >{{ getMtDesc(mt) }}</b-th
+            >
+          </b-tr>
+        </template>
         <template #cell(include)="data">
           <b-form-checkbox
             v-model="data.item.include"
@@ -120,6 +144,16 @@
           />
         </template>
       </b-table>
+      <b-pagination
+        v-model="currentPage"
+        :total-rows="rows.length"
+        :per-page="15"
+        first-text="⏮"
+        prev-text="⏪"
+        next-text="⏩"
+        last-text="⏭"
+        class="mt-4"
+      ></b-pagination>
     </b-card>
   </div>
 </template>
@@ -234,7 +268,7 @@ export default Vue.extend({
       const ret = await axios.get(url);
       this.setLoading({ loading: false });
       for (const row of ret.data.rows) {
-        row.date = moment(row.date).format('lll');
+        row.dateStr = moment(row.date).format('lll');
       }
 
       this.rows = ret.data.rows;
@@ -250,13 +284,15 @@ export default Vue.extend({
     getColumns() {
       const ret = [];
       ret.push({
-        key: 'date',
+        key: 'include',
+        label: '選擇',
+      });
+      ret.push({
+        key: 'dateStr',
         label: '時間',
-        stickyColumn: true,
       });
       let i = 0;
       for (const mt of this.form.monitorTypes) {
-        const mtCase = this.mtMap.get(mt);
         for (const m of this.form.monitors) {
           const mCase = this.mMap.get(m);
           ret.push({
@@ -301,7 +337,7 @@ export default Vue.extend({
         }
       });
     },
-    canInclude(item) {
+    canInclude(item: any) {
       for (const cellData of item.cellData) {
         if (cellData.v !== '-') return true;
       }
@@ -311,5 +347,3 @@ export default Vue.extend({
   },
 });
 </script>
-
-<style></style>
