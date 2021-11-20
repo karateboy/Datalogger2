@@ -108,8 +108,10 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfig,
           val start = new DateTime(dataStart).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
           val end = new DateTime(dataEnd).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
 
+
           for (current <- getPeriods(start, end, Period.hours(1)))
-            dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID, current, false, true)(monitorTypes)
+            dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID, current, false, true)(monitorTypeOp.mtvList)
+
           timer = context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, ParseReport)
         }
       }

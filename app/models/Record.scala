@@ -178,13 +178,31 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
 
   def upsertRecord(doc: RecordList)(colName: String) = {
     import org.mongodb.scala.model.ReplaceOptions
-
     val col = getCollection(colName)
-
     val f = col.replaceOne(Filters.equal("_id", RecordListID(doc.time, doc.monitor)), doc, ReplaceOptions().upsert(true)).toFuture()
     f.onFailure({
       case ex: Exception => Logger.error(ex.getMessage, ex)
     })
+    f
+  }
+
+  def updateRecord(record: RecordList)(colName: String) = {
+    import org.mongodb.scala.model.ReplaceOptions
+    val pullUpdates = {
+        val mtDataPullUpdates = record.mtDataList.map(mtr=>Updates.pullByFilter(Document("mtDataList"->Document("mtName"->mtr.mtName))))
+        val updates = Updates.combine(mtDataPullUpdates:_*)
+        UpdateOneModel(Filters.equal("_id", RecordListID(record.time, record.monitor)), updates)
+      }
+
+    val setUpdates = {
+      val mtDataUpdates = record.mtDataList.map(mtr=>Updates.addToSet("mtDataList", mtr))
+      val updates = Updates.combine(mtDataUpdates:_*)
+      UpdateOneModel(Filters.equal("_id", RecordListID(record.time, record.monitor)), updates)
+    }
+
+    val collection = getCollection(colName)
+    val f = collection.bulkWrite(Seq(pullUpdates, setUpdates), BulkWriteOptions().ordered(true)).toFuture()
+    f onFailure errorHandler
     f
   }
 

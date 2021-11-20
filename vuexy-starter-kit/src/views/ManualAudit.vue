@@ -128,18 +128,16 @@
 </style>
 <script lang="ts">
 import Vue from 'vue';
-import vSelect from 'vue-select';
 import DatePicker from 'vue2-datepicker';
 import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
 const Ripple = require('vue-ripple-directive');
-import { mapState, mapGetters } from 'vuex';
+import { mapState, mapGetters, mapActions, mapMutations } from 'vuex';
 import moment from 'moment';
 import axios from 'axios';
 
 export default Vue.extend({
   components: {
-    vSelect,
     DatePicker,
   },
   directives: {
@@ -154,7 +152,8 @@ export default Vue.extend({
         { txt: '分鐘資料', id: 'min' },
       ],
       form: {
-        monitorTypes: [],
+        monitors: Array<any>(),
+        monitorTypes: Array<any>(),
         dataType: 'hour',
         range,
       },
@@ -177,13 +176,20 @@ export default Vue.extend({
         },
       ],
       display: false,
-      columns: [],
-      rows: [],
+      columns: Array<any>(),
+      rows: Array<any>(),
+      currentPage: 1,
     };
   },
   computed: {
-    ...mapState('monitorTypes', ['monitorTypes', 'mtMap']),
+    ...mapState('monitorTypes', ['monitorTypes']),
+    ...mapState('monitors', ['monitors']),
     ...mapGetters('monitorTypes', ['mtMap']),
+    ...mapGetters('monitors', ['mMap']),
+    resultTitle(): string {
+      return `總共${this.rows.length}筆`;
+    },
+
     canAudit() {
       let auditCount = 0;
       for (const item of this.rows) {
@@ -200,49 +206,68 @@ export default Vue.extend({
       return true;
     },
   },
-  mounted() {
+  async mounted() {
+    await this.fetchMonitorTypes();
+    await this.fetchMonitors();
+
+    if (this.monitors.length !== 0) {
+      this.form.monitors.push(this.monitors[0]._id);
+    }
+
     if (this.monitorTypes.length !== 0) {
-      // eslint-disable-next-line no-underscore-dangle
-      this.form.monitorTypes.push(this.monitorTypes[0]._id);
+      this.form.monitorTypes.push('PM25');
     }
   },
   methods: {
+    ...mapActions('monitorTypes', ['fetchMonitorTypes']),
+    ...mapActions('monitors', ['fetchMonitors']),
+    ...mapMutations(['setLoading']),
     async query() {
+      this.setLoading({ loading: true });
       this.display = true;
       this.rows = [];
       this.columns = this.getColumns();
-      const url = `/HistoryReport/${this.form.monitorTypes.join(':')}/${
-        this.form.dataType
-      }/${this.form.range[0]}/${this.form.range[1]}`;
+      const monitors = this.form.monitors.join(':');
+      const monitorTypes = this.form.monitorTypes.join(':');
+      const url = `/HistoryReport/${monitors}/${monitorTypes}/${this.form.dataType}/${this.form.range[0]}/${this.form.range[1]}`;
+
       const ret = await axios.get(url);
+      this.setLoading({ loading: false });
+      for (const row of ret.data.rows) {
+        row.date = moment(row.date).format('lll');
+      }
+
       this.rows = ret.data.rows;
     },
-    cellDataTd(i) {
-      return (_value, _key, item) => item.cellData[i].cellClassName;
+    cellDataTd(i: number) {
+      return (_value: any, _key: any, item: any) =>
+        item.cellData[i].cellClassName;
     },
-    dateFormatter(value) {
-      return moment(value).format('lll');
+    getMtDesc(mt: string) {
+      const mtCase = this.mtMap.get(mt);
+      return `${mtCase.desp}(${mtCase.unit})`;
     },
     getColumns() {
-      const ret = [
-        {
-          key: 'include',
-          label: '',
-        },
-        {
-          key: 'date',
-          label: '時間',
-          formatter: this.dateFormatter,
-        },
-      ];
-      for (let i = 0; i < this.form.monitorTypes.length; i += 1) {
-        const mtCase = this.mtMap.get(this.form.monitorTypes[i]);
-        ret.push({
-          key: `cellData[${i}].v`,
-          label: `${mtCase.desp}(${mtCase.unit})`,
-          tdClass: this.cellDataTd(i),
-        });
+      const ret = [];
+      ret.push({
+        key: 'date',
+        label: '時間',
+        stickyColumn: true,
+      });
+      let i = 0;
+      for (const mt of this.form.monitorTypes) {
+        const mtCase = this.mtMap.get(mt);
+        for (const m of this.form.monitors) {
+          const mCase = this.mMap.get(m);
+          ret.push({
+            key: `cellData[${i}].v`,
+            label: `${mCase.desc}`,
+            tdClass: this.cellDataTd(i),
+          });
+          i++;
+        }
       }
+
       return ret;
     },
     audit() {
