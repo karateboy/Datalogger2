@@ -263,7 +263,10 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     else
       mtvList = mtvList.:+(mt._id)
 
-    collection.insertOne(mt).toFuture()
+    collection.insertOne(mt).toFuture().andThen({
+      case _=>
+        refreshMtv
+    })
   }
 
   def refreshMtv: (List[String], List[String], Map[String, MonitorType]) = {

@@ -55,7 +55,7 @@ object SpectrumReader {
       })
 
       val dirs = allFileAndDirs.filter(p => p.isDirectory())
-      val files = allFileAndDirs.filter(p => !p.isDirectory())
+      val files = allFileAndDirs.filter(p => !p.isDirectory() && p.getName.endsWith("csv"))
       if (dirs.isEmpty)
         files
       else {
@@ -83,7 +83,13 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfig,
     case ParseReport =>
       Future {
         blocking {
-          processInputPath()
+          try{
+            processInputPath()
+          }catch{
+            case ex:Throwable =>
+              Logger.error("faile to process spectrum folder", ex)
+          }
+
         }
       }
   }

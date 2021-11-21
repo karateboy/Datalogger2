@@ -118,7 +118,7 @@
       </b-form>
     </b-card>
     <b-card v-show="display">
-      <div id="chart_container" />
+      <b-card-body><div id="chart_container" /></b-card-body>
     </b-card>
   </div>
 </template>

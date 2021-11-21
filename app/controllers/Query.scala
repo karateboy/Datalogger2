@@ -216,50 +216,6 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
     val timeList = getPeriods(start, end, period)
     val timeSeq = timeList
 
-    def getSeries() = {
-
-      val monitorReportPairs =
-        for {
-          monitor <- monitors
-        } yield {
-          val pair =
-            for {
-              mt <- monitorTypes
-              reportMap = getPeriodReportMap(monitor, mt, tabType, period, statusFilter)(start, end)
-            } yield mt -> reportMap
-          monitor -> pair.toMap
-        }
-
-      val monitorReportMap = monitorReportPairs.toMap
-      for {
-        m <- monitors
-        mt <- monitorTypes
-        valueMap = monitorReportMap(m)(mt)
-      } yield {
-        val timeData: List[(Long, Option[Double])] =
-          if (showActual) {
-            timeSeq.map { time =>
-              if (valueMap.contains(time))
-                (time.getMillis, Some(valueMap(time)))
-              else
-                (time.getMillis, None)
-            }
-          } else {
-            for (time <- valueMap.keys.toList.sorted) yield {
-              (time.getMillis, Some(valueMap(time)))
-            }
-          }
-
-        if (monitorTypes.length > 1) {
-          seqData(s"${monitorOp.map(m).desc}_${monitorTypeOp.map(mt).desp}", timeData)
-        } else {
-          seqData(s"${monitorOp.map(m).desc}_${monitorTypeOp.map(mt).desp}", timeData)
-        }
-      }
-    }
-
-    val series = getSeries()
-
     val downloadFileName = {
       val startName = start.toString("YYMMdd")
       val mtNames = monitorTypes.map {
@@ -311,6 +267,62 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
         None
     }
 
+    val yAxisGroup: Map[String, Seq[(String, Option[Seq[AxisLine]])]] =monitorTypes.map(mt=>{
+        (monitorTypeOp.map(mt).unit, getAxisLines(mt))
+      }).groupBy(_._1)
+    val yAxisGroupMap = yAxisGroup map {
+      kv=>
+        val lines: Seq[AxisLine] = kv._2.map(_._2).flatten.flatten
+        if(lines.nonEmpty)
+          kv._1->YAxis(None, AxisTitle(Some(Some(s"${kv._1}"))), Some(lines))
+        else
+          kv._1->YAxis(None, AxisTitle(Some(Some(s"${kv._1}"))), None)
+    }
+    val yAxisIndexList = yAxisGroupMap.toList.zipWithIndex
+    val yAxisUnitMap = yAxisIndexList.map(kv=> kv._1._1->kv._2).toMap
+    val yAxisList =yAxisIndexList.map(_._1._2)
+    def getSeries() = {
+
+      val monitorReportPairs =
+        for {
+          monitor <- monitors
+        } yield {
+          val pair =
+            for {
+              mt <- monitorTypes
+              reportMap = getPeriodReportMap(monitor, mt, tabType, period, statusFilter)(start, end)
+            } yield mt -> reportMap
+          monitor -> pair.toMap
+        }
+
+      val monitorReportMap = monitorReportPairs.toMap
+      for {
+        m <- monitors
+        mt <- monitorTypes
+        valueMap = monitorReportMap(m)(mt)
+      } yield {
+        val timeData: List[(Long, Option[Double])] =
+          if (showActual) {
+            timeSeq.map { time =>
+              if (valueMap.contains(time))
+                (time.getMillis, Some(valueMap(time)))
+              else
+                (time.getMillis, None)
+            }
+          } else {
+            for (time <- valueMap.keys.toList.sorted) yield {
+              (time.getMillis, Some(valueMap(time)))
+            }
+          }
+
+        seqData(name=s"${monitorOp.map(m).desc}_${monitorTypeOp.map(mt).desp}",
+          data=timeData, yAxis = yAxisUnitMap(monitorTypeOp.map(mt).unit),
+          tooltip = Tooltip(monitorTypeOp.map(mt).prec))
+      }
+    }
+
+    val series = getSeries()
+
     val xAxis = {
       val duration = new Duration(start, end)
       if (duration.getStandardDays > 2)
@@ -333,14 +345,11 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           series,
           Some(downloadFileName))
       } else {
-        val yAxis =
-          Seq(YAxis(None, AxisTitle(Some(None)), None))
-
         HighchartData(
           Map("type" -> "line"),
           Map("text" -> title),
           xAxis,
-          yAxis,
+          yAxisList,
           series,
           Some(downloadFileName))
       }
