@@ -756,11 +756,11 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     try {
       duoList.foreach(inst =>{
         if(inst.active) {
-          instrumentOp.deactivate(inst._id)
           dataCollectManagerOp.stopCollect(inst._id)
+          instrumentOp.deactivate(inst._id)
         } else
           instrumentOp.activate(inst._id)
-        dataCollectManagerOp.startCollect(inst._id)
+          dataCollectManagerOp.startCollect(inst._id)
       })
     } catch {
       case ex: Throwable =>
