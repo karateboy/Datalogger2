@@ -3,6 +3,7 @@ package models
 import akka.actor.{Actor, ActorSystem}
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
+import play.api.Logger
 
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -17,17 +18,17 @@ object Ma350Drv extends AbstractDrv(_id = "MA350", desp = "microAeth MA350",
     InstrumentStatusType(key = "Green BCc", addr = 3, desc = "Green BCc", ""),
     InstrumentStatusType(key = "Red BCc", addr = 4, desc = "Red BCc", ""),
     InstrumentStatusType(key = "IR BCc", addr = 5, desc = "IR BCc", ""),
-    InstrumentStatusType(key = "tape position", addr = 7, desc = "tape position", ""),
-    InstrumentStatusType(key = "flow total", addr = 6, desc = "flow total", "")
+    InstrumentStatusType(key = "flow total", addr = 6, desc = "flow total", ""),
+    InstrumentStatusType(key = "tape position", addr = 7, desc = "tape position", "")
   )
 
   val map: Map[Int, InstrumentStatusType] = predefinedIST.map(p=>p.addr->p).toMap
 
 
-  val dataAddress = List(4)
+  val dataAddress = List(5)
 
   override def getMonitorTypes(param: String): List[String] = {
-    List(predefinedIST(4).key)
+    predefinedIST.filter(p=>dataAddress.contains(p.addr)).map(_.key)
   }
 
   override def verifyParam(json: String) = json
@@ -70,26 +71,35 @@ class Ma350Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
   override def readReg(statusTypeList: List[InstrumentStatusType]): Future[Option[ModelRegValue2]] =
     Future {
       blocking {
-        val ret =
-          for (serial <- serialOpt) yield {
-            val cmd = HessenProtocol.dataQuery()
-            serial.port.writeBytes(cmd)
-            val replies = serial.getMessageWithTimeout(serial.getLine)(timeout = 2)
-            val inputs =
-              for (reply <- replies) yield {
-                val measureList = HessenProtocol.decode(reply)
-                for {
-                  (measure, addr) <- measureList.zipWithIndex
-                } yield{
-                  val ist = Ma350Drv.map(addr)
-                  (ist, measure.value)
+        try{
+          val ret =
+            for (serial <- serialOpt) yield {
+              val cmd = HessenProtocol.dataQuery()
+              serial.port.writeBytes(cmd)
+              val replies = serial.getMessageByLfWithTimeout(timeout = 2)
+              Logger.info(s"replies size=${replies.size}")
+              Logger.info(replies.toString())
+              val inputs =
+                for (reply <- replies.filter(_.startsWith("MD"))) yield {
+                  val measureList = HessenProtocol.decode(reply)
+                  for {
+                    (measure, addr) <- measureList.zipWithIndex
+                  } yield{
+                    val ist = Ma350Drv.map(addr+1)
+                    (ist, measure.value)
+                  }
                 }
-              }
-            Some(ModelRegValue2(inputRegs = inputs.flatten,
-              modeRegs = List.empty[(InstrumentStatusType, Boolean)],
-              warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
-          }
-        ret.flatten
+              Logger.info(s"MA350=${inputs.flatten}")
+              Some(ModelRegValue2(inputRegs = inputs.flatten,
+                modeRegs = List.empty[(InstrumentStatusType, Boolean)],
+                warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
+            }
+          ret.flatten
+        }catch{
+          case ex:Throwable=>
+            Logger.error("MA350 readReg error", ex)
+            None
+        }
       }
     }
 

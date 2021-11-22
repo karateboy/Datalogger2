@@ -205,7 +205,7 @@ class VerewaF701Collector @Inject()
           val cmd = HessenProtocol.dataQuery
           for(serial<-serialOpt){
             serial.port.writeBytes(cmd)
-            val replies = serial.getMessageWithTimeout(serial.getLine)(timeout = 3)
+            val replies = serial.getMessageByCrWithTimeout(serial.getLine)(timeout = 3)
             for (reply <- replies) {
               val measureList = HessenProtocol.decode(reply)
               for {

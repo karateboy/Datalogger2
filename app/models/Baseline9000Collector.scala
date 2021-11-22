@@ -146,7 +146,7 @@ class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp:
     Future {
       blocking {
         for (serial <- serialCommOpt) {
-          val lines = serial.getMessageWithTimeout(serial.getLine)(timeout = 3)
+          val lines = serial.getMessageByCrWithTimeout(serial.getLine)(timeout = 3)
           for (line <- lines) {
             val parts = line.split('\t')
             if (parts.length >= 4) {

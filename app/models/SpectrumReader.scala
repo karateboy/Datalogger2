@@ -3,7 +3,8 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports.{DateTime, Period}
 import com.github.tototoshi.csv.CSVReader
-import models.ModelHelper.getPeriods
+import models.ModelHelper.{errorHandler, getPeriods}
+import models.SpectrumReader.getLastModified
 import play.api._
 
 import java.io.File
@@ -51,11 +52,12 @@ object SpectrumReader {
     val path = new java.io.File(files_path)
     if (path.exists() && path.isDirectory()) {
       val allFileAndDirs = new java.io.File(files_path).listFiles().toList.filter(f => {
-        f != null && getLastModified(f).toInstant.isAfter(lastParseTime)
+        f != null
       })
 
       val dirs = allFileAndDirs.filter(p => p.isDirectory())
-      val files = allFileAndDirs.filter(p => !p.isDirectory() && p.getName.endsWith("csv"))
+      val files = allFileAndDirs.filter(p => !p.isDirectory() && p.getName.endsWith("csv")
+        && getLastModified(p).toInstant.isAfter(lastParseTime))
       if (dirs.isEmpty)
         files
       else {
@@ -87,9 +89,8 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfig,
             processInputPath()
           }catch{
             case ex:Throwable =>
-              Logger.error("faile to process spectrum folder", ex)
+              Logger.error("fail to process spectrum folder", ex)
           }
-
         }
       }
   }
@@ -102,13 +103,13 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfig,
         for (dir <- files) yield
           csvFileParser(dir)
 
-      for (resultOptList <- Future.sequence(resultFutureList)) {
+      val f = Future.sequence(resultFutureList)
+      for (resultOptList <- f) {
         val resultList: Seq[ParseResult] = resultOptList.flatten
         val lastModifiedList = resultList.map(_.fileLastModified)
         if (lastModifiedList.nonEmpty) {
           val max = lastModifiedList.max
           sysConfig.setSpectrumLastParseTime(max.plus(Duration.ofSeconds(1)))
-          val monitorTypes = resultList.map(_.mtName).toSet.toList
           val dataStart = Date.from(resultList.map(_.dataStart).min.atZone(ZoneId.systemDefault()).toInstant)
           val dataEnd = Date.from(resultList.map(_.dataEnd).max.atZone(ZoneId.systemDefault()).toInstant)
           val start = new DateTime(dataStart).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
@@ -117,10 +118,13 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfig,
 
           for (current <- getPeriods(start, end, Period.hours(1)))
             dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID, current, false, true)(monitorTypeOp.mtvList)
-
-          timer = context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, ParseReport)
         }
       }
+      f onFailure errorHandler
+      f onComplete({
+        case _ =>
+          timer = context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, ParseReport)
+      })
     }
   }
 
@@ -129,7 +133,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfig,
 
     val mtName = s"${tokens(0)}${config.postfix}"
     monitorTypeOp.ensureMonitorType(mtName)
-    Logger.debug(s"SpectrumReader import ${file.getName}")
+
     val reader = CSVReader.open(file)
     var dataBegin = Instant.MAX
     var dataEnd = Instant.MIN
@@ -144,6 +148,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfig,
           Some((dt, value))
         } catch {
           case ex: Throwable =>
+            Logger.warn("failed to parse spectrum file", ex)
             None
         }
     val minAvg: Map[LocalDateTime, Double] = values.flatten.toList.groupBy(t => t._1.withSecond(0).withNano(0))
@@ -170,7 +175,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfig,
         }
 
     val docs = docOpts.flatten.toList
-    Logger.debug(s"total ${docs.size} records")
+
     reader.close()
     if (docs.nonEmpty) {
       for (ret <- recordOp.upsertManyRecords(recordOp.MinCollection)(docs)) yield

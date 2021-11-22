@@ -64,7 +64,7 @@ class Tca08Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
             val cmd = "\u0002DA\u0003"
             val bytes = cmd.getBytes("UTF-8")
             serial.port.writeBytes(bytes)
-            val resp = serial.getMessageWithTimeout(serial.getMessageUntilEtx)(1)
+            val resp = serial.getMessageByCrWithTimeout(serial.getMessageUntilEtx)(1)
             if (resp.nonEmpty) {
               val tokens = resp(0).split(" ")
               val inputs =
