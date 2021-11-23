@@ -3,10 +3,8 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
-import com.serotonin.modbus4j.locator.BaseLocator
 import models.AkDrv.{OpenCom, ReadRegister}
-import models.ModelHelper._
-import models.Protocol.{ProtocolParam, serial}
+import models.Protocol.ProtocolParam
 import play.api._
 
 import javax.inject._
@@ -43,7 +41,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
       try {
         val cmd = AkProtocol.AskRegCmd(deviceConfig.stationNo, deviceConfig.channelNum, addr).getCmd
         comm.os.write(cmd)
-        comm.getAkResponse(1)
+        comm.getAkResponse()
         true
       } catch {
         case ex: Throwable =>
@@ -84,19 +82,19 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
       if (st.key.startsWith(InputKey)) {
         val cmd = AkProtocol.AskRegCmd(deviceConfig.stationNo, deviceConfig.channelNum, st.addr).getCmd
         comm.os.write(cmd)
-        val ret: AkProtocol.AkResponse = AkProtocol.handleAkResponse(comm.getAkResponse(1))
+        val ret: AkProtocol.AkResponse = AkProtocol.handleAkResponse(comm.getAkResponse())
         if(ret.success)
           inputs = inputs:+((st, ret.value.toFloat))
       } else if (st.key.startsWith(HoldingKey)) {
         val cmd = AkProtocol.AskRegCmd(deviceConfig.stationNo, deviceConfig.channelNum, st.addr).getCmd
         comm.os.write(cmd)
-        val ret: AkProtocol.AkResponse = AkProtocol.handleAkResponse(comm.getAkResponse(1))
+        val ret: AkProtocol.AkResponse = AkProtocol.handleAkResponse(comm.getAkResponse())
         if(ret.success)
           modes = modes:+((st, ret.value.toBoolean))
       } else if (st.key.startsWith(ModeKey) || st.key.startsWith(WarnKey)) {
         val cmd = AkProtocol.AskRegCmd(deviceConfig.stationNo, deviceConfig.channelNum, st.addr).getCmd
         comm.os.write(cmd)
-        val ret: AkProtocol.AkResponse = AkProtocol.handleAkResponse(comm.getAkResponse(1))
+        val ret: AkProtocol.AkResponse = AkProtocol.handleAkResponse(comm.getAkResponse())
         if(ret.success)
           warnings = warnings:+((st, ret.value.toBoolean))
       } else {
@@ -117,7 +115,14 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
       blocking {
         try {
           for(instrumentStatusTypes <- instrumentStatusTypesOpt){
-            val regValues = readReg(instrumentStatusTypes)
+            val regValues =
+              if(needStatus)
+                readReg(instrumentStatusTypes)
+              else {
+                val dataRegAddressList = modelReg.dataRegs.map(_.address)
+                val readList = instrumentStatusTypes.filter(ist => dataRegAddressList.contains(ist.addr))
+                readReg(readList)
+              }
             regValueReporter(regValues)(recordCalibration)
           }
           connected = true
@@ -205,6 +210,8 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
     nextTime
   }
 
+  def needStatus: Boolean = DateTime.now() > nextLoggingStatusTime
+
   def regValueReporter(regValue: AkModelRegValue)(recordCalibration: Boolean) = {
     for (report <- reportData(regValue)) {
       context.parent ! report
@@ -246,8 +253,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
     }
 
     //Log Instrument state
-    if (DateTime.now() > nextLoggingStatusTime) {
-      //Logger.debug("Log instrument state")
+    if (needStatus) {
       try {
         logInstrumentStatus(regValue)
       } catch {

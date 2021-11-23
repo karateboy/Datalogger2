@@ -77,8 +77,6 @@ class Ma350Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
               val cmd = HessenProtocol.dataQuery()
               serial.port.writeBytes(cmd)
               val replies = serial.getMessageByLfWithTimeout(timeout = 2)
-              Logger.info(s"replies size=${replies.size}")
-              Logger.info(replies.toString())
               val inputs =
                 for (reply <- replies.filter(_.startsWith("MD"))) yield {
                   val measureList = HessenProtocol.decode(reply)
@@ -89,7 +87,6 @@ class Ma350Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
                     (ist, measure.value)
                   }
                 }
-              Logger.info(s"MA350=${inputs.flatten}")
               Some(ModelRegValue2(inputRegs = inputs.flatten,
                 modeRegs = List.empty[(InstrumentStatusType, Boolean)],
                 warnRegs = List.empty[(InstrumentStatusType, Boolean)]))

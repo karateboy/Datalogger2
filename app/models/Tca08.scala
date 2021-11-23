@@ -3,6 +3,7 @@ package models
 import akka.actor.{Actor, ActorSystem}
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
+import org.joda.time.Period
 import play.api.Logger
 
 import javax.inject.Inject
@@ -41,6 +42,8 @@ object Tca08Drv extends AbstractDrv(_id = "tca08", desp = "Total Carbon Analyzer
     val config = DeviceConfig.default
     f2(id, desc = super.description, config, protocol)
   }
+
+  override def timeAdjustment = Period.minutes(-50)
 }
 
 class Tca08Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
@@ -64,7 +67,7 @@ class Tca08Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
             val cmd = "\u0002DA\u0003"
             val bytes = cmd.getBytes("UTF-8")
             serial.port.writeBytes(bytes)
-            val resp = serial.getMessageByCrWithTimeout(serial.getMessageUntilEtx)(1)
+            val resp = serial.getMessageByCrWithTimeout(1)
             if (resp.nonEmpty) {
               val tokens = resp(0).split(" ")
               val inputs =

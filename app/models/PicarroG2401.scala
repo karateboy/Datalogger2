@@ -86,7 +86,7 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
             val cmd = "_Meas_GetConc\r"
             val bytes = cmd.getBytes("UTF-8")
             serial.port.writeBytes(bytes)
-            val resp = serial.getMessageUntilCR()
+            val resp = serial.getMessageUntilCrWithTimeout(2)
             if (resp.nonEmpty) {
               val tokens = resp(0).split(";")
               if (tokens.length != predefinedIST.length)
@@ -136,13 +136,13 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
           serial.port.writeBytes(cmd.getBytes)
         }
 
-        val resp = serial.getMessageUntilCR(1)
+        val resp = serial.getMessageUntilCrWithTimeout(2)
         if(!resp.contains("OK"))
           Logger.error(resp(0))
       } else {
         val cmd = "_valves_seq_setstate 0\r"
         serial.port.writeBytes(cmd.getBytes)
-        val resp = serial.getMessageUntilCR(1)
+        val resp = serial.getMessageUntilCrWithTimeout(2)
         if(!resp.contains("OK"))
           Logger.error(resp(0))
       }

@@ -58,15 +58,8 @@ class Adam4068Collector @Inject()
       {
         // Read response
         import com.github.nscala_time.time.Imports._
-        var strList = comm.getLine
-        val startTime = DateTime.now
-        while (strList.length == 0) {
-          val elapsedTime = new Duration(startTime, DateTime.now)
-          if (elapsedTime.getStandardSeconds > 1) {
-            throw new Exception("Read timeout!")
-          }
-          strList = comm.getLine
-        }
+        val strList = comm.getLineWithTimeout(1)
+
       }
 
     case EvtOperationOverThreshold =>

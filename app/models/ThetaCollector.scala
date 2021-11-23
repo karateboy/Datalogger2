@@ -156,7 +156,7 @@ class ThetaCollector @Inject()
         blocking {
           try {
             serial.os.write("#01\r\n".getBytes)
-            val lines = serial.getLine
+            val lines = serial.getLineWithTimeout(2)
             for (line <- lines) {
               val target = line.dropWhile(_ == ">").drop(1)
               val numArray = target.split(",")
