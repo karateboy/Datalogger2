@@ -135,7 +135,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
             connected = false
         } finally {
           import scala.concurrent.duration._
-          timerOpt = Some(system.scheduler.scheduleOnce(Duration(2, SECONDS), self, ReadRegister))
+          timerOpt = Some(system.scheduler.scheduleOnce(Duration(5, SECONDS), self, ReadRegister))
         }
       }
     }

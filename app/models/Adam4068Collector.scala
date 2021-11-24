@@ -1,4 +1,5 @@
 package models
+
 import akka.actor._
 import com.google.inject.assistedinject.Assisted
 import play.api._
@@ -7,12 +8,12 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 object Adam4068Collector {
+
   import Adam4068._
   import Protocol.ProtocolParam
 
-  case object StopEvtOperationOverThreshold
-
   var count = 0
+
   def start(id: String, protocolParam: ProtocolParam, param: Adam4068Param)(implicit context: ActorContext) = {
     val prop = Props(classOf[Adam4068Collector], id, protocolParam, param)
     val collector = context.actorOf(prop, name = "Adam4068_" + count)
@@ -21,8 +22,10 @@ object Adam4068Collector {
   }
 
   trait Factory {
-    def apply(id: String, protocol: ProtocolParam, param:  Adam4068Param): Actor
+    def apply(id: String, protocol: ProtocolParam, param: Adam4068Param): Actor
   }
+
+  case object StopEvtOperationOverThreshold
 
 }
 
@@ -32,7 +35,7 @@ import models.Protocol.ProtocolParam
 import javax.inject._
 
 class Adam4068Collector @Inject()
-(@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: Adam4068Param, system:ActorSystem) extends Actor with ActorLogging {
+(@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: Adam4068Param, system: ActorSystem) extends Actor with ActorLogging {
   var comm: SerialComm = SerialComm.open(protocolParam.comPort.get)
   var handleEvtOperation = false
 
@@ -54,13 +57,7 @@ class Adam4068Collector @Inject()
         s"#${param.addr}0000\r"
 
       os.write(writeCmd.getBytes)
-
-      {
-        // Read response
-        import com.github.nscala_time.time.Imports._
-        val strList = comm.getLineWithTimeout(1)
-
-      }
+      val strList = comm.getLineWithTimeout(2)
 
     case EvtOperationOverThreshold =>
       if (handleEvtOperation == false) {

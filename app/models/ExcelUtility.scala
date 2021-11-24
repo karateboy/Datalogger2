@@ -88,7 +88,7 @@ class ExcelUtility @Inject()
           cell.setCellStyle(styles(col - 1))
 
           val pair = series.data(rowNo - 1)
-          for (v <- pair._2) {
+          for (v <- pair._2 if !v.isNaN) {
             val d = BigDecimal(v).setScale(precArray(col - 1), RoundingMode.HALF_EVEN)
             cell.setCellValue(d.doubleValue())
           }
@@ -116,7 +116,7 @@ class ExcelUtility @Inject()
             else
               timeCell.setCellValue(dt.toString("YYYY/MM/dd HH:mm:ss"))
           }
-          for (v <- pair._2) {
+          for (v <- pair._2 if !v.isNaN) {
             val d = BigDecimal(v).setScale(precArray(col - 1), RoundingMode.HALF_EVEN)
             cell.setCellValue(d.doubleValue())
           }

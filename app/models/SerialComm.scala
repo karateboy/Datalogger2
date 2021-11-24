@@ -63,7 +63,7 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     splitLine(readBuffer)
   }
 
-  def getLineWithTimeout: Int => List[String] = handleWithTimeout(getLine)(_)
+  def getLineWithTimeout(timeout:Int): List[String] = handleWithTimeout(getLine)(timeout)
 
   private def getLine3(): List[String] = {
     def splitLine(buf: Array[Byte]): List[String] = {
@@ -112,7 +112,7 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     new String(a)
   }
 
-  def getMessageUntilEtx(): List[String] = {
+  private def getMessageUntilEtx(): List[String] = {
     def splitMessage(buf: Array[Byte]): List[String] = {
       val idx = buf.indexOf(3.toByte)
       if (idx == -1) {

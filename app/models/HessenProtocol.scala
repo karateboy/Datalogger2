@@ -28,11 +28,11 @@ object HessenProtocol {
 
   case class Measure(channel: Int, value: Double, status: Byte, error: Byte, serial: String, free: String)
   def decode(reply: String) = {
-    Logger.info(s"HessenProtocol decode input=${reply}")
+    Logger.debug(s"HessenProtocol decode input=${reply}")
     val params = reply.split(" ")
-    Logger.info(s"params=${params.length}")
+    Logger.debug(s"params=${params.length}")
     val nMeasure = params(0).substring(2).toInt
-    Logger.info(s"nMeasure=${nMeasure}")
+    Logger.debug(s"nMeasure=${nMeasure}")
     for {
       idx <- 0 to nMeasure-1 if (idx*6+1) < params.length
       measureOffset = idx * 6
