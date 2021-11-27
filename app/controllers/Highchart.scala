@@ -21,7 +21,7 @@ object Highchart {
       gridLineWidth:Option[Int]=None, gridLineColor:Option[String]=None)
       
   case class seqData(name: String, data: Seq[(Long, Option[Double])], yAxis:Int=0,
-                     chartType:Option[String]=None, tooltip: Tooltip= Tooltip(2))
+                     chartType:Option[String]=None, tooltip: Tooltip= Tooltip(2), statusList: Seq[Option[String]] =Seq.empty[Option[String]])
   case class HighchartData(chart: Map[String, String],
                            title: Map[String, String],
                            xAxis: XAxis,
@@ -61,7 +61,8 @@ object Highchart {
     (__ \ "data").write[Seq[(Long, Option[Double])]] and
     (__ \ "yAxis").write[Int] and
     (__ \ "type").write[Option[String]] and
-      (__ \ "tooltip").write[Tooltip]
+      (__ \ "tooltip").write[Tooltip] and
+      (__ \ "statusList").write[Seq[Option[String]]]
   )(unlift(seqData.unapply))
   implicit val hcWrite = Json.writes[HighchartData]
   implicit val feqWrite = Json.writes[FrequencyTab]

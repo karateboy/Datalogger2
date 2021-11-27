@@ -8,32 +8,22 @@ import scala.concurrent.ExecutionContext.Implicits.global
 object StatusType extends Enumeration {
   val Internal = Value("0")
   val Auto = Value("A")
-  val Manual = Value("M")
-  def map = Map(Internal -> "系統", Auto -> "自動註記", Manual -> "人工註記")
+  val ManualInvalid = Value("M")
+  val ManualValid = Value("m")
+  def map = Map(Internal -> "系統",
+    Auto -> "自動註記",
+    ManualInvalid -> "人工註記:無效資料",
+    ManualValid -> "人工註記:有效資料"
+  )
 }
 
 case class MonitorStatus(_id: String, desp: String) {
-  def getTagInfo(tag: String) = {
-    val id = tag.substring(1)
-    val t = tag.charAt(0)
-    if (t == '0')
-      TagInfo(StatusType.Internal, None, id)
-    else if (t == 'm' || t == 'M') {
-      TagInfo(StatusType.Manual, Some(t), id)
-    } else if (t.isLetter)
-      TagInfo(StatusType.Auto, Some(t), id)
-    else
-      throw new Exception("Unknown type:" + t)
-  }
-
-  val info = getTagInfo(_id)
-
-
+  val info: TagInfo = MonitorStatus.getTagInfo(_id)
 }
 
 case class TagInfo(statusType: StatusType.Value, auditRule: Option[Char], id: String) {
   override def toString = {
-    if ((statusType == StatusType.Auto || statusType == StatusType.Manual)
+    if ((statusType != StatusType.Internal)
       && auditRule.isDefined)
       auditRule.get + id
     else
@@ -56,14 +46,19 @@ object MonitorStatus {
   def getTagInfo(tag: String) = {
     val id = tag.substring(1)
     val t = tag.charAt(0)
-    if (t == '0')
-      TagInfo(StatusType.Internal, None, id)
-    else if (t == 'm' || t == 'M') {
-      TagInfo(StatusType.Manual, Some(t), id)
-    } else if (t.isLetter)
-      TagInfo(StatusType.Auto, Some(t), id)
-    else
-      throw new Exception("Unknown type:" + t)
+    t match {
+      case '0' =>
+        TagInfo(StatusType.Internal, None, id)
+      case 'm' =>
+        TagInfo(StatusType.ManualValid, Some(t), id)
+      case 'M' =>
+        TagInfo(StatusType.ManualInvalid, Some(t), id)
+      case l =>
+        if (t.isLetter)
+          TagInfo(StatusType.Auto, Some(t), id)
+        else
+          throw new Exception("Unknown type:" + t)
+    }
   }
 
   def getCssClassStr(tag: String, overInternal: Boolean = false, overLaw: Boolean = false) = {
@@ -71,7 +66,6 @@ object MonitorStatus {
     val statClass =
       info.statusType match {
         case StatusType.Internal =>
-        {
           if (isValid(tag))
             ""
           else if (isCalbration(tag))
@@ -80,10 +74,12 @@ object MonitorStatus {
             "maintain_status"
           else
             "abnormal_status"
-        }
+
         case StatusType.Auto =>
           "auto_audit_status"
-        case StatusType.Manual =>
+        case StatusType.ManualInvalid =>
+          "manual_audit_status"
+        case StatusType.ManualValid =>
           "manual_audit_status"
       }
 
@@ -118,11 +114,10 @@ object MonitorStatus {
           true
         else
           false
-      case StatusType.Manual =>
-        if (tagInfo.auditRule.isDefined && tagInfo.auditRule.get.isLower)
+      case StatusType.ManualValid =>
           true
-        else
-          false
+      case StatusType.ManualInvalid =>
+        false
     }
   }
 
@@ -218,8 +213,10 @@ class MonitorStatusOp @Inject()(mongoDB: MongoDB){
         case StatusType.Auto =>
           val ruleId = tagInfo.auditRule.get.toLower
           MonitorStatus(key, s"自動註記:${ruleId}")
-        case StatusType.Manual =>
-          MonitorStatus(key, "人工註記")
+        case StatusType.ManualInvalid =>
+          MonitorStatus(key, StatusType.map(StatusType.ManualInvalid))
+        case StatusType.ManualValid =>
+          MonitorStatus(key, StatusType.map(StatusType.ManualValid))
         case StatusType.Internal =>
           MonitorStatus(key, "未知:" + key)
       }

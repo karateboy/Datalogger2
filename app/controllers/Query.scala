@@ -1,5 +1,6 @@
 package controllers
 
+import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import controllers.Highchart._
 import models.ModelHelper.windAvg
@@ -267,32 +268,28 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
         None
     }
 
-    val yAxisGroup: Map[String, Seq[(String, Option[Seq[AxisLine]])]] =monitorTypes.map(mt=>{
-        (monitorTypeOp.map(mt).unit, getAxisLines(mt))
-      }).groupBy(_._1)
+    val yAxisGroup: Map[String, Seq[(String, Option[Seq[AxisLine]])]] = monitorTypes.map(mt => {
+      (monitorTypeOp.map(mt).unit, getAxisLines(mt))
+    }).groupBy(_._1)
     val yAxisGroupMap = yAxisGroup map {
-      kv=>
+      kv =>
         val lines: Seq[AxisLine] = kv._2.map(_._2).flatten.flatten
-        if(lines.nonEmpty)
-          kv._1->YAxis(None, AxisTitle(Some(Some(s"${kv._1}"))), Some(lines))
+        if (lines.nonEmpty)
+          kv._1 -> YAxis(None, AxisTitle(Some(Some(s"${kv._1}"))), Some(lines))
         else
-          kv._1->YAxis(None, AxisTitle(Some(Some(s"${kv._1}"))), None)
+          kv._1 -> YAxis(None, AxisTitle(Some(Some(s"${kv._1}"))), None)
     }
     val yAxisIndexList = yAxisGroupMap.toList.zipWithIndex
-    val yAxisUnitMap = yAxisIndexList.map(kv=> kv._1._1->kv._2).toMap
-    val yAxisList =yAxisIndexList.map(_._1._2)
+    val yAxisUnitMap = yAxisIndexList.map(kv => kv._1._1 -> kv._2).toMap
+    val yAxisList = yAxisIndexList.map(_._1._2)
+
     def getSeries() = {
 
       val monitorReportPairs =
         for {
           monitor <- monitors
         } yield {
-          val pair =
-            for {
-              mt <- monitorTypes
-              reportMap = getPeriodReportMap(monitor, mt, tabType, period, statusFilter)(start, end)
-            } yield mt -> reportMap
-          monitor -> pair.toMap
+          monitor -> getPeriodReportMap(monitor, monitorTypes, tabType, period, statusFilter)(start, end)
         }
 
       val monitorReportMap = monitorReportPairs.toMap
@@ -301,7 +298,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
         mt <- monitorTypes
         valueMap = monitorReportMap(m)(mt)
       } yield {
-        val timeData: List[(Long, Option[Double])] =
+        val timeData =
           if (showActual) {
             timeSeq.map { time =>
               if (valueMap.contains(time))
@@ -314,10 +311,11 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
               (time.getMillis, Some(valueMap(time)))
             }
           }
-
-        seqData(name=s"${monitorOp.map(m).desc}_${monitorTypeOp.map(mt).desp}",
-          data=timeData, yAxis = yAxisUnitMap(monitorTypeOp.map(mt).unit),
-          tooltip = Tooltip(monitorTypeOp.map(mt).prec))
+        val timeValues = timeData.map{t=>(t._1, t._2.map(_._1))}
+        val timeStatus = timeData.map{t=>t._2.map(_._2).flatten}
+        seqData(name = s"${monitorOp.map(m).desc}_${monitorTypeOp.map(mt).desp}",
+          data = timeValues, yAxis = yAxisUnitMap(monitorTypeOp.map(mt).unit),
+          tooltip = Tooltip(monitorTypeOp.map(mt).prec), statusList = timeStatus)
       }
     }
 
@@ -357,38 +355,44 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
     chart
   }
 
-  def getPeriodReportMap(monitor: String, mt: String, tabType: TableType.Value, period: Period,
-                         statusFilter: MonitorStatusFilter.Value = MonitorStatusFilter.ValidData)(start: DateTime, end: DateTime) = {
-    val recordList = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitor, List(mt), start, end)(mt)
+  def getPeriodReportMap(monitor: String, mtList: Seq[String],
+                         tabType: TableType.Value, period: Period,
+                         statusFilter: MonitorStatusFilter.Value = MonitorStatusFilter.ValidData)
+                        (start: DateTime, end: DateTime): Map[String, Map[Imports.DateTime, (Double, Option[String])]] = {
+    val mtRecordListMap = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitor, mtList, start, end)
 
-    def periodSlice(period_start: DateTime, period_end: DateTime) = {
-      recordList.dropWhile {
-        _.time < period_start
-      }.takeWhile {
-        _.time < period_end
-      }
-    }
-
-    val pairs =
-      if ((tabType == TableType.hour && period.getHours == 1) || (tabType == TableType.min && period.getMinutes == 1)) {
-        recordList.filter { r => MonitorStatusFilter.isMatched(statusFilter, r.status) }.map { r => r.time -> r.value }
-      } else {
-        for {
-          period_start <- getPeriods(start, end, period)
-          records = periodSlice(period_start, period_start + period) if records.length > 0
-        } yield {
-          if (mt == MonitorType.WIN_DIRECTION) {
-            val windDir = records
-            val windSpeed = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitor, List(MonitorType.WIN_SPEED), period_start, period_start + period)(mt)
-            period_start -> windAvg(windSpeed, windDir)
-          } else {
-            val values = records.map { r => r.value }
-            period_start -> values.sum / values.length
+    val mtRecordPairs =
+      for (mt <- mtList) yield {
+        val recordList = mtRecordListMap(mt)
+        def periodSlice(period_start: DateTime, period_end: DateTime) = {
+          recordList.dropWhile {
+            _.time < period_start
+          }.takeWhile {
+            _.time < period_end
           }
         }
-      }
 
-    Map(pairs: _*)
+        val pairs =
+          if ((tabType == TableType.hour && period.getHours == 1) || (tabType == TableType.min && period.getMinutes == 1)) {
+            recordList.filter { r => MonitorStatusFilter.isMatched(statusFilter, r.status) }.map { r => r.time -> (r.value, Some(r.status)) }
+          } else {
+            for {
+              period_start <- getPeriods(start, end, period)
+              records = periodSlice(period_start, period_start + period) if records.length > 0
+            } yield {
+              if (mt == MonitorType.WIN_DIRECTION) {
+                val windDir = records
+                val windSpeed = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitor, List(MonitorType.WIN_SPEED), period_start, period_start + period)(MonitorType.WIN_SPEED)
+                period_start -> (windAvg(windSpeed, windDir), None)
+              } else {
+                val values = records.map { r => r.value }
+                period_start -> (values.sum / values.length, None)
+              }
+            }
+          }
+        mt -> Map(pairs: _*)
+      }
+    mtRecordPairs.toMap
   }
 
   def getPeriods(start: DateTime, endTime: DateTime, d: Period): List[DateTime] = {

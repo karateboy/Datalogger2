@@ -89,8 +89,11 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
             val resp = serial.getMessageUntilCrWithTimeout(2)
             if (resp.nonEmpty) {
               val tokens = resp(0).split(";")
-              if (tokens.length != predefinedIST.length)
+              if (tokens.length != predefinedIST.length) {
                 Logger.error(s"Data length ${tokens.length} != ${predefinedIST.length}")
+                Logger.error(resp.toString())
+                serial.clearBuffer = true
+              }
 
               val inputs =
                 for (ist <- predefinedIST if ist.addr < tokens.length) yield {

@@ -12,7 +12,7 @@ import scala.math.BigDecimal.RoundingMode
 
 @Singleton
 class ExcelUtility @Inject()
-(environment: play.api.Environment,monitorTypeOp: MonitorTypeOp){
+(environment: play.api.Environment,monitorTypeOp: MonitorTypeOp, monitorStatusOp: MonitorStatusOp){
   val docRoot = environment.rootPath + "/report_template/"
 
   private def prepareTemplate(templateFile: String) = {
@@ -59,6 +59,10 @@ class ExcelUtility @Inject()
     } {
       headerRow.createCell(pos+1).setCellValue(series.name)
       pos+=1
+      if (series.statusList.nonEmpty) {
+        headerRow.createCell(pos + 1).setCellValue("狀態碼")
+        pos += 1
+      }
     }
 
     val styles = precArray.map { prec =>
@@ -88,6 +92,7 @@ class ExcelUtility @Inject()
           cell.setCellStyle(styles(col - 1))
 
           val pair = series.data(rowNo - 1)
+          val statusOpt = series.statusList(rowNo -1)
           for (v <- pair._2 if !v.isNaN) {
             val d = BigDecimal(v).setScale(precArray(col - 1), RoundingMode.HALF_EVEN)
             cell.setCellValue(d.doubleValue())
@@ -119,6 +124,12 @@ class ExcelUtility @Inject()
           for (v <- pair._2 if !v.isNaN) {
             val d = BigDecimal(v).setScale(precArray(col - 1), RoundingMode.HALF_EVEN)
             cell.setCellValue(d.doubleValue())
+          }
+          for(status <- series.statusList(row-1)){
+            val statusCell = thisRow.createCell(pos + 1)
+            pos += 1
+            val monitorStatus = monitorStatusOp.map(status)
+            statusCell.setCellValue(monitorStatus.desp)
           }
         }
       }
