@@ -229,7 +229,9 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     import org.mongodb.scala.model.Sorts._
 
     val col = getCollection(colName)
-    val f = col.find(and(equal("monitor", monitor), gte("time", startTime.toDate()), lt("time", endTime.toDate())))
+    val f = col.find(
+      and(equal("monitor", monitor), gte("time", startTime.toDate()), lt("time", endTime.toDate())))
+      .allowDiskUse(true)
       .sort(ascending("time")).toFuture()
 
     val needCalibration = mtList.map { mt => monitorTypeOp.map(mt).calibrate.getOrElse(false) }.exists(p => p)

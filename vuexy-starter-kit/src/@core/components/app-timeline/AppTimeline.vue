@@ -1,5 +1,5 @@
 <template>
-  <ul class="app-timeline">
+  <ul v-bind="$attrs" class="app-timeline" v-on="$listeners">
     <slot />
   </ul>
 </template>

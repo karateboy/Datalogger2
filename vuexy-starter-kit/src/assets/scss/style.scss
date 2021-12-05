@@ -134,6 +134,7 @@ WE WILL RELEASE FUTURE UPDATES SO IN ORDER TO NOT OVERWRITE YOUR STYLES IT'S BET
 }
 
 .normal {
+  font-weight: 100;
 }
 
 .over_internal_std {
@@ -264,6 +265,14 @@ WE WILL RELEASE FUTURE UPDATES SO IN ORDER TO NOT OVERWRITE YOUR STYLES IT'S BET
   filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f1e767', endColorstr='#feb645',GradientType=0 ); /* IE6-9 */
 }
 
+.stop_status {
+  color:rgb(255, 154, 0);
+}
+
+.disconnect_status {
+  color:rgb(153, 0, 0);
+}
+
 .st-sort-ascent:before {
   content: '\25B2';
 }
@@ -276,3 +285,11 @@ body{
   --font-family-sans-serif: "Montserrat", Helvetica, Arial, serif;
     --font-family-monospace: "Montserrat", Helvetica, Arial, serif;
 }
+
+// Breadcrumb
+[dir] .breadcrumb:not([class*=breadcrumb-]) .breadcrumb-item + .breadcrumb-item:before {
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 20px;
+}
+

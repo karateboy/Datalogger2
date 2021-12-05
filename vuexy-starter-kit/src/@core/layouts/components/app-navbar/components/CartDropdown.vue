@@ -88,7 +88,7 @@ import {
   BButton,
 } from 'bootstrap-vue';
 import VuePerfectScrollbar from 'vue-perfect-scrollbar';
-const Ripple = require('vue-ripple-directive');
+import Ripple from 'vue-ripple-directive';
 
 export default {
   components: {

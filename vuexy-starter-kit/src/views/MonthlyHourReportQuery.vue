@@ -57,17 +57,14 @@
               取消
             </b-button>
             <b-button
-              variant="outline-success"
-              size="sm"
-              :disabled="rows.length === 0"
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              type="submit"
+              variant="primary"
+              class="mr-1"
               @click="exportExcel"
-              ><b-img
-                v-b-tooltip.hover
-                src="../assets/excel_export.svg"
-                title="匯出 Excel"
-                width="20"
-                fluid
-            /></b-button>
+            >
+              下載Excel
+            </b-button>
           </b-col>
         </b-row>
       </b-form>
