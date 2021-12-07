@@ -69,7 +69,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
     inputRegStatusType ++  modeRegStatusType ++ warningRegStatusType
   }
 
-  def readReg(statusTypeList: List[InstrumentStatusType]) = {
+  def readReg(statusTypeList: List[InstrumentStatusType]): AkModelRegValue = {
     var inputs = Seq.empty[(InstrumentStatusType, Float)]
     var modes = Seq.empty[(InstrumentStatusType, Boolean)]
     var warnings = Seq.empty[(InstrumentStatusType, Boolean)]
@@ -125,14 +125,14 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
               }
             regValueReporter(regValues)(recordCalibration)
           }
-          connected = true
         } catch {
           case ex: Exception =>
+            comm.clearBuffer = true;
             Logger.error(ex.getMessage, ex)
-            if (connected)
+            if (connected) {
               alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
+            }
 
-            connected = false
         } finally {
           import scala.concurrent.duration._
           timerOpt = Some(system.scheduler.scheduleOnce(Duration(5, SECONDS), self, ReadRegister))
