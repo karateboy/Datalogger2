@@ -132,6 +132,9 @@ object MonitorStatus {
     getTagInfo(MaintainStat) == getTagInfo(s)
   }
 
+  def isManual(s:String) = {
+    getTagInfo(s).statusType == StatusType.ManualInvalid || getTagInfo(s).statusType == StatusType.ManualInvalid
+  }
   def isError(s: String) = {
     !(isValid(s) || isCalbration(s) || isMaintenance(s))
   }

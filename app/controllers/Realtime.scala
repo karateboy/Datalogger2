@@ -63,11 +63,18 @@ class Realtime @Inject()
                   mCase.unit, measuringByStr,
                   status,
                   MonitorStatus.getCssClassStr(record.status, overInternal, overLaw), mCase.order)
-              } else
-                MonitorTypeStatus(_id = mCase._id, mCase.desp, monitorTypeOp.format(mt, None),
-                  mCase.unit, measuringByStr,
-                  instrumentStatus,
-                  Seq("abnormal_status"), mCase.order)
+              } else {
+                if(instrumentStatus == "停用")
+                  MonitorTypeStatus(_id = mCase._id, mCase.desp, monitorTypeOp.format(mt, None),
+                    mCase.unit, measuringByStr,
+                    instrumentStatus,
+                    Seq("stop_status"), mCase.order)
+                else
+                  MonitorTypeStatus(_id = mCase._id, mCase.desp, monitorTypeOp.format(mt, None),
+                    mCase.unit, measuringByStr,
+                    instrumentStatus,
+                    Seq("disconnect_status"), mCase.order)
+              }
             }
           }
 

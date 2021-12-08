@@ -16,7 +16,7 @@
 <script>
 import { useWindowScroll } from '@vueuse/core';
 import { BButton } from 'bootstrap-vue';
-const Ripple = require('vue-ripple-directive');
+import Ripple from 'vue-ripple-directive';
 
 export default {
   directives: {

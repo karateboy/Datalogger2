@@ -41,31 +41,31 @@
     >
       <b-dropdown variant="link" no-caret toggle-class="p-0" right>
         <template #button-content>
-          <!-- <b-button
+          <b-button
             v-ripple.400="'rgba(255, 255, 255, 0.15)'"
             variant="primary"
             class="btn-icon"
           >
             <feather-icon icon="SettingsIcon" />
-          </b-button> -->
+          </b-button>
         </template>
 
-        <b-dropdown-item>
+        <b-dropdown-item :to="{ name: 'apps-todo' }">
           <feather-icon icon="CheckSquareIcon" size="16" />
           <span class="align-middle ml-50">Todo</span>
         </b-dropdown-item>
 
-        <b-dropdown-item>
+        <b-dropdown-item :to="{ name: 'apps-chat' }">
           <feather-icon icon="MessageSquareIcon" size="16" />
           <span class="align-middle ml-50">Chat</span>
         </b-dropdown-item>
 
-        <b-dropdown-item>
+        <b-dropdown-item :to="{ name: 'apps-email' }">
           <feather-icon icon="MailIcon" size="16" />
           <span class="align-middle ml-50">Email</span>
         </b-dropdown-item>
 
-        <b-dropdown-item>
+        <b-dropdown-item :to="{ name: 'apps-calendar' }">
           <feather-icon icon="CalendarIcon" size="16" />
           <span class="align-middle ml-50">Calendar</span>
         </b-dropdown-item>
@@ -84,7 +84,7 @@ import {
   BDropdownItem,
   BButton,
 } from 'bootstrap-vue';
-const Ripple = require('vue-ripple-directive');
+import Ripple from 'vue-ripple-directive';
 
 export default {
   directives: {
@@ -97,7 +97,7 @@ export default {
     BCol,
     BDropdown,
     BDropdownItem,
-    //BButton,
+    BButton,
   },
 };
 </script>

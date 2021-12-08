@@ -14,7 +14,7 @@
       class="bookmark-wrapper align-items-center flex-grow-1 d-none d-lg-flex"
     >
       <dark-Toggler class="d-none d-lg-block" />
-      <p class="mt-1 mb-1">空氣品質資料蒐集系統</p>
+      <h2 class="m-0">空氣品質資料蒐集系統</h2>
     </div>
 
     <b-navbar-nav class="nav align-items-center ml-auto">
@@ -34,7 +34,6 @@
             size="40"
             variant="light-primary"
             badge
-            :src="require('@/assets/images/avatars/rcec.png')"
             class="badge-minimal"
             badge-variant="success"
           />
