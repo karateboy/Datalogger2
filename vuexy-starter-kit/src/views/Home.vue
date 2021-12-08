@@ -2,23 +2,27 @@
   <b-row class="match-height">
     <b-col lg="6" md="12">
       <b-row>
-        <b-col cols="2"
-          ><b-img src="../assets/images/old_house.png" fluid
-        /></b-col>
-        <b-col cols="4">
-          <h2>太陽能總發電量:4.3 KW</h2>
-          <h2>老屋總耗電量:2.4 KW</h2>
-          <h2>綠能使用率: 100%</h2>
-        </b-col>
-        <b-col cols="6">
+        <b-col cols="8">
           <b-card
-            class="text-center"
+            img-src="../assets/images/old_house.png"
+            img-left
+            border-variant="primary"
+          >
+            <h2>太陽能總發電量:4.3 KW</h2>
+            <h2>老屋總耗電量:2.4 KW</h2>
+            <h2>綠能使用率: 100%</h2>
+          </b-card>
+        </b-col>
+        <b-col cols="4">
+          <b-card
             header="氣象資訊"
             header-class="h4 display text-center"
             border-variant="primary"
             header-bg-variant="white"
             img-src="../assets/images/02.svg"
+            img-bottom
             title="降雨機率15%"
+            img-height="150"
           ></b-card>
         </b-col>
       </b-row>
@@ -33,10 +37,10 @@
       >
         <b-row>
           <b-col>
-            <b-table-simple borderless>
+            <b-table-simple borderless small>
               <b-tbody>
                 <b-tr>
-                  <b-td rowspan="3"
+                  <b-td rowspan="3" colspan="2"
                     ><b-img src="../assets/images/taipower.jpg" fluid
                   /></b-td>
                 </b-tr>
@@ -46,11 +50,11 @@
             </b-table-simple>
           </b-col>
           <b-col>
-            <b-table-simple borderless>
+            <b-table-simple borderless small>
               <b-tbody>
                 <b-tr>
                   <b-td rowspan="3"
-                    ><b-img src="../assets/images/solar_power.png" fluid
+                    ><b-img src="../assets/images/solar_power.png" fluid-grow
                   /></b-td>
                 </b-tr>
                 <b-tr><b-td>太陽能1</b-td></b-tr>
@@ -59,11 +63,11 @@
             </b-table-simple>
           </b-col>
           <b-col>
-            <b-table-simple borderless>
+            <b-table-simple borderless small>
               <b-tbody>
                 <b-tr>
                   <b-td rowspan="3"
-                    ><b-img src="../assets/images/solar_power.png" fluid
+                    ><b-img src="../assets/images/solar_power.png" fluid-grow
                   /></b-td>
                 </b-tr>
                 <b-tr><b-td>太陽能2</b-td></b-tr>
@@ -138,7 +142,7 @@
         </b-row>
         <b-row class="p-1">
           <b-col>
-            <b-table-simple borderless>
+            <b-table-simple borderless small>
               <b-tbody>
                 <b-tr>
                   <b-td rowspan="3"
@@ -151,7 +155,7 @@
             </b-table-simple>
           </b-col>
           <b-col>
-            <b-table-simple borderless>
+            <b-table-simple borderless small>
               <b-tbody>
                 <b-tr>
                   <b-td rowspan="3"
@@ -164,7 +168,7 @@
             </b-table-simple>
           </b-col>
           <b-col>
-            <b-table-simple borderless>
+            <b-table-simple borderless small>
               <b-tbody>
                 <b-tr>
                   <b-td rowspan="3"

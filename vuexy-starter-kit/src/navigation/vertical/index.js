@@ -10,7 +10,7 @@ export default [
         resource: 'Dashboard',
       },
       {
-        title: '電力控制',
+        title: '電源管理',
         route: 'power-control',
         action: 'read',
         resource: 'Dashboard',

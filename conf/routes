@@ -9,7 +9,7 @@ GET      /dist/                                                                c
 GET      /static/*file                                                         controllers.Assets.versioned(path="/public/static", file: Asset)
 GET      /html/*file                                                           controllers.Assets.at(path="/public/html", file)
 GET      /dist/*file                                                           controllers.Assets.at(path="/public/dist", file)
-
+GET      /images/*file                                                         controllers.Assets.at(path="/public/dist/images", file)
 
 GET      /logout                                                                  controllers.Login.logout
 POST     /login                                                                   controllers.Login.authenticate
