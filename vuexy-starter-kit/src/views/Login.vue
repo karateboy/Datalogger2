@@ -4,7 +4,7 @@
       <!-- Brand logo-->
       <b-link class="brand-logo">
         <vuexy-logo />
-        <h2 class="brand-text text-primary ml-1">Vuexy</h2>
+        <h2 class="brand-text text-primary ml-1">UAPRS</h2>
       </b-link>
       <!-- /Brand logo-->
 
@@ -21,8 +21,8 @@
       <!-- Login-->
       <b-col lg="4" class="d-flex align-items-center auth-bg px-2 p-lg-5">
         <b-col sm="8" md="6" lg="12" class="px-xl-2 mx-auto">
-          <b-card-title title-tag="h2" class="font-weight-bold mb-1">
-            歡迎使用空氣品質資料蒐集系統👋
+          <b-card-title title-tag="h1" class="font-weight-bold mb-1">
+            都市空氣汙染研究站(UAPRS)資料蒐集系統
           </b-card-title>
           <b-card-text class="mb-2"> 請登入您的帳號 </b-card-text>
 
