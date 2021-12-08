@@ -10,8 +10,8 @@ export default [
         resource: 'Dashboard',
       },
       {
-        title: '即時數據',
-        route: 'realtime-data',
+        title: '電力控制',
+        route: 'power-control',
         action: 'read',
         resource: 'Dashboard',
       },

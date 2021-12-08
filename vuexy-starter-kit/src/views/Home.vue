@@ -1,6 +1,80 @@
 <template>
   <b-row class="match-height">
-    <b-col lg="9" md="12">
+    <b-col lg="6" md="12">
+      <b-row>
+        <b-col cols="2"
+          ><b-img src="../assets/images/old_house.png" fluid
+        /></b-col>
+        <b-col cols="4">
+          <h2>太陽能總發電量:4.3 KW</h2>
+          <h2>老屋總耗電量:2.4 KW</h2>
+          <h2>綠能使用率: 100%</h2>
+        </b-col>
+        <b-col cols="6">
+          <b-card
+            class="text-center"
+            header="氣象資訊"
+            header-class="h4 display text-center"
+            border-variant="primary"
+            header-bg-variant="white"
+            img-src="../assets/images/02.svg"
+            title="降雨機率15%"
+          ></b-card>
+        </b-col>
+      </b-row>
+    </b-col>
+    <b-col lg="6" md="12">
+      <b-card
+        class="text-center"
+        header="供電資訊"
+        header-class="h4 display text-center"
+        border-variant="primary"
+        header-bg-variant="white"
+      >
+        <b-row>
+          <b-col>
+            <b-table-simple borderless>
+              <b-tbody>
+                <b-tr>
+                  <b-td rowspan="3"
+                    ><b-img src="../assets/images/taipower.jpg" fluid
+                  /></b-td>
+                </b-tr>
+                <b-tr><b-td>台電</b-td></b-tr>
+                <b-tr><b-td>功率5KW</b-td></b-tr>
+              </b-tbody>
+            </b-table-simple>
+          </b-col>
+          <b-col>
+            <b-table-simple borderless>
+              <b-tbody>
+                <b-tr>
+                  <b-td rowspan="3"
+                    ><b-img src="../assets/images/solar_power.png" fluid
+                  /></b-td>
+                </b-tr>
+                <b-tr><b-td>太陽能1</b-td></b-tr>
+                <b-tr><b-td>功率2KW</b-td></b-tr>
+              </b-tbody>
+            </b-table-simple>
+          </b-col>
+          <b-col>
+            <b-table-simple borderless>
+              <b-tbody>
+                <b-tr>
+                  <b-td rowspan="3"
+                    ><b-img src="../assets/images/solar_power.png" fluid
+                  /></b-td>
+                </b-tr>
+                <b-tr><b-td>太陽能2</b-td></b-tr>
+                <b-tr><b-td>功率2KW</b-td></b-tr>
+              </b-tbody>
+            </b-table-simple>
+          </b-col>
+        </b-row>
+      </b-card>
+    </b-col>
+    <b-col lg="6" md="12">
       <b-card
         class="text-center"
         header="即時監測資訊"
@@ -12,50 +86,97 @@
         <div id="realtimeChart"></div>
       </b-card>
     </b-col>
-    <b-col lg="3" class="text-center">
-      <b-card no-body>
-        <b-table
-          :fields="fields"
-          :items="realTimeStatus"
-          small
-          head-variant="light"
-          head-row-variant="success"
-          responsive
-          :sticky-header="true"
-          :no-border-collapse="true"
-          style="max-height: 500px"
-        >
-        </b-table>
-      </b-card>
-    </b-col>
-    <b-col
-      v-for="mt in userInfo.monitorTypeOfInterest"
-      :key="mt"
-      cols="12"
-      md="6"
-      lg="4"
-      xl="3"
-    >
-      <b-card>
-        <div :id="`history_${mt}`"></div>
-      </b-card>
-    </b-col>
-    <b-col
-      v-for="mt in windRoseList"
-      :key="`rose${mt}`"
-      cols="12"
-      md="6"
-      lg="4"
-      xl="3"
-    >
+    <b-col lg="6" class="text-center">
       <b-card
-        :header="`${getMtName(mt)}玫瑰圖`"
+        class="text-left"
+        header="用電情形"
         header-class="h4 display text-center"
-        border-variant="primary"
+        border-variant="success"
         header-bg-variant="success"
         header-text-variant="white"
       >
-        <div :id="`rose_${mt}`">尚無資料</div>
+        <b-row class="p-1">
+          <b-col>
+            <b-table-simple borderless>
+              <b-tbody>
+                <b-tr>
+                  <b-td rowspan="3"
+                    ><b-img src="../assets/images/ac.png" fluid
+                  /></b-td>
+                </b-tr>
+                <b-tr><b-td>冷氣1</b-td></b-tr>
+                <b-tr><b-td>電流2A</b-td></b-tr>
+              </b-tbody>
+            </b-table-simple>
+          </b-col>
+          <b-col>
+            <b-table-simple borderless>
+              <b-tbody>
+                <b-tr>
+                  <b-td rowspan="3"
+                    ><b-img src="../assets/images/ac.png" fluid
+                  /></b-td>
+                </b-tr>
+                <b-tr><b-td>冷氣2</b-td></b-tr>
+                <b-tr><b-td>電流2A</b-td></b-tr>
+              </b-tbody>
+            </b-table-simple>
+          </b-col>
+          <b-col>
+            <b-table-simple borderless>
+              <b-tbody>
+                <b-tr>
+                  <b-td rowspan="3"
+                    ><b-img src="../assets/images/refregrator.png" fluid
+                  /></b-td>
+                </b-tr>
+                <b-tr><b-td>電冰箱</b-td></b-tr>
+                <b-tr><b-td>電流2A</b-td></b-tr>
+              </b-tbody>
+            </b-table-simple>
+          </b-col>
+        </b-row>
+        <b-row class="p-1">
+          <b-col>
+            <b-table-simple borderless>
+              <b-tbody>
+                <b-tr>
+                  <b-td rowspan="3"
+                    ><b-img src="../assets/images/plug.png" fluid
+                  /></b-td>
+                </b-tr>
+                <b-tr><b-td>插座1</b-td></b-tr>
+                <b-tr><b-td>電流2A</b-td></b-tr>
+              </b-tbody>
+            </b-table-simple>
+          </b-col>
+          <b-col>
+            <b-table-simple borderless>
+              <b-tbody>
+                <b-tr>
+                  <b-td rowspan="3"
+                    ><b-img src="../assets/images/plug.png" fluid
+                  /></b-td>
+                </b-tr>
+                <b-tr><b-td>插座2</b-td></b-tr>
+                <b-tr><b-td>電流2A</b-td></b-tr>
+              </b-tbody>
+            </b-table-simple>
+          </b-col>
+          <b-col>
+            <b-table-simple borderless>
+              <b-tbody>
+                <b-tr>
+                  <b-td rowspan="3"
+                    ><b-img src="../assets/images/other.png" fluid
+                  /></b-td>
+                </b-tr>
+                <b-tr><b-td>其他</b-td></b-tr>
+                <b-tr><b-td>電流2A</b-td></b-tr>
+              </b-tbody>
+            </b-table-simple>
+          </b-col>
+        </b-row>
       </b-card>
     </b-col>
   </b-row>
@@ -68,43 +189,13 @@ import { MonitorType, MonitorTypeStatus } from './types';
 import highcharts from 'highcharts';
 import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
-import highchartMore from 'highcharts/highcharts-more';
 
 export default Vue.extend({
   data() {
-    const fields = [
-      {
-        key: 'desp',
-        label: '測項',
-        sortable: true,
-      },
-      {
-        key: 'value',
-        label: '測值',
-        formatter: (value: string, key: string, item: MonitorTypeStatus) => {
-          const v = parseFloat(item.value);
-          if (isNaN(v)) return `-`;
-          else return `${item.value}`;
-        },
-        sortable: true,
-      },
-      {
-        key: 'unit',
-        label: '單位',
-      },
-      {
-        key: 'status',
-        label: '狀態',
-        tdClass: (value: string, key: string, item: MonitorTypeStatus) => {
-          return item.classStr;
-        },
-      },
-    ];
     let chart: any;
     chart = null;
     return {
       maxPoints: 30,
-      fields,
       refreshTimer: 0,
       mtInterestTimer: 0,
       realTimeStatus: Array<MonitorTypeStatus>(),
@@ -119,11 +210,6 @@ export default Vue.extend({
       const { skin } = useAppConfig();
       return skin;
     },
-    windRoseList(): Array<string> {
-      let mtInterest = this.userInfo.monitorTypeOfInterest as Array<string>;
-      let ret = mtInterest.filter(mt => mt !== 'WD_DIR');
-      return ret;
-    },
   },
   async mounted() {
     const { skin } = useAppConfig();
@@ -134,13 +220,8 @@ export default Vue.extend({
     await this.fetchMonitorTypes();
     await this.getUserInfo();
     const me = this;
-    for (const mt of this.userInfo.monitorTypeOfInterest) this.query(mt);
-    for (const mt of me.windRoseList) me.queryWindRose(mt);
 
-    this.mtInterestTimer = setInterval(() => {
-      for (const mt of me.userInfo.monitorTypeOfInterest) me.query(mt);
-      for (const mt of me.windRoseList) me.queryWindRose(mt);
-    }, 60000);
+    this.mtInterestTimer = setInterval(() => {}, 60000);
 
     await this.initRealtimeChart();
   },
@@ -304,144 +385,6 @@ export default Vue.extend({
         };
         me.chart = highcharts.chart('realtimeChart', chartOption);
       });
-    },
-    async query(mt: string) {
-      const now = new Date().getTime();
-      const oneHourBefore = now - 60 * 60 * 1000;
-      const monitors = 'me';
-      const url = `/HistoryTrend/${monitors}/${mt}/Min/all/${oneHourBefore}/${now}`;
-      const res = await axios.get(url);
-      const ret: highcharts.Options = res.data;
-
-      ret.chart = {
-        type: 'spline',
-        zoomType: 'x',
-        panning: {
-          enabled: true,
-        },
-        panKey: 'shift',
-        alignTicks: false,
-      };
-
-      let mtInfo = this.mtMap.get(mt) as MonitorType;
-      ret.title!.text = `${mtInfo.desp}分鐘趨勢圖`;
-
-      ret.colors = [
-        '#7CB5EC',
-        '#434348',
-        '#90ED7D',
-        '#F7A35C',
-        '#8085E9',
-        '#F15C80',
-        '#E4D354',
-        '#2B908F',
-        '#FB9FA8',
-        '#91E8E1',
-        '#7CB5EC',
-        '#80C535',
-        '#969696',
-      ];
-
-      ret.tooltip = { valueDecimals: 2 };
-      ret.legend = { enabled: true };
-      ret.credits = {
-        enabled: false,
-        href: 'http://www.wecc.com.tw/',
-      };
-
-      ret.exporting = {
-        enabled: false,
-      };
-      let xAxis: highcharts.XAxisOptions = ret.xAxis as highcharts.XAxisOptions;
-      xAxis.type = 'datetime';
-
-      xAxis!.dateTimeLabelFormats = {
-        day: '%b%e日',
-        week: '%b%e日',
-        month: '%y年%b',
-      };
-
-      ret.plotOptions = {
-        spline: {
-          tooltip: {
-            valueDecimals: this.mtMap.get(mt).prec,
-          },
-        },
-        scatter: {
-          tooltip: {
-            valueDecimals: this.mtMap.get(mt).prec,
-          },
-        },
-      };
-      ret.time = {
-        timezoneOffset: -480,
-      };
-      ret.exporting = {
-        enabled: false,
-      };
-      highcharts.chart(`history_${mt}`, ret);
-    },
-    getMtName(mt: string): string {
-      let mtInfo = this.mtMap.get(mt) as MonitorType;
-      if (mtInfo !== undefined) return mtInfo.desp;
-      else return '';
-    },
-    async queryWindRose(mt: string) {
-      const now = new Date().getTime();
-      const oneHourBefore = now - 60 * 60 * 1000;
-      const monitors = 'me';
-
-      try {
-        const url = `/WindRose/me/${mt}/min/16/${oneHourBefore}/${now}`;
-        const res = await axios.get(url);
-        const ret = res.data;
-        ret.pane = {
-          size: '90%',
-        };
-
-        ret.yAxis = {
-          min: 0,
-          endOnTick: false,
-          showLastLabel: true,
-          title: {
-            text: '頻率 (%)',
-          },
-          labels: {
-            formatter(this: any) {
-              return this.value + '%';
-            },
-          },
-          reversedStacks: false,
-        };
-
-        ret.tooltip = {
-          valueDecimals: 2,
-          valueSuffix: '%',
-        };
-
-        ret.plotOptions = {
-          series: {
-            stacking: 'normal',
-            shadow: false,
-            groupPadding: 0,
-            pointPlacement: 'on',
-          },
-        };
-
-        ret.exporting = {
-          enabled: false,
-        };
-        ret.credits = {
-          enabled: false,
-          href: 'http://www.wecc.com.tw/',
-        };
-
-        ret.title.x = -70;
-        highchartMore(highcharts);
-        highcharts.chart(`rose_${mt}`, ret);
-      } catch (err) {
-      } finally {
-      }
     },
   },
 });

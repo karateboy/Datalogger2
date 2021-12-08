@@ -18,7 +18,29 @@ const router = new VueRouter({
         pageTitle: '儀表板',
         breadcrumb: [
           {
+            text: '即時資訊',
+            active: true,
+          },
+          {
             text: '儀表板',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
+      path: '/power-control',
+      name: 'power-control',
+      component: () => import('@/views/SecondPage.vue'),
+      meta: {
+        pageTitle: '電力控制',
+        breadcrumb: [
+          {
+            text: '即時資訊',
+            active: true,
+          },
+          {
+            text: '電力控制',
             active: true,
           },
         ],
@@ -31,6 +53,10 @@ const router = new VueRouter({
       meta: {
         pageTitle: '即時資料',
         breadcrumb: [
+          {
+            text: '即時資訊',
+            active: true,
+          },
           {
             text: '即時資料',
             active: true,
