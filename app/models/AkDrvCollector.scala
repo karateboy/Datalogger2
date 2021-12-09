@@ -210,8 +210,8 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
     nextTime
   }
 
-  //def needStatus: Boolean = DateTime.now() > nextLoggingStatusTime
-  def needStatus = false
+  def needStatus: Boolean = DateTime.now() > nextLoggingStatusTime
+  // def needStatus = false
 
   def regValueReporter(regValue: AkModelRegValue)(recordCalibration: Boolean) = {
     for (report <- reportData(regValue)) {
