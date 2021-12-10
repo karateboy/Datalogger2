@@ -151,6 +151,11 @@
             :param-str="form.param"
             @param-changed="onParamChange"
           />
+          <adam-4017-config-page
+            v-else-if="form.instType === 'adam4017'"
+            :param-str="form.param"
+            @param-changed="onParamChange"
+          />
           <adam-6017-config-page
             v-else-if="is8ChAnalogInput"
             :param-str="form.param"
@@ -219,6 +224,7 @@ import Vue, { PropType } from 'vue';
 import { ValidationObserver } from 'vee-validate';
 import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
 import TapiConfigPage from './TapiConfigPage.vue';
+import Adam4017ConfigPage from './Adam4017ConfigPage.vue';
 import Adam6017ConfigPage from './Adam6017ConfigPage.vue';
 import MqttConfigPage from './MqttConfigPage.vue';
 import Mqtt2ConfigPage from './Mqtt2ConfigPage.vue';
@@ -260,6 +266,7 @@ export default Vue.extend({
   components: {
     ValidationObserver,
     TapiConfigPage,
+    Adam4017ConfigPage,
     Adam6017ConfigPage,
     MqttConfigPage,
     Mqtt2ConfigPage,
@@ -367,7 +374,7 @@ export default Vue.extend({
       return this.form.instType.startsWith('AkProtocol.');
     },
     is8ChAnalogInput(): boolean {
-      const compatible = ['adam6017', 'MOXAE1240'];
+      const compatible = ['adam6017', 'MOXAE1240', 'adam4017'];
       for (const t of compatible) {
         if (this.form.instType === t) return true;
       }

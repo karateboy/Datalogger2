@@ -33,10 +33,25 @@
 <style lang="scss">
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
-<script>
+<script lang="ts">
 import Vue from 'vue';
 import { mapState, mapGetters } from 'vuex';
 import vSelect from 'vue-select';
+
+interface AiChannelCfg {
+  enable: boolean;
+  mt?: string;
+  max?: number;
+  mtMax?: number;
+  min?: number;
+  mtMin?: number;
+  repairMode?: boolean;
+}
+
+interface Adam4017Param {
+  addr: string;
+  ch: Array<AiChannelCfg>;
+}
 
 export default Vue.extend({
   components: {
@@ -62,7 +77,6 @@ export default Vue.extend({
       });
     }
 
-    const empty
     let paramObj = { chs };
 
     if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr);
@@ -116,7 +130,7 @@ export default Vue.extend({
         if (ch.mtMax === '') ch.mtMax = undefined;
       }
     },
-    onChange(evt) {
+    onChange(evt: any) {
       this.justify();
       this.$emit('param-changed', JSON.stringify(this.paramObj));
     },
