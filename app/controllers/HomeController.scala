@@ -13,7 +13,6 @@ import play.api.mvc._
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.xml.NodeSeq
 
 class HomeController @Inject()(environment: play.api.Environment, recordOp: RecordOp,
                                userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
@@ -433,9 +432,9 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
         })
   }
 
-  def getExecuteSeq(seq: String, on:Boolean) = Security.Authenticated {
+  def getExecuteSeq(seq: String, on: Boolean) = Security.Authenticated {
     try {
-        dataCollectManagerOp.executeSeq(seq, on)
+      dataCollectManagerOp.executeSeq(seq, on)
     } catch {
       case ex: Throwable =>
         Logger.error(ex.getMessage, ex)
@@ -457,7 +456,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
         Ok(Json.toJson(mList2))
       } else {
         val mList2 =
-          for(m <-group.monitors if monitorOp.map.contains(m)) yield
+          for (m <- group.monitors if monitorOp.map.contains(m)) yield
             monitorOp.map(m)
 
         Ok(Json.toJson(mList2))
@@ -485,14 +484,14 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
   }
 
   def getActiveMonitorID = Security.Authenticated {
-      Ok(Monitor.activeID)
+    Ok(Monitor.activeID)
   }
 
-  def setActiveMonitorID(id:String) = Security.Authenticated {
-    if(monitorOp.map.contains(id)) {
+  def setActiveMonitorID(id: String) = Security.Authenticated {
+    if (monitorOp.map.contains(id)) {
       Monitor.activeID = id
-      Ok(Json.obj("ok"->true))
-    }else
+      Ok(Json.obj("ok" -> true))
+    } else
       BadRequest("Invalid monitor ID")
   }
 
@@ -526,6 +525,12 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
           monitorTypeOp.upsertMonitorType(mt)
           Ok(Json.obj("ok" -> true))
         })
+  }
+
+  def deleteMonitorType(id: String) = Security.Authenticated {
+    implicit request =>
+      monitorTypeOp.deleteMonitorType(id)
+      Ok("")
   }
 
   def signalTypeList = Security.Authenticated {
@@ -616,32 +621,32 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       Ok(Json.obj("ok" -> ret.getDeletedCount))
   }
 
-  def getUser(id:String) = Security.Authenticated {
+  def getUser(id: String) = Security.Authenticated {
     implicit request =>
       implicit val write = Json.writes[User]
       val user = userOp.getUserByEmail(id)
       Ok(Json.toJson(user))
   }
 
-  def probeDuoMonitorTypes(host:String) = Security.Authenticated.async {
+  def probeDuoMonitorTypes(host: String) = Security.Authenticated.async {
     val url = s"http://$host/pub/GetRealTimeValuesList.asp"
     val f = WSClient.url(s"http://$host/pub/GetRealTimeValuesList.asp").get()
-    f onFailure(errorHandler)
+    f onFailure (errorHandler)
 
-    for(ret<-f) yield {
+    for (ret <- f) yield {
       val values = ret.xml \ "Values"
       val spectrum = ret.xml \ "Spectrums"
       val weather = ret.xml \ "Weather"
       val instantMonitorTypes =
-        for((mtDesc, idx) <- values.text.split(";").zipWithIndex) yield
-          DuoMonitorType(id=mtDesc, desc = mtDesc, configID = s"V${idx+1}")
+        for ((mtDesc, idx) <- values.text.split(";").zipWithIndex) yield
+          DuoMonitorType(id = mtDesc, desc = mtDesc, configID = s"V${idx + 1}")
 
       val spectrumMonitorTypes =
-        for((mtDesc, idx) <- spectrum.text.split(";").zipWithIndex) yield
-          DuoMonitorType(id=mtDesc, desc = mtDesc, configID = s"S${idx+1}", isSpectrum = true)
+        for ((mtDesc, idx) <- spectrum.text.split(";").zipWithIndex) yield
+          DuoMonitorType(id = mtDesc, desc = mtDesc, configID = s"S${idx + 1}", isSpectrum = true)
 
       val weatherMonitorTypes =
-        for((mtDesc, idx) <- weather.text.split(";").zipWithIndex) yield {
+        for ((mtDesc, idx) <- weather.text.split(";").zipWithIndex) yield {
           val id = mtDesc match {
             case "WindSpeed" =>
               MonitorType.WIN_SPEED
@@ -649,13 +654,13 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
               MonitorType.WIN_DIRECTION
             case "AirTemperature" =>
               MonitorType.TEMP
-            case "RelativeHumidity"=>
+            case "RelativeHumidity" =>
               MonitorType.HUMID
-            case _=>
+            case _ =>
               mtDesc
           }
 
-          DuoMonitorType(id=id, desc = mtDesc, configID=s"W${idx+1}")
+          DuoMonitorType(id = id, desc = mtDesc, configID = s"W${idx + 1}")
         }
 
       val monitorTypes = instantMonitorTypes ++ spectrumMonitorTypes ++ weatherMonitorTypes
@@ -666,7 +671,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     }
   }
 
-  def configureDuoMonitorTypes(host:String) = Security.Authenticated.async(BodyParsers.parse.json){
+  def configureDuoMonitorTypes(host: String) = Security.Authenticated.async(BodyParsers.parse.json) {
     implicit request =>
       import Duo._
       val ret = request.body.validate[Seq[DuoMonitorType]]
@@ -677,28 +682,30 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
         }
       },
         monitorTypes => {
-          val params: Seq[String] = monitorTypes.map{ t=>
-            if(t.configID.startsWith("V")) s"V=${t.configID}"
-            else if(t.configID.startsWith("S")) s"S=${t.configID}"
+          val params: Seq[String] = monitorTypes.map { t =>
+            if (t.configID.startsWith("V")) s"V=${t.configID}"
+            else if (t.configID.startsWith("S")) s"S=${t.configID}"
             else
               s"W=${t.configID}"
-            }
-          val paramStr = params.foldLeft("")((a,b)=>{s"$a&$b"}).drop(1)
+          }
+          val paramStr = params.foldLeft("")((a, b) => {
+            s"$a&$b"
+          }).drop(1)
           val url = s"http://$host/pub/ConfigureRealTimeValues.asp?$paramStr"
           val f = WSClient.url(url).get()
-          f onFailure(errorHandler)
-          for(ret: WSResponse <-f)yield {
-            monitorTypes.foreach(t=>
-              if(t.isSpectrum){
+          f onFailure (errorHandler)
+          for (ret: WSResponse <- f) yield {
+            monitorTypes.foreach(t =>
+              if (t.isSpectrum) {
                 Duo.ensureSpectrumTypes(t)(monitorTypeOp)
-              }else{
-                if(Duo.map.contains(t.id))
+              } else {
+                if (Duo.map.contains(t.id))
                   monitorTypeOp.ensureMonitorType(Duo.map(t.id))
                 else
                   monitorTypeOp.ensureMonitorType(t.id)
               })
 
-            Ok(Json.obj("ok"->true))
+            Ok(Json.obj("ok" -> true))
           }
         })
   }
@@ -710,28 +717,28 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       val weathers = Seq(MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION, MonitorType.RAIN,
         MonitorType.PRESS, MonitorType.TEMP, MonitorType.HUMID)
       val instantMonitorTypes =
-        for((mtDesc, idx) <- instants.zipWithIndex) yield
-          DuoMonitorType(id=mtDesc, desc = mtDesc, configID = s"V${idx+1}")
+        for ((mtDesc, idx) <- instants.zipWithIndex) yield
+          DuoMonitorType(id = mtDesc, desc = mtDesc, configID = s"V${idx + 1}")
 
-      instantMonitorTypes.foreach(t=>
-        if(t.isSpectrum){
+      instantMonitorTypes.foreach(t =>
+        if (t.isSpectrum) {
           Duo.ensureSpectrumTypes(t)(monitorTypeOp)
-        }else{
-          if(Duo.fixedMap.contains(t.id))
+        } else {
+          if (Duo.fixedMap.contains(t.id))
             monitorTypeOp.ensureMonitorType(Duo.fixedMap(t.id))
           else
             monitorTypeOp.ensureMonitorType(t.id)
         })
 
       val spectrumMonitorTypes =
-        for((id, idx) <- spectrums.zipWithIndex) yield
-          DuoMonitorType(id=id, desc = s"$id 1/3 octave", configID = s"S${idx+1}", isSpectrum = true)
+        for ((id, idx) <- spectrums.zipWithIndex) yield
+          DuoMonitorType(id = id, desc = s"$id 1/3 octave", configID = s"S${idx + 1}", isSpectrum = true)
 
-      spectrumMonitorTypes.foreach(t=>Duo.ensureSpectrumTypes(t)(monitorTypeOp))
+      spectrumMonitorTypes.foreach(t => Duo.ensureSpectrumTypes(t)(monitorTypeOp))
 
       val weatherMonitorTypes =
-        for((id, idx) <- weathers.zipWithIndex) yield
-          DuoMonitorType(id=id, desc = monitorTypeOp.map(id).desp, configID=s"W${idx+1}")
+        for ((id, idx) <- weathers.zipWithIndex) yield
+          DuoMonitorType(id = id, desc = monitorTypeOp.map(id).desp, configID = s"W${idx + 1}")
 
       val monitorTypes = instantMonitorTypes ++ spectrumMonitorTypes ++ weatherMonitorTypes
       implicit val writes = Json.writes[DuoMonitorType]

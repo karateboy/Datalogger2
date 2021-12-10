@@ -6,9 +6,13 @@
         responsive
         :fields="columns"
         :items="monitorTypes"
+        select-mode="multi"
+        selectable
+        selected-variant="info"
         bordered
         sticky-header
         style="max-height: 650px"
+        @row-selected="onMtSelected"
       >
         <template #cell(desp)="row">
           <b-form-input v-model="row.item.desp" @change="markDirty(row.item)" />
@@ -102,9 +106,18 @@
             v-ripple.400="'rgba(186, 191, 199, 0.15)'"
             type="reset"
             variant="outline-secondary"
+            class="mr-1"
             @click="getMonitorTypes"
           >
             取消
+          </b-button>
+          <b-button
+            v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+            variant="danger"
+            class="mr-1"
+            @click="removeMt"
+          >
+            刪除
           </b-button>
         </b-col>
       </b-row>
@@ -224,6 +237,7 @@ export default Vue.extend({
         thresholdConfig: {},
       },
       form,
+      selected: Array<MonitorType>(),
     };
   },
   mounted() {
@@ -305,6 +319,26 @@ export default Vue.extend({
     setMtThresholdConfig() {
       this.editingMt.thresholdConfig = this.form.thresholdConfig;
       this.markDirty(this.editingMt);
+    },
+    onMtSelected(items: Array<MonitorType>) {
+      this.selected = items;
+    },
+    async removeMt() {
+      let deletedMts = this.selected.map(p => p._id);
+      let ret = await this.$bvModal.msgBoxConfirm(
+        `請確認要刪除${deletedMts.join(',')}等測項`,
+      );
+      if (ret === true) {
+        try {
+          let allP = deletedMts.map(_id => {
+            return axios.delete(`/MonitorType/${_id}`);
+          });
+          await Promise.all(allP);
+          this.getMonitorTypes();
+        } catch (err) {
+          throw new Error('Failed to delete mt');
+        }
+      }
     },
   },
 });
