@@ -269,6 +269,20 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     })
   }
 
+  def deleteMonitorType(_id:String) = {
+    if(map.contains(_id)){
+      val mt = map(_id)
+      map = map - _id
+      if(mt.signalType)
+        signalMtvList = signalMtvList.filter(p => p != _id )
+      else
+        mtvList = mtvList.filter(p => p != _id)
+
+      val f = collection.deleteOne(Filters.equal("_id", _id)).toFuture()
+      f onFailure errorHandler
+    }
+  }
+
   def refreshMtv: (List[String], List[String], Map[String, MonitorType]) = {
     val list = mtList.sortBy {
       _.order

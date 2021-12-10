@@ -19,10 +19,9 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bind(classOf[MonitorTypeOp])
 
     bindActor[DataCollectManager]("dataCollectManager")
-    bindActorFactory[Adam4017Collector, Adam4017Collector.Factory]
-    bindActorFactory[Adam4068Collector, Adam4068Collector.Factory]
     bindActorFactory[Adam6017Collector, Adam6017Collector.Factory]
     bindActorFactory[Adam6066Collector, Adam6066Collector.Factory]
+    bindActorFactory[Adam4000Collector, Adam4000Collector.Factory]
     bindActorFactory[Baseline9000Collector, Baseline9000Collector.Factory]
     bindActorFactory[GpsCollector, GpsCollector.Factory]
     bindActorFactory[Horiba370Collector, Horiba370Collector.Factory]

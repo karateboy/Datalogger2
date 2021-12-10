@@ -1,5 +1,5 @@
 <template>
-  <b-table :fields="fields" :items="paramObj.chs">
+  <b-table :fields="fields" :items="chs">
     <template #cell(enable)="row">
       <b-form-checkbox v-model="row.item.enable" @change="onChange" />
     </template>
@@ -33,10 +33,20 @@
 <style lang="scss">
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
-<script>
+<script lang="ts">
 import Vue from 'vue';
 import { mapState, mapGetters } from 'vuex';
 import vSelect from 'vue-select';
+import { isNumber } from 'highcharts';
+interface AiChannelCfg {
+  enable: boolean;
+  mt?: string;
+  max?: number;
+  mtMax?: number;
+  min?: number;
+  mtMin?: number;
+  repairMode?: boolean;
+}
 
 export default Vue.extend({
   components: {
@@ -49,7 +59,7 @@ export default Vue.extend({
     },
   },
   data() {
-    let chs = [];
+    let chs = Array<AiChannelCfg>();
     for (let i = 0; i < 8; i++) {
       chs.push({
         enable: false,
@@ -62,10 +72,7 @@ export default Vue.extend({
       });
     }
 
-    const empty
-    let paramObj = { chs };
-
-    if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr);
+    if (this.paramStr !== '') chs = JSON.parse(this.paramStr);
 
     const fields = [
       {
@@ -99,7 +106,7 @@ export default Vue.extend({
     ];
 
     return {
-      paramObj,
+      chs,
       fields,
     };
   },
@@ -109,16 +116,16 @@ export default Vue.extend({
   },
   methods: {
     justify() {
-      for (const ch of this.paramObj.chs) {
-        if (ch.min === '') ch.min = undefined;
-        if (ch.max === '') ch.max = undefined;
-        if (ch.mtMin === '') ch.mtMin = undefined;
-        if (ch.mtMax === '') ch.mtMax = undefined;
+      for (const ch of this.chs) {
+        if (!isNumber(ch.min)) ch.min = undefined;
+        if (!isNumber(ch.max)) ch.max = undefined;
+        if (!isNumber(ch.mtMin)) ch.mtMin = undefined;
+        if (!isNumber(ch.mtMax)) ch.mtMax = undefined;
       }
     },
-    onChange(evt) {
+    onChange(evt: any) {
       this.justify();
-      this.$emit('param-changed', JSON.stringify(this.paramObj));
+      this.$emit('param-changed', JSON.stringify(this.chs));
     },
   },
 });

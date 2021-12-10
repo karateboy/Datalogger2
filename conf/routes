@@ -91,6 +91,7 @@ GET      /MonthlyHourReport/:monitorType/:reportDate                            
 GET      /MonitorType                                                             controllers.HomeController.monitorTypeList
 POST     /MonitorType/:id                                                         controllers.HomeController.upsertMonitorType(id)
 PUT      /MonitorType/:id                                                         controllers.HomeController.upsertMonitorType(id)
+DELETE   /MonitorType/:id                                                         controllers.HomeController.deleteMonitorType(id)
 GET      /SignalTypes                                                             controllers.HomeController.signalTypeList
 GET      /SignalValues                                                            controllers.HomeController.signalValues
 

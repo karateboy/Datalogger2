@@ -46,9 +46,9 @@ import javax.inject._
 
 @Singleton
 class InstrumentTypeOp @Inject()
-(adam4017Drv: Adam4017, adam4017Factory: Adam4017Collector.Factory, adam4068Factory: Adam4068Collector.Factory,
- adam6017Drv: Adam6017, adam6017Factory: Adam6017Collector.Factory,
+(adam6017Drv: Adam6017, adam6017Factory: Adam6017Collector.Factory,
  adam6066Drv: Adam6066, adam6066Factory: Adam6066Collector.Factory,
+ adam4000Factory: Adam4000Collector.Factory,
  moxaE1240Drv: MoxaE1240, moxaE1240Factory: MoxaE1240Collector.Factory,
  verewaF701Factory: VerewaF701Collector.Factory,
  thetaFactory: ThetaCollector.Factory,
@@ -82,8 +82,7 @@ class InstrumentTypeOp @Inject()
     .map(dt => dt.id -> dt).toMap
 
   val otherDeviceList = Seq(
-    InstrumentType(adam4017Drv, adam4017Factory, true),
-    InstrumentType(Adam4068, adam4068Factory, true),
+    InstrumentType(Adam4000, adam4000Factory, true),
     InstrumentType(adam6017Drv, adam6017Factory, true),
     InstrumentType(adam6066Drv, adam6066Factory, true),
     InstrumentType(Baseline9000Collector, baseline9000Factory),
