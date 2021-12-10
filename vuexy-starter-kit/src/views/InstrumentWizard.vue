@@ -407,7 +407,6 @@ export default Vue.extend({
       return this.form.instType === 'theta';
     },
     instrumentSummary(): string {
-      console.log(this.form.param);
       const formNewline = (input: string) => {
         const newline = String.fromCharCode(13, 10);
         return input.replaceAll('\\n', newline);

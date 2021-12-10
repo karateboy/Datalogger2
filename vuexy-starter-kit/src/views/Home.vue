@@ -1,9 +1,10 @@
 <template>
-  <b-row class="match-height">
+  <b-row>
     <b-col lg="6" md="12">
-      <b-row>
+      <b-row class="match-height">
         <b-col cols="8">
           <b-card
+            img-width="250"
             img-src="../assets/images/old_house.png"
             img-left
             border-variant="primary"
