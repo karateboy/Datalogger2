@@ -6,7 +6,7 @@
         responsive
         :fields="columns"
         :items="monitorTypes"
-        select-mode="multi"
+        select-mode="single"
         selectable
         selected-variant="info"
         bordered

@@ -1,5 +1,5 @@
 <template>
-  <b-row>
+  <b-row class="match-height">
     <b-col lg="6" md="12">
       <b-row class="match-height">
         <b-col cols="8">
