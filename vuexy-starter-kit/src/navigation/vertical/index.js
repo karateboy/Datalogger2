@@ -88,6 +88,10 @@ export default [
         route: 'monitor-type-config',
       },
       {
+        title: '數位訊號管理',
+        route: 'signal-type-config',
+      },
+      {
         title: '人工資料註記',
         route: 'manual-audit',
       },

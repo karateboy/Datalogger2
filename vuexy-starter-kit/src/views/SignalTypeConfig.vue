@@ -1,12 +1,12 @@
 <template>
   <div>
-    <b-card title="測項管理" class="text-center">
+    <b-card title="數位訊號管理" class="text-center">
       <b-table
         small
         responsive
         :fields="columns"
         :items="monitorTypes"
-        select-mode="single"
+        select-mode="multi"
         selectable
         selected-variant="info"
         bordered
@@ -17,83 +17,20 @@
         <template #cell(desp)="row">
           <b-form-input v-model="row.item.desp" @change="markDirty(row.item)" />
         </template>
-        <template #cell(unit)="row">
-          <b-form-input
-            v-model="row.item.unit"
-            size="sm"
-            @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(prec)="row">
-          <b-form-input
-            v-model.number="row.item.prec"
-            size="sm"
-            @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(order)="row">
-          <b-form-input
-            v-model.number="row.item.order"
-            size="sm"
-            @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(std_law)="row">
-          <b-form-input
-            v-model.number="row.item.std_law"
-            size="sm"
-            @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(thresholdConfig)="row">
-          <b-form-input
-            v-model.number="row.item.thresholdConfig.elapseTime"
-            size="sm"
-            @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(zd_law)="row">
-          <b-form-input
-            v-model.number="row.item.zd_law"
-            size="sm"
-            @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(span)="row">
-          <b-form-input
-            v-model.number="row.item.span"
-            type="number"
-            size="sm"
-            @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(span_dev_law)="row">
-          <b-form-input
-            v-model.number="row.item.span_dev_law"
-            size="sm"
-            @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(levelSeq)="row">
-          <b-form-input
-            v-model="row.item.levelSeq"
-            size="sm"
-            @change="
-              markDirty(row.item);
-              checkLevel(row.item.levelSeq);
-            "
-          />
-        </template>
-        <template #cell(calbrate)="row">
-          <b-form-checkbox
-            v-model="row.item.calibrate"
-            switch
-            @change="markDirty(row.item)"
-          />
+        <template #cell(value)="row">
+          {{ getMonitorTypeValue(row.item._id) }}
         </template>
       </b-table>
       <b-row>
         <b-col>
+          <b-button
+            v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+            variant="info"
+            class="mr-1"
+            @click="addMt"
+          >
+            新增
+          </b-button>
           <b-button
             v-ripple.400="'rgba(255, 255, 255, 0.15)'"
             variant="primary"
@@ -107,7 +44,7 @@
             type="reset"
             variant="outline-secondary"
             class="mr-1"
-            @click="getMonitorTypes"
+            @click="getSignalTypes"
           >
             取消
           </b-button>
@@ -123,12 +60,21 @@
       </b-row>
     </b-card>
     <b-modal
-      id="thresholdConfig"
-      title="高值處理設定"
+      id="addSignalTypeModal"
+      header-bg-variant="info"
+      title="新增訊號"
       cancel-title="取消"
       ok-title="確認"
-      @ok="setMtThresholdConfig"
+      @ok="addSignalType"
     >
+      <b-form @submit.prevent>
+        <b-form-group label="代碼" label-cols-md="3">
+          <b-form-input v-model="form._id" />
+        </b-form-group>
+        <b-form-group label="名稱" label-cols-md="3">
+          <b-form-input v-model="form.desp" />
+        </b-form-group>
+      </b-form>
     </b-modal>
   </div>
 </template>
@@ -167,49 +113,12 @@ export default Vue.extend({
         sortable: true,
       },
       {
-        key: 'unit',
-        label: '單位',
-        sortable: true,
-      },
-      {
-        key: 'prec',
-        label: '小數點位數',
-        sortable: true,
-      },
-      {
-        key: 'order',
-        label: '順序',
-        sortable: true,
-      },
-      {
-        key: 'std_law',
-        label: '法規值',
-        sortable: true,
-      },
-      {
-        key: 'zd_law',
-        label: '零點偏移法規',
-      },
-      {
-        key: 'span',
-        label: '全幅值',
-      },
-      {
-        key: 'span_dev_law',
-        label: '全幅值偏移法規',
-      },
-      {
-        key: 'levelSeq',
-        label: '分級(以逗點分隔)',
-      },
-      {
-        key: 'calbrate',
-        label: '校正回歸',
-        tdClass: { 'text-center': true },
+        key: 'value',
+        label: '現值',
       },
       {
         key: 'measuringBy',
-        label: '測量儀器',
+        label: '儀器',
         formatter: (
           value: null | Array<string>,
           key: string,
@@ -222,12 +131,9 @@ export default Vue.extend({
     ];
     const monitorTypes = Array<EditMonitorType>();
 
-    let thresholdConfig: ThresholdConfig = {
-      elapseTime: 30,
-    };
-
     const form = {
-      thresholdConfig,
+      _id: 'SIGNAL1',
+      desp: '訊號1',
     };
     return {
       display: false,
@@ -238,34 +144,35 @@ export default Vue.extend({
       },
       form,
       selected: Array<MonitorType>(),
+      signalMap: {},
     };
   },
-  mounted() {
-    this.getMonitorTypes();
+  async mounted() {
+    await this.getSignalTypes();
+    await this.getSignalValues();
   },
   methods: {
-    getMonitorTypes() {
-      axios.get('/MonitorType').then(res => {
+    async getSignalTypes() {
+      try {
+        const res = await axios.get('/SignalTypes');
         this.monitorTypes = res.data;
-        for (const mt of this.monitorTypes) {
-          if (mt.thresholdConfig === undefined)
-            mt.thresholdConfig = { elapseTime: 30 };
-
-          if (mt.levels !== undefined) {
-            mt.levelSeq = mt.levels.join(',');
-          }
-        }
-      });
-    },
-    configThreshold(item: any) {
-      this.editingMt = item;
-      this.$bvModal.show('thresholdConfig');
-    },
-    showThresholdConfig(config: any) {
-      if (!config) return '-';
-      else {
-        return `持續時間 ${config.elapseTime}`;
+      } catch (err) {
+        throw new Error('failed to get signal types');
       }
+    },
+    async getSignalValues() {
+      try {
+        const res = await axios.get('/SignalValues');
+        this.signalMap = res.data;
+      } catch (err) {
+        throw new Error('failed to get signal types');
+      }
+    },
+    getMonitorTypeValue(mt: string) {
+      let signalValues: any = this.signalMap;
+      if (signalValues[mt] === undefined) return '-';
+      else if (signalValues[mt] === true) return 'True';
+      else return 'False';
     },
     justify(mt: any) {
       if (mt.span === '') mt.span = null;
@@ -309,24 +216,41 @@ export default Vue.extend({
       }
 
       Promise.all(all).then(() => {
-        this.getMonitorTypes();
+        this.getSignalTypes();
         this.$bvModal.msgBoxOk('成功');
       });
     },
     markDirty(item: any) {
       item.dirty = true;
     },
-    setMtThresholdConfig() {
-      this.editingMt.thresholdConfig = this.form.thresholdConfig;
-      this.markDirty(this.editingMt);
-    },
     onMtSelected(items: Array<MonitorType>) {
       this.selected = items;
+    },
+    async addMt() {
+      this.form._id = `SIGNAL${this.monitorTypes.length + 1}`;
+      this.form.desp = `訊號${this.monitorTypes.length + 1}`;
+      this.$bvModal.show('addSignalTypeModal');
+    },
+    async addSignalType() {
+      let mt: MonitorType = {
+        _id: this.form._id,
+        desp: this.form.desp,
+        unit: 'N/A',
+        prec: 2,
+        order: 1000 + this.monitorTypes.length,
+        signalType: true,
+      };
+      try {
+        const resp = await axios.post(`/MonitorType/${mt._id}`, mt);
+        if (resp.status === 200) this.getSignalTypes();
+      } catch (err) {
+        console.error(err);
+      }
     },
     async removeMt() {
       let deletedMts = this.selected.map(p => p._id);
       let ret = await this.$bvModal.msgBoxConfirm(
-        `請確認要刪除${deletedMts.join(',')}等測項`,
+        `請確認要刪除${deletedMts.join(',')}測項`,
       );
       if (ret === true) {
         try {
@@ -334,7 +258,7 @@ export default Vue.extend({
             return axios.delete(`/MonitorType/${_id}`);
           });
           await Promise.all(allP);
-          this.getMonitorTypes();
+          this.getSignalTypes();
         } catch (err) {
           throw new Error('Failed to delete mt');
         }

@@ -3,6 +3,7 @@ package models
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import org.mongodb.scala.model._
+import org.mongodb.scala.result.{InsertOneResult, UpdateResult}
 import play.api._
 import play.api.libs.json._
 
@@ -170,21 +171,9 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
 
   var (mtvList, signalMtvList, map) = refreshMtv
 
-  def signalType(_id: String, desp: String) = {
+  def signalType(_id: String, desp: String): MonitorType = {
     signalOrder += 1
     MonitorType(_id, desp, "N/A", 0, signalOrder, true)
-  }
-
-  private var signalValueMap = Map.empty[String, (DateTime, Boolean)]
-
-  def updateSignalValueMap(mt:String, v:Boolean) = {
-    signalValueMap = signalValueMap + (mt -> (DateTime.now, v))
-  }
-
-  def getSignalValueMap() ={
-    val now = DateTime.now()
-    signalValueMap = signalValueMap.filter(p => p._2._1.after(now - 6.seconds))
-    signalValueMap map {p => p._1-> p._2._2}
   }
 
   def logDiMonitorType(mt: String, v: Boolean) = {
@@ -197,7 +186,6 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     }else{
       alarmOp.log(alarmOp.Src(), alarmOp.Level.INFO, s"${mtCase.desp}=>解除", 1)
     }
-
   }
 
   def init(): Future[Any] = {
@@ -256,17 +244,16 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     MonitorType(_id, desp, unit, prec, rangeOrder)
   }
 
-  def newMonitorType(mt: MonitorType) = {
+  def newMonitorType(mt: MonitorType): Future[InsertOneResult] = {
     map = map + (mt._id->mt)
     if(mt.signalType)
       signalMtvList = signalMtvList.:+(mt._id)
     else
       mtvList = mtvList.:+(mt._id)
 
-    collection.insertOne(mt).toFuture().andThen({
-      case _=>
-        refreshMtv
-    })
+    val f = collection.insertOne(mt).toFuture()
+    f onFailure errorHandler
+    f
   }
 
   def deleteMonitorType(_id:String) = {
@@ -348,6 +335,15 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
       map = map + (mt -> newMt)
       upsertMonitorTypeFuture(newMt)
     }
+
+    for {
+      mt <- signalMtvList if map(mt).measuringBy.nonEmpty
+      instrumentList = map(mt).measuringBy.get if instrumentList.contains(instrumentId)
+    } {
+      val newMt = map(mt).stopMeasuring(instrumentId)
+      map = map + (mt -> newMt)
+      upsertMonitorTypeFuture(newMt)
+    }
   }
 
   def realtimeMtvList = mtvList.filter { mt =>
@@ -365,13 +361,21 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     f
   }
 
-  def upsertMonitorType(mt: MonitorType) = {
+  def upsertMonitorType(mt: MonitorType): Future[UpdateResult] = {
     import org.mongodb.scala.model.ReplaceOptions
+    map = map + (mt._id -> mt)
+    if(mt.signalType) {
+      if(!signalMtvList.contains(mt._id))
+        signalMtvList=signalMtvList:+mt._id
+    }else{
+      if(!mtvList.contains(mt._id))
+        mtvList = mtvList:+mt._id
+    }
 
     val f = collection.replaceOne(equal("_id", mt._id), mt, ReplaceOptions().upsert(true)).toFuture()
-    waitReadyResult(f)
-    map = map + (mt._id -> mt)
-    true
+    f onFailure errorHandler
+
+    f
   }
 
   //  def insertNewMonitorTypeFuture(mt: MonitorType) = {

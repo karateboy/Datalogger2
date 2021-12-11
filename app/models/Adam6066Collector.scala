@@ -38,6 +38,7 @@ class Adam6066Collector @Inject()
   import com.serotonin.modbus4j.ip.IpParameters
 
   import scala.concurrent.{Future, blocking}
+
   var cancelable: Cancellable = _
 
   def receive = handler(MonitorStatus.NormalStat, None, Map.empty[Int, Boolean])
@@ -94,23 +95,25 @@ class Adam6066Collector @Inject()
             val result =
               for (idx <- 0 to 7) yield rawResult.getValue(idx).asInstanceOf[Boolean]
 
-            for {
-              cfg <- param.chs.zipWithIndex
-              chCfg = cfg._1 if chCfg.enable && chCfg.mt.isDefined
-              mt = chCfg.mt.get
-              idx = cfg._2
-              v = result(idx)
-            } yield {
-              newDiValueMap = newDiValueMap + (idx -> v)
-              monitorTypeOp.updateSignalValueMap(mt, v)
-              // Log on difference
-              if (!diValueMap.contains(idx) || diValueMap(idx) != v) {
-                // FIXME hot code invert
-                monitorTypeOp.logDiMonitorType(mt, !v)
+            val dataList: Seq[SignalData] =
+              for {
+                cfg <- param.chs.zipWithIndex
+                chCfg = cfg._1 if chCfg.enable && chCfg.mt.isDefined
+                mt = chCfg.mt.get
+                idx = cfg._2
+                v = result(idx)
+              } yield {
+                newDiValueMap = newDiValueMap + (idx -> v)
+                // Log on difference
+                if (!diValueMap.contains(idx) || diValueMap(idx) != v) {
+                  // FIXME hot code invert
+                  monitorTypeOp.logDiMonitorType(mt, !v)
+                }
+                SignalData(mt, v)
               }
-            }
-            context become handler(collectorState, masterOpt, newDiValueMap)
+            context.parent ! ReportSignalData(dataList)
 
+            context become handler(collectorState, masterOpt, newDiValueMap)
 
             import scala.concurrent.duration._
             cancelable = system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
