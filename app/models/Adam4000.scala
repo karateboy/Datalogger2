@@ -3,7 +3,7 @@ package models
 import akka.actor.{Actor, Cancellable}
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
-import models.Adam4000.ADAM4017
+import models.Adam4000.{ADAM4017, ADAM4069}
 import models.ModelHelper.errorHandler
 import models.Protocol.{ProtocolParam, serial}
 import play.api.Logger
@@ -16,8 +16,26 @@ case class SignalConfig(monitorType: Option[String])
 
 case class AiChannelCfg(enable: Boolean, mt: Option[String], max: Option[Double], mtMax: Option[Double],
                         min: Option[Double], mtMin: Option[Double], repairMode: Option[Boolean])
+case class Adam4069Cfg(address:String, channelList: Seq[SignalConfig])
+case class Adam4017Cfg(address:String, channelList: Seq[AiChannelCfg])
+case class Adam4000Module(module: String, address: String, param: String){
+  def get4017Cfg: Adam4017Cfg = {
+    assert(module == ADAM4017)
+    implicit val reads = Json.reads[AiChannelCfg]
+    val ret = Json.parse(param).validate[Seq[AiChannelCfg]]
+    val channelCfgList = ret.asOpt.getOrElse(throw new Exception("Invalid 4017 config!"))
+    Adam4017Cfg(address, channelCfgList)
+  }
 
-case class Adam4000Module(module: String, address: String, param: String)
+  def get4069Cfg: Adam4069Cfg = {
+    assert(module == ADAM4069)
+    implicit val reads = Json.reads[SignalConfig]
+    val ret = Json.parse(param).validate[Seq[SignalConfig]]
+    val channelList = ret.asOpt.getOrElse(throw new Exception("Invalid 4069 config!"))
+    Adam4069Cfg(address, channelList)
+  }
+
+}
 
 object Adam4000 extends DriverOps {
   override def id: String = "adam4000"
@@ -71,26 +89,18 @@ object Adam4000 extends DriverOps {
 
   override def getMonitorTypes(param: String): List[String] = {
     val moduleList = Json.parse(param).validate[List[Adam4000Module]].asOpt.get
-    moduleList.map(module => {
+    moduleList.flatMap(module => {
       module.module match {
         case ADAM4017 =>
-          // #8 AI
-          implicit val reads = Json.reads[AiChannelCfg]
-          val ret = Json.parse(module.param).validate[Seq[AiChannelCfg]]
-          val channelCfgList = ret.asOpt.getOrElse(throw new Exception("Invalid 4017 config!"))
-          for (cfg <- channelCfgList if cfg.enable) yield
+          val adam4017cfg = module.get4017Cfg
+          for (cfg <- adam4017cfg.channelList if cfg.enable) yield
             cfg.mt.get
 
         case ADAM4069 =>
-          //#8 DO
-          implicit val reads = Json.reads[SignalConfig]
-          val ret = Json.parse(module.param).validate[Seq[SignalConfig]]
-          val signalList = ret.asOpt.getOrElse(throw new Exception("Invalid 4069 config!"))
-          if (signalList.size != 8)
-            throw new Exception("4069 shall have 8 channel configs")
-          signalList.map(_.monitorType).flatten
+          val adam4069cfg = module.get4069Cfg
+          adam4069cfg.channelList.map(_.monitorType).flatten
       }
-    }).flatten
+    })
   }
 
   override def getCalibrationTime(param: String): Option[LocalTime] = None
@@ -108,7 +118,8 @@ object Adam4000Collector {
     def apply(id: String, protocol: ProtocolParam, param: List[Adam4000Module]): Actor
   }
   case object OpenCom
-  case object ReadAI
+  case object ReadInput
+  case class WriteModuleDo(address:String, ch:Int, on:Boolean)
 }
 import scala.concurrent.ExecutionContext.Implicits.global
 import javax.inject._
@@ -120,7 +131,7 @@ class Adam4000Collector @Inject()(instrumentOp: InstrumentOp, alarmOp: AlarmOp)
   var comm: SerialComm = _
   var timerOpt: Option[Cancellable] = None
 
-  def decode(str: String)(aiChannelCfgs: Seq[AiChannelCfg]) = {
+  def decode4017(str: String)(aiChannelCfgs: Seq[AiChannelCfg]) = {
     val ch = str.substring(1).split("(?=[+-])", 8)
     if (ch.length != 8)
       throw new Exception("unexpected format:" + str)
@@ -150,11 +161,37 @@ class Adam4000Collector @Inject()(instrumentOp: InstrumentOp, alarmOp: AlarmOp)
     context.parent ! ReportData(dataList.toList)
   }
 
+  def decode4069(str: String, signalConfigList: Seq[SignalConfig]) = {
+    val valueStr = str.substring(1).take(2)
+    val value = Integer.valueOf(valueStr, 16)
+    val dataList: Seq[SignalData] =
+      for{(signalCfg, idx)<- signalConfigList.zipWithIndex
+          monitorType <- signalCfg.monitorType
+          } yield {
+        SignalData(monitorType, (value & 1<<idx) != 0)
+      }
+    context.parent ! ReportSignalData(dataList)
+  }
+
+  def addSignalTypeHandler(): Unit ={
+    for(module<-moduleList if module.module == ADAM4069){
+      implicit val reads = Json.reads[SignalConfig]
+      val signalConfigList = Json.parse(module.param).validate[Seq[SignalConfig]].asOpt.get
+      for{(cfg, idx)<-signalConfigList.zipWithIndex
+          monitorTypeId <- cfg.monitorType
+          }{
+        context.parent ! AddSignalTypeHandler(monitorTypeId, (bit:Boolean)=>{
+          self ! WriteModuleDo(module.address, idx, bit)
+        })
+      }
+    }
+  }
   override def receive: Receive = {
     case OpenCom =>
       try{
         comm = SerialComm.open(protocolParam.comPort.get, protocolParam.speed.getOrElse(9600))
-        timerOpt = Some(context.system.scheduler.scheduleOnce(FiniteDuration(3, SECONDS), self, ReadAI))
+        addSignalTypeHandler()
+        timerOpt = Some(context.system.scheduler.scheduleOnce(FiniteDuration(3, SECONDS), self, ReadInput))
       }catch{
         case ex: Exception =>
           Logger.error(ex.getMessage, ex)
@@ -162,42 +199,47 @@ class Adam4000Collector @Inject()(instrumentOp: InstrumentOp, alarmOp: AlarmOp)
           import scala.concurrent.duration._
           context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenCom)
       }
-    case ReadAI =>
+    case ReadInput =>
       Future {
         blocking {
           val os = comm.os
           try {
             for (module <- moduleList if module.module == ADAM4017) {
+              val adam4017cfg = module.get4017Cfg
               val readCmd = s"#${module.address}\r"
               os.write(readCmd.getBytes)
               val strList = comm.getLineWithTimeout(2)
-              implicit val reads = Json.reads[AiChannelCfg]
-              val aiChannelCfgs = Json.parse(module.param).validate[Seq[AiChannelCfg]].asOpt.getOrElse(Seq.empty[AiChannelCfg])
               for (str <- strList) {
-                decode(str)(aiChannelCfgs)
+                decode4017(str)(adam4017cfg.channelList)
               }
             }
 
+            for (module <- moduleList if module.module == ADAM4069) {
+              val adam4069cfg = module.get4069Cfg
+              val readCmd = s"#${module.address}6\r"
+              os.write(readCmd.getBytes)
+              val strList = comm.getLineWithTimeout(2)
+              for (str <- strList) {
+                decode4069(str, adam4069cfg.channelList)
+              }
+            }
           } catch (errorHandler)
           finally {
-            timerOpt = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, ReadAI))
+            timerOpt = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, ReadInput))
           }
         }
       } onFailure errorHandler
 
-    case WriteDO(bit, on) =>
-      /*
+    case WriteModuleDo(address, ch, on) =>
       val os = comm.os
-      val is = comm.is
-      Logger.info(s"Output DO $bit to $on")
+      Logger.info(s"Output DO $ch channel to $on")
       val writeCmd = if (on)
-        s"#${param.addr}0001\r"
+        s"#${address}1${ch}01\r"
       else
-        s"#${param.addr}0000\r"
+        s"#${address}1${ch}00\r"
 
       os.write(writeCmd.getBytes)
-      val strList = comm.getLineWithTimeout(2)
-       */
+      comm.getLineWithTimeout(2)
   }
 }
 

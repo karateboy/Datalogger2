@@ -281,6 +281,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/signal-type-config',
+      name: 'signal-type-config',
+      component: () => import('@/views/SignalTypeConfig.vue'),
+      meta: {
+        pageTitle: '數位訊號管理',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '數位訊號管理',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/manual-audit',
       name: 'manual-audit',
       component: () => import('@/views/ManualAudit.vue'),

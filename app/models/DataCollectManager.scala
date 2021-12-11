@@ -9,6 +9,7 @@ import play.api.libs.concurrent.InjectedActorSupport
 import javax.inject._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration.SECONDS
 import scala.language.postfixOps
 import scala.util.Success
@@ -29,6 +30,10 @@ case class SetMonitorTypeState(instId: String, mt: String, state: String)
 case class MonitorTypeData(mt: String, value: Double, status: String)
 
 case class ReportData(dataList: List[MonitorTypeData])
+
+case class SignalData(mt: String, value: Boolean)
+
+case class ReportSignalData(dataList: Seq[SignalData])
 
 case class ExecuteSeq(seqName: String, on: Boolean)
 
@@ -64,9 +69,15 @@ case object EvtOperationOverThreshold
 
 case object GetLatestData
 
+case object GetLatestSignal
+
 case class IsTargetConnected(instId: String)
 
 case object IsConnected
+
+case class AddSignalTypeHandler(mtId: String, handler: Boolean => Unit)
+
+case class WriteSignal(mtId: String, bit: Boolean)
 
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentOp, recordOp: RecordOp,
@@ -114,7 +125,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! ExecuteSeq(seqName, on)
   }
 
-  def getLatestData() = {
+  def getLatestData(): Future[Map[String, Record]] = {
     import akka.pattern.ask
     import akka.util.Timeout
 
@@ -123,6 +134,16 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 
     val f = manager ? GetLatestData
     f.mapTo[Map[String, Record]]
+  }
+
+  def getLatestSignal(): Future[Map[String, Boolean]] = {
+    import akka.pattern.ask
+    import akka.util.Timeout
+    import scala.concurrent.duration._
+    implicit val timeout = Timeout(Duration(3, SECONDS))
+
+    val f = manager ? GetLatestSignal
+    f.mapTo[Map[String, Boolean]]
   }
 
   import scala.collection.mutable.ListBuffer
@@ -228,12 +249,6 @@ class DataCollectManager @Inject()
   val effectivRatio = 0.75
   val storeSecondData = config.getBoolean("storeSecondData").getOrElse(false)
   Logger.info(s"store second data = $storeSecondData")
-
-  def startReaders() = {
-    SpectrumReader.start(config, system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
-  }
-
-  startReaders()
   val timer = {
     import scala.concurrent.duration._
     //Try to trigger at 30 sec
@@ -242,12 +257,14 @@ class DataCollectManager @Inject()
     system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
   }
 
+  startReaders()
   var calibratorOpt: Option[ActorRef] = None
   var digitalOutputOpt: Option[ActorRef] = None
   var onceTimer: Option[Cancellable] = None
+  var signalTypeHandlerMap = Map.empty[String, Map[ActorRef, Boolean => Unit]]
 
-  def evtOperationHighThreshold {
-    alarmOp.log(alarmOp.Src(), alarmOp.Level.INFO, "進行高值觸發事件行動..")
+  def startReaders() = {
+    SpectrumReader.start(config, system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
   }
 
   {
@@ -258,6 +275,10 @@ class DataCollectManager @Inject()
           self ! StartInstrument(inst)
     }
     Logger.info("DataCollect manager started")
+  }
+
+  def evtOperationHighThreshold {
+    alarmOp.log(alarmOp.Src(), alarmOp.Level.INFO, "進行高值觸發事件行動..")
   }
 
   def calculateAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]]) = {
@@ -335,15 +356,20 @@ class DataCollectManager @Inject()
     overThreshold
   }
 
-  def receive = handler(Map.empty[String, InstrumentParam], Map.empty[ActorRef, String],
-    Map.empty[String, Map[String, Record]], List.empty[(DateTime, String, List[MonitorTypeData])], List.empty[String])
+  def receive: Receive = handler(Map.empty[String, InstrumentParam], Map.empty[ActorRef, String],
+    Map.empty[String, Map[String, Record]],
+    List.empty[(DateTime, String, List[MonitorTypeData])],
+    List.empty[String],
+    Map.empty[String, Map[ActorRef, Boolean => Unit]],
+    Map.empty[String, (DateTime, Boolean)])
 
-  def handler(
-               instrumentMap: Map[String, InstrumentParam],
-               collectorInstrumentMap: Map[ActorRef, String],
-               latestDataMap: Map[String, Map[String, Record]],
-               mtDataList: List[(DateTime, String, List[MonitorTypeData])],
-               restartList: Seq[String]): Receive = {
+  def handler(instrumentMap: Map[String, InstrumentParam],
+              collectorInstrumentMap: Map[ActorRef, String],
+              latestDataMap: Map[String, Map[String, Record]],
+              mtDataList: List[(DateTime, String, List[MonitorTypeData])],
+              restartList: Seq[String],
+              signalTypeHandlerMap: Map[String, Map[ActorRef, Boolean => Unit]],
+              signalDataMap: Map[String, (DateTime, Boolean)]): Receive = {
     case StartInstrument(inst) =>
       if (!instrumentTypeOp.map.contains(inst.instType)) {
         Logger.error(s"${inst._id} of ${inst.instType} is unknown!")
@@ -375,7 +401,7 @@ class DataCollectManager @Inject()
         context become handler(
           instrumentMap + (inst._id -> instrumentParam),
           collectorInstrumentMap + (collector -> inst._id),
-          latestDataMap, mtDataList, restartList)
+          latestDataMap, mtDataList, restartList, signalTypeHandlerMap, signalDataMap)
       }
 
     case StopInstrument(id: String) =>
@@ -385,6 +411,10 @@ class DataCollectManager @Inject()
         for (timer <- param.calibrationTimerOpt)
           timer.cancel()
 
+        val filteredSignalHandlerMap = signalTypeHandlerMap.map(kv => {
+          val handlerMap = kv._2.filter(p => p._1 != param.actor)
+          kv._1 -> handlerMap
+        })
         param.actor ! PoisonPill
 
         if (calibratorOpt == Some(param.actor)) {
@@ -394,8 +424,8 @@ class DataCollectManager @Inject()
         }
 
         if (!restartList.contains(id))
-          context become handler(instrumentMap - (id), collectorInstrumentMap - param.actor,
-            latestDataMap -- param.mtList, mtDataList, restartList)
+          context become handler(instrumentMap - id, collectorInstrumentMap - param.actor,
+            latestDataMap -- param.mtList, mtDataList, restartList, filteredSignalHandlerMap, signalDataMap)
         else {
           val removed = restartList.filter(_ != id)
           val f = instrumentOp.getInstrumentFuture(id)
@@ -403,14 +433,15 @@ class DataCollectManager @Inject()
             case Success(value) =>
               self ! StartInstrument(value)
           })
-          handler(instrumentMap - (id), collectorInstrumentMap - param.actor,
-            latestDataMap -- param.mtList, mtDataList, removed)
+          context become handler(instrumentMap - id, collectorInstrumentMap - param.actor,
+            latestDataMap -- param.mtList, mtDataList, removed, filteredSignalHandlerMap, signalDataMap)
         }
       }
 
     case RestartInstrument(id) =>
       self ! StopInstrument(id)
-      context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, mtDataList, restartList :+ (id))
+      context become handler(instrumentMap, collectorInstrumentMap,
+        latestDataMap, mtDataList, restartList :+ id, signalTypeHandlerMap, signalDataMap)
 
     case RestartMyself =>
       val id = collectorInstrumentMap(sender)
@@ -435,7 +466,8 @@ class DataCollectManager @Inject()
             }
 
           context become handler(instrumentMap, collectorInstrumentMap,
-            latestDataMap ++ pairs, (DateTime.now, instId, dataList) :: mtDataList, restartList)
+            latestDataMap ++ pairs, (DateTime.now, instId, dataList) :: mtDataList, restartList,
+            signalTypeHandlerMap, signalDataMap)
       }
 
     case CalculateData => {
@@ -561,7 +593,8 @@ class DataCollectManager @Inject()
 
         checkMinDataAlarm(minuteMtAvgList)
 
-        context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData, restartList)
+        context become handler(instrumentMap, collectorInstrumentMap,
+          latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap)
         val f = recordOp.upsertRecord(RecordList(currentMintues.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeID))(recordOp.MinCollection)
         f map { _ => ForwardManager.forwardMinData }
         f
@@ -650,6 +683,15 @@ class DataCollectManager @Inject()
         Logger.warn(s"DO is not online! Ignore EvtOperationOverThreshold.")
       }
 
+    case GetLatestSignal =>
+      val now = DateTime.now()
+      val filteredSignalMap = signalDataMap.filter(p => p._2._1.after(now - 6.seconds))
+      val resultMap = filteredSignalMap map {p => p._1-> p._2._2}
+      context become handler(instrumentMap, collectorInstrumentMap, latestDataMap,
+        mtDataList, restartList, signalTypeHandlerMap, filteredSignalMap)
+
+      sender() ! resultMap
+
     case GetLatestData =>
       //Filter out older than 6 second
       val latestMap = latestDataMap.flatMap { kv =>
@@ -677,10 +719,26 @@ class DataCollectManager @Inject()
           }
         }
       }
-
-      context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, mtDataList, restartList)
-
+      context become handler(instrumentMap, collectorInstrumentMap, latestDataMap,
+        mtDataList, restartList, signalTypeHandlerMap, signalDataMap)
       sender ! latestMap
+
+    case AddSignalTypeHandler(mtId, signalHandler) =>
+      var handlerMap = signalTypeHandlerMap.getOrElse(mtId, Map.empty[ActorRef, Boolean => Unit])
+      handlerMap = handlerMap + (sender() -> signalHandler)
+      context become handler(instrumentMap, collectorInstrumentMap, latestDataMap,
+        mtDataList, restartList, signalTypeHandlerMap + (mtId -> handlerMap), signalDataMap)
+
+    case WriteSignal(mtId, bit) =>
+      val handlerMap = signalTypeHandlerMap.getOrElse(mtId, Map.empty[ActorRef, Boolean => Unit])
+      for (handler <- handlerMap.values)
+        handler(bit)
+
+    case  ReportSignalData(dataList)=>
+      val updateMap: Map[String, (DateTime, Boolean)] = dataList.map(signal=>{signal.mt->(DateTime.now(), signal.value)}).toMap
+      context become handler(instrumentMap, collectorInstrumentMap, latestDataMap,
+        mtDataList, restartList, signalTypeHandlerMap, signalDataMap ++ updateMap)
+
   }
 
   override def postStop(): Unit = {
