@@ -20,6 +20,19 @@
         <template #cell(value)="row">
           {{ getMonitorTypeValue(row.item._id) }}
         </template>
+        <template #cell(test)="row">
+          <b-button
+            variant="primary"
+            @click="setMonitorTypeValue(row.item._id, true)"
+            >設定</b-button
+          >
+          <b-button
+            variant="primary"
+            class="ml-2"
+            @click="setMonitorTypeValue(row.item._id, false)"
+            >清除</b-button
+          >
+        </template>
       </b-table>
       <b-row>
         <b-col>
@@ -85,7 +98,7 @@
 import Vue from 'vue';
 const Ripple = require('vue-ripple-directive');
 import axios from 'axios';
-import { MonitorType, ThresholdConfig } from './types';
+import { MonitorType } from './types';
 
 interface EditMonitorType extends MonitorType {
   dirty?: boolean;
@@ -115,6 +128,10 @@ export default Vue.extend({
       {
         key: 'value',
         label: '現值',
+      },
+      {
+        key: 'test',
+        label: '測試',
       },
       {
         key: 'measuringBy',
@@ -171,8 +188,8 @@ export default Vue.extend({
     getMonitorTypeValue(mt: string) {
       let signalValues: any = this.signalMap;
       if (signalValues[mt] === undefined) return '-';
-      else if (signalValues[mt] === true) return 'True';
-      else return 'False';
+      else if (signalValues[mt] === true) return '1';
+      else return '0';
     },
     justify(mt: any) {
       if (mt.span === '') mt.span = null;
@@ -244,7 +261,7 @@ export default Vue.extend({
         const resp = await axios.post(`/MonitorType/${mt._id}`, mt);
         if (resp.status === 200) this.getSignalTypes();
       } catch (err) {
-        console.error(err);
+        throw new Error('failed to get signal types');
       }
     },
     async removeMt() {
@@ -262,6 +279,13 @@ export default Vue.extend({
         } catch (err) {
           throw new Error('Failed to delete mt');
         }
+      }
+    },
+    async setMonitorTypeValue(mt: string, bit: boolean) {
+      try {
+        const resp = await axios.get(`/SetSignal/${mt}/${bit}`);
+      } catch (err) {
+        throw new Error('failed to toggle mt');
       }
     },
   },

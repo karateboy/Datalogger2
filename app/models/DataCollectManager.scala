@@ -146,6 +146,10 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     f.mapTo[Map[String, Boolean]]
   }
 
+  def writeSignal(mtId:String, bit:Boolean) = {
+    manager ! WriteSignal(mtId, bit)
+  }
+
   import scala.collection.mutable.ListBuffer
 
   def evtOperationHighThreshold {

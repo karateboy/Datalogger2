@@ -216,7 +216,7 @@ class Adam4000Collector @Inject()(instrumentOp: InstrumentOp, alarmOp: AlarmOp)
 
             for (module <- moduleList if module.module == ADAM4069) {
               val adam4069cfg = module.get4069Cfg
-              val readCmd = s"#${module.address}6\r"
+              val readCmd = s"$$${module.address}6\r"
               os.write(readCmd.getBytes)
               val strList = comm.getLineWithTimeout(2)
               for (str <- strList) {

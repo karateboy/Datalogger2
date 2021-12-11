@@ -94,6 +94,7 @@ PUT      /MonitorType/:id                                                       
 DELETE   /MonitorType/:id                                                         controllers.HomeController.deleteMonitorType(id)
 GET      /SignalTypes                                                             controllers.HomeController.signalTypeList
 GET      /SignalValues                                                            controllers.HomeController.signalValues
+GET      /SetSignal/:id/:bit                                                      controllers.HomeController.setSignal(id, bit:Boolean)
 
 GET      /Monitors                                                                controllers.HomeController.monitorList
 PUT      /Monitor/:id                                                             controllers.HomeController.upsertMonitor(id)

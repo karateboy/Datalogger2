@@ -546,6 +546,12 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
         Ok(Json.toJson(ret))
   }
 
+  def setSignal(mtId:String, bit:Boolean) = Security.Authenticated{
+    implicit request =>
+      dataCollectManagerOp.writeSignal(mtId, bit)
+      Ok("")
+  }
+
   def recalculateHour(monitorStr: String, startNum: Long, endNum: Long) = Security.Authenticated {
     val monitors = monitorStr.split(":")
     val start = new DateTime(startNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
