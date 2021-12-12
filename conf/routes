@@ -120,6 +120,7 @@ POST     /ConfigDuoMonitorTypes/:host               controllers.HomeController.c
 GET      /DuoFixedMonitorTypes                      controllers.HomeController.getDuoFixedMonitorTypes
 
 GET		/WindRose/:monitor/:monitorType/:tabType/:nWay/:start/:end                controllers.Query.windRoseReport(monitor: String, monitorType: String, tabType:String, nWay: Int, start: Long, end: Long)
+GET     /WeatherReport                              controllers.HomeController.weatherReport()
 #GET		/WindRose/:monitor/:monitorType/:tabType/:nWay/:start/:end/:level1/:level2/:level3   controllers.Query.windRoseReport(monitor: String, monitorType: String, tabType:String, nWay: Int, start: Long, end: Long, level1: Double, level2: Double, level3: Double)
 
 #GET		/MonitorTypeRose		controllers.Query.monitorTypeRose

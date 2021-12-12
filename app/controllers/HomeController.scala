@@ -14,7 +14,7 @@ import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class HomeController @Inject()(environment: play.api.Environment, recordOp: RecordOp,
+class HomeController @Inject()(environment: play.api.Environment,
                                userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
                                monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorOp, groupOp: GroupOp,
                                instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp,
@@ -763,6 +763,29 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     }
   }
 
+  case class ElementValue(value:String, measures:String)
+  case class TimeForecast(startTime:String, elementValue:Seq[ElementValue])
+  case class WeatherElement(elementName:String, time:Seq[TimeForecast])
+  case class LocationElement(locationName:String, weatherElement: Seq[WeatherElement])
+  case class LocationForecast(locationName:String, location: Seq[LocationElement])
+  case class WeatherForecastRecord(locations:Seq[LocationForecast])
+  case class WeatherForecastRecords(records:WeatherForecastRecord)
+  def weatherReport() = Security.Authenticated.async {
+    val f = WSClient.url(s"https://opendata.cwb.gov.tw/api/v1/rest/datastore/F-D0047-033?format=JSON&locationName=萬巒鄉")
+      .withHeaders(("Authorization","CWB-978789A6-C800-47D7-B4C6-5BF330B61FA6"))
+      .get()
+    for(ret<-f) yield {
+      implicit val r7 = Json.reads[ElementValue]
+      implicit val r6 = Json.reads[TimeForecast]
+      implicit val r5 = Json.reads[WeatherElement]
+      implicit val r4 = Json.reads[LocationElement]
+      implicit val r3 = Json.reads[LocationForecast]
+      implicit val r2 = Json.reads[WeatherForecastRecord]
+      implicit val r1 = Json.reads[WeatherForecastRecords]
+      //ret.json.validate[WeatherForecastRecords]
+      Ok(Json.toJson(ret.json))
+    }
+  }
 
   case class EditData(id: String, data: String)
 }

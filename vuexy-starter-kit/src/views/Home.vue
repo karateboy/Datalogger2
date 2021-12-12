@@ -20,11 +20,11 @@
             header-class="h4 display text-center"
             border-variant="primary"
             header-bg-variant="white"
-            img-src="../assets/images/02.svg"
+            :img-src="weatherUrl"
             img-bottom
-            title="降雨機率15%"
             img-height="150"
-          ></b-card>
+            ><p>{{ weatherForecast }}</p>
+          </b-card>
         </b-col>
       </b-row>
     </b-col>
@@ -206,6 +206,8 @@ export default Vue.extend({
       realTimeStatus: Array<MonitorTypeStatus>(),
       chartSeries: Array<highcharts.SeriesOptionsType>(),
       chart,
+      weatherForecast: '',
+      weatherUrl: '',
     };
   },
   computed: {
@@ -225,7 +227,7 @@ export default Vue.extend({
     await this.fetchMonitorTypes();
     await this.getUserInfo();
     const me = this;
-
+    await this.getWeatherReport();
     await this.initRealtimeChart();
   },
   beforeDestroy() {
@@ -374,6 +376,29 @@ export default Vue.extend({
         };
         me.chart = highcharts.chart('realtimeChart', chartOption);
       });
+    },
+    async getWeatherReport() {
+      try {
+        const resp = await axios.get('/WeatherReport');
+        if (resp.status === 200) {
+          this.weatherForecast = '';
+          let weatherElements: Array<any> =
+            resp.data.records.locations[0].location[0].weatherElement;
+          let desc = weatherElements.find(
+            p => p.elementName === 'WeatherDescription',
+          );
+          if (desc !== undefined) {
+            this.weatherForecast += desc.time[0].elementValue[0].value;
+          }
+
+          let wx = weatherElements.find(p => p.elementName === 'Wx');
+          if (wx !== undefined) {
+            this.weatherUrl = `https://www.cwb.gov.tw/V8/assets/img/weather_icons/weathers/svg_icon/day/${wx.time[0].elementValue[1].value}.svg`;
+          }
+        }
+      } catch (err) {
+        throw new Error('fail to get weather report');
+      }
     },
   },
 });
