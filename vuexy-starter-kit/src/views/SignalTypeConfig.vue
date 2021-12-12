@@ -23,13 +23,13 @@
         <template #cell(test)="row">
           <b-button
             variant="primary"
-            @click="setMonitorTypeValue(row.item._id, true)"
+            @click="setSignalValue(row.item._id, true)"
             >設定</b-button
           >
           <b-button
             variant="primary"
             class="ml-2"
-            @click="setMonitorTypeValue(row.item._id, false)"
+            @click="setSignalValue(row.item._id, false)"
             >清除</b-button
           >
         </template>
@@ -100,9 +100,12 @@ const Ripple = require('vue-ripple-directive');
 import axios from 'axios';
 import { MonitorType } from './types';
 
-interface EditMonitorType extends MonitorType {
+interface SignalMonitorType extends MonitorType {
+  value?: boolean;
+}
+
+interface EditSignalMonitorType extends SignalMonitorType {
   dirty?: boolean;
-  levelSeq?: string;
 }
 
 export default Vue.extend({
@@ -146,7 +149,7 @@ export default Vue.extend({
         },
       },
     ];
-    const monitorTypes = Array<EditMonitorType>();
+    const monitorTypes = Array<EditSignalMonitorType>();
 
     const form = {
       _id: 'SIGNAL1',
@@ -156,40 +159,37 @@ export default Vue.extend({
       display: false,
       columns,
       monitorTypes,
-      editingMt: {
-        thresholdConfig: {},
-      },
       form,
-      selected: Array<MonitorType>(),
-      signalMap: {},
+      selected: Array<EditSignalMonitorType>(),
+      signalMap: new Map<string, SignalMonitorType>(),
     };
   },
   async mounted() {
-    await this.getSignalTypes();
     await this.getSignalValues();
   },
   methods: {
-    async getSignalTypes() {
-      try {
-        const res = await axios.get('/SignalTypes');
-        this.monitorTypes = res.data;
-      } catch (err) {
-        throw new Error('failed to get signal types');
-      }
-    },
     async getSignalValues() {
       try {
         const res = await axios.get('/SignalValues');
-        this.signalMap = res.data;
+        this.monitorTypes = res.data;
+        this.signalMap.clear();
+        for (let signal of this.monitorTypes) {
+          this.signalMap.set(signal._id, signal);
+        }
       } catch (err) {
         throw new Error('failed to get signal types');
       }
     },
     getMonitorTypeValue(mt: string) {
-      let signalValues: any = this.signalMap;
-      if (signalValues[mt] === undefined) return '-';
-      else if (signalValues[mt] === true) return '1';
-      else return '0';
+      if (!this.signalMap.has(mt)) return '??';
+      else {
+        let signal = this.signalMap.get(mt);
+        if (signal?.measuringBy) {
+          if (signal?.value === true) return '1';
+          else if (signal?.value === false) return '0';
+          else return '斷線';
+        } else return '';
+      }
     },
     justify(mt: any) {
       if (mt.span === '') mt.span = null;
@@ -207,22 +207,6 @@ export default Vue.extend({
         } catch (err) {}
       }
     },
-    checkLevel(levelSeq: string | undefined): boolean {
-      try {
-        if (levelSeq === undefined) return true;
-
-        let levels = levelSeq.split(',').map(t => parseFloat(t));
-
-        if (levels.length >= 1 && levels.every(l => !isNaN(l))) return true;
-        else {
-          this.$bvModal.msgBoxOk(`${levelSeq}不是有效的分級!`);
-          return false;
-        }
-      } catch (err) {
-        this.$bvModal.msgBoxOk(`${levelSeq}不是有效的分級!`);
-        return false;
-      }
-    },
     save() {
       const all = [];
       for (const mt of this.monitorTypes) {
@@ -233,14 +217,14 @@ export default Vue.extend({
       }
 
       Promise.all(all).then(() => {
-        this.getSignalTypes();
+        this.getSignalValues();
         this.$bvModal.msgBoxOk('成功');
       });
     },
     markDirty(item: any) {
       item.dirty = true;
     },
-    onMtSelected(items: Array<MonitorType>) {
+    onMtSelected(items: Array<SignalMonitorType>) {
       this.selected = items;
     },
     async addMt() {
@@ -259,7 +243,7 @@ export default Vue.extend({
       };
       try {
         const resp = await axios.post(`/MonitorType/${mt._id}`, mt);
-        if (resp.status === 200) this.getSignalTypes();
+        if (resp.status === 200) this.getSignalValues();
       } catch (err) {
         throw new Error('failed to get signal types');
       }
@@ -275,13 +259,13 @@ export default Vue.extend({
             return axios.delete(`/MonitorType/${_id}`);
           });
           await Promise.all(allP);
-          this.getSignalTypes();
+          this.getSignalValues();
         } catch (err) {
           throw new Error('Failed to delete mt');
         }
       }
     },
-    async setMonitorTypeValue(mt: string, bit: boolean) {
+    async setSignalValue(mt: string, bit: boolean) {
       try {
         const resp = await axios.get(`/SetSignal/${mt}/${bit}`);
       } catch (err) {

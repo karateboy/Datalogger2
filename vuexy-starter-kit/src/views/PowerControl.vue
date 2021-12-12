@@ -6,20 +6,25 @@
     header-bg-variant="white"
   >
     <b-row class="p-1">
-      <b-col v-for="equipment in equipmentList" :key="equipment.name" cols="3">
+      <b-col v-for="equipment in equipmentList" :key="equipment.ctrl" cols="3">
         <b-table-simple borderless>
           <b-tbody>
             <b-tr>
               <b-td rowspan="4"><b-img :src="equipment.img" fluid-grow /></b-td>
             </b-tr>
             <b-tr
-              ><b-td>{{ equipment.name }}</b-td></b-tr
+              ><b-td>{{ getEquipmentName(equipment.ctrl) }}</b-td></b-tr
             >
             <b-tr
-              ><b-td>{{ equipment.power }}</b-td></b-tr
+              ><b-td>{{ getEquipmentPower(equipment.mt) }}</b-td></b-tr
             >
             <b-tr
-              ><b-td><b-form-checkbox v-model="equipment.on" switch /></b-td>
+              ><b-td
+                ><b-form-checkbox
+                  v-model="equipment.on"
+                  switch
+                  @change="setSignalValue(equipment.ctrl, $event)"
+              /></b-td>
             </b-tr>
           </b-tbody>
         </b-table-simple>
@@ -30,54 +35,126 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import axios from 'axios';
+import { MonitorType, MonitorTypeStatus } from './types';
+interface SignalMonitorType extends MonitorType {
+  value?: boolean;
+}
+
+interface Equipment {
+  img: string;
+  ctrl: string;
+  mt: string;
+  on: boolean | undefined;
+}
+
 export default Vue.extend({
   data() {
     return {
-      equipmentList: [
+      equipmentList: Array<Equipment>(
         {
           img: '/images/ac.png',
-          name: '冷氣1',
-          power: '電流2A',
+          ctrl: 'SWITCH1',
+          mt: 'V1',
           on: true,
         },
         {
           img: '/images/ac.png',
-          name: '冷氣2',
-          power: '電流2A',
+          ctrl: 'SWITCH2',
+          mt: 'V2',
           on: true,
         },
         {
           img: '/images/refregrator.png',
-          name: '冰箱',
-          power: '電流2A',
+          ctrl: 'SWITCH3',
+          mt: 'V3',
           on: true,
         },
         {
           img: '/images/plug.png',
-          name: '插座1',
-          power: '電流2A',
+          ctrl: 'SWITCH4',
+          mt: 'V4',
           on: true,
         },
         {
           img: '/images/plug.png',
-          name: '插座2',
-          power: '電流2A',
+          ctrl: 'SWITCH5',
+          mt: 'V5',
           on: true,
         },
         {
           img: '/images/plug.png',
-          name: '電流1',
-          power: '電流2A',
+          ctrl: 'SWITCH6',
+          mt: 'V6',
           on: true,
         },
         {
           img: '/images/plug.png',
-          name: '電流2',
-          power: '電流2A',
+          ctrl: 'SWITCH7',
+          mt: 'V7',
           on: true,
         },
-      ],
+      ),
+      realTimeStatus: Array<MonitorTypeStatus>(),
+      signalTypes: Array<SignalMonitorType>(),
+      signalMap: new Map<string, SignalMonitorType>(),
+      refreshTimer: 0,
     };
+  },
+  async mounted() {
+    await this.getRealtimeStatus();
+    await this.getSignalValues();
+
+    let me = this;
+    this.refreshTimer = setInterval(() => {
+      me.getRealtimeStatus();
+      me.getSignalValues();
+    }, 3000);
+  },
+  methods: {
+    async getRealtimeStatus(): Promise<void> {
+      const ret = await axios.get('/MonitorTypeStatusList');
+      this.realTimeStatus = ret.data;
+    },
+    async getSignalValues() {
+      try {
+        const res = await axios.get('/SignalValues');
+        this.signalTypes = res.data;
+        this.signalMap.clear();
+        for (let signal of this.signalTypes) {
+          this.signalMap.set(signal._id, signal);
+        }
+      } catch (err) {
+        throw new Error('failed to get signal types');
+      }
+    },
+    updateEquipment() {
+      for (let equipment of this.equipmentList) {
+        let signal = this.signalMap.get(equipment.ctrl);
+        if (signal !== undefined) {
+          equipment.on = signal.value;
+        }
+      }
+    },
+    async setSignalValue(ctrl: string, bit: boolean) {
+      try {
+        const resp = await axios.get(`/SetSignal/${ctrl}/${bit}`);
+      } catch (err) {
+        throw new Error('failed to toggle mt');
+      }
+    },
+    getEquipmentName(ctrl: string) {
+      let signal = this.signalMap.get(ctrl);
+      if (signal !== undefined) {
+        return signal.desp;
+      } else return '未知的設備';
+    },
+    getEquipmentPower(mt: string) {
+      let mtEntry = this.realTimeStatus.find(entry => entry._id === mt);
+      if (mtEntry !== undefined) {
+        return `${mtEntry.value}(${mtEntry.unit})`;
+      } else return 'N/A';
+    },
   },
 });
 </script>

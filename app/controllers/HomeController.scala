@@ -540,10 +540,18 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       Ok(Json.toJson(mtList))
   }
 
+  case class SignalMonitorType(_id:String, desp:String, value: Option[Boolean])
   def signalValues = Security.Authenticated.async {
     implicit request =>
-      for(ret <- dataCollectManagerOp.getLatestSignal()) yield
-        Ok(Json.toJson(ret))
+      for(signalValueMap <- dataCollectManagerOp.getLatestSignal()) yield {
+        val signalList =
+          monitorTypeOp.signalMtvList.map(_id=>{
+            val mt = monitorTypeOp.map(_id)
+            SignalMonitorType(_id, mt.desp, signalValueMap.get(_id))
+          })
+        implicit val writes: OWrites[SignalMonitorType] = Json.writes[SignalMonitorType]
+        Ok(Json.toJson(signalList))
+      }
   }
 
   def setSignal(mtId:String, bit:Boolean) = Security.Authenticated{

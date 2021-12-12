@@ -192,7 +192,7 @@ export default Vue.extend({
     }
 
     if (this.monitorTypes.length !== 0) {
-      this.form.monitorTypes.push('PM25');
+      this.form.monitorTypes.push(this.monitorTypes[0]);
     }
   },
   methods: {

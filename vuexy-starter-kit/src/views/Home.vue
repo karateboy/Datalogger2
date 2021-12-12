@@ -226,13 +226,10 @@ export default Vue.extend({
     await this.getUserInfo();
     const me = this;
 
-    this.mtInterestTimer = setInterval(() => {}, 60000);
-
     await this.initRealtimeChart();
   },
   beforeDestroy() {
     clearInterval(this.refreshTimer);
-    clearInterval(this.mtInterestTimer);
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
@@ -273,11 +270,11 @@ export default Vue.extend({
 
       let yAxisList = Array<highcharts.YAxisOptions>();
       let yAxisMap = new Map<string, number>();
+      const selectedMt = this.realTimeStatus.map(mt => mt._id);
       for (const mtStatus of this.realTimeStatus) {
         let data = Array<{ x: number; y: number }>();
         //data.push({ x: 1, y: 1 });
         const wind = ['WD_SPEED', 'WD_DIR'];
-        const selectedMt = ['PM25'];
         const visible = selectedMt.indexOf(mtStatus._id) !== -1;
         if (wind.indexOf(mtStatus._id) === -1) {
           let yAxisIndex: number;
@@ -360,19 +357,6 @@ export default Vue.extend({
             tickPixelInterval: 150,
           },
           yAxis: yAxisList,
-          /*
-          yAxis: {
-            title: {
-              text: 'value',
-            },
-            plotLines: [
-              {
-                value: 0,
-                width: 1,
-                color: '#808080',
-              },
-            ],
-          },*/
           time: {
             timezoneOffset: -480,
           },
