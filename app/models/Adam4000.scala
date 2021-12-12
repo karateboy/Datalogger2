@@ -7,7 +7,7 @@ import models.Adam4000.{ADAM4017, ADAM4069}
 import models.ModelHelper.errorHandler
 import models.Protocol.{ProtocolParam, serial}
 import play.api.Logger
-import play.api.libs.json.{JsError, Json}
+import play.api.libs.json.{JsError, Json, Reads}
 
 import scala.concurrent.{Future, blocking}
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
@@ -21,7 +21,7 @@ case class Adam4017Cfg(address:String, channelList: Seq[AiChannelCfg])
 case class Adam4000Module(module: String, address: String, param: String){
   def get4017Cfg: Adam4017Cfg = {
     assert(module == ADAM4017)
-    implicit val reads = Json.reads[AiChannelCfg]
+    implicit val reads: Reads[AiChannelCfg] = Json.reads[AiChannelCfg]
     val ret = Json.parse(param).validate[Seq[AiChannelCfg]]
     val channelCfgList = ret.asOpt.getOrElse(throw new Exception("Invalid 4017 config!"))
     Adam4017Cfg(address, channelCfgList)
@@ -29,7 +29,7 @@ case class Adam4000Module(module: String, address: String, param: String){
 
   def get4069Cfg: Adam4069Cfg = {
     assert(module == ADAM4069)
-    implicit val reads = Json.reads[SignalConfig]
+    implicit val reads: Reads[SignalConfig] = Json.reads[SignalConfig]
     val ret = Json.parse(param).validate[Seq[SignalConfig]]
     val channelList = ret.asOpt.getOrElse(throw new Exception("Invalid 4069 config!"))
     Adam4069Cfg(address, channelList)
@@ -44,7 +44,7 @@ object Adam4000 extends DriverOps {
 
   override def protocol: List[Protocol.Value] = List(serial)
 
-  implicit val reads = Json.reads[Adam4000Module]
+  implicit val reads: Reads[Adam4000Module] = Json.reads[Adam4000Module]
 
   val ADAM4017 = "4017"
   val ADAM4069 = "4069"
@@ -60,7 +60,7 @@ object Adam4000 extends DriverOps {
           module.module match {
             case ADAM4017 =>
               // #8 AI
-              implicit val reads = Json.reads[AiChannelCfg]
+              implicit val reads: Reads[AiChannelCfg] = Json.reads[AiChannelCfg]
               val ret = Json.parse(module.param).validate[Seq[AiChannelCfg]]
               val channelCfgList = ret.asOpt.getOrElse(throw new Exception("Invalid 4017 config!"))
               if (channelCfgList.size != 8)
@@ -75,7 +75,7 @@ object Adam4000 extends DriverOps {
 
             case ADAM4069 =>
               //#8 DO
-              implicit val reads = Json.reads[SignalConfig]
+              implicit val reads: Reads[SignalConfig] = Json.reads[SignalConfig]
               val ret = Json.parse(module.param).validate[Seq[SignalConfig]]
               val signalList = ret.asOpt.getOrElse(throw new Exception("Invalid 4069 config!"))
               if (signalList.size != 8) {
@@ -98,7 +98,7 @@ object Adam4000 extends DriverOps {
 
         case ADAM4069 =>
           val adam4069cfg = module.get4069Cfg
-          adam4069cfg.channelList.map(_.monitorType).flatten
+          adam4069cfg.channelList.flatMap(_.monitorType)
       }
     })
   }
@@ -131,7 +131,7 @@ class Adam4000Collector @Inject()(instrumentOp: InstrumentOp, alarmOp: AlarmOp)
   var comm: SerialComm = _
   var timerOpt: Option[Cancellable] = None
 
-  def decode4017(str: String)(aiChannelCfgs: Seq[AiChannelCfg]) = {
+  def decode4017(str: String)(aiChannelCfgs: Seq[AiChannelCfg]): Unit = {
     val ch = str.substring(1).split("(?=[+-])", 8)
     if (ch.length != 8)
       throw new Exception("unexpected format:" + str)
@@ -161,7 +161,7 @@ class Adam4000Collector @Inject()(instrumentOp: InstrumentOp, alarmOp: AlarmOp)
     context.parent ! ReportData(dataList.toList)
   }
 
-  def decode4069(str: String, signalConfigList: Seq[SignalConfig]) = {
+  def decode4069(str: String, signalConfigList: Seq[SignalConfig]): Unit = {
     val valueStr = str.substring(1).take(2)
     val value = Integer.valueOf(valueStr, 16)
     val dataList: Seq[SignalData] =
@@ -175,7 +175,7 @@ class Adam4000Collector @Inject()(instrumentOp: InstrumentOp, alarmOp: AlarmOp)
 
   def addSignalTypeHandler(): Unit ={
     for(module<-moduleList if module.module == ADAM4069){
-      implicit val reads = Json.reads[SignalConfig]
+      implicit val reads: Reads[SignalConfig] = Json.reads[SignalConfig]
       val signalConfigList = Json.parse(module.param).validate[Seq[SignalConfig]].asOpt.get
       for{(cfg, idx)<-signalConfigList.zipWithIndex
           monitorTypeId <- cfg.monitorType
@@ -223,7 +223,7 @@ class Adam4000Collector @Inject()(instrumentOp: InstrumentOp, alarmOp: AlarmOp)
                 decode4069(str, adam4069cfg.channelList)
               }
             }
-          } catch (errorHandler)
+          } catch errorHandler
           finally {
             timerOpt = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, ReadInput))
           }
@@ -240,6 +240,16 @@ class Adam4000Collector @Inject()(instrumentOp: InstrumentOp, alarmOp: AlarmOp)
 
       os.write(writeCmd.getBytes)
       comm.getLineWithTimeout(2)
+  }
+
+  override def postStop(): Unit = {
+    for(timer<-timerOpt)
+      timer.cancel()
+
+    if(comm != null)
+      comm.close
+
+    super.postStop()
   }
 }
 
