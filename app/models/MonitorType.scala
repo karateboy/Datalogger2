@@ -171,7 +171,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     }
   }
 
-  def init(): Future[Any] = {
+  def init() = {
     def updateMt = {
       val updateModels =
         for (mt <- defaultMonitorTypes) yield {
@@ -181,7 +181,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
             mt.defaultUpdate, UpdateOptions().upsert(true))
         }
 
-      val f = collection.bulkWrite(updateModels.toList, BulkWriteOptions().ordered(false)).toFuture()
+      val f = collection.bulkWrite(updateModels, BulkWriteOptions().ordered(false)).toFuture()
 
       f.onFailure(errorHandler)
       f.onComplete { x =>
@@ -195,10 +195,9 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
         val f = mongoDB.database.createCollection(colName).toFuture()
         f.onFailure(errorHandler)
         waitReadyResult(f)
+        updateMt
       }
     }
-
-    updateMt
   }
 
   init

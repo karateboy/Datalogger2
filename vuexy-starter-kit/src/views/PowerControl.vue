@@ -1,42 +1,39 @@
 <template>
-  <b-card
-    header="電源控制"
-    header-class="h4 display text-center"
-    border-variant="primary"
-    header-bg-variant="white"
-  >
-    <b-row class="p-1">
-      <b-col v-for="equipment in equipmentList" :key="equipment.ctrl" cols="3">
-        <b-table-simple borderless>
-          <b-tbody>
-            <b-tr>
-              <b-td rowspan="4"><b-img :src="equipment.img" fluid-grow /></b-td>
-            </b-tr>
-            <b-tr
-              ><b-td>{{ getEquipmentName(equipment.ctrl) }}</b-td></b-tr
-            >
-            <b-tr
-              ><b-td>{{ getEquipmentPower(equipment.mt) }}</b-td></b-tr
-            >
-            <b-tr
-              ><b-td
-                ><b-form-checkbox
-                  v-model="equipment.on"
-                  switch
-                  @change="setSignalValue(equipment.ctrl, $event)"
-              /></b-td>
-            </b-tr>
-          </b-tbody>
-        </b-table-simple>
-      </b-col>
-    </b-row>
-  </b-card>
+  <div>
+    <h1>電源控制</h1>
+    <b-card border-variant="success">
+      <b-row class="p-1">
+        <b-col
+          v-for="equipment in equipmentList"
+          :key="equipment.ctrl"
+          cols="3"
+        >
+          <b-card
+            :img-src="equipment.img"
+            img-width="200"
+            img-left
+            :title="getEquipmentName(equipment.mt)"
+          >
+            <b-card-body>
+              <h2>{{ getEquipmentPower(equipment.mt) }}</h2>
+              <b-form-checkbox
+                v-model="equipment.value"
+                switch
+                @change="setSignalValue(equipment.ctrl, $event)"
+              />
+            </b-card-body>
+          </b-card>
+        </b-col>
+      </b-row>
+    </b-card>
+  </div>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
 import axios from 'axios';
 import { MonitorType, MonitorTypeStatus } from './types';
+import { mapState, mapGetters, mapActions, mapMutations } from 'vuex';
 interface SignalMonitorType extends MonitorType {
   value?: boolean;
 }
@@ -45,7 +42,7 @@ interface Equipment {
   img: string;
   ctrl: string;
   mt: string;
-  on: boolean | undefined;
+  value: boolean | undefined;
 }
 
 export default Vue.extend({
@@ -55,44 +52,50 @@ export default Vue.extend({
         {
           img: '/images/ac.png',
           ctrl: 'SWITCH1',
-          mt: 'V1',
-          on: true,
+          mt: 'V3',
+          value: undefined,
         },
         {
           img: '/images/ac.png',
           ctrl: 'SWITCH2',
-          mt: 'V2',
-          on: true,
+          mt: 'V4',
+          value: undefined,
         },
         {
           img: '/images/refregrator.png',
           ctrl: 'SWITCH3',
-          mt: 'V3',
-          on: true,
+          mt: 'V5',
+          value: undefined,
         },
         {
           img: '/images/plug.png',
           ctrl: 'SWITCH4',
-          mt: 'V4',
-          on: true,
+          mt: 'V6',
+          value: undefined,
         },
         {
           img: '/images/plug.png',
           ctrl: 'SWITCH5',
-          mt: 'V5',
-          on: true,
+          mt: 'V7',
+          value: undefined,
         },
         {
           img: '/images/plug.png',
           ctrl: 'SWITCH6',
-          mt: 'V6',
-          on: true,
+          mt: 'V8',
+          value: undefined,
         },
         {
           img: '/images/plug.png',
           ctrl: 'SWITCH7',
-          mt: 'V7',
-          on: true,
+          mt: 'V9',
+          value: undefined,
+        },
+        {
+          img: '/images/light_bulb.png',
+          ctrl: 'SWITCH8',
+          mt: 'V10',
+          value: undefined,
         },
       ),
       realTimeStatus: Array<MonitorTypeStatus>(),
@@ -101,7 +104,11 @@ export default Vue.extend({
       refreshTimer: 0,
     };
   },
+  computed: {
+    ...mapGetters('monitorTypes', ['mtMap']),
+  },
   async mounted() {
+    await this.fetchMonitorTypes();
     await this.getRealtimeStatus();
     await this.getSignalValues();
 
@@ -112,6 +119,7 @@ export default Vue.extend({
     }, 3000);
   },
   methods: {
+    ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     async getRealtimeStatus(): Promise<void> {
       const ret = await axios.get('/MonitorTypeStatusList');
       this.realTimeStatus = ret.data;
@@ -132,7 +140,7 @@ export default Vue.extend({
       for (let equipment of this.equipmentList) {
         let signal = this.signalMap.get(equipment.ctrl);
         if (signal !== undefined) {
-          equipment.on = signal.value;
+          equipment.value = signal.value;
         }
       }
     },
@@ -143,16 +151,16 @@ export default Vue.extend({
         throw new Error('failed to toggle mt');
       }
     },
-    getEquipmentName(ctrl: string) {
-      let signal = this.signalMap.get(ctrl);
-      if (signal !== undefined) {
-        return signal.desp;
-      } else return '未知的設備';
+    getEquipmentName(mt: string) {
+      let mtCase: MonitorType = this.mtMap.get(mt);
+      if (mtCase !== undefined) {
+        return mtCase.desp;
+      } else return '??';
     },
     getEquipmentPower(mt: string) {
       let mtEntry = this.realTimeStatus.find(entry => entry._id === mt);
       if (mtEntry !== undefined) {
-        return `${mtEntry.value}(${mtEntry.unit})`;
+        return `${mtEntry.value} ${mtEntry.unit}`;
       } else return 'N/A';
     },
   },

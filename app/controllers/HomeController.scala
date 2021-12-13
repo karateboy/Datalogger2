@@ -540,21 +540,20 @@ class HomeController @Inject()(environment: play.api.Environment,
       Ok(Json.toJson(mtList))
   }
 
-  case class SignalMonitorType(_id:String, desp:String, value: Option[Boolean])
   def signalValues = Security.Authenticated.async {
     implicit request =>
-      for(signalValueMap <- dataCollectManagerOp.getLatestSignal()) yield {
+      for (signalValueMap <- dataCollectManagerOp.getLatestSignal()) yield {
         val signalList =
-          monitorTypeOp.signalMtvList.map(_id=>{
+          monitorTypeOp.signalMtvList.map(_id => {
             val mt = monitorTypeOp.map(_id)
-            SignalMonitorType(_id, mt.desp, signalValueMap.get(_id))
+            SignalMonitorType(_id, mt.desp, mt.unit, mt.prec, mt.order, mt.signalType, mt.measuringBy, signalValueMap.get(_id))
           })
         implicit val writes: OWrites[SignalMonitorType] = Json.writes[SignalMonitorType]
         Ok(Json.toJson(signalList))
       }
   }
 
-  def setSignal(mtId:String, bit:Boolean) = Security.Authenticated{
+  def setSignal(mtId: String, bit: Boolean) = Security.Authenticated {
     implicit request =>
       dataCollectManagerOp.writeSignal(mtId, bit)
       Ok("")
@@ -763,18 +762,11 @@ class HomeController @Inject()(environment: play.api.Environment,
     }
   }
 
-  case class ElementValue(value:String, measures:String)
-  case class TimeForecast(startTime:String, elementValue:Seq[ElementValue])
-  case class WeatherElement(elementName:String, time:Seq[TimeForecast])
-  case class LocationElement(locationName:String, weatherElement: Seq[WeatherElement])
-  case class LocationForecast(locationName:String, location: Seq[LocationElement])
-  case class WeatherForecastRecord(locations:Seq[LocationForecast])
-  case class WeatherForecastRecords(records:WeatherForecastRecord)
   def weatherReport() = Security.Authenticated.async {
     val f = WSClient.url(s"https://opendata.cwb.gov.tw/api/v1/rest/datastore/F-D0047-033?format=JSON&locationName=萬巒鄉")
-      .withHeaders(("Authorization","CWB-978789A6-C800-47D7-B4C6-5BF330B61FA6"))
+      .withHeaders(("Authorization", "CWB-978789A6-C800-47D7-B4C6-5BF330B61FA6"))
       .get()
-    for(ret<-f) yield {
+    for (ret <- f) yield {
       implicit val r7 = Json.reads[ElementValue]
       implicit val r6 = Json.reads[TimeForecast]
       implicit val r5 = Json.reads[WeatherElement]
@@ -786,6 +778,24 @@ class HomeController @Inject()(environment: play.api.Environment,
       Ok(Json.toJson(ret.json))
     }
   }
+
+  case class SignalMonitorType(_id: String, desp: String, unit: String,
+                               prec: Int, order: Int,
+                               signalType: Boolean, measuringBy:Option[Seq[String]], value: Option[Boolean])
+
+  case class ElementValue(value: String, measures: String)
+
+  case class TimeForecast(startTime: String, elementValue: Seq[ElementValue])
+
+  case class WeatherElement(elementName: String, time: Seq[TimeForecast])
+
+  case class LocationElement(locationName: String, weatherElement: Seq[WeatherElement])
+
+  case class LocationForecast(locationName: String, location: Seq[LocationElement])
+
+  case class WeatherForecastRecord(locations: Seq[LocationForecast])
+
+  case class WeatherForecastRecords(records: WeatherForecastRecord)
 
   case class EditData(id: String, data: String)
 }

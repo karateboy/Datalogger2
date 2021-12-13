@@ -33,14 +33,14 @@ const router = new VueRouter({
       name: 'power-control',
       component: () => import('@/views/PowerControl.vue'),
       meta: {
-        pageTitle: '電源管理',
+        pageTitle: '電源控制',
         breadcrumb: [
           {
             text: '即時資訊',
             active: true,
           },
           {
-            text: '電源管理',
+            text: '電源控制',
             active: true,
           },
         ],

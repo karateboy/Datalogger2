@@ -2,11 +2,13 @@
   <b-row class="match-height">
     <b-col lg="6" md="12">
       <b-row class="match-height">
-        <b-col cols="8">
+        <b-col cols="8"
+          ><h1 class="pl-1">{{ currentTime }}</h1>
           <b-card
-            img-width="250"
             img-src="../assets/images/old_house.png"
+            img-fluid
             img-left
+            img-height="200"
             border-variant="primary"
           >
             <h2>太陽能總發電量:4.3 KW</h2>
@@ -17,64 +19,47 @@
         <b-col cols="4">
           <b-card
             header="氣象資訊"
-            header-class="h4 display text-center"
+            header-class="h3 display text-center"
             border-variant="primary"
-            header-bg-variant="white"
             :img-src="weatherUrl"
             img-bottom
             img-height="150"
-            ><p>{{ weatherForecast }}</p>
+            header-bg-variant="primary"
+            header-text-variant="white"
+            ><p class="p-1">{{ weatherForecast }}</p>
           </b-card>
         </b-col>
       </b-row>
     </b-col>
     <b-col lg="6" md="12">
       <b-card
-        class="text-center"
         header="供電資訊"
-        header-class="h4 display text-center"
-        border-variant="primary"
-        header-bg-variant="white"
+        class="text-center"
+        header-class="h3 display text-center"
+        border-variant="success"
+        header-bg-variant="success"
       >
-        <b-row>
+        <b-row class="pt-3">
           <b-col>
-            <b-table-simple borderless small>
-              <b-tbody>
-                <b-tr>
-                  <b-td rowspan="3" colspan="2"
-                    ><b-img src="../assets/images/taipower.jpg" fluid
-                  /></b-td>
-                </b-tr>
-                <b-tr><b-td>台電</b-td></b-tr>
-                <b-tr><b-td>功率5KW</b-td></b-tr>
-              </b-tbody>
-            </b-table-simple>
+            <b-card
+              img-src="/images/taipower.png"
+              img-width="120"
+              img-fluid
+              img-left
+              title="台電"
+            >
+            </b-card>
           </b-col>
-          <b-col>
-            <b-table-simple borderless small>
-              <b-tbody>
-                <b-tr>
-                  <b-td rowspan="3"
-                    ><b-img src="../assets/images/solar_power.png" fluid-grow
-                  /></b-td>
-                </b-tr>
-                <b-tr><b-td>太陽能1</b-td></b-tr>
-                <b-tr><b-td>功率2KW</b-td></b-tr>
-              </b-tbody>
-            </b-table-simple>
-          </b-col>
-          <b-col>
-            <b-table-simple borderless small>
-              <b-tbody>
-                <b-tr>
-                  <b-td rowspan="3"
-                    ><b-img src="../assets/images/solar_power.png" fluid-grow
-                  /></b-td>
-                </b-tr>
-                <b-tr><b-td>太陽能2</b-td></b-tr>
-                <b-tr><b-td>功率2KW</b-td></b-tr>
-              </b-tbody>
-            </b-table-simple>
+          <b-col v-for="power in powerSupplyList" :key="power.mt">
+            <b-card
+              :img-src="power.img"
+              img-width="120"
+              img-fluid
+              img-left
+              :title="getMtName(power.mt)"
+            >
+              <h2>{{ getEquipmentPower(power.mt) }}</h2>
+            </b-card>
           </b-col>
         </b-row>
       </b-card>
@@ -83,103 +68,34 @@
       <b-card
         class="text-center"
         header="即時監測資訊"
-        header-class="h4 display text-center"
+        header-class="h3 display text-center"
         border-variant="primary"
         header-bg-variant="primary"
         header-text-variant="white"
+        no-body
       >
         <div id="realtimeChart"></div>
       </b-card>
     </b-col>
-    <b-col lg="6" class="text-center">
+    <b-col lg="6">
       <b-card
-        class="text-left"
         header="用電情形"
-        header-class="h4 display text-center"
+        class="text-left"
+        header-class="h3 display text-center"
         border-variant="success"
         header-bg-variant="success"
-        header-text-variant="white"
       >
         <b-row class="p-1">
-          <b-col>
-            <b-table-simple borderless>
-              <b-tbody>
-                <b-tr>
-                  <b-td rowspan="3"
-                    ><b-img src="../assets/images/ac.png" fluid
-                  /></b-td>
-                </b-tr>
-                <b-tr><b-td>冷氣1</b-td></b-tr>
-                <b-tr><b-td>電流2A</b-td></b-tr>
-              </b-tbody>
-            </b-table-simple>
-          </b-col>
-          <b-col>
-            <b-table-simple borderless>
-              <b-tbody>
-                <b-tr>
-                  <b-td rowspan="3"
-                    ><b-img src="../assets/images/ac.png" fluid
-                  /></b-td>
-                </b-tr>
-                <b-tr><b-td>冷氣2</b-td></b-tr>
-                <b-tr><b-td>電流2A</b-td></b-tr>
-              </b-tbody>
-            </b-table-simple>
-          </b-col>
-          <b-col>
-            <b-table-simple borderless>
-              <b-tbody>
-                <b-tr>
-                  <b-td rowspan="3"
-                    ><b-img src="../assets/images/refregrator.png" fluid
-                  /></b-td>
-                </b-tr>
-                <b-tr><b-td>電冰箱</b-td></b-tr>
-                <b-tr><b-td>電流2A</b-td></b-tr>
-              </b-tbody>
-            </b-table-simple>
-          </b-col>
-        </b-row>
-        <b-row class="p-1">
-          <b-col>
-            <b-table-simple borderless small>
-              <b-tbody>
-                <b-tr>
-                  <b-td rowspan="3"
-                    ><b-img src="../assets/images/plug.png" fluid
-                  /></b-td>
-                </b-tr>
-                <b-tr><b-td>插座1</b-td></b-tr>
-                <b-tr><b-td>電流2A</b-td></b-tr>
-              </b-tbody>
-            </b-table-simple>
-          </b-col>
-          <b-col>
-            <b-table-simple borderless small>
-              <b-tbody>
-                <b-tr>
-                  <b-td rowspan="3"
-                    ><b-img src="../assets/images/plug.png" fluid
-                  /></b-td>
-                </b-tr>
-                <b-tr><b-td>插座2</b-td></b-tr>
-                <b-tr><b-td>電流2A</b-td></b-tr>
-              </b-tbody>
-            </b-table-simple>
-          </b-col>
-          <b-col>
-            <b-table-simple borderless small>
-              <b-tbody>
-                <b-tr>
-                  <b-td rowspan="3"
-                    ><b-img src="../assets/images/other.png" fluid
-                  /></b-td>
-                </b-tr>
-                <b-tr><b-td>其他</b-td></b-tr>
-                <b-tr><b-td>電流2A</b-td></b-tr>
-              </b-tbody>
-            </b-table-simple>
+          <b-col v-for="power in powerConsumptionList" :key="power.mt" cols="4">
+            <b-card
+              :img-src="power.img"
+              img-width="100"
+              img-fluid
+              img-left
+              :title="getMtName(power.mt)"
+            >
+              <h2>{{ getEquipmentPower(power.mt) }}</h2>
+            </b-card>
           </b-col>
         </b-row>
       </b-card>
@@ -194,20 +110,73 @@ import { MonitorType, MonitorTypeStatus } from './types';
 import highcharts from 'highcharts';
 import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
+import moment from 'moment';
 
+interface PowerEquipment {
+  mt: string;
+  img: string;
+}
 export default Vue.extend({
   data() {
     let chart: any;
     chart = null;
+    let currentTime = moment().format('lll');
+    let powerSupplyList = Array<PowerEquipment>(
+      {
+        mt: 'V1',
+        img: '/images/solar_power.png',
+      },
+      {
+        mt: 'V2',
+        img: '/images/solar_power.png',
+      },
+    );
+    let powerConsumptionList: Array<PowerEquipment> = [
+      {
+        mt: 'V3',
+        img: '/images/ac.png',
+      },
+      {
+        mt: 'V4',
+        img: '/images/ac.png',
+      },
+      {
+        mt: 'V5',
+        img: '/images/refregrator.png',
+      },
+      {
+        mt: 'V6',
+        img: '/images/plug.png',
+      },
+      {
+        mt: 'V7',
+        img: '/images/plug.png',
+      },
+      {
+        mt: 'V8',
+        img: '/images/plug.png',
+      },
+      {
+        mt: 'V9',
+        img: '/images/plug.png',
+      },
+      {
+        mt: 'V10',
+        img: '/images/light_bulb.png',
+      },
+    ];
     return {
       maxPoints: 30,
       refreshTimer: 0,
       mtInterestTimer: 0,
+      currentTime,
       realTimeStatus: Array<MonitorTypeStatus>(),
       chartSeries: Array<highcharts.SeriesOptionsType>(),
       chart,
       weatherForecast: '',
       weatherUrl: '',
+      powerSupplyList,
+      powerConsumptionList,
     };
   },
   computed: {
@@ -238,6 +207,7 @@ export default Vue.extend({
     ...mapActions('monitors', ['fetchMonitors']),
     ...mapActions('user', ['getUserInfo']),
     async refresh(): Promise<void> {
+      this.currentTime = moment().format('lll');
       this.plotLatestData();
     },
     async plotLatestData(): Promise<void> {
@@ -399,6 +369,17 @@ export default Vue.extend({
       } catch (err) {
         throw new Error('fail to get weather report');
       }
+    },
+    getMtName(mt: string) {
+      let mtCase: MonitorType = this.mtMap.get(mt);
+      if (mtCase !== undefined) return mtCase.desp;
+      else return '';
+    },
+    getEquipmentPower(mt: string) {
+      let mtEntry = this.realTimeStatus.find(entry => entry._id === mt);
+      if (mtEntry !== undefined) {
+        return `${mtEntry.value} ${mtEntry.unit}`;
+      } else return 'N/A';
     },
   },
 });
