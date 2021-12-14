@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1>電源控制</h1>
+    <h1>關閉電源</h1>
     <b-card border-variant="success">
       <b-row class="p-1">
         <b-col
@@ -146,7 +146,7 @@ export default Vue.extend({
     },
     async setSignalValue(ctrl: string, bit: boolean) {
       try {
-        const resp = await axios.get(`/SetSignal/${ctrl}/${!bit}`);
+        const resp = await axios.get(`/SetSignal/${ctrl}/${bit}`);
       } catch (err) {
         throw new Error('failed to toggle mt');
       }
