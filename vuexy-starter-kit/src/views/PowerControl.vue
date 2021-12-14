@@ -140,13 +140,13 @@ export default Vue.extend({
       for (let equipment of this.equipmentList) {
         let signal = this.signalMap.get(equipment.ctrl);
         if (signal !== undefined) {
-          equipment.value = signal.value;
+          equipment.value = !signal.value;
         }
       }
     },
     async setSignalValue(ctrl: string, bit: boolean) {
       try {
-        const resp = await axios.get(`/SetSignal/${ctrl}/${bit}`);
+        const resp = await axios.get(`/SetSignal/${ctrl}/${!bit}`);
       } catch (err) {
         throw new Error('failed to toggle mt');
       }

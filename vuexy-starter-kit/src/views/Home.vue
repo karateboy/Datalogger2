@@ -10,10 +10,13 @@
             img-left
             img-height="200"
             border-variant="primary"
+            class="text-right p-2"
           >
-            <h2>太陽能總發電量:4.3 KW</h2>
-            <h2>老屋總耗電量:2.4 KW</h2>
-            <h2>綠能使用率: 100%</h2>
+            <div class="p-2">
+              <h2>太陽能總發電量: {{ totalPowerSupply }} KW</h2>
+              <h2>老屋總耗電量: {{ totalPowerUsage }} KW</h2>
+              <h2>綠能使用率: {{ greenPercentage }}%</h2>
+            </div>
           </b-card>
         </b-col>
         <b-col cols="4">
@@ -21,12 +24,13 @@
             header="氣象資訊"
             header-class="h3 display text-center"
             border-variant="primary"
-            :img-src="weatherUrl"
             img-bottom
-            img-height="150"
+            img-height="100"
+            :img-src="weatherUrl"
             header-bg-variant="primary"
             header-text-variant="white"
-            ><p class="p-1">{{ weatherForecast }}</p>
+          >
+            <h3 class="p-1">{{ weatherForecast }}</h3>
           </b-card>
         </b-col>
       </b-row>
@@ -85,16 +89,14 @@
         border-variant="success"
         header-bg-variant="success"
       >
-        <b-row class="p-1">
-          <b-col v-for="power in powerConsumptionList" :key="power.mt" cols="4">
-            <b-card
-              :img-src="power.img"
-              img-width="100"
-              img-fluid
-              img-left
-              :title="getMtName(power.mt)"
-            >
-              <h2>{{ getEquipmentPower(power.mt) }}</h2>
+        <b-row class="p-2" style="">
+          <b-col v-for="power in powerConsumptionList" :key="power.mt" cols="3">
+            <b-card :img-src="power.img" img-height="120" img-left no-body>
+              <b-card-body
+                class="p-1"
+                :title="getMtName(power.mt)"
+                :sub-title="getEquipmentPower(power.mt)"
+              />
             </b-card>
           </b-col>
         </b-row>
@@ -102,6 +104,14 @@
     </b-col>
   </b-row>
 </template>
+<style scoped>
+.center {
+  margin: auto;
+  width: 50%;
+  border: 3px solid green;
+  padding: 10px;
+}
+</style>
 <script lang="ts">
 import Vue from 'vue';
 import { mapActions, mapGetters, mapState } from 'vuex';
@@ -182,9 +192,54 @@ export default Vue.extend({
   computed: {
     ...mapState('user', ['userInfo']),
     ...mapGetters('monitorTypes', ['mtMap']),
-    skin() {
+    skin(): any {
       const { skin } = useAppConfig();
       return skin;
+    },
+    totalPowerSupply(): number {
+      let sum = this.realTimeStatus
+        .filter(rt => rt._id === 'V1' || rt._id === 'V2')
+        .map(r => {
+          let ret = parseFloat(r.value) * 220;
+          if (isNaN(ret)) return 0;
+          else return ret;
+        });
+
+      return sum.length !== 0 ? sum.reduce((a, b) => a + b) : 0;
+    },
+    totalPowerUsage(): number {
+      let sum1 = this.realTimeStatus
+        .filter(rt => rt._id === 'V3' || rt._id === 'V4' || rt._id === 'V5')
+        .map(r => {
+          let ret = parseFloat(r.value) * 220;
+          if (isNaN(ret)) return 0;
+          else return ret;
+        });
+
+      let sum2 = this.realTimeStatus
+        .filter(
+          r =>
+            r._id === 'V6' ||
+            r._id === 'V7' ||
+            r._id === 'V8' ||
+            r._id === 'V9' ||
+            r._id === 'V10',
+        )
+        .map(r => {
+          let ret = parseFloat(r.value) * 110;
+          if (isNaN(ret)) return 0;
+          else return ret;
+        });
+      if (sum1.length !== 0 && sum2.length !== 0)
+        return sum1.reduce((a, b) => a + b) + sum2.reduce((a, b) => a + b);
+      else return 0;
+    },
+    greenPercentage(): string {
+      if (this.totalPowerUsage == 0) return '0';
+      else
+        return ((this.totalPowerSupply / this.totalPowerUsage) * 100).toFixed(
+          0,
+        );
     },
   },
   async mounted() {
