@@ -13,8 +13,8 @@
             class="text-right p-2"
           >
             <div class="p-2">
-              <h2>太陽能總發電量: {{ totalPowerSupply }} KW</h2>
-              <h2>老屋總耗電量: {{ totalPowerUsage }} KW</h2>
+              <h2>太陽能總發電量: {{ totalPowerSupply }} kVA</h2>
+              <h2>老屋總耗電量: {{ totalPowerUsage }} kVA</h2>
               <h2>綠能使用率: {{ greenPercentage }}%</h2>
             </div>
           </b-card>
@@ -42,6 +42,7 @@
         header-class="h3 display text-center"
         border-variant="success"
         header-bg-variant="success"
+        header-text-variant="white"
       >
         <b-row class="pt-3">
           <b-col>
@@ -88,6 +89,7 @@
         header-class="h3 display text-center"
         border-variant="success"
         header-bg-variant="success"
+        header-text-variant="white"
       >
         <b-row class="p-2" style="">
           <b-col v-for="power in powerConsumptionList" :key="power.mt" cols="3">
@@ -200,7 +202,7 @@ export default Vue.extend({
       let sum = this.realTimeStatus
         .filter(rt => rt._id === 'V1' || rt._id === 'V2')
         .map(r => {
-          let ret = parseFloat(r.value) * 220;
+          let ret = parseFloat(r.value);
           if (isNaN(ret)) return 0;
           else return ret;
         });
@@ -211,7 +213,7 @@ export default Vue.extend({
       let sum1 = this.realTimeStatus
         .filter(rt => rt._id === 'V3' || rt._id === 'V4' || rt._id === 'V5')
         .map(r => {
-          let ret = parseFloat(r.value) * 220;
+          let ret = parseFloat(r.value);
           if (isNaN(ret)) return 0;
           else return ret;
         });
@@ -226,7 +228,7 @@ export default Vue.extend({
             r._id === 'V10',
         )
         .map(r => {
-          let ret = parseFloat(r.value) * 110;
+          let ret = parseFloat(r.value);
           if (isNaN(ret)) return 0;
           else return ret;
         });
