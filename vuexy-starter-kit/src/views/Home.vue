@@ -53,6 +53,7 @@
               img-left
               title="台電"
             >
+              <h2>{{ taipowerSupply }} KVA</h2>
             </b-card>
           </b-col>
           <b-col v-for="power in powerSupplyList" :key="power.mt">
@@ -234,6 +235,11 @@ export default Vue.extend({
         });
       if (sum1.length !== 0 && sum2.length !== 0)
         return sum1.reduce((a, b) => a + b) + sum2.reduce((a, b) => a + b);
+      else return 0;
+    },
+    taipowerSupply(): number {
+      if (this.totalPowerUsage >= this.totalPowerSupply)
+        return this.totalPowerUsage - this.totalPowerSupply;
       else return 0;
     },
     greenPercentage(): string {
