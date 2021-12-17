@@ -13,8 +13,8 @@
             class="text-right p-2"
           >
             <div class="p-2">
-              <h2>太陽能總發電量: {{ totalPowerSupply }} kVA</h2>
-              <h2>老屋總耗電量: {{ totalPowerUsage }} kVA</h2>
+              <h2>太陽能總發電量: {{ totalPowerSupply }} kW</h2>
+              <h2>老屋總耗電量: {{ totalPowerUsage }} kW</h2>
               <h2>綠能使用率: {{ greenPercentage }}%</h2>
             </div>
           </b-card>
@@ -53,7 +53,7 @@
               img-left
               title="台電"
             >
-              <h2>{{ taipowerSupply }} KVA</h2>
+              <h2>{{ taipowerSupply }} kW</h2>
             </b-card>
           </b-col>
           <b-col v-for="power in powerSupplyList" :key="power.mt">
@@ -98,6 +98,7 @@
               <b-card-body
                 class="p-1"
                 :title="getMtName(power.mt)"
+                sub-title-tag="h2"
                 :sub-title="getEquipmentPower(power.mt)"
               />
             </b-card>
@@ -151,7 +152,7 @@ export default Vue.extend({
       },
       {
         mt: 'V4',
-        img: '/images/ac.png',
+        img: '/images/boiler.png',
       },
       {
         mt: 'V5',
@@ -167,15 +168,15 @@ export default Vue.extend({
       },
       {
         mt: 'V8',
-        img: '/images/plug.png',
+        img: '/images/light_bulb.png',
       },
       {
         mt: 'V9',
-        img: '/images/plug.png',
+        img: '/images/fan.png',
       },
       {
         mt: 'V10',
-        img: '/images/light_bulb.png',
+        img: '/images/outsource.png',
       },
     ];
     return {
@@ -237,10 +238,10 @@ export default Vue.extend({
         return sum1.reduce((a, b) => a + b) + sum2.reduce((a, b) => a + b);
       else return 0;
     },
-    taipowerSupply(): number {
+    taipowerSupply(): string {
       if (this.totalPowerUsage >= this.totalPowerSupply)
-        return this.totalPowerUsage - this.totalPowerSupply;
-      else return 0;
+        return (this.totalPowerUsage - this.totalPowerSupply).toFixed(2);
+      else return '0.00';
     },
     greenPercentage(): string {
       if (this.totalPowerUsage == 0) return '0';

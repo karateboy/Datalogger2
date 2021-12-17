@@ -19,6 +19,7 @@
               <b-form-checkbox
                 v-model="equipment.value"
                 switch
+                :disabled="equipment.mt === 'V4'"
                 @change="setSignalValue(equipment.ctrl, $event)"
               />
             </b-card-body>
@@ -33,7 +34,7 @@
 import Vue from 'vue';
 import axios from 'axios';
 import { MonitorType, MonitorTypeStatus } from './types';
-import { mapState, mapGetters, mapActions, mapMutations } from 'vuex';
+import { mapGetters, mapActions, mapMutations } from 'vuex';
 interface SignalMonitorType extends MonitorType {
   value?: boolean;
 }
@@ -56,7 +57,7 @@ export default Vue.extend({
           value: undefined,
         },
         {
-          img: '/images/ac.png',
+          img: '/images/boiler.png',
           ctrl: 'SWITCH2',
           mt: 'V4',
           value: undefined,
@@ -80,19 +81,19 @@ export default Vue.extend({
           value: undefined,
         },
         {
-          img: '/images/plug.png',
+          img: '/images/light_bulb.png',
           ctrl: 'SWITCH6',
           mt: 'V8',
           value: undefined,
         },
         {
-          img: '/images/plug.png',
+          img: '/images/fan.png',
           ctrl: 'SWITCH7',
           mt: 'V9',
           value: undefined,
         },
         {
-          img: '/images/light_bulb.png',
+          img: '/images/outsource.png',
           ctrl: 'SWITCH8',
           mt: 'V10',
           value: undefined,

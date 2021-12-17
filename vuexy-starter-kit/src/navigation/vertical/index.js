@@ -12,8 +12,6 @@ export default [
       {
         title: '關閉電源',
         route: 'power-control',
-        action: 'read',
-        resource: 'Dashboard',
       },
     ],
   },
@@ -30,20 +28,6 @@ export default [
       {
         title: '歷史趨勢圖',
         route: 'history-trend',
-        action: 'read',
-        resource: 'Data',
-      },
-      {
-        title: '玫瑰圖查詢',
-        route: 'wind-rose-query',
-      },
-      {
-        title: '校正資料查詢',
-        route: 'calibration-query',
-      },
-      {
-        title: '警報記錄查詢',
-        route: 'alarm-query',
         action: 'read',
         resource: 'Data',
       },
@@ -106,10 +90,6 @@ export default [
       {
         title: '群組管理',
         route: 'group-management',
-      },
-      {
-        title: '資料管理',
-        route: 'data-management',
       },
     ],
   },
