@@ -80,8 +80,8 @@ case class AddSignalTypeHandler(mtId: String, handler: Boolean => Unit)
 case class WriteSignal(mtId: String, bit: Boolean)
 
 @Singleton
-class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentOp, recordOp: RecordOp,
-                                     alarmOp: AlarmOp)() {
+class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentOp,
+                                     monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, alarmOp: AlarmOp)() {
   val effectivRatio = 0.75
 
   def startCollect(inst: Instrument) {
@@ -214,7 +214,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
           } else
             kv
         }
-        val values = normalValueOpt.get.map {
+        val values: Seq[Double] = normalValueOpt.get.map {
           _._2
         }
         val avg = if (mt == MonitorType.WIN_DIRECTION) {
@@ -230,7 +230,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                 yield 1.0
             windAvg(windSpeed.toList, windDir.toList)
           }
-        } else if (mt == MonitorType.RAIN) {
+        } else if (mt == MonitorType.RAIN || monitorTypeOp.map(mt).accumulated.contains(true)) {
           values.max
         } else {
           values.sum / values.length

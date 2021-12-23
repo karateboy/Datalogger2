@@ -20,7 +20,8 @@ case class MonitorType(_id: String, desp: String, unit: String,
                        acoustic: Option[Boolean] = None,
                        spectrum: Option[Boolean] = None,
                        levels: Option[Seq[Double]] = None,
-                       calibrate: Option[Boolean] = None) {
+                       calibrate: Option[Boolean] = None,
+                       accumulated: Option[Boolean] = None) {
   def defaultUpdate = {
     Updates.combine(
       Updates.setOnInsert("_id", _id),
@@ -188,7 +189,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     }
   }
 
-  def init(): Future[Any] = {
+  def init(): Unit = {
     def updateMt = {
       val updateModels =
         for (mt <- defaultMonitorTypes) yield {
@@ -212,10 +213,9 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
         val f = mongoDB.database.createCollection(colName).toFuture()
         f.onFailure(errorHandler)
         waitReadyResult(f)
+        updateMt
       }
     }
-
-    updateMt
   }
 
   init

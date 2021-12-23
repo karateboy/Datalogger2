@@ -91,6 +91,13 @@
             @change="markDirty(row.item)"
           />
         </template>
+        <template #cell(accumulated)="row">
+          <b-form-checkbox
+            v-model="row.item.accumulated"
+            switch
+            @change="markDirty(row.item)"
+          />
+        </template>
       </b-table>
       <b-row>
         <b-col>
@@ -205,6 +212,11 @@ export default Vue.extend({
       {
         key: 'calbrate',
         label: '校正回歸',
+        tdClass: { 'text-center': true },
+      },
+      {
+        key: 'accumulated',
+        label: '累積',
         tdClass: { 'text-center': true },
       },
       {

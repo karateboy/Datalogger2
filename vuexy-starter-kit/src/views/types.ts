@@ -60,6 +60,7 @@ export interface MonitorType {
   acoustic?: boolean;
   spectrum?: boolean;
   levels?: Array<number>;
+  accumulated?: boolean;
 }
 
 export interface CellData {
