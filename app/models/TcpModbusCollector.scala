@@ -137,9 +137,9 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
       idx = st_idx._2
     } {
       if (st.key.startsWith(InputKey)) {
-        batch.addLocator(idx, BaseLocator.inputRegister(deviceConfig.slaveID, st.addr, DataType.FOUR_BYTE_FLOAT))
+        batch.addLocator(idx, BaseLocator.inputRegister(deviceConfig.slaveID, st.addr, modelReg.byteSwapMode))
       } else if (st.key.startsWith(HoldingKey)) {
-        batch.addLocator(idx, BaseLocator.holdingRegister(deviceConfig.slaveID, st.addr, DataType.FOUR_BYTE_FLOAT))
+        batch.addLocator(idx, BaseLocator.holdingRegister(deviceConfig.slaveID, st.addr, modelReg.byteSwapMode))
       } else if (st.key.startsWith(ModeKey) || st.key.startsWith(WarnKey)) {
         batch.addLocator(idx, BaseLocator.inputStatus(deviceConfig.slaveID, st.addr))
       } else {
@@ -683,8 +683,19 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
     instrumentStatusOp.log(instStatus)
   }
 
+  def getDataRegValue(regValue: ModelRegValue)(addr: Int): Option[(InstrumentStatusType, Float)] = {
+    val dataReg = (regValue.inputRegs ++ regValue.holdingRegs).find(r_idx => r_idx._1.addr == addr)
+
+    if (dataReg.isEmpty) {
+      Logger.warn("Cannot found Data register!")
+      None
+    } else
+      Some(dataReg.get)
+  }
+
   def findDataRegIdx(regValue: ModelRegValue)(addr: Int) = {
-    val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
+    val dataReg = (regValue.inputRegs ++ regValue.holdingRegs).find(r_idx => r_idx._1.addr == addr)
+
     if (dataReg.isEmpty) {
       Logger.warn("Cannot found Data register!")
       None
@@ -695,10 +706,8 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
   def reportData(regValue: ModelRegValue) = {
     val optValues: Seq[Option[(String, (InstrumentStatusType, Float))]] = {
       for (dataReg <- modelReg.dataRegs) yield {
-        for (idx <- findDataRegIdx(regValue)(dataReg.address)) yield {
-          val rawValue: (InstrumentStatusType, Float) = regValue.inputRegs(idx)
+        for (rawValue <- getDataRegValue(regValue)(dataReg.address)) yield
           (dataReg.monitorType, (rawValue._1, rawValue._2 * dataReg.multiplier))
-        }
       }
     }
 

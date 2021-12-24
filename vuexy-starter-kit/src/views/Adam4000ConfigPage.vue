@@ -79,8 +79,6 @@ export default Vue.extend({
   },
   methods: {
     moduleParamChange(module: Adam4000Module, v: string) {
-      console.log('moduleParamChange');
-      console.log(v);
       module.param = v;
       this.$emit('param-changed', JSON.stringify(this.config));
     },

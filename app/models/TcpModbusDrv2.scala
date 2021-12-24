@@ -3,6 +3,7 @@ package models
 import akka.actor.Actor
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
+import com.serotonin.modbus4j.code.DataType
 import com.serotonin.modbus4j.serial.SerialPortWrapper
 import com.typesafe.config.ConfigFactory
 import models.Protocol.ProtocolParam
@@ -34,7 +35,7 @@ case class CalibrationReg(zeroAddress: Int, spanAddress: Int)
 case class TcpModelReg(dataRegs: List[DataReg], calibrationReg: Option[CalibrationReg],
                        inputRegs: List[InputReg], holdingRegs: List[HoldingReg],
                        modeRegs: List[DiscreteInputReg], warnRegs: List[DiscreteInputReg],
-                       coilRegs: List[CoilReg], mulitipler: Float = 1)
+                       coilRegs: List[CoilReg], mulitipler: Float = 1, byteSwapMode:Int = DataType.FOUR_BYTE_FLOAT)
 
 case class TcpModbusDeviceModel(id: String, description: String, tcpModelReg: TcpModelReg, protocols: Seq[Protocol.Value])
 
@@ -74,6 +75,13 @@ object TcpModbusDrv2 {
     } catch {
       case _: Throwable =>
         1f
+    }
+
+    val byteSwapMode: Int = try {
+      driverConfig.getInt("byteSwapMode")
+    }catch {
+      case _:Throwable =>
+        DataType.FOUR_BYTE_FLOAT
     }
 
     val inputRegList = {
@@ -168,7 +176,8 @@ object TcpModbusDrv2 {
 
     TcpModbusDeviceModel(id = id, description = description, protocols = protocols,
       tcpModelReg = TcpModelReg(dataRegList.toList, calibrationReg, inputRegList.toList,
-        holdingRegList.toList, modeRegList.toList, warnRegList.toList, coilRegList.toList, mulitipler))
+        holdingRegList.toList, modeRegList.toList, warnRegList.toList, coilRegList.toList,
+        mulitipler, byteSwapMode = byteSwapMode))
   }
 
   trait Factory {
