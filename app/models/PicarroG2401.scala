@@ -5,12 +5,14 @@ import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
 import play.api.Logger
 
+import java.io.{BufferedReader, InputStream, InputStreamReader, OutputStream, PrintWriter}
+import java.net.Socket
 import javax.inject.Inject
 import scala.concurrent.{Future, blocking}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object PicarroG2401 extends AbstractDrv(_id = "picarroG2401", desp = "Picarro G2401",
-  protocols = List(Protocol.serial)) {
+  protocols = List(Protocol.tcp)) {
   val predefinedIST = List(
     InstrumentStatusType(key = "CavityPressure", addr = 0, desc = "Cavity Pressure", ""),
     InstrumentStatusType(key = "CavityTemp", addr = 1, desc = "Cavity Temperature", ""),
@@ -82,17 +84,22 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
     Future {
       blocking {
         val ret = {
-          for (serial <- serialOpt) yield {
+          for {
+            in<-inOpt
+            out<-outOpt
+          } yield {
             val cmd = "_Meas_GetConc\r"
             val bytes = cmd.getBytes("UTF-8")
-            serial.port.writeBytes(bytes)
-            val resp = serial.getMessageUntilCrWithTimeout(2)
+            out.write(cmd)
+            //serial.port.writeBytes(bytes)
+            //val resp = serial.getMessageUntilCrWithTimeout(2)
+            val resp = in.readLine()
             if (resp.nonEmpty) {
-              val tokens = resp(0).split(";")
+              val tokens = resp.split(";")
               if (tokens.length != predefinedIST.length) {
                 Logger.error(s"Data length ${tokens.length} != ${predefinedIST.length}")
                 Logger.error(resp.toString())
-                serial.clearBuffer = true
+                // serial.clearBuffer = true
               }
 
               val inputs =
@@ -116,12 +123,15 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
       }
     }
 
-
-  var serialOpt: Option[SerialComm] = None
+  var socketOpt :Option[Socket] = None
+  var outOpt: Option[PrintWriter] = None
+  var inOpt: Option[BufferedReader] = None
 
   override def connectHost: Unit = {
-    serialOpt =
-      Some(SerialComm.open(protocolParam.comPort.get, protocolParam.speed.getOrElse(19200)))
+    val socket = new Socket(protocolParam.host.get, 51020)
+    socketOpt = Some(socket)
+    outOpt = Some(new PrintWriter(socket.getOutputStream(), true))
+    inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream())))
   }
 
   override def getDataRegList: Seq[DataReg] = PicarroG2401.getDataRegList
@@ -129,32 +139,42 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
   override def getCalibrationReg: Option[CalibrationReg] = Some(CalibrationReg(0, 1))
 
   override def setCalibrationReg(address: Int, on: Boolean): Unit = {
-    for (serial <- serialOpt) {
+    for {in <- inOpt
+         out <- outOpt} {
       if (on) {
         if(address == 0){
           val cmd = "_valves_seq_setstate 9\r"
-          serial.port.writeBytes(cmd.getBytes)
+          out.write(cmd)
+          //out.write(cmd.getBytes)
         }else{
           val cmd = "_valves_seq_setstate 10\r"
-          serial.port.writeBytes(cmd.getBytes)
+          out.write(cmd)
+          //out.write(cmd.getBytes)
         }
 
-        val resp = serial.getMessageUntilCrWithTimeout(2)
+        val resp = in.readLine()
         if(!resp.contains("OK"))
-          Logger.error(resp(0))
+          Logger.error(resp)
       } else {
         val cmd = "_valves_seq_setstate 0\r"
-        serial.port.writeBytes(cmd.getBytes)
-        val resp = serial.getMessageUntilCrWithTimeout(2)
+        out.write(cmd)
+        //val resp = serial.getMessageUntilCrWithTimeout(2)
+        val resp = in.readLine()
         if(!resp.contains("OK"))
-          Logger.error(resp(0))
+          Logger.error(resp)
       }
     }
   }
 
   override def postStop(): Unit = {
-    for (serial <- serialOpt)
-      serial.port.closePort()
+    for(in<-inOpt)
+      in.close()
+
+    for(out<-outOpt)
+      out.close()
+
+    for(socket<-socketOpt)
+      socket.close()
 
     super.postStop()
   }
