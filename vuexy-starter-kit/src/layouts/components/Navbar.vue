@@ -14,7 +14,7 @@
       class="bookmark-wrapper align-items-center flex-grow-1 d-none d-lg-flex"
     >
       <dark-Toggler class="d-none d-lg-block" />
-      <h2 class="m-0">空氣品質資料蒐集系統</h2>
+      <h2 class="m-0">綠能資料蒐集系統</h2>
     </div>
 
     <b-navbar-nav class="nav align-items-center ml-auto">
