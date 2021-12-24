@@ -1,6 +1,7 @@
 package models
 
 import models.Protocol.ProtocolParam
+import org.mongodb.scala.result.UpdateResult
 import play.api.libs.json._
 
 import javax.inject._
@@ -173,7 +174,7 @@ class InstrumentOp @Inject() (mongoDB: MongoDB) {
     f
   }
   
-  def updateStatusType(id:String, status:List[InstrumentStatusType]) = {
+  def updateStatusType(id:String, status:List[InstrumentStatusType]): Future[UpdateResult] = {
     import org.mongodb.scala.bson.BsonArray
     import org.mongodb.scala.model.Updates._
     val bArray = new BsonArray
@@ -184,10 +185,6 @@ class InstrumentOp @Inject() (mongoDB: MongoDB) {
     f.onFailure({
       case ex:Exception=>
         ModelHelper.logException(ex)
-    })
-    f.onSuccess({
-      case _=>
-        ForwardManager.updateInstrumentStatusType
     })
     f
   }

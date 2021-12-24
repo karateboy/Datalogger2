@@ -1,6 +1,8 @@
 package controllers
 
+import akka.actor.ActorRef
 import com.github.nscala_time.time.Imports._
+import models.ForwardManager.{ForwardHourRecord, ForwardMinRecord}
 import models.ModelHelper.errorHandler
 import models._
 import play.api._
@@ -14,16 +16,13 @@ import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class HomeController @Inject()(environment: play.api.Environment, recordOp: RecordOp,
-                               userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
+class HomeController @Inject()(userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
                                monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorOp, groupOp: GroupOp,
                                instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp,
-                               sensorOp: MqttSensorOp, adam6066: Adam6066, WSClient: WSClient) extends Controller {
+                               sensorOp: MqttSensorOp, adam6066: Adam6066, WSClient: WSClient,
+                               @Named("dataCollectManager") manager: ActorRef) extends Controller {
 
   val title = "資料擷取器"
-
-  val epaReportPath: String = environment.rootPath + "/importEPA/"
-
   implicit val userParamRead: Reads[User] = Json.reads[User]
 
   import groupOp.{read, write}
@@ -560,7 +559,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     for {
       monitor <- monitors
       hour <- query.getPeriods(start, end + 1.hour, 1.hour)} {
-      dataCollectManagerOp.recalculateHourData(monitor, hour, false, true)(monitorTypeOp.realtimeMtvList)
+      dataCollectManagerOp.recalculateHourData(monitor, hour, true)(monitorTypeOp.realtimeMtvList)
     }
     Ok(Json.obj("ok" -> true))
   }
@@ -572,9 +571,9 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
 
     tab match {
       case TableType.min =>
-        ForwardManager.forwardMinRecord(start, end)
+        manager ! ForwardMinRecord(start, end)
       case TableType.hour =>
-        ForwardManager.forwardHourRecord(start, end)
+        manager ! ForwardHourRecord(start, end)
     }
 
     Ok(Json.obj("ok" -> true))
