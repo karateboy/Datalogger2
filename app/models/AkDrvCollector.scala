@@ -15,7 +15,7 @@ case class AkModelRegValue(inputRegs: Seq[(InstrumentStatusType, Float)],
                            warningRegs:Seq[(InstrumentStatusType, Boolean)])
 
 class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-                               alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                               alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
                                calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
                               (@Assisted instId: String, @Assisted protocol: ProtocolParam, @Assisted modelReg: AkModelReg,
                                @Assisted deviceConfig: AkDeviceConfig) extends Actor {
@@ -31,7 +31,6 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
   }
 
   val InputKey = "Input"
-  val HoldingKey = "Holding"
   val ModeKey = "Mode"
   val WarnKey = "Warn"
 
@@ -71,13 +70,12 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
 
   def readReg(statusTypeList: List[InstrumentStatusType]): AkModelRegValue = {
     var inputs = Seq.empty[(InstrumentStatusType, Float)]
-    var modes = Seq.empty[(InstrumentStatusType, Boolean)]
+    val modes = Seq.empty[(InstrumentStatusType, Boolean)]
     var warnings = Seq.empty[(InstrumentStatusType, Boolean)]
 
     for {
       st_idx <- statusTypeList.zipWithIndex
       st = st_idx._1
-      idx = st_idx._2
     } {
       if (st.key.startsWith(InputKey)) {
         val cmd = AkProtocol.AskRegCmd(deviceConfig.stationNo, deviceConfig.channelNum, st.addr).getCmd
@@ -85,12 +83,6 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
         val ret: AkProtocol.AkResponse = AkProtocol.handleAkResponse(comm.getAkResponse())
         if(ret.success)
           inputs = inputs:+((st, ret.value.toFloat))
-      } else if (st.key.startsWith(HoldingKey)) {
-        val cmd = AkProtocol.AskRegCmd(deviceConfig.stationNo, deviceConfig.channelNum, st.addr).getCmd
-        comm.os.write(cmd)
-        val ret: AkProtocol.AkResponse = AkProtocol.handleAkResponse(comm.getAkResponse())
-        if(ret.success)
-          modes = modes:+((st, ret.value.toBoolean))
       } else if (st.key.startsWith(ModeKey) || st.key.startsWith(WarnKey)) {
         val cmd = AkProtocol.AskRegCmd(deviceConfig.stationNo, deviceConfig.channelNum, st.addr).getCmd
         comm.os.write(cmd)
@@ -123,6 +115,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
                 val readList = instrumentStatusTypes.filter(ist => dataRegAddressList.contains(ist.addr))
                 readReg(readList)
               }
+
             regValueReporter(regValues)(recordCalibration)
           }
         } catch {
@@ -135,7 +128,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
 
         } finally {
           import scala.concurrent.duration._
-          timerOpt = Some(system.scheduler.scheduleOnce(Duration(5, SECONDS), self, ReadRegister))
+          timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
         }
       }
     }
@@ -161,14 +154,14 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
                 throw new Exception("Probe register failed. Data register is not in there...");
             }
             import scala.concurrent.duration._
-            timerOpt = Some(system.scheduler.scheduleOnce(Duration(10, SECONDS), self, ReadRegister))
+            timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(10, SECONDS), self, ReadRegister))
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)
               alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
-              system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenCom)
+              context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenCom)
           }
         }
       }
@@ -197,21 +190,17 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
   var nextLoggingStatusTime = {
     def getNextTime(period: Int) = {
       val now = DateTime.now()
-      val nextMin = (now.getMinuteOfHour / period + 1) * period
-      val hour = (now.getHourOfDay + (nextMin / 60)) % 24
-      val nextDay = (now.getHourOfDay + (nextMin / 60)) / 24
-
-      now.withHourOfDay(hour).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0) + nextDay.day
+      val residual = (now.getMinuteOfHour + period) % period
+      val minToPlus = period - residual
+      now.plusMinutes(minToPlus).withSecondOfMinute(0).withMillisOfSecond(0)
     }
     // suppose every 10 min
-    val period = 30
+    val period = 6
     val nextTime = getNextTime(period)
-    //Logger.debug(s"$instId next logging time= $nextTime")
     nextTime
   }
 
-  def needStatus: Boolean = DateTime.now() > nextLoggingStatusTime
-  // def needStatus = false
+  def needStatus: Boolean = DateTime.now() >= nextLoggingStatusTime
 
   def regValueReporter(regValue: AkModelRegValue)(recordCalibration: Boolean) = {
     for (report <- reportData(regValue)) {

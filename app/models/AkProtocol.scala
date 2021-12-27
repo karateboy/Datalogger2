@@ -1,5 +1,7 @@
 package models
 
+import play.api.Logger
+
 object AkProtocol {
   case class AskRegCmd(station:String, channel:String, code:String){
     def getCmd = {
@@ -14,9 +16,6 @@ object AkProtocol {
   object AskRegCmd{
     def apply(station:String, channel:String, code:Int): AskRegCmd = {
       var addrStr = code.toString
-      if (addrStr.length < 3) {
-        addrStr = addrStr + " " * (3 - addrStr.length)
-      }
       AskRegCmd(station, channel, addrStr)
     }
   }
