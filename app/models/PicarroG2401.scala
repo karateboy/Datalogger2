@@ -89,8 +89,8 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
             out<-outOpt
           } yield {
             val cmd = "_Meas_GetConc\r"
-            val bytes = cmd.getBytes("UTF-8")
-            out.write(cmd)
+            //val bytes = cmd.getBytes("UTF-8")
+            out.write(cmd.getBytes())
             //serial.port.writeBytes(bytes)
             //val resp = serial.getMessageUntilCrWithTimeout(2)
             val resp = in.readLine()
@@ -124,13 +124,13 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
     }
 
   var socketOpt :Option[Socket] = None
-  var outOpt: Option[PrintWriter] = None
+  var outOpt: Option[OutputStream] = None
   var inOpt: Option[BufferedReader] = None
 
   override def connectHost: Unit = {
     val socket = new Socket(protocolParam.host.get, 51020)
     socketOpt = Some(socket)
-    outOpt = Some(new PrintWriter(socket.getOutputStream(), true))
+    outOpt = Some(socket.getOutputStream())
     inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream())))
   }
 
@@ -144,11 +144,11 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
       if (on) {
         if(address == 0){
           val cmd = "_valves_seq_setstate 9\r"
-          out.write(cmd)
+          out.write(cmd.getBytes())
           //out.write(cmd.getBytes)
         }else{
           val cmd = "_valves_seq_setstate 10\r"
-          out.write(cmd)
+          out.write(cmd.getBytes())
           //out.write(cmd.getBytes)
         }
 
@@ -157,7 +157,7 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
           Logger.error(resp)
       } else {
         val cmd = "_valves_seq_setstate 0\r"
-        out.write(cmd)
+        out.write(cmd.getBytes())
         //val resp = serial.getMessageUntilCrWithTimeout(2)
         val resp = in.readLine()
         if(!resp.contains("OK"))
