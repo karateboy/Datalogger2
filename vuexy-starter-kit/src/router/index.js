@@ -122,7 +122,7 @@ const router = new VueRouter({
             active: true,
           },
           {
-            text: '風瑰圖查詢',
+            text: '玫瑰圖查詢',
             active: true,
           },
         ],

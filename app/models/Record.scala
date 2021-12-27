@@ -326,7 +326,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
           d -> ListBuffer.empty[Double]
       val windMap: Map[Int, ListBuffer[Double]] = windDirPair.toMap
       var total = 0
-      for (record <- windRecords) {
+      for (record <- windRecords if record.forall(r => MonitorStatusFilter.isMatched(MonitorStatusFilter.ValidData, r.status))) {
         val dir = (Math.ceil((record(0).value - (step / 2)) / step).toInt) % nDiv
         windMap(dir) += record(1).value
         total += 1
