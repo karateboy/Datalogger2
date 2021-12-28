@@ -758,7 +758,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           case TableType.min =>
             recordOp.MinCollection
         }
-        val f = recordOp.getWindRose(colName)(monitor, monitorType, new DateTime(start), new DateTime(end).plusDays(1), levels.toList, nWay)
+        val f = recordOp.getWindRose(colName)(monitor, monitorType, new DateTime(start), new DateTime(end), levels.toList, nWay)
         f onFailure (errorHandler)
         for (windMap <- f) yield {
           assert(windMap.nonEmpty)

@@ -113,7 +113,10 @@ export default Vue.extend({
   },
 
   data() {
-    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
+    const range = [
+      moment().startOf('days').subtract(1, 'days').valueOf(),
+      moment().startOf('days').valueOf(),
+    ];
     let monitor: string | undefined;
     let monitorType: string = 'me';
     let nWays = [8, 16, 32];
