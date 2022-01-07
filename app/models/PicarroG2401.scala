@@ -5,11 +5,11 @@ import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
 import play.api.Logger
 
-import java.io.{BufferedReader, InputStream, InputStreamReader, OutputStream, PrintWriter}
+import java.io.{BufferedReader, InputStreamReader, OutputStream}
 import java.net.Socket
 import javax.inject.Inject
-import scala.concurrent.{Future, blocking}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Future, blocking}
 
 object PicarroG2401 extends AbstractDrv(_id = "picarroG2401", desp = "Picarro G2401",
   protocols = List(Protocol.tcp)) {
@@ -40,11 +40,8 @@ object PicarroG2401 extends AbstractDrv(_id = "picarroG2401", desp = "Picarro G2
   val dataAddress = List(9, 10) ++ Range(14, 20)
 
   override def getMonitorTypes(param: String): List[String] = {
-    val ret =
-    for(i<-dataAddress) yield
-      predefinedIST(i).key
-
-    ret.toList
+      for (i <- dataAddress) yield
+        predefinedIST(i).key
   }
 
 
@@ -54,15 +51,15 @@ object PicarroG2401 extends AbstractDrv(_id = "picarroG2401", desp = "Picarro G2
         DataReg(monitorType = ist.key, ist.addr, multiplier = 1)
     }
 
-  trait Factory {
-    def apply(@Assisted("instId") instId: String, @Assisted("desc") desc: String, @Assisted("config") config: DeviceConfig,
-              @Assisted("protocolParam") protocol: ProtocolParam): Actor
-  }
-
   override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
     val f2 = f.asInstanceOf[PicarroG2401.Factory]
     val config = validateParam(param)
     f2(id, desc = super.description, config, protocol)
+  }
+
+  trait Factory {
+    def apply(@Assisted("instId") instId: String, @Assisted("desc") desc: String, @Assisted("config") config: DeviceConfig,
+              @Assisted("protocolParam") protocol: ProtocolParam): Actor
   }
 }
 
@@ -78,6 +75,10 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
 
   import PicarroG2401._
 
+  var socketOpt: Option[Socket] = None
+  var outOpt: Option[OutputStream] = None
+  var inOpt: Option[BufferedReader] = None
+
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = predefinedIST
 
   override def readReg(statusTypeList: List[InstrumentStatusType]): Future[Option[ModelRegValue2]] =
@@ -85,47 +86,41 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
       blocking {
         val ret = {
           for {
-            in<-inOpt
-            out<-outOpt
+            in <- inOpt
+            out <- outOpt
           } yield {
-            val cmd = "_Meas_GetConc\r"
-            //val bytes = cmd.getBytes("UTF-8")
-            out.write(cmd.getBytes())
-            //serial.port.writeBytes(bytes)
-            //val resp = serial.getMessageUntilCrWithTimeout(2)
-            val resp = in.readLine()
-            if (resp.nonEmpty) {
-              val tokens = resp.split(";")
-              if (tokens.length != predefinedIST.length) {
-                Logger.error(s"Data length ${tokens.length} != ${predefinedIST.length}")
-                Logger.error(resp.toString())
-                // serial.clearBuffer = true
-              }
-
-              val inputs =
-                for (ist <- predefinedIST if ist.addr < tokens.length) yield {
-                  val v = try {
-                    tokens(ist.addr).toDouble
-                  } catch {
-                    case _: Throwable =>
-                      0d
-                  }
-                  (ist, v)
+            synchronized{
+              val cmd = "_Meas_GetConc\r"
+              out.write(cmd.getBytes())
+              val resp = in.readLine()
+              if (resp.nonEmpty) {
+                val tokens = resp.split(";")
+                if (tokens.length != predefinedIST.length) {
+                  Logger.error(s"Data length ${tokens.length} != ${predefinedIST.length}")
+                  Logger.error(resp)
                 }
-              Some(ModelRegValue2(inputRegs = inputs,
-                modeRegs = List.empty[(InstrumentStatusType, Boolean)],
-                warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
-            } else
-              None
+
+                val inputs =
+                  for (ist <- predefinedIST if ist.addr < tokens.length) yield {
+                    val v = try {
+                      tokens(ist.addr).toDouble
+                    } catch {
+                      case _: Throwable =>
+                        0d
+                    }
+                    (ist, v)
+                  }
+                Some(ModelRegValue2(inputRegs = inputs,
+                  modeRegs = List.empty[(InstrumentStatusType, Boolean)],
+                  warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
+              } else
+                None
+            }// end of synchronized
           }
         }
         ret.flatten
       }
     }
-
-  var socketOpt :Option[Socket] = None
-  var outOpt: Option[OutputStream] = None
-  var inOpt: Option[BufferedReader] = None
 
   override def connectHost: Unit = {
     val socket = new Socket(protocolParam.host.get, 51020)
@@ -141,39 +136,38 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
   override def setCalibrationReg(address: Int, on: Boolean): Unit = {
     for {in <- inOpt
          out <- outOpt} {
-      if (on) {
-        if(address == 0){
-          val cmd = "_valves_seq_setstate 9\r"
-          out.write(cmd.getBytes())
-          //out.write(cmd.getBytes)
-        }else{
-          val cmd = "_valves_seq_setstate 10\r"
-          out.write(cmd.getBytes())
-          //out.write(cmd.getBytes)
-        }
+      synchronized{
+        if (on) {
+          if (address == 0) {
+            val cmd = "_valves_seq_setstate 9\r"
+            out.write(cmd.getBytes())
+          } else {
+            val cmd = "_valves_seq_setstate 10\r"
+            out.write(cmd.getBytes())
+          }
 
-        val resp = in.readLine()
-        if(!resp.contains("OK"))
-          Logger.error(resp)
-      } else {
-        val cmd = "_valves_seq_setstate 0\r"
-        out.write(cmd.getBytes())
-        //val resp = serial.getMessageUntilCrWithTimeout(2)
-        val resp = in.readLine()
-        if(!resp.contains("OK"))
-          Logger.error(resp)
+          val resp = in.readLine()
+          if (!resp.contains("OFF"))
+            Logger.error(resp)
+        } else {
+          val cmd = "_valves_seq_setstate 0\r"
+          out.write(cmd.getBytes())
+          val resp = in.readLine()
+          if (!resp.contains("OFF"))
+            Logger.error(resp)
+        }
       }
     }
   }
 
   override def postStop(): Unit = {
-    for(in<-inOpt)
+    for (in <- inOpt)
       in.close()
 
-    for(out<-outOpt)
+    for (out <- outOpt)
       out.close()
 
-    for(socket<-socketOpt)
+    for (socket <- socketOpt)
       socket.close()
 
     super.postStop()

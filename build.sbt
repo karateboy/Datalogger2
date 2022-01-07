@@ -1,6 +1,6 @@
 name := """DataLogger2"""
 
-version := "1.3.27"
+version := "1.3.28"
 
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala, LauncherJarPlugin, JavaAppPackaging, WindowsPlugin)
@@ -15,7 +15,7 @@ libraryDependencies ++= Seq(
 )
 
 // https://mvnrepository.com/artifact/org.mongodb.scala/mongo-scala-driver
-libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "4.4.0"
+libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "4.2.0"
 
 
 // https://mvnrepository.com/artifact/com.github.nscala-time/nscala-time

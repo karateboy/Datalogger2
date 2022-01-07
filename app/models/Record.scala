@@ -229,10 +229,14 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     import org.mongodb.scala.model.Sorts._
 
     val col = getCollection(colName)
-    val f = col.find(
+    val operation: FindObservable[RecordList] = col.find(
       and(equal("monitor", monitor), gte("time", startTime.toDate()), lt("time", endTime.toDate())))
-      .allowDiskUse(true)
-      .sort(ascending("time")).toFuture()
+      .sort(ascending("time"))
+
+    val f: Future[Seq[RecordList]] = if(mongoDB.below44)
+      operation.toFuture()
+    else
+      operation.allowDiskUse(true).toFuture()
 
     val needCalibration = mtList.map { mt => monitorTypeOp.map(mt).calibrate.getOrElse(false) }.exists(p => p)
     val allF =
