@@ -290,6 +290,27 @@ body{
 [dir] .breadcrumb:not([class*=breadcrumb-]) .breadcrumb-item + .breadcrumb-item:before {
   background-repeat: no-repeat;
   background-position: center;
-  background-size: 20px;
+  background-size: 30px;
 }
 
+.navigation {
+  font-size: 2rem;
+  font-family: "Montserrat", Helvetica, Arial, serif;
+  font-weight: 400;
+  overflow-y: hidden;
+}
+
+.card .card-title {
+  font-weight: 500;
+  font-size: 2rem;
+}
+
+.breadcrumb {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap;
+  font-size: 1.2rem;
+  list-style: none;
+}

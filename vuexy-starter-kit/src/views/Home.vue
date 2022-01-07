@@ -13,8 +13,8 @@
             class="text-right p-2"
           >
             <div class="p-2">
-              <h2>太陽能總發電量: {{ totalPowerSupply }} kW</h2>
-              <h2>老屋總耗電量: {{ totalPowerUsage }} kW</h2>
+              <h2>太陽能總發電量: {{ totalPowerSupplyStr }} kW</h2>
+              <h2>老屋總耗電量: {{ totalPowerUsageStr }} kW</h2>
               <h2>綠能使用率: {{ greenPercentage }}%</h2>
             </div>
           </b-card>
@@ -22,7 +22,7 @@
         <b-col cols="4">
           <b-card
             header="氣象資訊"
-            header-class="h3 display text-center"
+            header-class="h2 display text-center"
             border-variant="primary"
             img-bottom
             img-height="100"
@@ -39,7 +39,7 @@
       <b-card
         header="供電資訊"
         class="text-center"
-        header-class="h3 display text-center"
+        header-class="h2 display text-center"
         border-variant="success"
         header-bg-variant="success"
         header-text-variant="white"
@@ -52,6 +52,7 @@
               img-fluid
               img-left
               title="台電"
+              title-tag="h2"
             >
               <h2>{{ taipowerSupply }} kW</h2>
             </b-card>
@@ -70,7 +71,7 @@
         </b-row>
       </b-card>
     </b-col>
-    <b-col lg="6" md="12">
+    <b-col lg="4" md="12">
       <b-card
         class="text-center"
         header="即時監測資訊"
@@ -83,11 +84,11 @@
         <div id="realtimeChart"></div>
       </b-card>
     </b-col>
-    <b-col lg="6">
+    <b-col lg="8">
       <b-card
         header="用電情形"
         class="text-left"
-        header-class="h3 display text-center"
+        header-class="h2 display text-center"
         border-variant="success"
         header-bg-variant="success"
         header-text-variant="white"
@@ -97,9 +98,12 @@
             <b-card :img-src="power.img" img-height="120" img-left no-body>
               <b-card-body
                 class="p-1"
+                body-class="display"
                 :title="getMtName(power.mt)"
+                title-tag="h2"
                 sub-title-tag="h2"
                 :sub-title="getEquipmentPower(power.mt)"
+                sub-title-text-variant="display"
               />
             </b-card>
           </b-col>
@@ -211,6 +215,9 @@ export default Vue.extend({
 
       return sum.length !== 0 ? sum.reduce((a, b) => a + b) : 0;
     },
+    totalPowerSupplyStr(): string {
+      return this.totalPowerSupply.toFixed(2);
+    },
     totalPowerUsage(): number {
       let sum1 = this.realTimeStatus
         .filter(rt => rt._id === 'V3' || rt._id === 'V4' || rt._id === 'V5')
@@ -237,6 +244,9 @@ export default Vue.extend({
       if (sum1.length !== 0 && sum2.length !== 0)
         return sum1.reduce((a, b) => a + b) + sum2.reduce((a, b) => a + b);
       else return 0;
+    },
+    totalPowerUsageStr(): string {
+      return this.totalPowerUsage.toFixed(2);
     },
     taipowerSupply(): string {
       if (this.totalPowerUsage >= this.totalPowerSupply)
