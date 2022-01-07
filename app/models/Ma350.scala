@@ -54,13 +54,13 @@ object Ma350Drv extends AbstractDrv(_id = "MA350", desp = "microAeth MA350",
 }
 
 class Ma350Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-                               alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                               alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
                                calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
                               (@Assisted("instId") instId: String, @Assisted("desc") desc: String,
                                @Assisted("config") deviceConfig: DeviceConfig,
                                @Assisted("protocolParam") protocolParam: ProtocolParam)
   extends AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-    alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+    alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
     calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)(instId, desc, deviceConfig, protocolParam) {
 
 

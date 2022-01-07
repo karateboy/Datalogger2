@@ -1,12 +1,10 @@
 package models
 
 import akka.actor._
-import com.google.inject.assistedinject.Assisted
 import models.ModelHelper._
 import models.Protocol.ProtocolParam
 import play.api._
 
-import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -15,7 +13,7 @@ case class ModelRegValue2(inputRegs: List[(InstrumentStatusType, Double)],
                           warnRegs: List[(InstrumentStatusType, Boolean)])
 
 abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-                                           alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                                           alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
                                            calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
                                           (instId: String, desc: String, deviceConfig: DeviceConfig, protocol: ProtocolParam) extends Actor {
   import TapiTxxCollector._
@@ -56,7 +54,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
 
   def receive(): Receive = normalPhase
 
-  def readRegHanlder(recordCalibration: Boolean) = {
+  def readRegHanlder(recordCalibration: Boolean): Unit = {
     try {
       for(instrumentStatusTypes<-instrumentStatusTypesOpt){
         for (regValueOpt <- readReg(instrumentStatusTypes)) {
@@ -76,13 +74,13 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
     } finally {
       import scala.concurrent.duration._
       timerOpt = if (protocol.protocol == Protocol.tcp)
-        Some(system.scheduler.scheduleOnce(Duration(2, SECONDS), self, ReadRegister))
+        Some(context.system.scheduler.scheduleOnce(Duration(2, SECONDS), self, ReadRegister))
       else
-        Some(system.scheduler.scheduleOnce(Duration(5, SECONDS), self, ReadRegister))
+        Some(context.system.scheduler.scheduleOnce(Duration(5, SECONDS), self, ReadRegister))
     }
   }
 
-  def executeCalibration(calibrationType: CalibrationType) {
+  def executeCalibration(calibrationType: CalibrationType): Unit = {
     if (deviceConfig.monitorTypes.isEmpty)
       Logger.error("There is no monitor type for calibration.")
     else if (!connected)
@@ -121,14 +119,14 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
               }
             }
             import scala.concurrent.duration._
-            timerOpt = Some(system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
+            timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
           } catch {
             case ex: Exception =>
               Logger.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
               alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
-              system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
+              context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
           }
         }
       }
@@ -158,17 +156,17 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
       executeSeq(seq, on)
   }
 
-  def executeSeq(str: String, bool: Boolean) = {}
+  def executeSeq(str: String, bool: Boolean): Unit = {}
 
-  def startCalibration(calibrationType: CalibrationType, monitorTypes: List[String]) {
+  def startCalibration(calibrationType: CalibrationType, monitorTypes: List[String]): Unit = {
     import scala.concurrent.duration._
 
     Logger.info(s"start calibrating ${monitorTypes.mkString(",")}")
     val timer = if (!calibrationType.zero &&
-      deviceConfig.calibratorPurgeTime.isDefined && deviceConfig.calibratorPurgeTime.get != 0)
-      purgeCalibrator
+      deviceConfig.calibratorPurgeTime.getOrElse(0) != 0)
+      purgeCalibrator()
     else
-      system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart)
+      context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart)
 
     import com.github.nscala_time.time.Imports._
     val endState = collectorState
@@ -228,7 +226,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
           } else {
             triggerSpanCalibration(true)
           }
-          val calibrationTimer = system.scheduler.scheduleOnce(Duration(deviceConfig.raiseTime.get, SECONDS), self, HoldStart)
+          val calibrationTimer = context.system.scheduler.scheduleOnce(Duration(deviceConfig.raiseTime.getOrElse(60), SECONDS), self, HoldStart)
           context become calibrationPhase(calibrationType, startTime, recordCalibration,
             calibrationReadingList, zeroReading, endState, calibrationTimer)
         }
@@ -237,7 +235,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
     case HoldStart => {
       Logger.info(s"${self.path.name} => HoldStart")
       import scala.concurrent.duration._
-      val calibrationTimer = system.scheduler.scheduleOnce(Duration(deviceConfig.holdTime.get, SECONDS), self, DownStart)
+      val calibrationTimer = context.system.scheduler.scheduleOnce(Duration(deviceConfig.holdTime.getOrElse(60), SECONDS), self, DownStart)
       context become calibrationPhase(calibrationType, startTime, true, calibrationReadingList,
         zeroReading, endState, calibrationTimer)
     }
@@ -256,11 +254,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
           val calibrationTimer =
             if (calibrationType.auto && calibrationType.zero) {
               // Auto zero calibration will jump to end immediately
-              system.scheduler.scheduleOnce(Duration(1, SECONDS), self, CalibrateEnd)
+              context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, CalibrateEnd)
             } else {
               collectorState = MonitorStatus.CalibrationResume
               instrumentOp.setState(instId, collectorState)
-              system.scheduler.scheduleOnce(Duration(deviceConfig.downTime.get, SECONDS), self, CalibrateEnd)
+              context.system.scheduler.scheduleOnce(Duration(deviceConfig.downTime.getOrElse(60), SECONDS), self, CalibrateEnd)
             }
           context become calibrationPhase(calibrationType, startTime, false, calibrationReadingList,
             zeroReading, endState, calibrationTimer)
@@ -276,7 +274,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
         blocking {
           Logger.info(s"$self =>$calibrationType CalibrateEnd")
 
-          val values = for {mt <- deviceConfig.monitorTypes.get} yield {
+          val values = for {mt <- deviceConfig.monitorTypes.getOrElse(List.empty[String])} yield {
             val calibrations = calibrationReadingList.flatMap {
               reading =>
                 reading.dataList.filter {
@@ -302,7 +300,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
               purgeCalibrator
             } else {
               import scala.concurrent.duration._
-              system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart)
+              context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart)
             }
 
             context become calibrationPhase(AutoSpan, startTime, false, List.empty[ReportData],
@@ -314,7 +312,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
               val zeroMap = zeroReading.toMap
               val spanMap = values.toMap
 
-              for (mt <- deviceConfig.monitorTypes.get) {
+              for (mt <- deviceConfig.monitorTypes.getOrElse(List.empty[String])) {
                 val zero = zeroMap.get(mt)
                 val span = spanMap.get(mt)
                 val spanStd = monitorTypeOp.map(mt).span
@@ -323,7 +321,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
               }
             } else {
               val valueMap = values.toMap
-              for (mt <- deviceConfig.monitorTypes.get) {
+              for (mt <- deviceConfig.monitorTypes.getOrElse(List.empty[String])) {
                 val values = valueMap.get(mt)
                 val cal =
                   if (calibrationType.zero)
@@ -349,9 +347,9 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
 
   def getCalibrationReg: Option[CalibrationReg]
 
-  def setCalibrationReg(address: Int, on: Boolean)
+  def setCalibrationReg(address: Int, on: Boolean): Unit
 
-  def resetToNormal {
+  def resetToNormal() {
     try {
       deviceConfig.calibrateZeoDO map {
         doBit =>
@@ -375,7 +373,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
     }
   }
 
-  def triggerZeroCalibration(v: Boolean) {
+  def triggerZeroCalibration(v: Boolean): Unit = {
     try {
       deviceConfig.calibrateZeoDO.foreach {
         doBit =>
@@ -397,7 +395,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
     }
   }
 
-  def triggerSpanCalibration(v: Boolean) {
+  def triggerSpanCalibration(v: Boolean): Unit = {
     try {
       deviceConfig.calibrateSpanDO map {
         doBit =>
@@ -419,16 +417,16 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
     }
   }
 
-  def purgeCalibrator() = {
+  def purgeCalibrator(): Cancellable = {
     import scala.concurrent.duration._
 
-    val purgeTime = deviceConfig.calibratorPurgeTime.get
+    val purgeTime = deviceConfig.calibratorPurgeTime.getOrElse(60)
     Logger.info(s"Purge calibrator. Delay start of calibration $purgeTime seconds")
     triggerCalibratorPurge(true)
-    system.scheduler.scheduleOnce(Duration(purgeTime + 1, SECONDS), self, RaiseStart)
+    context.system.scheduler.scheduleOnce(Duration(purgeTime + 1, SECONDS), self, RaiseStart)
   }
 
-  def triggerCalibratorPurge(v: Boolean) {
+  def triggerCalibratorPurge(v: Boolean): Unit = {
     try {
       for (seq <- deviceConfig.calibratorPurgeSeq) {
         context.parent ! ExecuteSeq(seq, v)
@@ -441,7 +439,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
 
   def getLoggingStatusPeriod: Int = 10
 
-  def regValueReporter(regValue: ModelRegValue2)(recordCalibration: Boolean) = {
+  def regValueReporter(regValue: ModelRegValue2)(recordCalibration: Boolean): Unit = {
     for (report <- reportData(regValue)) {
       context.parent ! report
       if (recordCalibration)
@@ -490,7 +488,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
     oldModelReg = Some(regValue)
   }
 
-  def logInstrumentStatus(regValue: ModelRegValue2) = {
+  def logInstrumentStatus(regValue: ModelRegValue2): Unit = {
     val isList = regValue.inputRegs.map {
       kv =>
         val k = kv._1
@@ -501,7 +499,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
     instrumentStatusOp.log(instStatus)
   }
 
-  def findDataRegIdx(regValue: ModelRegValue2)(addr: Int) = {
+  def findDataRegIdx(regValue: ModelRegValue2)(addr: Int): Option[Int] = {
     val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
     if (dataReg.isEmpty) {
       Logger.warn("Cannot found Data register!")
@@ -511,7 +509,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
   }
 
 
-  def reportData(regValue: ModelRegValue2) = {
+  def reportData(regValue: ModelRegValue2): Option[ReportData] = {
     val optValues: Seq[Option[(String, (InstrumentStatusType, Double))]] = {
       for (dataReg <- getDataRegList) yield {
         for (idx <- findDataRegIdx(regValue)(dataReg.address)) yield {
@@ -531,7 +529,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
   }
 
   override def postStop(): Unit = {
-    if (timerOpt.isDefined)
-      timerOpt.get.cancel()
+    for(timer<-timerOpt)
+      timer.cancel()
   }
 }

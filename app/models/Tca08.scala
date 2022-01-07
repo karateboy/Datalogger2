@@ -47,13 +47,13 @@ object Tca08Drv extends AbstractDrv(_id = "tca08", desp = "Total Carbon Analyzer
 }
 
 class Tca08Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-                               alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                               alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
                                calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
                               (@Assisted("instId") instId: String, @Assisted("desc") desc: String,
                                @Assisted("config") deviceConfig: DeviceConfig,
                                @Assisted("protocolParam") protocolParam: ProtocolParam)
   extends AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-    alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+    alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
     calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)(instId, desc, deviceConfig, protocolParam) {
 
 

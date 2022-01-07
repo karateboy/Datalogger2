@@ -64,13 +64,13 @@ object PicarroG2401 extends AbstractDrv(_id = "picarroG2401", desp = "Picarro G2
 }
 
 class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-                                      alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                                      alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
                                       calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
                                      (@Assisted("instId") instId: String, @Assisted("desc") desc: String,
                                       @Assisted("config") deviceConfig: DeviceConfig,
                                       @Assisted("protocolParam") protocolParam: ProtocolParam)
   extends AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-    alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+    alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
     calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)(instId, desc, deviceConfig, protocolParam) {
 
   import PicarroG2401._
@@ -141,20 +141,16 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
           if (address == 0) {
             val cmd = "_valves_seq_setstate 9\r"
             out.write(cmd.getBytes())
+            in.readLine()
           } else {
             val cmd = "_valves_seq_setstate 10\r"
             out.write(cmd.getBytes())
+            in.readLine()
           }
-
-          val resp = in.readLine()
-          if (!resp.contains("OFF"))
-            Logger.error(resp)
         } else {
           val cmd = "_valves_seq_setstate 0\r"
           out.write(cmd.getBytes())
-          val resp = in.readLine()
-          if (!resp.contains("OFF"))
-            Logger.error(resp)
+          in.readLine()
         }
       }
     }
