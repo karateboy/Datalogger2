@@ -1,6 +1,6 @@
 package models
 
-import akka.actor.{Actor, ActorSystem}
+import akka.actor.Actor
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
 import play.api.Logger
@@ -40,8 +40,8 @@ object PicarroG2401 extends AbstractDrv(_id = "picarroG2401", desp = "Picarro G2
   val dataAddress = List(9, 10) ++ Range(14, 20)
 
   override def getMonitorTypes(param: String): List[String] = {
-      for (i <- dataAddress) yield
-        predefinedIST(i).key
+    for (i <- dataAddress) yield
+      predefinedIST(i).key
   }
 
 
@@ -89,33 +89,38 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
             in <- inOpt
             out <- outOpt
           } yield {
-            synchronized{
-              val cmd = "_Meas_GetConc\r"
-              out.write(cmd.getBytes())
-              val resp = in.readLine()
-              if (resp.nonEmpty) {
-                val tokens = resp.split(";")
-                if (tokens.length != predefinedIST.length) {
-                  Logger.error(s"Data length ${tokens.length} != ${predefinedIST.length}")
-                  Logger.error(resp)
-                }
+            def readUntileNonEmpty(): String ={
+              var resp: String = null
+              do{
+                resp = in.readLine()
+              }while(resp.isEmpty)
+              resp
+            }
 
-                val inputs =
-                  for (ist <- predefinedIST if ist.addr < tokens.length) yield {
-                    val v = try {
-                      tokens(ist.addr).toDouble
-                    } catch {
-                      case _: Throwable =>
-                        0d
-                    }
-                    (ist, v)
-                  }
-                Some(ModelRegValue2(inputRegs = inputs,
-                  modeRegs = List.empty[(InstrumentStatusType, Boolean)],
-                  warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
-              } else
-                None
-            }// end of synchronized
+            val cmd = "_Meas_GetConc\r"
+            Logger.info(s"DAS=>Picarro ${cmd}")
+            out.write(cmd.getBytes())
+            val resp = readUntileNonEmpty()
+            Logger.info(s"Picarro=>DAS $resp")
+            val tokens = resp.split(";")
+            if (tokens.length != predefinedIST.length) {
+              Logger.error(s"Data length ${tokens.length} != ${predefinedIST.length}")
+              Logger.error(resp)
+            }
+
+            val inputs =
+              for (ist <- predefinedIST if ist.addr < tokens.length) yield {
+                val v = try {
+                  tokens(ist.addr).toDouble
+                } catch {
+                  case _: Throwable =>
+                    0d
+                }
+                (ist, v)
+              }
+            Some(ModelRegValue2(inputRegs = inputs,
+              modeRegs = List.empty[(InstrumentStatusType, Boolean)],
+              warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
           }
         }
         ret.flatten
@@ -134,25 +139,38 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
   override def getCalibrationReg: Option[CalibrationReg] = Some(CalibrationReg(0, 1))
 
   override def setCalibrationReg(address: Int, on: Boolean): Unit = {
+
     for {in <- inOpt
          out <- outOpt} {
-      synchronized{
+      def readUntileNonEmpty(): String ={
+        var resp: String = null
+        do{
+          resp = in.readLine()
+        }while(resp.isEmpty)
+        resp
+      }
+
         if (on) {
           if (address == 0) {
             val cmd = "_valves_seq_setstate 9\r"
+            Logger.info(s"DAS=>Picarro $cmd")
             out.write(cmd.getBytes())
-            in.readLine()
+            val resp = readUntileNonEmpty()
+            Logger.info(s"Picarro=>DAS $resp")
           } else {
             val cmd = "_valves_seq_setstate 10\r"
+            Logger.info(s"DAS=>Picarro $cmd")
             out.write(cmd.getBytes())
-            in.readLine()
+            val resp = readUntileNonEmpty()
+            Logger.info(s"Picarro=>DAS $resp")
           }
         } else {
           val cmd = "_valves_seq_setstate 0\r"
+          Logger.info(s"DAS=>Picarro $cmd")
           out.write(cmd.getBytes())
-          in.readLine()
+          val resp = readUntileNonEmpty()
+          Logger.info(s"Picarro=>DAS $resp")
         }
-      }
     }
   }
 
