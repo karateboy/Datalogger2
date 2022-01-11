@@ -96,10 +96,10 @@
           v-model="currentPage"
           :total-rows="rows.length"
           :per-page="15"
-          first-text="⏮"
-          prev-text="⏪"
-          next-text="⏩"
-          last-text="⏭"
+          first-text="⇤"
+          prev-text="←"
+          next-text="→"
+          last-text="⇥"
           class="mt-4"
         ></b-pagination>
       </div>
