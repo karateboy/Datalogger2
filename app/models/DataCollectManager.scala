@@ -267,9 +267,11 @@ class DataCollectManager @Inject()
   var onceTimer: Option[Cancellable] = None
   var signalTypeHandlerMap = Map.empty[String, Map[ActorRef, Boolean => Unit]]
 
-  def startReaders() = {
+  def startReaders(): Unit = {
     SpectrumReader.start(config, system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
+    WeatherReader.start(config, system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
   }
+
 
   {
     val instrumentList = instrumentOp.getInstrumentList()

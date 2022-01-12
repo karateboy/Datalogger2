@@ -54,8 +54,8 @@ class MinRecordForwarder @Inject()
         f onSuccess {
           case response =>
             if (response.status == 200) {
-              if (record.last.time.getTime > latestRecordTime) {
-                context become handler(Some(record.last.time.getTime))
+              if (record.last._id.time.getTime > latestRecordTime) {
+                context become handler(Some(record.last._id.time.getTime))
               }
             } else {
               Logger.error(s"${response.status}:${response.statusText}")

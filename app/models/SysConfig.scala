@@ -24,11 +24,13 @@ class SysConfig @Inject()(mongoDB: MongoDB){
   val MonitorTypeVer = "Version"
   val Logo = "Logo"
   val SpectrumLastParseTime = "SpectrumLastParseTime"
+  val WeatherLastParseTime = "WeatherLastParseTime"
 
   val defaultConfig = Map(
     MonitorTypeVer -> Document(valueKey -> 1),
     Logo -> Document(valueKey->Array.empty[Byte], "filename"->""),
-    SpectrumLastParseTime -> Document(valueKey->new Date(0)))
+    SpectrumLastParseTime -> Document(valueKey->new Date(0)),
+    WeatherLastParseTime -> Document(valueKey->new Date(0)))
 
   def init() {
     for(colNames <- mongoDB.database.listCollectionNames().toFuture()) {
@@ -76,9 +78,17 @@ class SysConfig @Inject()(mongoDB: MongoDB){
     f
   }
 
-  def getSpectrumLastParseTime(): Future[Instant] = get(SpectrumLastParseTime).map({
-    v=>
-      Instant.ofEpochMilli(v.asDateTime().getValue)
-  })
-  def setSpectrumLastParseTime(dt:Instant): Future[UpdateResult] = set(SpectrumLastParseTime, BsonDateTime(Date.from(dt)))
+  def getInstant(tag:String)(): Future[Instant] =
+    get(tag).map(
+      v=>
+        Instant.ofEpochMilli(v.asDateTime().getValue)
+    )
+
+  def setInstant(tag:String)(dt:Instant): Future[UpdateResult] = set(tag, BsonDateTime(Date.from(dt)))
+
+  def getSpectrumLastParseTime(): Future[Instant] = getInstant(SpectrumLastParseTime)()
+  def setSpectrumLastParseTime(dt:Instant): Future[UpdateResult] = setInstant(SpectrumLastParseTime)(dt)
+
+  def getWeatherLastParseTime(): Future[Instant] = getInstant(WeatherLastParseTime)()
+  def setWeatherLastParseTime(dt:Instant): Future[UpdateResult] = setInstant(WeatherLastParseTime)(dt)
 }

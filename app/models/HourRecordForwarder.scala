@@ -59,7 +59,7 @@ class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordOp, system: Act
         f onSuccess {
           case response =>
             if (response.status == 200) {
-              context become handler(Some(record.last.time.getTime))
+              context become handler(Some(record.last._id.time.getTime))
 
               // This shall stop when there is no more records...
               self ! ForwardHour
