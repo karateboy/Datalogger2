@@ -25,12 +25,14 @@ class SysConfig @Inject()(mongoDB: MongoDB){
   val Logo = "Logo"
   val SpectrumLastParseTime = "SpectrumLastParseTime"
   val WeatherLastParseTime = "WeatherLastParseTime"
+  val WeatherSkipLine = "WeatherSkipLine"
 
   val defaultConfig = Map(
     MonitorTypeVer -> Document(valueKey -> 1),
     Logo -> Document(valueKey->Array.empty[Byte], "filename"->""),
     SpectrumLastParseTime -> Document(valueKey->new Date(0)),
-    WeatherLastParseTime -> Document(valueKey->new Date(0)))
+    WeatherLastParseTime -> Document(valueKey->new Date(0)),
+    WeatherSkipLine->Document(valueKey-> 0))
 
   def init() {
     for(colNames <- mongoDB.database.listCollectionNames().toFuture()) {
@@ -91,4 +93,7 @@ class SysConfig @Inject()(mongoDB: MongoDB){
 
   def getWeatherLastParseTime(): Future[Instant] = getInstant(WeatherLastParseTime)()
   def setWeatherLastParseTime(dt:Instant): Future[UpdateResult] = setInstant(WeatherLastParseTime)(dt)
+
+  def getWeatherSkipLine(): Future[Int] = get(WeatherSkipLine).map(_.asInt32().getValue)
+  def setWeatherSkipLine(v:Int): Future[UpdateResult] = set(WeatherSkipLine, BsonInt32(v))
 }
