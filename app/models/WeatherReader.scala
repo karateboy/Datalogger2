@@ -57,7 +57,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfig,
             timer = context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, ParseReport)
           } catch {
             case ex: Throwable =>
-              Logger.error("fail to process spectrum file", ex)
+              Logger.error("fail to process weather file", ex)
           }
         }
       }
@@ -72,6 +72,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfig,
     for (mt <- mtList)
       monitorTypeOp.ensureMonitorType(mt)
 
+    Logger.info(s"parsing ${file.getAbsolutePath}")
     for (skipLines <- sysConfig.getWeatherSkipLine()) {
       var processedLine = 0
       val lines = Source.fromFile(file).getLines().drop(4 + skipLines)
@@ -108,12 +109,12 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfig,
         } catch {
           case ex: Throwable =>
             Logger.warn("skip unknown line", ex)
-            None
         } finally {
           processedLine = processedLine + 1
         }
       }
 
+      Logger.info(s"docs #=${docList.size} update WeatherSkipLine ${skipLines + processedLine}")
       sysConfig.setWeatherSkipLine(skipLines + processedLine)
 
       if (docList.nonEmpty) {
