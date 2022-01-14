@@ -119,8 +119,10 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfig,
       if (docList.nonEmpty) {
         recordOp.upsertManyRecords2(recordOp.MinCollection)(docList)
 
-        val start = new DateTime(dataBegin).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
-        val end = new DateTime(dataEnd).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
+        val start = new DateTime(Date.from(dataBegin.atZone(ZoneId.systemDefault()).toInstant))
+          .withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
+        val end = new DateTime(Date.from(dataEnd.atZone(ZoneId.systemDefault()).toInstant))
+          .withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
 
         for (current <- getPeriods(start, end, Period.hours(1)))
           dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID, current, false, true)(monitorTypeOp.mtvList)

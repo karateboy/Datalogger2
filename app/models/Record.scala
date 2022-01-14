@@ -5,6 +5,7 @@ import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import org.mongodb.scala._
 import org.mongodb.scala.bson.BsonDateTime
+import org.mongodb.scala.bson.conversions.Bson
 import play.api._
 
 import java.util.Date
@@ -90,7 +91,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
         f.onFailure(errorHandler)
         f.andThen({
           case Success(_) =>
-            getCollection(HourCollection).createIndex(Indexes.descending("time", "monitor"), new IndexOptions().unique(true))
+            getCollection(HourCollection).createIndex(Indexes.descending("_id.time", "_id.monitor"), new IndexOptions().unique(true))
         })
       }
 
@@ -99,7 +100,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
         f.onFailure(errorHandler)
         f.andThen({
           case Success(_) =>
-            getCollection(MinCollection).createIndex(Indexes.descending("time", "monitor"), new IndexOptions().unique(true))
+            getCollection(MinCollection).createIndex(Indexes.descending("_id.time", "_id.monitor"), new IndexOptions().unique(true))
         })
       }
 
@@ -108,7 +109,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
         f.onFailure(errorHandler)
         f.andThen({
           case Success(_) =>
-            getCollection(SecCollection).createIndex(Indexes.descending("time", "monitor"), new IndexOptions().unique(true))
+            getCollection(SecCollection).createIndex(Indexes.descending("_id.time", "_id.monitor"), new IndexOptions().unique(true))
         })
       }
     }
@@ -408,7 +409,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
   def upsertManyRecords(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult] = {
     val pullUpdates: Seq[UpdateOneModel[Nothing]] =
       for (record <- records) yield {
-        val mtDataPullUdates = record.mtDataList.map(mtr => Updates.pullByFilter(Document("mtDataList" -> Document("mtName" -> mtr.mtName))))
+        val mtDataPullUdates: Seq[Bson] = record.mtDataList.map(mtr => Updates.pullByFilter(Document("mtDataList" -> Document("mtName" -> mtr.mtName))))
         val updates = Updates.combine(mtDataPullUdates: _*)
         UpdateOneModel(Filters.equal("_id", RecordListID(record._id.time, record._id.monitor)), updates, UpdateOptions().upsert(true))
       }
@@ -428,8 +429,8 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
   def upsertManyRecords2(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult] = {
     val pullUpdates: Seq[UpdateOneModel[Nothing]] =
       for (record <- records) yield {
-        val mtDataPullUdates = record.mtDataList.map(mtr => Updates.pullByFilter(Document("mtDataList" -> Document("mtName" -> mtr.mtName))))
-        val updates = Updates.combine(mtDataPullUdates: _*)
+        val mtDataPullUpdates = record.mtDataList.map(mtr => Updates.pullByFilter(Document("mtDataList" -> Document("mtName" -> mtr.mtName))))
+        val updates = Updates.combine(mtDataPullUpdates: _*)
         UpdateOneModel(Filters.equal("_id", RecordListID(record._id.time, record._id.monitor)), updates, UpdateOptions().upsert(true))
       }
 
