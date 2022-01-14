@@ -117,28 +117,6 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     Ok(Json.toJson(groups))
   }
 
-  def saveMonitorTypeConfig() = Security.Authenticated {
-    implicit request =>
-      try {
-        val mtForm = Form(
-          mapping(
-            "id" -> text,
-            "data" -> text)(EditData.apply)(EditData.unapply))
-
-        val mtData = mtForm.bindFromRequest.get
-        val mtInfo = mtData.id.split(":")
-        val mt = (mtInfo(0))
-
-        monitorTypeOp.updateMonitorType(mt, mtInfo(1), mtData.data)
-
-        Ok(mtData.data)
-      } catch {
-        case ex: Throwable =>
-          Logger.error(ex.getMessage, ex)
-          BadRequest(ex.toString)
-      }
-  }
-
   def getInstrumentTypes = Security.Authenticated {
     implicit val w1 = Json.writes[ProtocolInfo]
     implicit val write = Json.writes[InstrumentTypeInfo]

@@ -10,14 +10,17 @@ import scala.concurrent.ExecutionContext.Implicits.global
 case class Monitor(_id: String, desc: String)
 
 import javax.inject._
-object Monitor{
+
+object Monitor {
   val SELF_ID = "me"
   val selfMonitor = Monitor(SELF_ID, "本站")
   var activeID = SELF_ID
-  def setActiveMonitor(m:Monitor): Unit ={
+
+  def setActiveMonitor(m: Monitor): Unit = {
     activeID = m._id
   }
 }
+
 @Singleton
 class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: MqttSensorOp) {
   implicit val mWrite = Json.writes[Monitor]
@@ -29,7 +32,6 @@ class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: Mqt
   import org.mongodb.scala.bson.codecs.Macros._
 
   val colName = "monitors"
-  mongoDB.database.createCollection(colName).toFuture()
 
   val codecRegistry = fromRegistries(fromProviders(classOf[Monitor]), DEFAULT_CODEC_REGISTRY)
   val collection = mongoDB.database.getCollection[Monitor](colName).withCodecRegistry(codecRegistry)
@@ -43,23 +45,31 @@ class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: Mqt
     pairs.toMap
   }
 
-  def init(): Unit = {
-    val colNames = waitReadyResult(mongoDB.database.listCollectionNames().toFuture())
+
+  for (colNames <- mongoDB.database.listCollectionNames().toFuture()) {
     if (!colNames.contains(colName)) {
       val f = mongoDB.database.createCollection(colName).toFuture()
       f.onFailure(errorHandler)
-    }
-
-    val ret = waitReadyResult(collection.countDocuments(Filters.exists("_id")).toFuture())
-    if (ret == 0) {
-      waitReadyResult(collection.insertOne(selfMonitor).toFuture())
-    }
+      for (_ <- f) {
+        for (ret <- collection.countDocuments(Filters.exists("_id")).toFuture())
+          if (ret == 0) {
+            for (_ <- collection.insertOne(selfMonitor).toFuture())
+              refresh
+          }
+      }
+    }else
+      refresh
   }
 
-  init
-  refresh
+
 
   def mvList = mList.map(_._id)
+
+  private def mList: List[Monitor] = {
+    val f = collection.find().sort(Sorts.ascending("_id")).toFuture()
+    val ret = waitReadyResult(f)
+    ret.toList
+  }
 
   def ensureMonitor(_id: String) = {
     if (!map.contains(_id)) {
@@ -67,11 +77,11 @@ class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: Mqt
     }
   }
 
-  def newMonitor(m: Monitor):Unit = {
+  def newMonitor(m: Monitor): Unit = {
     map = map + (m._id -> m)
 
     val f = collection.insertOne(m).toFuture()
-    f onFailure(errorHandler)
+    f onFailure (errorHandler)
   }
 
   def format(v: Option[Double]) = {
@@ -95,16 +105,10 @@ class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: Mqt
     map = pairs.toMap
   }
 
-  private def mList: List[Monitor] = {
-    val f = collection.find().sort(Sorts.ascending("_id")).toFuture()
-    val ret = waitReadyResult(f)
-    ret.toList
-  }
-
-  def deleteMonitor(_id:String) = {
+  def deleteMonitor(_id: String) = {
     val f = collection.deleteOne(Filters.equal("_id", _id)).toFuture()
     f.andThen({
-      case _=>
+      case _ =>
         sensorOp.deleteByMonitor(_id)
         map = map.filter(p => p._1 != _id)
     })

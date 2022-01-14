@@ -37,8 +37,6 @@ GET      /CalibrationReport/:start/:end                                         
 
 GET      /AlarmReport/:level/:start/:end                                          controllers.Query.alarmReport(level:Int, start:Long, end:Long)
 
-POST     /SaveMonitorTypeConfig                                                   controllers.HomeController.saveMonitorTypeConfig
-
 GET      /InstrumentTypes                                                         controllers.HomeController.getInstrumentTypes
 GET      /InstrumentType/:id                                                      controllers.HomeController.getInstrumentType(id)
 

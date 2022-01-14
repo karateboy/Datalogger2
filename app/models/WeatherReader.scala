@@ -2,7 +2,7 @@ package models
 
 import akka.actor._
 import com.github.nscala_time.time.Imports.{DateTime, Period}
-import models.ModelHelper.getPeriods
+import models.ModelHelper.{getPeriods, waitReadyResult}
 import play.api._
 
 import java.io.File
@@ -11,7 +11,7 @@ import java.time.{Instant, LocalDateTime, ZoneId}
 import java.util.Date
 import scala.concurrent.duration.{FiniteDuration, MINUTES, SECONDS}
 import scala.concurrent.{Future, blocking}
-import scala.io.Source
+import scala.io.{Codec, Source}
 
 case class WeatherReaderConfig(enable: Boolean, dir: String)
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -46,6 +46,8 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfig,
 
   import WeatherReader._
 
+  val mtList = Seq(MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION, MonitorType.TEMP, MonitorType.HUMID,
+    MonitorType.PRESS, MonitorType.SOLAR, "Photometric", MonitorType.RAIN, "Visible", "Battery")
   var timer: Cancellable = context.system.scheduler.scheduleOnce(FiniteDuration(5, SECONDS), self, ParseReport)
 
   override def receive: Receive = {
@@ -63,58 +65,53 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfig,
       }
   }
 
-  val mtList = Seq(MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION, MonitorType.TEMP, MonitorType.HUMID,
-    MonitorType.PRESS, MonitorType.SOLAR, "Photometric", MonitorType.RAIN, "Visible", "Battery")
-
-
   def fileParser(file: File): Unit = {
     import scala.collection.mutable.ListBuffer
     for (mt <- mtList)
       monitorTypeOp.ensureMonitorType(mt)
 
     Logger.info(s"parsing ${file.getAbsolutePath}")
-    for (skipLines <- sysConfig.getWeatherSkipLine()) {
-      var processedLine = 0
-      val lines = Source.fromFile(file).getLines().drop(4 + skipLines)
-      var dataBegin = LocalDateTime.MAX
-      var dataEnd = LocalDateTime.MIN
-      val docList = ListBuffer.empty[RecordList]
-      for (line <- lines if processedLine < 500) {
-        try {
-          val token: Array[String] = line.split(",")
-          if (token.length < 12) {
-            throw new Exception("unexpected file length")
+    val skipLines = waitReadyResult(sysConfig.getWeatherSkipLine())
+
+    var processedLine = 0
+    val lines = Source.fromFile(file)(Codec.UTF8).getLines().drop(4 + skipLines)
+    var dataBegin = LocalDateTime.MAX
+    var dataEnd = LocalDateTime.MIN
+    val docList = ListBuffer.empty[RecordList]
+    for (line <- lines if processedLine < 500) {
+      try {
+        val token: Array[String] = line.split(",")
+        if (token.length < 12) {
+          throw new Exception("unexpected file length")
+        }
+        val dt: LocalDateTime = LocalDateTime.parse(token(0), DateTimeFormatter.ofPattern("\"yyyy-MM-dd HH:mm:ss\""))
+
+        if (dt.isBefore(dataBegin))
+          dataBegin = dt
+
+        if (dt.isAfter(dataEnd))
+          dataEnd = dt
+
+        val mtRecordOpts: Seq[Option[MtRecord]] =
+          for ((mt, idx) <- mtList.zipWithIndex) yield {
+            try {
+              val value = token(idx + 2).toDouble
+              Some(MtRecord(mt, value, MonitorStatus.NormalStat))
+            } catch {
+              case _: Exception =>
+                None
+            }
           }
 
-          val dt: LocalDateTime = LocalDateTime.parse(token(0), DateTimeFormatter.ofPattern("\"yyyy-MM-dd HH:mm:ss\""))
-
-          if (dt.isBefore(dataBegin))
-            dataBegin = dt
-
-          if (dt.isAfter(dataEnd))
-            dataEnd = dt
-          val mtRecordOpts: Seq[Option[MtRecord]] =
-            for ((mt, idx) <- mtList.zipWithIndex) yield {
-              try {
-                val value = token(idx + 2).toDouble
-                Some(MtRecord(mt, value, MonitorStatus.NormalStat))
-              } catch {
-                case _: Exception =>
-                  None
-              }
-            }
-
-          docList.append(RecordList(time = Date.from(dt.atZone(ZoneId.systemDefault()).toInstant), monitor = Monitor.SELF_ID,
-            mtDataList = mtRecordOpts.flatten))
-        } catch {
-          case ex: Throwable =>
-            Logger.warn("skip unknown line", ex)
-        } finally {
-          processedLine = processedLine + 1
-        }
+        docList.append(RecordList(time = Date.from(dt.atZone(ZoneId.systemDefault()).toInstant), monitor = Monitor.SELF_ID,
+          mtDataList = mtRecordOpts.flatten))
+      } catch {
+        case ex: Throwable =>
+          Logger.warn("skip unknown line", ex)
+      } finally {
+        processedLine = processedLine + 1
       }
 
-      Logger.info(s"docs #=${docList.size} update WeatherSkipLine ${skipLines + processedLine}")
       sysConfig.setWeatherSkipLine(skipLines + processedLine)
 
       if (docList.nonEmpty) {
