@@ -70,7 +70,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfig,
     for (mt <- mtList)
       monitorTypeOp.ensureMonitorType(mt)
 
-    Logger.info(s"parsing ${file.getAbsolutePath}")
+    Logger.debug(s"parsing ${file.getAbsolutePath}")
     val skipLines = waitReadyResult(sysConfig.getWeatherSkipLine())
 
     var processedLine = 0
