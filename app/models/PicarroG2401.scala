@@ -98,10 +98,10 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
             }
 
             val cmd = "_Meas_GetConc\r"
-            Logger.info(s"DAS=>Picarro ${cmd}")
+            Logger.debug(s"DAS=>Picarro ${cmd}")
             out.write(cmd.getBytes())
             val resp = readUntileNonEmpty()
-            Logger.info(s"Picarro=>DAS $resp")
+            Logger.debug(s"Picarro=>DAS $resp")
             val tokens = resp.split(";")
             if (tokens.length != predefinedIST.length) {
               Logger.error(s"Data length ${tokens.length} != ${predefinedIST.length}")
@@ -153,23 +153,23 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
         if (on) {
           if (address == 0) {
             val cmd = "_valves_seq_setstate 9\r"
-            Logger.info(s"DAS=>Picarro $cmd")
+            Logger.debug(s"DAS=>Picarro $cmd")
             out.write(cmd.getBytes())
             val resp = readUntileNonEmpty()
-            Logger.info(s"Picarro=>DAS $resp")
+            Logger.debug(s"Picarro=>DAS $resp")
           } else {
             val cmd = "_valves_seq_setstate 10\r"
-            Logger.info(s"DAS=>Picarro $cmd")
+            Logger.debug(s"DAS=>Picarro $cmd")
             out.write(cmd.getBytes())
             val resp = readUntileNonEmpty()
-            Logger.info(s"Picarro=>DAS $resp")
+            Logger.debug(s"Picarro=>DAS $resp")
           }
         } else {
           val cmd = "_valves_seq_setstate 0\r"
-          Logger.info(s"DAS=>Picarro $cmd")
+          Logger.debug(s"DAS=>Picarro $cmd")
           out.write(cmd.getBytes())
           val resp = readUntileNonEmpty()
-          Logger.info(s"Picarro=>DAS $resp")
+          Logger.debug(s"Picarro=>DAS $resp")
         }
     }
   }

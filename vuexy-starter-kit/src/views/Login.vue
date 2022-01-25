@@ -27,7 +27,7 @@
                 <validation-provider
                   v-slot="{ errors }"
                   name="Email"
-                  rules="required|email"
+                  rules="required"
                 >
                   <b-form-input
                     id="login-email"
