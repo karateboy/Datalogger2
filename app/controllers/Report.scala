@@ -24,7 +24,7 @@ case class StatRow(name: String, cellData: Seq[CellData])
 
 case class HourEntry(time: Long, cells: CellData)
 
-case class DailyReport(columnNames: Seq[String], hourRows: Seq[RowData], statRows: Seq[StatRow])
+case class DisplayReport(columnNames: Seq[String], rows: Seq[RowData], statRows: Seq[StatRow])
 
 case class MonthlyHourReport(columnNames: Seq[String], rows: Seq[RowData], statRows: Seq[StatRow])
 
@@ -33,7 +33,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
   implicit val w3 = Json.writes[CellData]
   implicit val w2 = Json.writes[StatRow]
   implicit val w1 = Json.writes[RowData]
-  implicit val w = Json.writes[DailyReport]
+  implicit val w = Json.writes[DisplayReport]
 
   def getMonitorReport(reportTypeStr: String, startNum: Long, outputTypeStr: String) = Security.Authenticated {
     implicit request =>
@@ -95,19 +95,18 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
           val columnNames = mtList map {
             monitorTypeOp.map(_).desp
           }
-          val dailyReport = DailyReport(columnNames, hourRows, statRows)
+          val dailyReport = DisplayReport(columnNames, hourRows, statRows)
 
-          //if (outputType == OutputType.html)
+          if (outputType == OutputType.html)
             Ok(Json.toJson(dailyReport))
-          /*
           else {
             val (title, excelFile) =
-                  ("日報" + startDate.toString("YYYYMMdd"), excelUtility.exportDailyReport(dailyReport))
+                  ("日報" + startDate.toString("YYYYMMdd"), excelUtility.exportDailyReport(startDate, dailyReport))
 
             Ok.sendFile(excelFile, fileName = _ =>
-                              play.utils.UriEncoding.encodePathSegment(title + ".xlsx", "UTF-8"),
+                              s"${title}.xlsx",
                               onClose = () => { Files.deleteIfExists(excelFile.toPath()) })
-          }*/
+          }
 
         case PeriodReport.MonthlyReport =>
           val start = new DateTime(startNum).withMillisOfDay(0).withDayOfMonth(1)
@@ -157,10 +156,17 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
           val columnNames = mtList map {
             monitorTypeOp.map(_).desp
           }
-          val dailyReport = DailyReport(columnNames, dayRows, statRows)
-          //if (outputType == OutputType.html)
-          Ok(Json.toJson(dailyReport))
-        //else
+          val monthlyReport = DisplayReport(columnNames, dayRows, statRows)
+          if (outputType == OutputType.html)
+            Ok(Json.toJson(monthlyReport))
+          else{
+            val (title, excelFile) =
+              ("月報" + start.toString("YYYYMM"), excelUtility.exportMonthlyReport(start, monthlyReport))
+
+            Ok.sendFile(excelFile, fileName = _ =>
+              s"${title}.xlsx",
+              onClose = () => { Files.deleteIfExists(excelFile.toPath()) })
+          }
 
         case PeriodReport.YearlyReport =>
           val start = new DateTime(startNum)
