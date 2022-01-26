@@ -79,9 +79,9 @@ export interface StatRow {
   cellData: Array<CellData>;
 }
 
-export interface DailyReport {
+export interface DisplayReport {
   columnNames: Array<String>;
-  hourRows: Array<RowData>;
+  rows: Array<RowData>;
   statRows: Array<StatRow>;
 }
 

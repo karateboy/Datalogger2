@@ -61,7 +61,7 @@
               type="submit"
               variant="primary"
               class="mr-1"
-              @click="exportExcel"
+              @click="downloadReport"
             >
               下載Excel
             </b-button>
@@ -98,7 +98,7 @@ import DatePicker from 'vue2-datepicker';
 import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
 const Ripple = require('vue-ripple-directive');
-import { DailyReport, RowData } from './types';
+import { DisplayReport, RowData } from './types';
 import moment from 'moment';
 import axios from 'axios';
 const excel = require('../libs/excel');
@@ -144,7 +144,15 @@ export default Vue.extend({
       const res = await axios.get(url);
       this.handleReport(res.data);
     },
-    handleReport(report: DailyReport) {
+    downloadReport() {
+      const baseUrl =
+        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
+
+      const url = `${baseUrl}Excel/monitorReport/${this.form.reportType}/${this.form.date}`;
+
+      window.open(url);
+    },
+    handleReport(report: DisplayReport) {
       this.columns.splice(0, this.columns.length);
       if (this.form.reportType === 'daily') {
         this.columns.push({
@@ -167,14 +175,14 @@ export default Vue.extend({
           sortable: true,
         });
       }
-      for (const r of report.hourRows) {
+      for (const r of report.rows) {
         const row = r as RowDataReport;
         row.time =
           this.form.reportType === 'daily'
             ? moment(row.date).format('HH:mm')
             : moment(row.date).format('MM/DD');
       }
-      this.rows = report.hourRows;
+      this.rows = report.rows;
       this.statRows = report.statRows;
     },
     cellDataTd(i: number) {
