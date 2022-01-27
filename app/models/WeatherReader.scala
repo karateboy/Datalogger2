@@ -56,7 +56,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfig,
         blocking {
           try {
             fileParser(new File(config.dir))
-            timer = context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, ParseReport)
+            timer = context.system.scheduler.scheduleOnce(FiniteDuration(10, SECONDS), self, ParseReport)
           } catch {
             case ex: Throwable =>
               Logger.error("fail to process weather file", ex)
@@ -74,47 +74,49 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfig,
     val skipLines = waitReadyResult(sysConfig.getWeatherSkipLine())
 
     var processedLine = 0
-    val lines = Source.fromFile(file)(Codec.UTF8).getLines().drop(4 + skipLines)
-    var dataBegin = LocalDateTime.MAX
-    var dataEnd = LocalDateTime.MIN
-    val docList = ListBuffer.empty[RecordList]
-    for (line <- lines if processedLine < 500) {
-      try {
-        val token: Array[String] = line.split(",")
-        if (token.length < 12) {
-          throw new Exception("unexpected file length")
-        }
-        val dt: LocalDateTime = LocalDateTime.parse(token(0), DateTimeFormatter.ofPattern("\"yyyy-MM-dd HH:mm:ss\""))
-
-        if (dt.isBefore(dataBegin))
-          dataBegin = dt
-
-        if (dt.isAfter(dataEnd))
-          dataEnd = dt
-
-        val mtRecordOpts: Seq[Option[MtRecord]] =
-          for ((mt, idx) <- mtList.zipWithIndex) yield {
-            try {
-              val value = token(idx + 2).toDouble
-              Some(MtRecord(mt, value, MonitorStatus.NormalStat))
-            } catch {
-              case _: Exception =>
-                None
-            }
+    val src = Source.fromFile(file)(Codec.UTF8)
+    try {
+      val lines = src.getLines().drop(4 + skipLines)
+      var dataBegin = LocalDateTime.MAX
+      var dataEnd = LocalDateTime.MIN
+      val docList = ListBuffer.empty[RecordList]
+      for (line <- lines if processedLine < 500) {
+        try {
+          val token: Array[String] = line.split(",")
+          if (token.length < 12) {
+            throw new Exception("unexpected file length")
           }
+          val dt: LocalDateTime = LocalDateTime.parse(token(0), DateTimeFormatter.ofPattern("\"yyyy-MM-dd HH:mm:ss\""))
 
-        docList.append(RecordList(time = Date.from(dt.atZone(ZoneId.systemDefault()).toInstant), monitor = Monitor.SELF_ID,
-          mtDataList = mtRecordOpts.flatten))
-      } catch {
-        case ex: Throwable =>
-          Logger.warn("skip unknown line", ex)
-      } finally {
-        processedLine = processedLine + 1
+          if (dt.isBefore(dataBegin))
+            dataBegin = dt
+
+          if (dt.isAfter(dataEnd))
+            dataEnd = dt
+
+          val mtRecordOpts: Seq[Option[MtRecord]] =
+            for ((mt, idx) <- mtList.zipWithIndex) yield {
+              try {
+                val value = token(idx + 2).toDouble
+                Some(MtRecord(mt, value, MonitorStatus.NormalStat))
+              } catch {
+                case _: Exception =>
+                  None
+              }
+            }
+
+          docList.append(RecordList(time = Date.from(dt.atZone(ZoneId.systemDefault()).toInstant), monitor = Monitor.SELF_ID,
+            mtDataList = mtRecordOpts.flatten))
+        } catch {
+          case ex: Throwable =>
+            Logger.warn("skip unknown line", ex)
+        } finally {
+          processedLine = processedLine + 1
+        }
       }
 
-      sysConfig.setWeatherSkipLine(skipLines + processedLine)
-
       if (docList.nonEmpty) {
+        sysConfig.setWeatherSkipLine(skipLines + processedLine)
         recordOp.upsertManyRecords2(recordOp.MinCollection)(docList)
 
         val start = new DateTime(Date.from(dataBegin.atZone(ZoneId.systemDefault()).toInstant))
@@ -125,6 +127,8 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfig,
         for (current <- getPeriods(start, end, Period.hours(1)))
           dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID, current, false, true)(monitorTypeOp.mtvList)
       }
+    } finally {
+      src.close()
     }
   }
 
