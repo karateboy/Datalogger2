@@ -61,7 +61,7 @@
               type="submit"
               variant="primary"
               class="mr-1"
-              @click="exportExcel"
+              @click="downloadReport"
             >
               下載Excel
             </b-button>
@@ -71,14 +71,7 @@
     </b-card>
     <b-card v-show="display">
       <div>
-        <b-table
-          responsive
-          striped
-          hover
-          :fields="columns"
-          :items="rows"
-          bordered
-        >
+        <b-table responsive hover :fields="columns" :items="rows" bordered>
           <template #custom-foot>
             <b-tr v-for="stat in statRows" :key="stat.name">
               <b-th>{{ stat.name }}</b-th>
@@ -147,6 +140,18 @@ export default Vue.extend({
       const res = await axios.get(url);
       this.handleReport(res.data);
     },
+    downloadReport() {
+      const baseUrl =
+        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
+
+      const url = `${baseUrl}Excel/MonthlyHourReport/${this.form.monitorType}/${this.form.date}`;
+
+      window.open(url);
+    },
+    cellDataTd(i: number) {
+      return (_value: any, _key: any, item: any) =>
+        item.cellData[i].cellClassName;
+    },
     handleReport(report: any) {
       this.columns.splice(0, this.columns.length);
 
@@ -161,6 +166,7 @@ export default Vue.extend({
           key: `cellData[${i}].v`,
           label: `${report.columnNames[i]}`,
           sortable: true,
+          tdClass: this.cellDataTd(i),
           stickyColumn: true,
         });
       }
