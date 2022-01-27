@@ -2,6 +2,7 @@ package models
 
 import com.github.nscala_time.time.Imports._
 import controllers.DisplayReport
+import controllers.Highchart.HighchartData
 import org.apache.poi.openxml4j.opc._
 import org.apache.poi.ss.usermodel._
 import org.apache.poi.ss.util.CellRangeAddress
@@ -17,30 +18,6 @@ import scala.math.BigDecimal.RoundingMode
 class ExcelUtility @Inject()
 (environment: play.api.Environment, monitorTypeOp: MonitorTypeOp, monitorStatusOp: MonitorStatusOp) {
   val docRoot = environment.rootPath + "/report_template/"
-
-  private def prepareTemplate(templateFile: String) = {
-    val templatePath = Paths.get(docRoot + templateFile)
-    val reportFilePath = Files.createTempFile("temp", ".xlsx");
-
-    Files.copy(templatePath, reportFilePath, StandardCopyOption.REPLACE_EXISTING)
-
-    //Open Excel
-    val pkg = OPCPackage.open(new FileInputStream(reportFilePath.toAbsolutePath().toString()))
-    val wb = new XSSFWorkbook(pkg);
-
-    (reportFilePath, pkg, wb)
-  }
-
-  def finishExcel(reportFilePath: Path, pkg: OPCPackage, wb: XSSFWorkbook) = {
-    val out = new FileOutputStream(reportFilePath.toAbsolutePath().toString());
-    wb.write(out);
-    out.close();
-    pkg.close();
-
-    new File(reportFilePath.toAbsolutePath().toString())
-  }
-
-  import controllers.Highchart._
 
   def exportChartData(chart: HighchartData, monitorTypes: Array[String], showSec: Boolean): File = {
     val precArray = monitorTypes.map { mt => monitorTypeOp.map(mt).prec }
@@ -168,6 +145,8 @@ class ExcelUtility @Inject()
     finishExcel(reportFilePath, pkg, wb)
   }
 
+  import controllers.Highchart._
+
   def createStyle(prec: Int)(implicit wb: XSSFWorkbook) = {
     val format_str = if (prec != 0)
       "0." + "0" * prec
@@ -208,7 +187,6 @@ class ExcelUtility @Inject()
       abnormalStyles(2)
   }
 
-
   def exportDailyReport(dateTime: DateTime, dailyReport: DisplayReport) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("dailyReport.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
@@ -219,7 +197,7 @@ class ExcelUtility @Inject()
       titleRow.createCell(i)
 
     val statusStyle =
-      for (col <- 1 to 4)
+      for (col <- 0 to 4)
         yield sheet.getRow(1).getCell(col).getCellStyle
 
     sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, dailyReport.columnNames.size))
@@ -237,43 +215,56 @@ class ExcelUtility @Inject()
 
     val headerRow = sheet.getRow(2)
     for ((mtName, mtIdx) <- dailyReport.columnNames.zipWithIndex) {
-      headerRow.createCell(mtIdx + 1).setCellValue(mtName)
+      val headerCell = headerRow.createCell(mtIdx + 1)
+      headerCell.setCellValue(mtName)
+      headerCell.setCellStyle(statusStyle(0))
       for (hr <- 0 to 23) {
         val row = sheet.getRow(3 + hr)
         val cell = row.createCell(mtIdx + 1)
         val mtHrData = dailyReport.rows(hr).cellData(mtIdx)
         setValue(cell, mtHrData.v)
-
+        var hasStyle = false
         mtHrData.cellClassName.foreach(status => {
           status match {
             case "calibration_status" =>
-              cell.setCellStyle(statusStyle(0))
-            case "maintain_status" =>
+              hasStyle = true
               cell.setCellStyle(statusStyle(1))
-            case "abnormal_status" =>
+            case "maintain_status" =>
+              hasStyle = true
               cell.setCellStyle(statusStyle(2))
-            case "manual_audit_status" =>
+            case "abnormal_status" =>
+              hasStyle = true
               cell.setCellStyle(statusStyle(3))
+            case "manual_audit_status" =>
+              hasStyle = true
+              cell.setCellStyle(statusStyle(4))
+            case "normal" =>
+              if(!hasStyle)
+                cell.setCellStyle(statusStyle(0))
             case _ =>
+              if(!hasStyle)
+                cell.setCellStyle(statusStyle(0))
           }
         })
       }
     }
-    val avgRow = sheet.getRow(27)
-    val maxRow = sheet.getRow(28)
-    val minRow = sheet.getRow(29)
-    val effectRow = sheet.getRow(30)
-    for ((_, mtIdx) <- dailyReport.columnNames.zipWithIndex) {
-      setValue(avgRow.createCell(mtIdx + 1), dailyReport.statRows(0).cellData(mtIdx).v)
-      setValue(maxRow.createCell(mtIdx + 1), dailyReport.statRows(1).cellData(mtIdx).v)
-      setValue(minRow.createCell(mtIdx + 1), dailyReport.statRows(2).cellData(mtIdx).v)
-      setValue(effectRow.createCell(mtIdx + 1), dailyReport.statRows(3).cellData(mtIdx).v)
+
+    for ((statusRowData, statusIdx) <- dailyReport.statRows.zipWithIndex) {
+      val row = sheet.createRow(statusIdx + 3 + dailyReport.rows.size)
+      val titleCell = row.createCell(0)
+      titleCell.setCellValue(statusRowData.name)
+      titleCell.setCellStyle(statusStyle(0))
+      for (mtIdx <- 0 to dailyReport.columnNames.size - 1) {
+        val valueCell = row.createCell(mtIdx + 1)
+        setValue(valueCell, statusRowData.cellData(mtIdx).v)
+        valueCell.setCellStyle(statusStyle(0))
+      }
     }
+
     finishExcel(reportFilePath, pkg, wb)
   }
 
-
-  def exportMonthlyReport(dateTime: DateTime, displayReport: DisplayReport) = {
+  def exportDisplayReport(title: String, displayReport: DisplayReport) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("monthlyReport.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
     val format = wb.createDataFormat()
@@ -287,7 +278,7 @@ class ExcelUtility @Inject()
         yield sheet.getRow(1).getCell(col).getCellStyle
 
     sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, displayReport.columnNames.size))
-    titleRow.getCell(0).setCellValue(s"監測月報 ${dateTime.toString("YYYY年MM月")}")
+    titleRow.getCell(0).setCellValue(title)
 
     def setValue(cell: Cell, v: String): Unit = {
       try {
@@ -307,28 +298,38 @@ class ExcelUtility @Inject()
       for (rowIdx <- 0 to displayReport.rows.size - 1) {
         val row = sheet.getRow(3 + rowIdx)
         val dateTime = new DateTime(displayReport.rows(rowIdx).date)
-        row.createCell(0).setCellValue(dateTime.toString("M/dd"))
+        val dateTimeCell = row.createCell(0)
+        dateTimeCell.setCellValue(dateTime.toString("M/dd"))
+        dateTimeCell.setCellStyle(statusStyle(0))
         val cell = row.createCell(mtIdx + 1)
         val mtHrData = displayReport.rows(rowIdx).cellData(mtIdx)
         setValue(cell, mtHrData.v)
 
+        var hasStyle = false
         mtHrData.cellClassName.foreach(status => {
           status match {
             case "calibration_status" =>
+              hasStyle = true
               cell.setCellStyle(statusStyle(1))
             case "maintain_status" =>
+              hasStyle = true
               cell.setCellStyle(statusStyle(2))
             case "abnormal_status" =>
+              hasStyle = true
               cell.setCellStyle(statusStyle(3))
             case "manual_audit_status" =>
+              hasStyle = true
               cell.setCellStyle(statusStyle(4))
+            case "normal" =>
+              if(!hasStyle)
+                cell.setCellStyle(statusStyle(0))
             case _ =>
-              cell.setCellStyle(statusStyle(0))
           }
         })
+        if(!hasStyle)
+          cell.setCellStyle(statusStyle(0))
       }
     }
-
 
     for ((statusRowData, statusIdx) <- displayReport.statRows.zipWithIndex) {
       val row = sheet.createRow(statusIdx + 3 + displayReport.rows.size)
@@ -336,12 +337,36 @@ class ExcelUtility @Inject()
       titleCell.setCellValue(statusRowData.name)
       titleCell.setCellStyle(statusStyle(0))
       for (mtIdx <- 0 to displayReport.columnNames.size - 1) {
-        val valueCell = row.createCell(mtIdx + 1)
-        setValue(valueCell, statusRowData.cellData(mtIdx).v)
-        valueCell.setCellStyle(statusStyle(0))
+        if(mtIdx < statusRowData.cellData.length){
+          val valueCell = row.createCell(mtIdx + 1)
+          setValue(valueCell, statusRowData.cellData(mtIdx).v)
+          valueCell.setCellStyle(statusStyle(0))
+        }
       }
     }
     finishExcel(reportFilePath, pkg, wb)
+  }
+
+  private def prepareTemplate(templateFile: String) = {
+    val templatePath = Paths.get(docRoot + templateFile)
+    val reportFilePath = Files.createTempFile("temp", ".xlsx");
+
+    Files.copy(templatePath, reportFilePath, StandardCopyOption.REPLACE_EXISTING)
+
+    //Open Excel
+    val pkg = OPCPackage.open(new FileInputStream(reportFilePath.toAbsolutePath().toString()))
+    val wb = new XSSFWorkbook(pkg);
+
+    (reportFilePath, pkg, wb)
+  }
+
+  def finishExcel(reportFilePath: Path, pkg: OPCPackage, wb: XSSFWorkbook) = {
+    val out = new FileOutputStream(reportFilePath.toAbsolutePath().toString());
+    wb.write(out);
+    out.close();
+    pkg.close();
+
+    new File(reportFilePath.toAbsolutePath().toString())
   }
 
 }

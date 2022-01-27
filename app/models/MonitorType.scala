@@ -441,7 +441,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     (overInternal, overLaw)
   }
 
-  def getCssClassStr(mt: String, r: Option[Record]) = {
+  def getCssClassStr(mt: String, r: Option[Record]): Seq[String] = {
     if (r.isEmpty)
       Seq.empty[String]
     else {

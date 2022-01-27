@@ -83,7 +83,7 @@ GET      /PDF/monitorReport/:reportType/:reportDate                             
 GET      /Excel/monitorReport/:reportType/:reportDate                             controllers.Report.getMonitorReport(reportType, reportDate:Long, outputTypeStr="excel")
 
 GET      /MonthlyHourReport/:monitorType/:reportDate                              controllers.Report.monthlyHourReport(monitorType, reportDate:Long, outputTypeStr="html")
-
+GET      /Excel/MonthlyHourReport/:monitorType/:reportDate                        controllers.Report.monthlyHourReport(monitorType, reportDate:Long, outputTypeStr="excel")
 
 #JSON
 GET      /MonitorType                                                             controllers.HomeController.monitorTypeList
