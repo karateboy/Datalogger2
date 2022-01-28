@@ -94,6 +94,20 @@ object ModelHelper {
     buf.toList
   }
 
+  def getHourBetween(start:DateTime, end:DateTime): List[DateTime] = {
+    import scala.collection.mutable.ListBuffer
+
+    val buf = ListBuffer[DateTime]()
+    var current = start
+    while (current <= end) {
+      if(current.getMinuteOfHour == 0)
+        buf.append(current)
+
+      current = current.plusMinutes(1)
+    }
+    buf.toList
+  }
+
   import scala.concurrent._
 
   def waitReadyResult[T](f: Future[T]) = {

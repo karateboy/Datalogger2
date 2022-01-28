@@ -94,6 +94,6 @@ class SysConfig @Inject()(mongoDB: MongoDB){
   def getWeatherLastParseTime(): Future[Instant] = getInstant(WeatherLastParseTime)()
   def setWeatherLastParseTime(dt:Instant): Future[UpdateResult] = setInstant(WeatherLastParseTime)(dt)
 
-  def getWeatherSkipLine(): Future[Int] = get(WeatherSkipLine).map(_.asInt32().getValue)
-  def setWeatherSkipLine(v:Int): Future[UpdateResult] = set(WeatherSkipLine, BsonInt32(v))
+  def getWeatherSkipLine(): Future[Int] = get(WeatherSkipLine).map(_.asNumber().intValue())
+  def setWeatherSkipLine(v:Int): Future[UpdateResult] = set(WeatherSkipLine, BsonNumber(v))
 }

@@ -2,7 +2,7 @@ package models
 
 import akka.actor._
 import com.github.nscala_time.time.Imports.{DateTime, Period}
-import models.ModelHelper.{getPeriods, waitReadyResult}
+import models.ModelHelper.{getHourBetween, getPeriods, waitReadyResult}
 import play.api._
 
 import java.io.File
@@ -56,7 +56,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfig,
         blocking {
           try {
             fileParser(new File(config.dir))
-            timer = context.system.scheduler.scheduleOnce(FiniteDuration(10, SECONDS), self, ParseReport)
+            timer = context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, ParseReport)
           } catch {
             case ex: Throwable =>
               Logger.error("fail to process weather file", ex)
@@ -80,7 +80,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfig,
       var dataBegin = LocalDateTime.MAX
       var dataEnd = LocalDateTime.MIN
       val docList = ListBuffer.empty[RecordList]
-      for (line <- lines if processedLine < 500) {
+      for (line <- lines if processedLine < 2000) {
         try {
           val token: Array[String] = line.split(",")
           if (token.length < 12) {
@@ -116,16 +116,16 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfig,
       }
 
       if (docList.nonEmpty) {
+        Logger.info(s"update ${docList.head}")
         sysConfig.setWeatherSkipLine(skipLines + processedLine)
         recordOp.upsertManyRecords2(recordOp.MinCollection)(docList)
 
         val start = new DateTime(Date.from(dataBegin.atZone(ZoneId.systemDefault()).toInstant))
-          .withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
         val end = new DateTime(Date.from(dataEnd.atZone(ZoneId.systemDefault()).toInstant))
-          .withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
 
-        for (current <- getPeriods(start, end, Period.hours(1)))
-          dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID, current, false, true)(monitorTypeOp.mtvList)
+        for (current <- getHourBetween(start, end))
+          dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID,
+            current, false, true)(monitorTypeOp.mtvList)
       }
     } finally {
       src.close()
