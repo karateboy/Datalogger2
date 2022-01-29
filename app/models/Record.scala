@@ -178,9 +178,14 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
   }
 
   def upsertRecord(doc: RecordList)(colName: String) = {
-    import org.mongodb.scala.model.ReplaceOptions
     val col = getCollection(colName)
-    val f = col.replaceOne(Filters.equal("_id", RecordListID(doc._id.time, doc._id.monitor)), doc, ReplaceOptions().upsert(true)).toFuture()
+
+    val updates =
+      Updates.addEachToSet("mtDataList", doc.mtDataList: _*)
+
+    val f = col.updateOne(Filters.equal("_id", RecordListID(doc._id.time, doc._id.monitor)), updates,
+      UpdateOptions().upsert(true)).toFuture()
+
     f.onFailure({
       case ex: Exception => Logger.error(ex.getMessage, ex)
     })
@@ -271,6 +276,8 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     Map(pairs: _*)
   }
 
+  def getCollection(colName: String) = mongoDB.database.getCollection[RecordList](colName).withCodecRegistry(codecRegistry)
+
   def getRecordListFuture(colName: String)(startTime: DateTime, endTime: DateTime, monitors: Seq[String] = Seq(Monitor.SELF_ID)) = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
@@ -294,6 +301,10 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
       f
   }
 
+  implicit val mtRecordWrite = Json.writes[MtRecord]
+  implicit val idWrite = Json.writes[RecordListID]
+  implicit val recordListWrite = Json.writes[RecordList]
+
   def getRecordWithLimitFuture(colName: String)(startTime: DateTime, endTime: DateTime, limit: Int, monitor: String = Monitor.SELF_ID) = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
@@ -304,10 +315,6 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
 
   }
 
-  implicit val mtRecordWrite = Json.writes[MtRecord]
-  implicit val idWrite = Json.writes[RecordListID]
-  implicit val recordListWrite = Json.writes[RecordList]
-
   def getLatestRecordFuture(colName: String)(monitor: String) = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
@@ -316,8 +323,6 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     col.find(equal("_id.monitor", monitor))
       .sort(descending("_id.time")).limit(1).toFuture()
   }
-
-  def getCollection(colName: String) = mongoDB.database.getCollection[RecordList](colName).withCodecRegistry(codecRegistry)
 
   def getWindRose(colName: String)(monitor: String, monitorType: String,
                                    start: DateTime, end: DateTime,
@@ -415,7 +420,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
       }
 
     val setUpdates = for (record <- records) yield {
-      val updates = Updates.addEachToSet("mtDataList", record.mtDataList:_*)
+      val updates = Updates.addEachToSet("mtDataList", record.mtDataList: _*)
       UpdateOneModel(Filters.equal("_id", RecordListID(record._id.time, record._id.monitor)), updates, UpdateOptions().upsert(true))
     }
 
@@ -428,7 +433,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
   def upsertManyRecords2(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult] = {
     val setUpdates = for (record <- records) yield {
       val updates =
-        Updates.addEachToSet("mtDataList", record.mtDataList:_*)
+        Updates.addEachToSet("mtDataList", record.mtDataList: _*)
 
       UpdateOneModel(Filters.equal("_id", RecordListID(record._id.time, record._id.monitor)), updates, UpdateOptions().upsert(true))
     }
