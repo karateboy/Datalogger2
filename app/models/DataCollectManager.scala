@@ -3,6 +3,7 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
+import org.mongodb.scala.result.UpdateResult
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
 
@@ -139,6 +140,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
   def getLatestSignal(): Future[Map[String, Boolean]] = {
     import akka.pattern.ask
     import akka.util.Timeout
+
     import scala.concurrent.duration._
     implicit val timeout = Timeout(Duration(3, SECONDS))
 
@@ -146,7 +148,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     f.mapTo[Map[String, Boolean]]
   }
 
-  def writeSignal(mtId:String, bit:Boolean) = {
+  def writeSignal(mtId: String, bit: Boolean) = {
     manager ! WriteSignal(mtId, bit)
   }
 
@@ -157,41 +159,44 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! EvtOperationOverThreshold
   }
 
-  def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean = false)(mtList: Seq[String]) = {
-    val recordMap = recordOp.getRecordMap(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current)
+  def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean = false)
+                         (mtList: Seq[String]): Future[UpdateResult] = {
+    val ret =
+      for (recordMap <- recordOp.getRecordMapFuture(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current)) yield {
+        import scala.collection.mutable.ListBuffer
+        var mtMap = Map.empty[String, Map[String, ListBuffer[(DateTime, Double)]]]
 
-    import scala.collection.mutable.ListBuffer
-    var mtMap = Map.empty[String, Map[String, ListBuffer[(DateTime, Double)]]]
+        for {
+          mtRecords <- recordMap
+          mt = mtRecords._1
+          r <- mtRecords._2
+        } {
+          var statusMap = mtMap.getOrElse(mt, {
+            val map = Map.empty[String, ListBuffer[(DateTime, Double)]]
+            mtMap = mtMap ++ Map(mt -> map)
+            map
+          })
 
-    for {
-      mtRecords <- recordMap
-      mt = mtRecords._1
-      r <- mtRecords._2
-    } {
-      var statusMap = mtMap.getOrElse(mt, {
-        val map = Map.empty[String, ListBuffer[(DateTime, Double)]]
-        mtMap = mtMap ++ Map(mt -> map)
-        map
-      })
+          val lb = statusMap.getOrElse(r.status, {
+            val l = ListBuffer.empty[(DateTime, Double)]
+            statusMap = statusMap ++ Map(r.status -> l)
+            mtMap = mtMap ++ Map(mt -> statusMap)
+            l
+          })
 
-      val lb = statusMap.getOrElse(r.status, {
-        val l = ListBuffer.empty[(DateTime, Double)]
-        statusMap = statusMap ++ Map(r.status -> l)
-        mtMap = mtMap ++ Map(mt -> statusMap)
-        l
-      })
+          if (!r.value.isNaN)
+            lb.append((r.time, r.value))
+        }
 
-      if (!r.value.isNaN)
-        lb.append((r.time, r.value))
-    }
+        val mtDataList = calculateAvgMap(mtMap, alwaysValid)
+        val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
+        val f = recordOp.upsertRecord(recordList)(recordOp.HourCollection)
+        if (forward)
+          f map { _ => ForwardManager.forwardHourData }
 
-    val mtDataList = calculateAvgMap(mtMap, alwaysValid)
-    val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
-    val f = recordOp.upsertRecord(recordList)(recordOp.HourCollection)
-    if (forward)
-      f map { _ => ForwardManager.forwardHourData }
-
-    f
+        f
+      }
+    ret.flatMap(x=>x)
   }
 
   def calculateAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
@@ -690,7 +695,7 @@ class DataCollectManager @Inject()
     case GetLatestSignal =>
       val now = DateTime.now()
       val filteredSignalMap = signalDataMap.filter(p => p._2._1.after(now - 6.seconds))
-      val resultMap = filteredSignalMap map {p => p._1-> p._2._2}
+      val resultMap = filteredSignalMap map { p => p._1 -> p._2._2 }
       context become handler(instrumentMap, collectorInstrumentMap, latestDataMap,
         mtDataList, restartList, signalTypeHandlerMap, filteredSignalMap)
 
@@ -738,8 +743,10 @@ class DataCollectManager @Inject()
       for (handler <- handlerMap.values)
         handler(bit)
 
-    case  ReportSignalData(dataList)=>
-      val updateMap: Map[String, (DateTime, Boolean)] = dataList.map(signal=>{signal.mt->(DateTime.now(), signal.value)}).toMap
+    case ReportSignalData(dataList) =>
+      val updateMap: Map[String, (DateTime, Boolean)] = dataList.map(signal => {
+        signal.mt -> (DateTime.now(), signal.value)
+      }).toMap
       context become handler(instrumentMap, collectorInstrumentMap, latestDataMap,
         mtDataList, restartList, signalTypeHandlerMap, signalDataMap ++ updateMap)
 

@@ -41,7 +41,7 @@
                 v-model="form.range"
                 :range="true"
                 type="datetime"
-                format="YYYY-MM-DD HH:mm"
+                format="YYYY-MM-DD"
                 value-type="timestamp"
                 :show-second="false"
               />
@@ -51,7 +51,6 @@
           <b-col offset-md="3">
             <b-button
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              type="submit"
               variant="primary"
               class="mr-1"
               @click="recalculate"
@@ -95,7 +94,10 @@ export default Vue.extend({
   },
 
   data() {
-    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
+    const range = [
+      moment().subtract(1, 'days').hour(0).minute(0).millisecond(0).valueOf(),
+      moment().hour(23).minute(59).minute(0).millisecond(0).valueOf(),
+    ];
     return {
       dataTypes: [
         { txt: '小時資料', id: 'hour' },
@@ -125,9 +127,13 @@ export default Vue.extend({
       const monitors = this.form.monitors.join(':');
       const url = `/Recalculate/${monitors}/${this.form.range[0]}/${this.form.range[1]}`;
 
-      const ret = await axios.get(url);
-      if (ret.data.ok) {
-        this.$bvModal.msgBoxOk('成功');
+      try {
+        const res = await axios.get(url);
+        if (res.data.ok) {
+          this.$bvModal.msgBoxOk('開始重新計算小時值');
+        }
+      } catch (err) {
+        throw new Error('failed to recalculate hour');
       }
     },
   },

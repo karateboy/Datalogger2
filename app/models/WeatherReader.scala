@@ -116,7 +116,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfig,
       }
 
       if (docList.nonEmpty) {
-        Logger.info(s"update ${docList.head}")
+        Logger.debug(s"update ${docList.head}")
         sysConfig.setWeatherSkipLine(skipLines + processedLine)
         recordOp.upsertManyRecords2(recordOp.MinCollection)(docList)
 
