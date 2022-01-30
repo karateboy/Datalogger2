@@ -157,7 +157,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! EvtOperationOverThreshold
   }
 
-  def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean)(mtList: Seq[String]) = {
+  def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean = false)(mtList: Seq[String]) = {
     val recordMap = recordOp.getRecordMap(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current)
 
     import scala.collection.mutable.ListBuffer
@@ -615,9 +615,7 @@ class DataCollectManager @Inject()
             if (current.getMinuteOfHour == 0) {
               for (m <- monitorOp.mvList) {
                 dataCollectManagerOp.recalculateHourData(monitor = m,
-                  current = current,
-                  forward = false,
-                  alwaysValid = false)(monitorTypeOp.realtimeMtvList)
+                  current = current)(monitorTypeOp.realtimeMtvList)
               }
             }
         })

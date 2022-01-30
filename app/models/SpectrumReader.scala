@@ -117,7 +117,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfig,
 
 
           for (current <- getPeriods(start, end, Period.hours(1)))
-            dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID, current, false, true)(monitorTypeOp.mtvList)
+            dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID, current)(monitorTypeOp.mtvList)
         }
       }
       f onFailure errorHandler
