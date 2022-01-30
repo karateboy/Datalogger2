@@ -6,7 +6,7 @@
         <div
           class="w-100 d-lg-flex align-items-center justify-content-center px-5"
         >
-          <b-img fluid src="../assets/images/logo/logo.png" alt="Login V2" />
+          <b-img fluid src="../assets/images/logo/logo_h.png" alt="Login V2" />
         </div>
       </b-col>
       <!-- /Left Text-->
@@ -15,7 +15,7 @@
       <b-col lg="4" class="d-flex align-items-center auth-bg px-2 p-lg-5">
         <b-col sm="8" md="6" lg="12" class="px-xl-2 mx-auto">
           <b-card-title title-tag="h1" class="font-weight-bold mb-1">
-            都市空氣汙染研究站(UAPRS)資料蒐集系統
+            大氣光化學研究站(APCRS)資料蒐集系統
           </b-card-title>
           <b-card-text class="mb-2"> 請登入您的帳號 </b-card-text>
 
