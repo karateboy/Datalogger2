@@ -276,6 +276,57 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     Map(pairs: _*)
   }
 
+  def getRecordMapFuture(colName: String)
+                  (monitor: String, mtList: Seq[String], startTime: DateTime, endTime: DateTime): Future[Map[String, Seq[Record]]] = {
+    import org.mongodb.scala.model.Filters._
+    import org.mongodb.scala.model.Sorts._
+
+    val col = getCollection(colName)
+    val operation: FindObservable[RecordList] = col.find(
+      and(equal("_id.monitor", monitor),
+        gte("_id.time", startTime.toDate()),
+        lt("_id.time", endTime.toDate())))
+      .sort(ascending("time"))
+
+    val f: Future[Seq[RecordList]] = if (mongoDB.below44)
+      operation.toFuture()
+    else
+      operation.allowDiskUse(true).toFuture()
+
+    val needCalibration = mtList.map { mt => monitorTypeOp.map(mt).calibrate.getOrElse(false) }.exists(p => p)
+    val allF =
+      if (needCalibration) {
+        val f2 = calibrationOp.getCalibrationMap(startTime, endTime)(monitorTypeOp)
+        for {
+          docs <- f
+          calibrationMap <- f2
+        } yield {
+          docs.foreach(_.doCalibrate(monitorTypeOp, calibrationMap))
+          docs
+        }
+      } else
+        f
+
+    for(docs <- allF) yield{
+      val pairs =
+        for {
+          mt <- mtList
+        } yield {
+          val list =
+            for {
+              doc <- docs
+              time = doc._id.time
+              mtMap = doc.mtMap if mtMap.contains(mt)
+            } yield {
+              Record(new DateTime(time.getTime), mtMap(mt).value, mtMap(mt).status, monitor)
+            }
+
+          mt -> list
+        }
+      Map(pairs: _*)
+    }
+  }
+
   def getCollection(colName: String) = mongoDB.database.getCollection[RecordList](colName).withCodecRegistry(codecRegistry)
 
   def getRecordListFuture(colName: String)(startTime: DateTime, endTime: DateTime, monitors: Seq[String] = Seq(Monitor.SELF_ID)) = {

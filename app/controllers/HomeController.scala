@@ -533,13 +533,15 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
   def recalculateHour(monitorStr: String, startNum: Long, endNum: Long) = Security.Authenticated {
     val monitors = monitorStr.split(":")
     val start = new DateTime(startNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
-    val end = new DateTime(endNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
+    val end = new DateTime(endNum).withMinuteOfHour(23).withSecondOfMinute(59).withMillisOfSecond(0)
 
+    Logger.info(s"Recalcular Hour from ${start} to ${end}")
     for {
       monitor <- monitors
-      hour <- query.getPeriods(start, end + 1.hour, 1.hour)} {
+      hour <- query.getPeriods(start, end, 1.hour)} {
       dataCollectManagerOp.recalculateHourData(monitor, hour)(monitorTypeOp.realtimeMtvList)
     }
+
     Ok(Json.obj("ok" -> true))
   }
 
