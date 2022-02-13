@@ -125,10 +125,10 @@
         v-model="currentPage"
         :total-rows="rows.length"
         :per-page="15"
-        first-text="⏮"
+        first-text="|←"
         prev-text="⏪"
         next-text="⏩"
-        last-text="⏭"
+        last-text="→|"
         class="mt-4"
       ></b-pagination>
     </b-card>
