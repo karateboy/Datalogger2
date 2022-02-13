@@ -2,6 +2,7 @@ package models
 
 import akka.actor._
 import com.github.nscala_time.time.Imports._
+import models.DataCollectManager.calculateAvgMap
 import models.ModelHelper._
 import org.mongodb.scala.result.UpdateResult
 import play.api._
@@ -83,8 +84,6 @@ case class WriteSignal(mtId: String, bit: Boolean)
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentOp,
                                      monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, alarmOp: AlarmOp)() {
-  val effectivRatio = 0.75
-
   def startCollect(inst: Instrument) {
     manager ! StartInstrument(inst)
   }
@@ -152,8 +151,6 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! WriteSignal(mtId, bit)
   }
 
-  import scala.collection.mutable.ListBuffer
-
   def evtOperationHighThreshold {
     alarmOp.log(alarmOp.Src(), alarmOp.Level.INFO, "進行高值觸發事件行動..")
     manager ! EvtOperationOverThreshold
@@ -199,100 +196,11 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     ret.flatMap(x=>x)
   }
 
-  def calculateAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
-    for {
-      mt <- mtMap.keys
-      statusMap = mtMap(mt)
-      normalValueOpt = statusMap.get(MonitorStatus.NormalStat) if normalValueOpt.isDefined
-    } yield {
-      val minuteAvg = {
-        val totalSize = statusMap map {
-          _._2.length
-        } sum
-        val statusKV = {
-          val kv = statusMap.maxBy(kv => kv._2.length)
-          if (kv._1 == MonitorStatus.NormalStat && (!alwaysValid &&
-            statusMap(kv._1).size < totalSize * effectivRatio)) {
-            //return most status except normal
-            val noNormalStatusMap = statusMap - kv._1
-            noNormalStatusMap.maxBy(kv => kv._2.length)
-          } else
-            kv
-        }
-        val values: Seq[Double] = normalValueOpt.get.map {
-          _._2
-        }
-        val avg = if (mt == MonitorType.WIN_DIRECTION) {
-          val windDir = values
-          val windSpeedStatusMap = mtMap.get(MonitorType.WIN_SPEED)
-          if (windSpeedStatusMap.isDefined) {
-            val windSpeedMostStatus = windSpeedStatusMap.get.maxBy(kv => kv._2.length)
-            val windSpeed = windSpeedMostStatus._2.map(_._2)
-            windAvg(windSpeed.toList, windDir.toList)
-          } else { //assume wind speed is all equal
-            val windSpeed =
-              for (_ <- 1 to windDir.length)
-                yield 1.0
-            windAvg(windSpeed.toList, windDir.toList)
-          }
-        } else if (mt == MonitorType.RAIN || monitorTypeOp.map(mt).accumulated.contains(true)) {
-          values.max
-        } else {
-          values.sum / values.length
-        }
-        (avg, statusKV._1)
-      }
-      if (minuteAvg._1.isNaN)
-        MtRecord(mt, 0, MonitorStatus.InvalidDataStat)
-      else
-        MtRecord(mt, minuteAvg._1, minuteAvg._2)
-    }
-  }
 }
 
-@Singleton
-class DataCollectManager @Inject()
-(config: Configuration, system: ActorSystem, recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp,
- dataCollectManagerOp: DataCollectManagerOp,
- instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmOp, instrumentOp: InstrumentOp, sysConfig: SysConfig) extends Actor with InjectedActorSupport {
+object DataCollectManager {
   val effectivRatio = 0.75
-  val storeSecondData = config.getBoolean("storeSecondData").getOrElse(false)
-  Logger.info(s"store second data = $storeSecondData")
-  val timer = {
-    import scala.concurrent.duration._
-    //Try to trigger at 30 sec
-    val next30 = DateTime.now().withSecondOfMinute(30).plusMinutes(1)
-    val postSeconds = new org.joda.time.Duration(DateTime.now, next30).getStandardSeconds
-    system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
-  }
-
-  startReaders()
-  var calibratorOpt: Option[ActorRef] = None
-  var digitalOutputOpt: Option[ActorRef] = None
-  var onceTimer: Option[Cancellable] = None
-  var signalTypeHandlerMap = Map.empty[String, Map[ActorRef, Boolean => Unit]]
-
-  def startReaders(): Unit = {
-    SpectrumReader.start(config, system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
-    WeatherReader.start(config, system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
-  }
-
-
-  {
-    val instrumentList = instrumentOp.getInstrumentList()
-    instrumentList.foreach {
-      inst =>
-        if (inst.active)
-          self ! StartInstrument(inst)
-    }
-    Logger.info("DataCollect manager started")
-  }
-
-  def evtOperationHighThreshold {
-    alarmOp.log(alarmOp.Src(), alarmOp.Level.INFO, "進行高值觸發事件行動..")
-  }
-
-  def calculateAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]]) = {
+  def calculateAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
     for {
       mt <- mtMap.keys
       statusMap = mtMap(mt)
@@ -306,8 +214,8 @@ class DataCollectManager @Inject()
         } sum
         val statusKV = {
           val kv = statusMap.maxBy(kv => kv._2.length)
-          if (kv._1 == MonitorStatus.NormalStat &&
-            statusMap(kv._1).size < totalSize * effectivRatio) {
+          if (kv._1 == MonitorStatus.NormalStat &&(alwaysValid ||
+            statusMap(kv._1).size < totalSize * effectivRatio)) {
             //return most status except normal
             val noNormalStatusMap = statusMap - kv._1
             noNormalStatusMap.maxBy(kv => kv._2.length)
@@ -344,6 +252,47 @@ class DataCollectManager @Inject()
 
       MtRecord(mt, minuteAvg._1, minuteAvg._2)
     }
+  }
+}
+@Singleton
+class DataCollectManager @Inject()
+(config: Configuration, system: ActorSystem, recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp,
+ dataCollectManagerOp: DataCollectManagerOp,
+ instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmOp, instrumentOp: InstrumentOp, sysConfig: SysConfig) extends Actor with InjectedActorSupport {
+  val storeSecondData = config.getBoolean("storeSecondData").getOrElse(false)
+  Logger.info(s"store second data = $storeSecondData")
+  val timer = {
+    import scala.concurrent.duration._
+    //Try to trigger at 30 sec
+    val next30 = DateTime.now().withSecondOfMinute(30).plusMinutes(1)
+    val postSeconds = new org.joda.time.Duration(DateTime.now, next30).getStandardSeconds
+    system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
+  }
+
+  startReaders()
+  var calibratorOpt: Option[ActorRef] = None
+  var digitalOutputOpt: Option[ActorRef] = None
+  var onceTimer: Option[Cancellable] = None
+  var signalTypeHandlerMap = Map.empty[String, Map[ActorRef, Boolean => Unit]]
+
+  def startReaders(): Unit = {
+    SpectrumReader.start(config, system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
+    WeatherReader.start(config, system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
+  }
+
+
+  {
+    val instrumentList = instrumentOp.getInstrumentList()
+    instrumentList.foreach {
+      inst =>
+        if (inst.active)
+          self ! StartInstrument(inst)
+    }
+    Logger.info("DataCollect manager started")
+  }
+
+  def evtOperationHighThreshold {
+    alarmOp.log(alarmOp.Src(), alarmOp.Level.INFO, "進行高值觸發事件行動..")
   }
 
   def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord]) = {
@@ -600,7 +549,7 @@ class DataCollectManager @Inject()
         if (storeSecondData)
           flushSecData(priorityMtMap)
 
-        val minuteMtAvgList = calculateAvgMap(priorityMtMap)
+        val minuteMtAvgList = calculateAvgMap(priorityMtMap, false)
 
         checkMinDataAlarm(minuteMtAvgList)
 
