@@ -179,7 +179,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
             chart.title("text")
 
         Ok.sendFile(excelFile, fileName = _ =>
-          play.utils.UriEncoding.encodePathSegment(downloadFileName + ".xlsx", "UTF-8"),
+          s"${downloadFileName}.xlsx",
           onClose = () => {
             Files.deleteIfExists(excelFile.toPath())
           })
