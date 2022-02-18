@@ -143,6 +143,7 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeOp, recordOp:
     val allFileAndDirs = new java.io.File(monitorConfig.path).listFiles().toList
     val dirs = allFileAndDirs.filter(p => p != null && p.isDirectory() && !isArchive(p))
     val today = (DateTime.now() - 2.hour).toLocalDate
+
     for(dir<-dirs) {
       val dirName = dir.getName
       val year = dirName.take(3).toInt
