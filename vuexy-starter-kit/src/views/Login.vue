@@ -15,7 +15,7 @@
       <b-col lg="4" class="d-flex align-items-center auth-bg px-2 p-lg-5">
         <b-col sm="8" md="6" lg="12" class="px-xl-2 mx-auto">
           <b-card-title title-tag="h1" class="font-weight-bold mb-1">
-            都市空氣汙染研究站(UAPRS)資料蒐集系統
+            PE VOC監測站系統
           </b-card-title>
           <b-card-text class="mb-2"> 請登入您的帳號 </b-card-text>
 

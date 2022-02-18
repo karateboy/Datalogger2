@@ -158,11 +158,6 @@ export default Vue.extend({
         { id: 'valid', txt: '有效數據' },
       ],
       reportUnits: [
-        { txt: '秒', id: 'Sec' },
-        { txt: '分', id: 'Min' },
-        { txt: '六分', id: 'SixMin' },
-        { txt: '十分', id: 'TenMin' },
-        { txt: '十五分', id: 'FifteenMin' },
         { txt: '小時', id: 'Hour' },
         { txt: '天', id: 'Day' },
         { txt: '月', id: 'Month' },
@@ -200,7 +195,7 @@ export default Vue.extend({
       form: {
         monitors: Array<string>(),
         monitorTypes: Array<string>(),
-        reportUnit: 'Min',
+        reportUnit: 'Hour',
         statusFilter: 'all',
         chartType: 'line',
         range,
@@ -222,7 +217,7 @@ export default Vue.extend({
     await this.fetchMonitors();
 
     if (this.monitorTypes.length !== 0) {
-      this.form.monitorTypes.push('PM25');
+      this.form.monitorTypes.push(this.monitorTypes[0]._id);
     }
 
     if (this.monitors.length !== 0) {

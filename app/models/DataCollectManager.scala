@@ -278,8 +278,8 @@ class DataCollectManager @Inject()
   def startReaders(): Unit = {
     SpectrumReader.start(config, system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
     WeatherReader.start(config, system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
+    VocReader.start(config, system, monitorOp, monitorTypeOp, recordOp)
   }
-
 
   {
     val instrumentList = instrumentOp.getInstrumentList()

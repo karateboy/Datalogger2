@@ -157,14 +157,11 @@ export default Vue.extend({
   data() {
     const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
     return {
-      dataTypes: [
-        { txt: '小時資料', id: 'hour' },
-        { txt: '分鐘資料', id: 'min' },
-      ],
+      dataTypes: [{ txt: '小時資料', id: 'hour' }],
       form: {
         monitors: Array<any>(),
         monitorTypes: Array<any>(),
-        dataType: 'min',
+        dataType: 'hour',
         range,
       },
       display: false,
@@ -192,7 +189,7 @@ export default Vue.extend({
     }
 
     if (this.monitorTypes.length !== 0) {
-      this.form.monitorTypes.push('PM25');
+      this.form.monitorTypes.push(this.monitorTypes[0]._id);
     }
   },
   methods: {

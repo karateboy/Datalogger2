@@ -7,7 +7,7 @@ import play.api.libs.json._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-case class Monitor(_id: String, desc: String)
+case class Monitor(_id: String, desc: String, lat: Double = 0, lng: Double = 0)
 
 import javax.inject._
 
@@ -16,9 +16,6 @@ object Monitor {
   val selfMonitor = Monitor(SELF_ID, "本站")
   var activeID = SELF_ID
 
-  def setActiveMonitor(m: Monitor): Unit = {
-    activeID = m._id
-  }
 }
 
 @Singleton
@@ -57,25 +54,24 @@ class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: Mqt
               refresh
           }
       }
-    }else
+    } else
       refresh
   }
 
 
-
-  def mvList = mList.map(_._id)
-
-  private def mList: List[Monitor] = {
-    val f = collection.find().sort(Sorts.ascending("_id")).toFuture()
-    val ret = waitReadyResult(f)
-    ret.toList
-  }
+  def mvList = mList.map(_._id).filter(_id => {
+    hasSelfMonitor || _id != Monitor.SELF_ID
+  })
 
   def ensureMonitor(_id: String) = {
     if (!map.contains(_id)) {
       newMonitor(Monitor(_id, _id))
     }
   }
+
+  def ensureMonitor(m: Monitor) =
+    if (!map.contains(m._id))
+      newMonitor(m)
 
   def newMonitor(m: Monitor): Unit = {
     map = map + (m._id -> m)
@@ -103,6 +99,12 @@ class MonitorOp @Inject()(mongoDB: MongoDB, config: Configuration, sensorOp: Mqt
         m._id -> m
       }
     map = pairs.toMap
+  }
+
+  private def mList: List[Monitor] = {
+    val f = collection.find().sort(Sorts.ascending("_id")).toFuture()
+    val ret = waitReadyResult(f)
+    ret.toList
   }
 
   def deleteMonitor(_id: String) = {

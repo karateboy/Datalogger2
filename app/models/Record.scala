@@ -154,29 +154,6 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     f
   }
 
-  def findAndUpdate(dt: DateTime, dataList: List[(String, (Double, String))])(colName: String) = {
-    import org.mongodb.scala.bson._
-    import org.mongodb.scala.model._
-
-    val bdt: BsonDateTime = dt
-
-    val updates =
-      for {
-        data <- dataList
-        mt = data._1
-        (v, s) = data._2
-      } yield {
-        Updates.set(monitorTypeOp.BFName(mt), Document("v" -> v, "s" -> s))
-      }
-    Updates.combine(updates: _*)
-
-    val col = getCollection(colName)
-    val f = col.findOneAndUpdate(Filters.equal("time", bdt), Updates.combine(updates: _*),
-      FindOneAndUpdateOptions().upsert(true)).toFuture()
-    f.onFailure(errorHandler)
-    f
-  }
-
   def upsertRecord(doc: RecordList)(colName: String) = {
     val col = getCollection(colName)
 

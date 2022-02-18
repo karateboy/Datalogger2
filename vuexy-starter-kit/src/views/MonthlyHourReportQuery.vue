@@ -4,6 +4,17 @@
       <b-form @submit.prevent>
         <b-row>
           <b-col cols="12">
+            <b-form-group label="測點" label-for="monitor" label-cols-md="3">
+              <v-select
+                id="monitor"
+                v-model="form.monitor"
+                label="desc"
+                :reduce="mt => mt._id"
+                :options="monitors"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="12">
             <b-form-group
               label="測項"
               label-for="monitorType"
@@ -118,25 +129,33 @@ export default Vue.extend({
       rows: [],
       form: {
         date,
+        monitor: '',
         monitorType: undefined,
       },
     };
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
+    ...mapState('monitors', ['monitors']),
   },
-  mounted() {
+  async mounted() {
     this.fetchMonitorTypes().then(() => {
       if (this.monitorTypes.length !== 0) {
         this.form.monitorType = this.monitorTypes[0]._id;
       }
     });
+    await this.fetchMonitors();
+
+    if (this.monitors.length !== 0) {
+      this.form.monitor = this.monitors[0]._id;
+    }
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
+    ...mapActions('monitors', ['fetchMonitors']),
     async query() {
       this.display = true;
-      const url = `/MonthlyHourReport/${this.form.monitorType}/${this.form.date}`;
+      const url = `/MonthlyHourReport/${this.form.monitor}/${this.form.monitorType}/${this.form.date}`;
       const res = await axios.get(url);
       this.handleReport(res.data);
     },
@@ -144,7 +163,7 @@ export default Vue.extend({
       const baseUrl =
         process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
 
-      const url = `${baseUrl}Excel/MonthlyHourReport/${this.form.monitorType}/${this.form.date}`;
+      const url = `${baseUrl}Excel/MonthlyHourReport/${this.form.monitor}/${this.form.monitorType}/${this.form.date}`;
 
       window.open(url);
     },
