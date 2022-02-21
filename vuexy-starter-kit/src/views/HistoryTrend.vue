@@ -222,7 +222,7 @@ export default Vue.extend({
     await this.fetchMonitors();
 
     if (this.monitorTypes.length !== 0)
-      this.form.monitorTypes.push(this.monitorTypes[0]);
+      this.form.monitorTypes.push(this.monitorTypes[0]._id);
 
     if (this.monitors.length !== 0) {
       this.form.monitors.push(this.monitors[0]._id);
