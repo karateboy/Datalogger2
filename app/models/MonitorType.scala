@@ -1,7 +1,6 @@
 package models
 
 import models.ModelHelper._
-import org.mongodb.scala.BulkWriteResult
 import org.mongodb.scala.model._
 import org.mongodb.scala.result.{InsertOneResult, UpdateResult}
 import play.api._
@@ -278,6 +277,11 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     MonitorType(_id, desp, unit, prec, rangeOrder)
   }
 
+  def ensureMonitorType(mt: MonitorType) = {
+    if (!map.contains(mt._id))
+      newMonitorType(mt)
+  }
+
   def newMonitorType(mt: MonitorType): Future[InsertOneResult] = {
     map = map + (mt._id -> mt)
     if (mt.signalType)
@@ -288,11 +292,6 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     val f = collection.insertOne(mt).toFuture()
     f onFailure errorHandler
     f
-  }
-
-  def ensureMonitorType(mt: MonitorType) = {
-    if (!map.contains(mt._id))
-      newMonitorType(mt)
   }
 
   def deleteMonitorType(_id: String) = {
@@ -320,6 +319,14 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     upsertMonitorTypeFuture(map(mt))
   }
 
+  def upsertMonitorTypeFuture(mt: MonitorType) = {
+    import org.mongodb.scala.model.ReplaceOptions
+
+    val f = collection.replaceOne(Filters.equal("_id", mt._id), mt, ReplaceOptions().upsert(true)).toFuture()
+    f.onFailure(errorHandler)
+    f
+  }
+
   def stopMeasuring(instrumentId: String) = {
     for {
       mt <- realtimeMtvList
@@ -340,19 +347,11 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     }
   }
 
+  import org.mongodb.scala.model.Filters._
+
   def realtimeMtvList = mtvList.filter { mt =>
     val measuringBy = map(mt).measuringBy
     measuringBy.isDefined && (!measuringBy.get.isEmpty)
-  }
-
-  import org.mongodb.scala.model.Filters._
-
-  def upsertMonitorTypeFuture(mt: MonitorType) = {
-    import org.mongodb.scala.model.ReplaceOptions
-
-    val f = collection.replaceOne(equal("_id", mt._id), mt, ReplaceOptions().upsert(true)).toFuture()
-    f.onFailure(errorHandler)
-    f
   }
 
   def upsertMonitorType(mt: MonitorType): Future[UpdateResult] = {
@@ -401,44 +400,36 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     }
   }
 
-  def formatRecord(mt: String, r: Option[Record]) = {
-    if (r.isEmpty)
-      "-"
-    else {
-      val (overInternal, overLaw) = overStd(mt, r.get.value)
-      val prec = map(mt).prec
-      val value = s"%.${prec}f".format(r.get.value)
-      if (overInternal || overLaw)
-        s"$value"
-      else
-        s"$value"
-    }
+  def overStd(mt: String, vOpt: Option[Double]): (Boolean, Boolean) = {
+    val mtCase = map(mt)
+    val overInternal =
+      for (std <- mtCase.std_internal; v <- vOpt) yield
+        if (v > std)
+          true
+        else
+          false
+
+    val overLaw =
+      for (std <- mtCase.std_law; v <- vOpt) yield
+        if (v > std)
+          true
+        else
+          false
+    (overInternal.getOrElse(false), overLaw.getOrElse(false))
+  }
+
+  def formatRecord(mt: String, r: Option[Record]): String = {
+    val ret =
+      for (rec <- r if rec.value.isDefined) yield {
+        val prec = map(mt).prec
+        s"%.${prec}f".format(r.get.value.get)
+      }
+    ret.getOrElse("-")
   }
 
   def getCssClassStr(record: MtRecord) = {
     val (overInternal, overLaw) = overStd(record.mtName, record.value)
     MonitorStatus.getCssClassStr(record.status, overInternal, overLaw)
-  }
-
-  def overStd(mt: String, v: Double) = {
-    val mtCase = map(mt)
-    val overInternal =
-      if (mtCase.std_internal.isDefined) {
-        if (v > mtCase.std_internal.get)
-          true
-        else
-          false
-      } else
-        false
-    val overLaw =
-      if (mtCase.std_law.isDefined) {
-        if (v > mtCase.std_law.get)
-          true
-        else
-          false
-      } else
-        false
-    (overInternal, overLaw)
   }
 
   def getCssClassStr(mt: String, r: Option[Record]): Seq[String] = {

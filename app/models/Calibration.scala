@@ -58,16 +58,13 @@ case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTi
     retOpt.fold(false)(v => v)
   }
 
-  def calibrate(value: Double) = {
-    val v: Option[Double] =
+  def calibrate(valueOpt: Option[Double]): Option[Double] =
       for {spanValue <- span_val
            spanStd <- span_std if spanStd != 0
            zeroVal <- zero_val if spanValue - zeroVal != 0
+           value <- valueOpt
            } yield
         (value - zeroVal) * spanStd / (spanValue - zeroVal)
-
-    v.getOrElse(value)
-  }
 }
 
 import javax.inject._

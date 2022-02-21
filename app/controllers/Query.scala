@@ -90,10 +90,10 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
     }
 
     def getPeriodStat(records: Seq[Record], mt: String, period_start: DateTime) = {
-      if (records.length == 0)
+      val values = records.flatMap(x=>x.value)
+      if (values.length == 0)
         Stat(None, None, None, 0, 0, 0)
       else {
-        val values = records.map { r => r.value }
         val min = values.min
         val max = values.max
         val sum = values.sum
@@ -111,10 +111,13 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           val windSpeed = periodSlice(recordListMap(MonitorType.WIN_SPEED), period_start, period_start + period)
           windAvg(windSpeed, windDir)
         } else {
-          sum / total
+          if(total != 0)
+          Some(sum / total)
+          else
+            None
         }
         Stat(
-          avg = Some(avg),
+          avg = avg,
           min = Some(min),
           max = Some(max),
           total = total,
@@ -214,8 +217,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           1.year
       }
 
-    val timeList = getPeriods(start, end, period)
-    val timeSeq = timeList
+    val timeSeq = getPeriods(start, end, period)
 
     val downloadFileName = {
       val startName = start.toString("YYMMdd")
@@ -311,7 +313,8 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
               (time.getMillis, Some(valueMap(time)))
             }
           }
-        val timeValues = timeData.map{t=>(t._1, t._2.map(_._1))}
+        val timeValues = timeData.flatMap{t=>
+          for(x<-t._2) yield (t._1, x._1)}
         val timeStatus = timeData.map{t=>t._2.map(_._2).flatten}
         seqData(name = s"${monitorOp.map(m).desc}_${monitorTypeOp.map(mt).desp}",
           data = timeValues, yAxis = yAxisUnitMap(monitorTypeOp.map(mt).unit),
@@ -358,7 +361,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
   def getPeriodReportMap(monitor: String, mtList: Seq[String],
                          tabType: TableType.Value, period: Period,
                          statusFilter: MonitorStatusFilter.Value = MonitorStatusFilter.ValidData)
-                        (start: DateTime, end: DateTime): Map[String, Map[Imports.DateTime, (Double, Option[String])]] = {
+                        (start: DateTime, end: DateTime): Map[String, Map[DateTime, (Option[Double], Option[String])]] = {
     val mtRecordListMap = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitor, mtList, start, end)
 
     val mtRecordPairs =
@@ -385,8 +388,11 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
                 val windSpeed = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitor, List(MonitorType.WIN_SPEED), period_start, period_start + period)(MonitorType.WIN_SPEED)
                 period_start -> (windAvg(windSpeed, windDir), None)
               } else {
-                val values = records.map { r => r.value }
-                period_start -> (values.sum / values.length, None)
+                val values = records.flatMap { r => r.value }
+                if(values.nonEmpty)
+                  period_start -> (Some(values.sum / values.length), None)
+                else
+                  period_start -> (None, None)
               }
             }
           }
@@ -436,7 +442,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
               val monitorMap = mtMonitorMap.getOrElseUpdate(mt, Map.empty[String, CellData])
               val cellData = if (r.mtMap.contains(mt)) {
                 val mtRecord = r.mtMap(mt)
-                CellData(monitorTypeOp.format(mt, Some(mtRecord.value)),
+                CellData(monitorTypeOp.format(mt, mtRecord.value),
                   monitorTypeOp.getCssClassStr(mtRecord), Some(mtRecord.status))
               } else
                 emtpyCell
@@ -494,7 +500,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
               val monitorMap = mtMonitorMap.getOrElseUpdate(mt, Map.empty[String, CellData])
               val cellData = if (r.mtMap.contains(mt)) {
                 val mtRecord = r.mtMap(mt)
-                CellData(monitorTypeOp.format(mt, Some(mtRecord.value)),
+                CellData(monitorTypeOp.format(mt, mtRecord.value),
                   monitorTypeOp.getCssClassStr(mtRecord), Some(mtRecord.status))
               } else
                 emtpyCell
