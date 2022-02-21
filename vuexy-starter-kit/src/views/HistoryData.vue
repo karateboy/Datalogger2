@@ -164,7 +164,7 @@ export default Vue.extend({
       form: {
         monitors: Array<any>(),
         monitorTypes: Array<any>(),
-        dataType: 'min',
+        dataType: 'hour',
         range,
       },
       display: false,
@@ -191,9 +191,8 @@ export default Vue.extend({
       this.form.monitors.push(this.monitors[0]._id);
     }
 
-    if (this.monitorTypes.length !== 0) {
-      this.form.monitorTypes.push('PM25');
-    }
+    if (this.monitorTypes.length !== 0)
+      this.form.monitorTypes.push(this.monitorTypes[0]);
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),

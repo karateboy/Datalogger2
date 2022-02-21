@@ -2,7 +2,7 @@ package models
 
 import akka.actor._
 import com.github.nscala_time.time.Imports._
-import models.DataCollectManager.calculateAvgMap
+import models.DataCollectManager.{calculateHourAvgMap, calculateMinAvgMap}
 import models.ModelHelper._
 import org.mongodb.scala.result.UpdateResult
 import play.api._
@@ -181,11 +181,11 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
             l
           })
 
-          if (!r.value.isNaN)
-            lb.append((r.time, r.value))
+          for (v <- r.value if !v.isNaN)
+            lb.append((r.time, v))
         }
 
-        val mtDataList = calculateAvgMap(mtMap, alwaysValid)
+        val mtDataList = calculateHourAvgMap(mtMap, alwaysValid)
         val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
         val f = recordOp.upsertRecord(recordList)(recordOp.HourCollection)
         if (forward)
@@ -193,14 +193,15 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 
         f
       }
-    ret.flatMap(x=>x)
+    ret.flatMap(x => x)
   }
 
 }
 
 object DataCollectManager {
   val effectivRatio = 0.75
-  def calculateAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
+
+  def calculateMinAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
     for {
       mt <- mtMap.keys
       statusMap = mtMap(mt)
@@ -208,13 +209,13 @@ object DataCollectManager {
         _._2.size
       }.sum if total != 0
     } yield {
-      val minuteAvg: (Double, String) = {
+      val minuteAvg: (Option[Double], String) = {
         val totalSize = statusMap map {
           _._2.length
         } sum
         val statusKV = {
           val kv = statusMap.maxBy(kv => kv._2.length)
-          if (kv._1 == MonitorStatus.NormalStat &&(alwaysValid ||
+          if (kv._1 == MonitorStatus.NormalStat && (alwaysValid ||
             statusMap(kv._1).size < totalSize * effectivRatio)) {
             //return most status except normal
             val noNormalStatusMap = statusMap - kv._1
@@ -223,37 +224,111 @@ object DataCollectManager {
             kv
         }
         val values = statusKV._2.map(_._2)
-        val avg = if (mt == MonitorType.WIN_DIRECTION) {
-          val windDir = values
-          val windSpeedStatusMap = mtMap.get(MonitorType.WIN_SPEED)
-          if (windSpeedStatusMap.isDefined) {
-            val windSpeedMostStatus = windSpeedStatusMap.get.maxBy(kv => kv._2.length)
-            val windSpeed = windSpeedMostStatus._2.map(_._2)
-            windAvg(windSpeed.toList, windDir.toList)
-          } else { //assume wind speed is all equal
-            val windSpeed =
-              for (r <- 1 to windDir.length)
-                yield 1.0
-            windAvg(windSpeed.toList, windDir.toList)
+        val avg = if (values.length == 0)
+          None
+        else {
+          mt match {
+            case MonitorType.WIN_DIRECTION =>
+              val windDir = values
+              val windSpeedStatusMap = mtMap.get(MonitorType.WIN_SPEED)
+              if (windSpeedStatusMap.isDefined) {
+                val windSpeedMostStatus = windSpeedStatusMap.get.maxBy(kv => kv._2.length)
+                val windSpeed = windSpeedMostStatus._2.map(_._2)
+                windAvg(windSpeed.toList, windDir.toList)
+              } else { //assume wind speed is all equal
+                val windSpeed =
+                  for (r <- 1 to windDir.length)
+                    yield 1.0
+                windAvg(windSpeed.toList, windDir.toList)
+              }
+            case MonitorType.RAIN =>
+              Some(values.max)
+            case MonitorType.PM10 =>
+              Some(values.last)
+            case MonitorType.PM25 =>
+              Some(values.last)
+            case _ =>
+              val v = values.sum / values.length
+              if (v.isNaN)
+                None
+              else
+                Some(values.sum / values.length)
           }
-        } else if (mt == MonitorType.RAIN) {
-          values.max
-        } else if (mt == MonitorType.PM10 || mt == MonitorType.PM25) {
-          values.last
-        } else {
-          values.sum / values.length
         }
-
-        if (avg.isNaN)
-          (0, MonitorStatus.InvalidDataStat)
-        else
-          (avg, statusKV._1)
+        (avg, statusKV._1)
       }
 
       MtRecord(mt, minuteAvg._1, minuteAvg._2)
     }
   }
+
+  def calculateHourAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
+    for {
+      mt <- mtMap.keys
+      statusMap = mtMap(mt)
+      total = statusMap.map {
+        _._2.size
+      }.sum if total != 0
+    } yield {
+      val hourAvg: (Option[Double], String) = {
+        val totalSize = statusMap map {
+          _._2.length
+        } sum
+        val statusKV = {
+          val kv = statusMap.maxBy(kv => kv._2.length)
+          if (kv._1 == MonitorStatus.NormalStat && (alwaysValid ||
+            statusMap(kv._1).size < totalSize * effectivRatio)) {
+            //return most status except normal
+            val noNormalStatusMap = statusMap - kv._1
+            noNormalStatusMap.maxBy(kv => kv._2.length)
+          } else
+            kv
+        }
+        val values = if (statusMap.contains(MonitorStatus.NormalStat))
+          statusMap(MonitorStatus.NormalStat).map(_._2).toList
+        else
+          List.empty[Double]
+
+        val avg = if (values.length == 0)
+          None
+        else {
+          mt match {
+            case MonitorType.WIN_DIRECTION =>
+              val windDir = values
+              val windSpeedStatusMap = mtMap.get(MonitorType.WIN_SPEED)
+              if (windSpeedStatusMap.isDefined) {
+                val windSpeedMostStatus = windSpeedStatusMap.get.maxBy(kv => kv._2.length)
+                val windSpeed = windSpeedMostStatus._2.map(_._2)
+                windAvg(windSpeed.toList, windDir)
+              } else { //assume wind speed is all equal
+                val windSpeed =
+                  for (r <- 1 to windDir.length)
+                    yield 1.0
+                windAvg(windSpeed.toList, windDir)
+              }
+            case MonitorType.RAIN =>
+              Some(values.max)
+            case MonitorType.PM10 =>
+              Some(values.last)
+            case MonitorType.PM25 =>
+              Some(values.last)
+            case _ =>
+              val v = values.sum / values.length
+              if (v.isNaN)
+                None
+              else
+                Some(values.sum / values.length)
+          }
+        }
+        (avg, statusKV._1)
+      }
+
+      MtRecord(mt, hourAvg._1, hourAvg._2)
+    }
+  }
+
 }
+
 @Singleton
 class DataCollectManager @Inject()
 (config: Configuration, system: ActorSystem, recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp,
@@ -305,9 +380,9 @@ class DataCollectManager @Inject()
     } {
       val mtCase = monitorTypeOp.map(mt)
       if (MonitorStatus.isValid(status))
-        for (std_law <- mtCase.std_law) {
-          if (value > std_law) {
-            val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
+        for (std_law <- mtCase.std_law; v <- value) {
+          if (v > std_law) {
+            val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, value)}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
             alarmOp.log(alarmOp.Src(mt), alarmOp.Level.INFO, msg)
             overThreshold = true
           }
@@ -422,7 +497,7 @@ class DataCollectManager @Inject()
                 r.time >= DateTime.now() - 6.second
               }
 
-              (data.mt -> (filteredMap ++ Map(instId -> Record(now, data.value, data.status, Monitor.activeID))))
+              (data.mt -> (filteredMap ++ Map(instId -> Record(now, Some(data.value), data.status, Monitor.activeID))))
             }
 
           context become handler(instrumentMap, collectorInstrumentMap,
@@ -549,7 +624,7 @@ class DataCollectManager @Inject()
         if (storeSecondData)
           flushSecData(priorityMtMap)
 
-        val minuteMtAvgList = calculateAvgMap(priorityMtMap, false)
+        val minuteMtAvgList = calculateMinAvgMap(priorityMtMap, false)
 
         checkMinDataAlarm(minuteMtAvgList)
 

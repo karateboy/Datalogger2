@@ -59,7 +59,7 @@ class Realtime @Inject()
                 else
                   instrumentStatus
 
-                MonitorTypeStatus(_id = mCase._id, desp = mCase.desp, monitorTypeOp.format(mt, Some(record.value)),
+                MonitorTypeStatus(_id = mCase._id, desp = mCase.desp, monitorTypeOp.format(mt, record.value),
                   mCase.unit, measuringByStr,
                   status,
                   MonitorStatus.getCssClassStr(record.status, overInternal, overLaw), mCase.order)

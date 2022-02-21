@@ -221,9 +221,8 @@ export default Vue.extend({
     await this.fetchMonitorTypes();
     await this.fetchMonitors();
 
-    if (this.monitorTypes.length !== 0) {
-      this.form.monitorTypes.push('PM25');
-    }
+    if (this.monitorTypes.length !== 0)
+      this.form.monitorTypes.push(this.monitorTypes[0]);
 
     if (this.monitors.length !== 0) {
       this.form.monitors.push(this.monitors[0]._id);
