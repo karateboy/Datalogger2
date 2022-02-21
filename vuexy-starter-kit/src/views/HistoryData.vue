@@ -188,9 +188,8 @@ export default Vue.extend({
       this.form.monitors.push(this.monitors[0]._id);
     }
 
-    if (this.monitorTypes.length !== 0) {
+    if (this.monitorTypes.length !== 0)
       this.form.monitorTypes.push(this.monitorTypes[0]._id);
-    }
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
