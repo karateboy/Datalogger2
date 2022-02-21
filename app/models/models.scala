@@ -1,4 +1,5 @@
 package models
+
 import com.github.nscala_time.time.Imports._
 import play.api._
 import play.api.libs.json._
@@ -8,7 +9,6 @@ import scala.language.implicitConversions
 /**
  * @author user
  */
-import javax.inject._
 
 object ModelHelper {
   implicit def getSqlTimestamp(t: DateTime) = {
@@ -20,7 +20,9 @@ object ModelHelper {
   }
 
   import org.mongodb.scala.bson.BsonDateTime
+
   implicit def toDateTime(time: BsonDateTime) = new DateTime(time.getValue)
+
   implicit def toBsonDateTime(jdtime: DateTime) = new BsonDateTime(jdtime.getMillis)
 
   def main(args: Array[String]) {
@@ -31,6 +33,7 @@ object ModelHelper {
   def logException(ex: Throwable) = {
     Logger.error(ex.getMessage, ex)
   }
+
   def logInstrumentError(id: String, msg: String, ex: Throwable) = {
     Logger.error(msg, ex)
     //log(instStr(id), Level.ERR, msg)
@@ -53,6 +56,20 @@ object ModelHelper {
       throw ex
   }
 
+  def windAvg(windSpeed: Seq[Record], windDir: Seq[Record]): Option[Double] = {
+    if (windSpeed.length != windDir.length)
+      Logger.error(s"windSpeed #=${windSpeed.length} windDir #=${windDir.length}")
+
+    val windRecord = windSpeed.zip(windDir).filter(p => p._1.value.isDefined && p._2.value.isDefined)
+    if (windRecord.nonEmpty) {
+      val wind_sin = windRecord.map(v => v._1.value.get * Math.sin(Math.toRadians(v._2.value.get))).sum
+      val wind_cos = windRecord.map(v => v._1.value.get * Math.cos(Math.toRadians(v._2.value.get))).sum
+      Some(windAvg(wind_sin, wind_cos))
+    }
+    else
+      None
+  }
+
   def windAvg(sum_sin: Double, sum_cos: Double) = {
     val degree = Math.toDegrees(Math.atan2(sum_sin, sum_cos))
     if (degree >= 0)
@@ -61,24 +78,17 @@ object ModelHelper {
       degree + 360
   }
 
-  def windAvg(windSpeed: Seq[Record], windDir: Seq[Record]): Double = {
+  def windAvg(windSpeed: List[Double], windDir: List[Double]): Option[Double] = {
     if (windSpeed.length != windDir.length)
       Logger.error(s"windSpeed #=${windSpeed.length} windDir #=${windDir.length}")
 
     val windRecord = windSpeed.zip(windDir)
-    val wind_sin = windRecord.map(v => v._1.value * Math.sin(Math.toRadians(v._2.value))).sum
-    val wind_cos = windRecord.map(v => v._1.value * Math.cos(Math.toRadians(v._2.value))).sum
-    windAvg(wind_sin, wind_cos)
-  }
-
-  def windAvg(windSpeed: List[Double], windDir: List[Double]): Double = {
-    if (windSpeed.length != windDir.length)
-      Logger.error(s"windSpeed #=${windSpeed.length} windDir #=${windDir.length}")
-
-    val windRecord = windSpeed.zip(windDir)
-    val wind_sin = windRecord.map(v => v._1 * Math.sin(Math.toRadians(v._2))).sum
-    val wind_cos = windRecord.map(v => v._1 * Math.cos(Math.toRadians(v._2))).sum
-    windAvg(wind_sin, wind_cos)
+    if (windRecord.nonEmpty) {
+      val wind_sin = windRecord.map(v => v._1 * Math.sin(Math.toRadians(v._2))).sum
+      val wind_cos = windRecord.map(v => v._1 * Math.cos(Math.toRadians(v._2))).sum
+      Some(windAvg(wind_sin, wind_cos))
+    } else
+      None
   }
 
   def getPeriods(start: DateTime, endTime: DateTime, d: Period): List[DateTime] = {
@@ -94,13 +104,13 @@ object ModelHelper {
     buf.toList
   }
 
-  def getHourBetween(start:DateTime, end:DateTime): List[DateTime] = {
+  def getHourBetween(start: DateTime, end: DateTime): List[DateTime] = {
     import scala.collection.mutable.ListBuffer
 
     val buf = ListBuffer[DateTime]()
     var current = start
     while (current <= end) {
-      if(current.getMinuteOfHour == 0)
+      if (current.getMinuteOfHour == 0)
         buf.append(current)
 
       current = current.plusMinutes(1)

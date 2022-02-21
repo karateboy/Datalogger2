@@ -13,7 +13,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Success
 
-case class MtRecord(mtName: String, value: Double, status: String)
+case class MtRecord(mtName: String, value: Option[Double], status: String)
 
 object RecordList {
   def apply(time: Date, mtDataList: Seq[MtRecord], monitor: String): RecordList =
@@ -61,7 +61,7 @@ case class RecordList(var mtDataList: Seq[MtRecord], _id: RecordListID) {
 
 case class RecordListID(time: Date, monitor: String)
 
-case class Record(time: DateTime, value: Double, status: String, monitor: String)
+case class Record(time: DateTime, value: Option[Double], status: String, monitor: String)
 
 import javax.inject._
 
@@ -141,7 +141,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
   init
 
   def toRecordList(dt: DateTime, dataList: List[(String, (Double, String))], monitor: String = Monitor.SELF_ID) = {
-    val mtDataList = dataList map { t => MtRecord(t._1, t._2._1, t._2._2) }
+    val mtDataList = dataList map { t => MtRecord(t._1, Some(t._2._1), t._2._2) }
     RecordList(mtDataList, RecordListID(dt, monitor))
   }
 
@@ -243,7 +243,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
           for {
             doc <- docs
             time = doc._id.time
-            mtMap = doc.mtMap if mtMap.contains(mt)
+            mtMap = doc.mtMap if mtMap.contains(mt) && mtMap(mt).value.isDefined
           } yield {
             Record(new DateTime(time.getTime), mtMap(mt).value, mtMap(mt).status, monitor)
           }
@@ -254,7 +254,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
   }
 
   def getRecordMapFuture(colName: String)
-                  (monitor: String, mtList: Seq[String], startTime: DateTime, endTime: DateTime): Future[Map[String, Seq[Record]]] = {
+                        (monitor: String, mtList: Seq[String], startTime: DateTime, endTime: DateTime): Future[Map[String, Seq[Record]]] = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
@@ -284,7 +284,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
       } else
         f
 
-    for(docs <- allF) yield{
+    for (docs <- allF) yield {
       val pairs =
         for {
           mt <- mtList
@@ -293,7 +293,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
             for {
               doc <- docs
               time = doc._id.time
-              mtMap = doc.mtMap if mtMap.contains(mt)
+              mtMap = doc.mtMap if mtMap.contains(mt) && mtMap(mt).value.isDefined
             } yield {
               Record(new DateTime(time.getTime), mtMap(mt).value, mtMap(mt).status, monitor)
             }
@@ -364,9 +364,10 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
           d -> ListBuffer.empty[Double]
       val windMap: Map[Int, ListBuffer[Double]] = windDirPair.toMap
       var total = 0
-      for (record <- windRecords if record.forall(r => MonitorStatusFilter.isMatched(MonitorStatusFilter.ValidData, r.status))) {
-        val dir = (Math.ceil((record(0).value - (step / 2)) / step).toInt) % nDiv
-        windMap(dir) += record(1).value
+      for (record <- windRecords if record.forall(r =>
+        MonitorStatusFilter.isMatched(MonitorStatusFilter.ValidData, r.status) && r.value.isDefined)) {
+        val dir = Math.ceil((record(0).value.get - (step / 2)) / step).toInt % nDiv
+        windMap(dir) += record(1).value.get
         total += 1
       }
 

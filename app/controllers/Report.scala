@@ -279,10 +279,10 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
     val timeMap = Map(timePair: _*)
 
     def getHourPeriodStat(records: Seq[Record], hourList: List[DateTime]) = {
-      if (records.length == 0)
+      val values = records.flatMap { r => r.value }
+      if (values.length == 0)
         Stat(None, None, None, 0, 0, 0)
       else {
-        val values = records.map { r => r.value }
         val min = values.min
         val max = values.max
         val sum = values.sum
@@ -300,10 +300,13 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
           val windSpeed = hourList.map(timeMap)
           windAvg(windSpeed, windDir)
         } else {
-          sum / total
+          if(total != 0)
+            Some(sum / total)
+          else
+            None
         }
         Stat(
-          avg = Some(avg),
+          avg = avg,
           min = Some(min),
           max = Some(max),
           total = total,

@@ -248,11 +248,11 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
             for {mt <- mtMap.get(sensor)
                  v <- value
                  } yield
-              MtRecord(mt, v, MonitorStatus.NormalStat)
+              MtRecord(mt, Some(v), MonitorStatus.NormalStat)
 
           }
-        val latlon = Seq(MtRecord(MonitorType.LAT, message.lat, MonitorStatus.NormalStat),
-          MtRecord(MonitorType.LNG, message.lon, MonitorStatus.NormalStat))
+        val latlon = Seq(MtRecord(MonitorType.LAT, Some(message.lat), MonitorStatus.NormalStat),
+          MtRecord(MonitorType.LNG, Some(message.lon), MonitorStatus.NormalStat))
         val mtDataList: Seq[MtRecord] = mtData.flatten ++ latlon
         val time = DateTime.parse(message.time, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss"))
         if(sensorMap.contains(message.id)){
