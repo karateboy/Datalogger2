@@ -27,7 +27,7 @@ object PicarroG2131i extends AbstractDrv(_id = "picarroG2131i", desp = "Picarro 
     InstrumentStatusType(key = "Ratio_Raw", addr = 9, desc = "Ratio_Raw", "")
   )
 
-  val dataAddress = Range(0, 5).toList
+  val dataAddress: List[Int] = Range(0, 5).toList
 
   override def getMonitorTypes(param: String): List[String] = {
     for (i <- dataAddress) yield
@@ -135,7 +135,10 @@ class PicarroG2131iCollector @Inject()(instrumentOp: InstrumentOp, monitorStatus
     inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream())))
   }
 
-  override def getDataRegList: Seq[DataReg] = PicarroG2401.getDataRegList
+  override def getDataRegList: Seq[DataReg] = predefinedIST.filter(p => dataAddress.contains(p.addr)).map {
+    ist =>
+      DataReg(monitorType = ist.key, ist.addr, multiplier = 1)
+  }
 
   override def getCalibrationReg: Option[CalibrationReg] = Some(CalibrationReg(0, 1))
 
