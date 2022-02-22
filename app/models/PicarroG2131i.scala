@@ -24,7 +24,7 @@ object PicarroG2131i extends AbstractDrv(_id = "picarroG2131i", desp = "Picarro 
     InstrumentStatusType(key = "13CO2", addr = 6, desc = "13CO2", ""),
     InstrumentStatusType(key = "13CO2_dry", addr = 7, desc = "13CO2_dry", ""),
     InstrumentStatusType(key = "Ratio_Raw", addr = 8, desc = "Ratio_Raw", ""),
-    InstrumentStatusType(key = "H2O", addr = 9, desc = "H2O", "")
+    InstrumentStatusType(key = "H2O_2131", addr = 9, desc = "H2O_2131", "")
   )
 
   val dataAddress: List[Int] = List(4, 5, 6, 7, 9)
