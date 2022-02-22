@@ -15,19 +15,19 @@ import scala.concurrent.{Future, blocking}
 object PicarroG2131i extends AbstractDrv(_id = "picarroG2131i", desp = "Picarro G2131i",
   protocols = List(Protocol.tcp)) {
   val predefinedIST = List(
-    InstrumentStatusType(key = "12CO2", addr = 0, desc = "12CO2", ""),
-    InstrumentStatusType(key = "12CO2_dry", addr = 1, desc = "12CO2_dry", ""),
-    InstrumentStatusType(key = "13CO2", addr = 2, desc = "13CO2", ""),
-    InstrumentStatusType(key = "13CO2_dry", addr = 3, desc = "13CO2_dry", ""),
-    InstrumentStatusType(key = "H2O", addr = 4, desc = "H2O", ""),
-    InstrumentStatusType(key = "Delta_Raw", addr = 5, desc = "Delta_Raw", ""),
-    InstrumentStatusType(key = "Delta_30s", addr = 6, desc = "Delta_30s", ""),
-    InstrumentStatusType(key = "Delta_2min", addr = 7, desc = "Delta_2min", ""),
-    InstrumentStatusType(key = "Delta_5min", addr = 8, desc = "Delta_5min", ""),
-    InstrumentStatusType(key = "Ratio_Raw", addr = 9, desc = "Ratio_Raw", "")
+    InstrumentStatusType(key = "Delta_Raw", addr = 0, desc = "Delta_Raw", ""),
+    InstrumentStatusType(key = "Delta_30s", addr = 1, desc = "Delta_30s", ""),
+    InstrumentStatusType(key = "Delta_2min", addr = 2, desc = "Delta_2min", ""),
+    InstrumentStatusType(key = "Delta_5min", addr = 3, desc = "Delta_5min", ""),
+    InstrumentStatusType(key = "12CO2", addr = 4, desc = "12CO2", ""),
+    InstrumentStatusType(key = "12CO2_dry", addr = 5, desc = "12CO2_dry", ""),
+    InstrumentStatusType(key = "13CO2", addr = 6, desc = "13CO2", ""),
+    InstrumentStatusType(key = "13CO2_dry", addr = 7, desc = "13CO2_dry", ""),
+    InstrumentStatusType(key = "Ratio_Raw", addr = 8, desc = "Ratio_Raw", ""),
+    InstrumentStatusType(key = "H2O", addr = 9, desc = "H2O", "")
   )
 
-  val dataAddress: List[Int] = Range(0, 5).toList
+  val dataAddress: List[Int] = List(4, 5, 6, 7, 9)
 
   override def getMonitorTypes(param: String): List[String] = {
     for (i <- dataAddress) yield
