@@ -65,6 +65,7 @@ class InstrumentTypeOp @Inject()
  sabio4010Factory: Sabio4010.Factory,
  tca08Factory: Tca08Drv.Factory,
  picarroG2401Factory: PicarroG2401.Factory,
+ picarroG2131iFactory: PicarroG2131i.Factory,
  ma350Factory: Ma350Drv.Factory,
  monitorTypeOp: MonitorTypeOp) extends InjectedActorSupport {
 
@@ -104,6 +105,7 @@ class InstrumentTypeOp @Inject()
     InstrumentType(Duo, duoFactory),
     InstrumentType(Tca08Drv, tca08Factory),
     InstrumentType(PicarroG2401, picarroG2401Factory),
+    InstrumentType(PicarroG2131i, picarroG2131iFactory),
     InstrumentType(Ma350Drv, ma350Factory)
   )
 

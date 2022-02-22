@@ -11,12 +11,7 @@
 
     <!-- Header -->
     <div
-      class="
-        customizer-section
-        d-flex
-        justify-content-between
-        align-items-center
-      "
+      class="customizer-section d-flex justify-content-between align-items-center"
     >
       <div>
         <h4 class="text-uppercase mb-0">Theme Customizer</h4>
