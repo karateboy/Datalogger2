@@ -21,6 +21,7 @@ import store from './store';
 import App from './App.vue';
 import { ValidationProvider } from 'vee-validate';
 import vSelect from 'vue-select';
+const VueGoogleMap = require('gmap-vue');
 
 // Global Components
 import './global-components';
@@ -128,6 +129,14 @@ router.beforeEach((to, from, next) => {
   } else {
     next({ name: 'login' });
   }
+});
+
+Vue.use(VueGoogleMap, {
+  load: {
+    key: 'AIzaSyDiE_K-p1_3V-lff9yXfD6KkC1SGpXVcKc',
+    libraries: 'places', // This is required if you use the Autocomplete plugin
+  },
+  installComponents: true,
 });
 
 new Vue({

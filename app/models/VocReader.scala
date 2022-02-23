@@ -213,7 +213,7 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeOp, recordOp:
         }
       }
     reader.close()
-    val mtDataList = dataList.flatten.map(d=>MtRecord(d._1, d._2._1, d._2._2))
+    val mtDataList = dataList.flatten.map(d=>MtRecord(d._1, Some(d._2._1), d._2._2))
     val rl = RecordList(dateTime.toDate, mtDataList, monitorId)
     val f = recordOp.upsertRecord(rl)(recordOp.HourCollection)
     f onFailure(errorHandler)
