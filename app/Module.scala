@@ -42,6 +42,7 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bindActorFactory[Sabio4010Collector, Sabio4010.Factory]
     bindActorFactory[Tca08Collector, Tca08Drv.Factory]
     bindActorFactory[PicarroG2401Collector, PicarroG2401.Factory]
+    bindActorFactory[PicarroG2131iCollector, PicarroG2131i.Factory]
     bindActorFactory[Ma350Collector, Ma350Drv.Factory]
   	bindActorFactory[AkDrvCollector, AkDrv.Factory]
 	  bindActorFactory[DuoCollector, Duo.Factory]
