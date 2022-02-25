@@ -27,7 +27,7 @@ object PicarroG2131i extends AbstractDrv(_id = "picarroG2131i", desp = "Picarro 
     InstrumentStatusType(key = "H2O_2131", addr = 9, desc = "H2O_2131", "")
   )
 
-  val dataAddress: List[Int] = List(4, 5, 6, 7, 9)
+  val dataAddress: List[Int] = List(0, 4)
 
   override def getMonitorTypes(param: String): List[String] = {
     for (i <- dataAddress) yield
