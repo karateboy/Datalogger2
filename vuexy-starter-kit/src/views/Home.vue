@@ -100,6 +100,7 @@ export default Vue.extend({
 
         const label = {
           text: m.desc,
+          color: 'white',
         };
 
         const infoText = `<strong>${m.desc}</strong>`;
