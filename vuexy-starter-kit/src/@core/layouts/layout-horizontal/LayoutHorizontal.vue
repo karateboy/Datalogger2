@@ -18,12 +18,7 @@
             : null,
       }"
       :toggleable="false"
-      class="
-        header-navbar
-        navbar-shadow
-        align-items-center
-        navbar-brand-center navbar-fixed
-      "
+      class="header-navbar navbar-shadow align-items-center navbar-brand-center navbar-fixed"
       :class="{ 'fixed-top': $store.getters['app/currentBreakPoint'] !== 'xl' }"
     >
       <slot name="navbar" :toggleVerticalMenuActive="toggleVerticalMenuActive">
@@ -38,12 +33,7 @@
     <div class="horizontal-menu-wrapper">
       <div
         v-if="!isNavMenuHidden"
-        class="
-          header-navbar
-          navbar-expand-sm navbar navbar-horizontal navbar-light navbar-shadow
-          menu-border
-          d-none d-xl-block
-        "
+        class="header-navbar navbar-expand-sm navbar navbar-horizontal navbar-light navbar-shadow menu-border d-none d-xl-block"
         :class="[navbarMenuTypeClass]"
       >
         <horizontal-nav-menu />
@@ -119,9 +109,11 @@ import useLayoutHorizontal from './useLayoutHorizontal';
 import HorizontalNavMenu from './components/horizontal-nav-menu/HorizontalNavMenu.vue';
 
 // Vertical Menu
+
 import VerticalNavMenu from '@core/layouts/layout-vertical/components/vertical-nav-menu/VerticalNavMenu.vue';
 import useVerticalLayout from '@core/layouts/layout-vertical/useVerticalLayout';
 import mixinLayoutHorizontal from './mixinLayoutHorizontal';
+
 
 export default {
   components: {

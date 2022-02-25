@@ -315,7 +315,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           }
         val timeValues = timeData.flatMap{t=>
           for(x<-t._2) yield (t._1, x._1)}
-        val timeStatus = timeData.map{t=>t._2.map(_._2).flatten}
+        val timeStatus = timeData.flatMap{t=>for(x<-t._2) yield x._2}
         seqData(name = s"${monitorOp.map(m).desc}_${monitorTypeOp.map(mt).desp}",
           data = timeValues, yAxis = yAxisUnitMap(monitorTypeOp.map(mt).unit),
           tooltip = Tooltip(monitorTypeOp.map(mt).prec), statusList = timeStatus)

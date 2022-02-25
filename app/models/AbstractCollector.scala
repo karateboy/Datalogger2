@@ -115,6 +115,10 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
                 instrumentStatusTypesOpt = Some(probeInstrumentStatusType.toList)
                 instrumentOp.updateStatusType(instId, instrumentStatusTypesOpt.get)
               } else {
+                val dataReg = getDataRegList
+                val statusTypeList = probeInstrumentStatusType.toList
+                Logger.error(s"statusType ${statusTypeList}")
+                Logger.error(s"dataReg ${dataReg} not in statusType")
                 throw new Exception("Probe register failed. Data register is not in there...")
               }
             }

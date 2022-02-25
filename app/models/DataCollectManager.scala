@@ -174,9 +174,17 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
             map
           })
 
-          val lb = statusMap.getOrElse(r.status, {
+          val tagInfo = MonitorStatus.getTagInfo(r.status)
+          val status = tagInfo.statusType match {
+            case StatusType.ManualValid =>
+              MonitorStatus.NormalStat
+            case _ =>
+              r.status
+          }
+
+          val lb = statusMap.getOrElse(status, {
             val l = ListBuffer.empty[(DateTime, Double)]
-            statusMap = statusMap ++ Map(r.status -> l)
+            statusMap = statusMap ++ Map(status -> l)
             mtMap = mtMap ++ Map(mt -> statusMap)
             l
           })

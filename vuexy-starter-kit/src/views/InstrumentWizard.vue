@@ -363,7 +363,7 @@ export default Vue.extend({
         't400',
         'baseline9000',
         'horiba370',
-        'picarroG2401',
+        'picarroG2401',        
       ];
       for (const t of types) {
         if (this.form.instType === t) return true;

@@ -180,7 +180,6 @@ table.dataTable thead .sorting_desc:before {
   .breadcrumb-item + .breadcrumb-item {
     &:before {
       transform: rotate(180deg);
-      color: red;
     }
   }
 }
