@@ -192,10 +192,9 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
           for (v <- r.value if !v.isNaN)
             lb.append((r.time, v))
         }
-
         val mtDataList = calculateHourAvgMap(mtMap, alwaysValid)
         val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
-        val f = recordOp.upsertRecord(recordList)(recordOp.HourCollection)
+        val f = recordOp.replaceRecord(recordList)(recordOp.HourCollection)
         if (forward)
           f map { _ => ForwardManager.forwardHourData }
 
