@@ -177,6 +177,19 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     f
   }
 
+  def replaceRecord(doc: RecordList)(colName: String) = {
+    val col = getCollection(colName)
+
+    val f = col.replaceOne(Filters.equal("_id", RecordListID(doc._id.time, doc._id.monitor)),
+      doc,
+      ReplaceOptions().upsert(true)).toFuture()
+
+    f.onFailure({
+      case ex: Exception => Logger.error(ex.getMessage, ex)
+    })
+    f
+  }
+
   def upsertRecord(doc: RecordList)(colName: String) = {
     val col = getCollection(colName)
 
