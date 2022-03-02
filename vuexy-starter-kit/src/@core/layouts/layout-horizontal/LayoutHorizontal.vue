@@ -114,7 +114,6 @@ import VerticalNavMenu from '@core/layouts/layout-vertical/components/vertical-n
 import useVerticalLayout from '@core/layouts/layout-vertical/useVerticalLayout';
 import mixinLayoutHorizontal from './mixinLayoutHorizontal';
 
-
 export default {
   components: {
     AppBreadcrumb,
