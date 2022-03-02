@@ -24,7 +24,7 @@
           v-model="row.item.mt"
           label="desp"
           :reduce="mt => mt._id"
-          :options="monitorTypes"
+          :options="allMonitorTypes"
           @input="onChange"
         />
       </template>
@@ -41,6 +41,8 @@
 import Vue from 'vue';
 import { mapState, mapGetters } from 'vuex';
 import vSelect from 'vue-select';
+import axios from 'axios';
+import { MonitorType } from './types';
 
 interface E1212ChannelCfg {
   enable: boolean;
@@ -94,7 +96,7 @@ export default Vue.extend({
       },
       {
         key: 'mt',
-        label: '測項',
+        label: '測項/數位訊號',
       },
       {
         key: 'scale',
@@ -102,16 +104,40 @@ export default Vue.extend({
       },
     ];
 
+    let signalTypes = Array<MonitorType>();
     return {
       paramObj,
       fields,
+      signalTypes,
     };
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap']),
+    allMonitorTypes(): Array<MonitorType> {
+      let ret = [];
+      for (let mt of this.monitorTypes) {
+        ret.push(mt);
+      }
+      for (let mt of this.signalTypes) {
+        ret.push(mt);
+      }
+
+      return ret;
+    },
+  },
+  async mounted() {
+    await this.getSignalTypes();
   },
   methods: {
+    async getSignalTypes() {
+      try {
+        const res = await axios.get('/SignalTypes');
+        this.signalTypes = res.data;
+      } catch (err) {
+        throw new Error('failed to get signal types');
+      }
+    },
     justify() {
       for (const ch of this.paramObj.chs) {
         if (!ch.scale) ch.scale = undefined;
