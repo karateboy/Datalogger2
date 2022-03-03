@@ -1,6 +1,8 @@
 package models
 import play.api._
 
+import scala.collection.immutable
+
 object HessenProtocol {
   val STX: Byte = 0x02
   val ETX: Byte = 0x03
@@ -27,12 +29,13 @@ object HessenProtocol {
   }
 
   case class Measure(channel: Int, value: Double, status: Byte, error: Byte, serial: String, free: String)
-  def decode(reply: String) = {
+  def decode(reply: String): IndexedSeq[Measure] = {
     Logger.debug(s"HessenProtocol decode input=${reply}")
     val params = reply.split(" ")
     Logger.debug(s"params=${params.length}")
     val nMeasure = params(0).substring(2).toInt
     Logger.debug(s"nMeasure=${nMeasure}")
+    val ret =
     for {
       idx <- 0 to nMeasure-1 if (idx*6+1) < params.length
       measureOffset = idx * 6
@@ -42,21 +45,28 @@ object HessenProtocol {
         val exponent = Integer.parseInt(str.substring(5))
         mantissa * Math.pow(10, exponent)
       }
-      val channel = params(1 + measureOffset).toInt
+      try{
+        val channel = params(1 + measureOffset).toInt
 
-      val valueStr = params(1 + measureOffset + 1)
-      val statusStr = params(1 + measureOffset + 2)
+        val valueStr = params(1 + measureOffset + 1)
+        val statusStr = params(1 + measureOffset + 2)
 
-      val status = Integer.parseInt(statusStr, 16).toByte
+        val status = Integer.parseInt(statusStr, 16).toByte
 
-      val errorStr = params(1 + measureOffset + 3)
+        val errorStr = params(1 + measureOffset + 3)
 
-      val error = Integer.parseInt(errorStr, 16).toByte
-      val serialStr = params(1 + measureOffset + 4)
-      val freeStr = params(1 + measureOffset + 5)
-
-      Measure(channel, getValue(valueStr), status, error, serialStr, freeStr)
+        val error = Integer.parseInt(errorStr, 16).toByte
+        val serialStr = params(1 + measureOffset + 4)
+        val freeStr = params(1 + measureOffset + 5)
+        val measure = Measure(channel, getValue(valueStr), status, error, serialStr, freeStr)
+        Logger.debug(measure.toString)
+        Some(measure)
+      }catch {
+        case ex:Throwable=>
+          Logger.error("Invalid measure", ex)
+          None
+      }
     }
+    ret.flatten
   }
-
 }

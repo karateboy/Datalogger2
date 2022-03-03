@@ -175,11 +175,9 @@ class Horiba370Collector @Inject()
     }
   }
 
-  val timerOpt: Option[Cancellable] = Some(actorSystem.scheduler.schedule(Duration(1, SECONDS), Duration(2, SECONDS),
-    self, ReadData))
+  val timer = context.system.scheduler.schedule(Duration(1, SECONDS), Duration(2, SECONDS), self, ReadData)
 
-  val statusTimerOpt: Option[Cancellable] = Some(actorSystem.scheduler.schedule(Duration(30, SECONDS), Duration(1, MINUTES),
-    self, CheckStatus))
+  val statisTimer = context.system.scheduler.schedule(Duration(30, SECONDS), Duration(1, MINUTES), self, CheckStatus)
 
   // override postRestart so we don't call preStart and schedule a new message
   override def postRestart(reason: Throwable) = {}
@@ -423,6 +421,7 @@ class Horiba370Collector @Inject()
     case UdpConnected.Disconnected => context.stop(self)
 
     case ReadData =>
+      Logger.info("ReadData")
       reqData(connection)
       logStatus()
 
@@ -647,11 +646,7 @@ class Horiba370Collector @Inject()
   }
 
   override def postStop() = {
-    for (timer <- timerOpt) {
       timer.cancel()
-    }
-    for (timer <- statusTimerOpt) {
-      timer.cancel()
-    }
+      statisTimer.cancel()
   }
 }

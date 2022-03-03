@@ -114,7 +114,7 @@ class VocReaderOp @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, sy
           for (dateTime <- getFileDateTime(f.getName, year, month)) {
             parser(f, dateTime)
             appendToParsedFileList(f.getAbsolutePath)
-            ForwardManager.forwardHourRecord(dateTime, dateTime + 1.hour)
+            //ForwardManager.forwardHourRecord(dateTime, dateTime + 1.hour)
           }
         } catch {
           case ex: Throwable =>

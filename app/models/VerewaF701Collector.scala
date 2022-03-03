@@ -91,7 +91,7 @@ object VerewaF701Collector extends DriverOps{
 import javax.inject._
 class VerewaF701Collector @Inject()
 (alarmOp: AlarmOp, monitorStatusOp: MonitorStatusOp, instrumentOp: InstrumentOp, system: ActorSystem)
-(@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted mt: String) extends Actor {
+(@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: F701_20Config) extends Actor {
   import VerewaF701Collector._
   import scala.concurrent.duration._
   var cancelable = system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort)
@@ -206,8 +206,10 @@ class VerewaF701Collector @Inject()
           for(serial<-serialOpt){
             serial.port.writeBytes(cmd)
             val replies = serial.getMessageByCrWithTimeout(timeout = 3)
-            for (reply <- replies) {
-              val measureList = HessenProtocol.decode(reply)
+            for (reply <- replies if reply.contains("MD")) {
+              Logger.info(reply)
+              val pos = reply.indexOf("MD")
+              val measureList = HessenProtocol.decode(reply.drop(pos))
               for {
                 ma_ch <- measureList.zipWithIndex
                 measure = ma_ch._1
@@ -216,7 +218,7 @@ class VerewaF701Collector @Inject()
                 if (channel == 0) {
                   checkStatus(measure.status)
                   //Logger.debug(s"$mt, $measure.value, $collectorStatus")
-                  context.parent ! ReportData(List(MonitorTypeData(mt, measure.value, collectorStatus)))
+                  context.parent ! ReportData(List(MonitorTypeData(config.monitorType, measure.value, collectorStatus)))
                 }
 
                 checkErrorStatus(channel, measure.error)

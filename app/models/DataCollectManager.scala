@@ -3,6 +3,7 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports._
 import models.DataCollectManager.{calculateHourAvgMap, calculateMinAvgMap}
+import models.ForwardManager.{ForwardHour, ForwardHourRecord, ForwardMin, ForwardMinRecord}
 import models.ModelHelper._
 import org.mongodb.scala.result.UpdateResult
 import play.api._
@@ -83,7 +84,7 @@ case class WriteSignal(mtId: String, bit: Boolean)
 
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentOp,
-                                     monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, alarmOp: AlarmOp)() {
+                                     recordOp: RecordOp, alarmOp: AlarmOp)() {
   def startCollect(inst: Instrument) {
     manager ! StartInstrument(inst)
   }
@@ -195,8 +196,11 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         val mtDataList = calculateHourAvgMap(mtMap, alwaysValid)
         val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
         val f = recordOp.replaceRecord(recordList)(recordOp.HourCollection)
-        if (forward)
-          f map { _ => ForwardManager.forwardHourData }
+        if(forward)
+          f.andThen({
+            case _=>
+              manager ! ForwardHour
+          })
 
         f
       }
@@ -340,7 +344,8 @@ object DataCollectManager {
 class DataCollectManager @Inject()
 (config: Configuration, system: ActorSystem, recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp,
  dataCollectManagerOp: DataCollectManagerOp,
- instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmOp, instrumentOp: InstrumentOp, sysConfig: SysConfig) extends Actor with InjectedActorSupport {
+ instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmOp, instrumentOp: InstrumentOp,
+ sysConfig: SysConfig, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
   val storeSecondData = config.getBoolean("storeSecondData").getOrElse(false)
   Logger.info(s"store second data = $storeSecondData")
   val timer = {
@@ -356,6 +361,9 @@ class DataCollectManager @Inject()
   var digitalOutputOpt: Option[ActorRef] = None
   var onceTimer: Option[Cancellable] = None
   var signalTypeHandlerMap = Map.empty[String, Map[ActorRef, Boolean => Unit]]
+  val forwardManagerOpt =
+    for (serverConfig <- ForwardManager.getConfig(config)) yield
+      injectedChild(forwardManagerFactory(serverConfig.server, serverConfig.monitor), "forwardManager")
 
   def startReaders(): Unit = {
     SpectrumReader.start(config, system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
@@ -412,6 +420,24 @@ class DataCollectManager @Inject()
               restartList: Seq[String],
               signalTypeHandlerMap: Map[String, Map[ActorRef, Boolean => Unit]],
               signalDataMap: Map[String, (DateTime, Boolean)]): Receive = {
+    case ForwardHour =>
+      for(forwardManager<-forwardManagerOpt)
+        forwardManager ! ForwardHour
+
+    case ForwardMin =>
+      for(forwardManager<-forwardManagerOpt)
+        forwardManager ! ForwardMin
+
+    /*
+    case fhr: ForwardHourRecord=>
+      for(forwardManager<-forwardManagerOpt)
+        forwardManager !fhr
+
+    case fmr: ForwardMinRecord=>
+      for(forwardManager<-forwardManagerOpt)
+        forwardManager !fmr
+    */
+
     case StartInstrument(inst) =>
       if (!instrumentTypeOp.map.contains(inst.instType)) {
         Logger.error(s"${inst._id} of ${inst.instType} is unknown!")
@@ -638,7 +664,10 @@ class DataCollectManager @Inject()
         context become handler(instrumentMap, collectorInstrumentMap,
           latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap)
         val f = recordOp.upsertRecord(RecordList(currentMintues.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeID))(recordOp.MinCollection)
-        f map { _ => ForwardManager.forwardMinData }
+        f.andThen({
+          case Success(_)=>
+            self ! ForwardMin
+        })
         f
       }
 

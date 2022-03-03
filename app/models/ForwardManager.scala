@@ -1,72 +1,82 @@
 package models
+
 import akka.actor._
 import com.github.nscala_time.time.Imports._
-import play.api.Play.current
+import com.google.inject.assistedinject.Assisted
 import play.api._
-import play.api.libs.concurrent.Akka
 import play.api.libs.json._
+import play.api.libs.concurrent.InjectedActorSupport
 import play.api.libs.ws.WSClient
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
+import javax.inject.Inject
+import scala.concurrent.duration.{FiniteDuration, MINUTES, SECONDS}
 case class LatestRecordTime(time: Long)
 
+case class ForwardManagerConfig(server: String, monitor: String)
+
 object ForwardManager {
-  implicit val latestRecordTimeRead = Json.reads[LatestRecordTime]
+  implicit val latestRecordTimeRead: Reads[LatestRecordTime] = Json.reads[LatestRecordTime]
 
+  def getConfig(configuration: Configuration): Option[ForwardManagerConfig] = {
+    try {
+      for (serverConfig <- configuration.getConfig("server")
+           if serverConfig.getBoolean("enable").getOrElse(false)) yield {
+        val server = serverConfig.getString("host").getOrElse("localhost")
+        val monitor = serverConfig.getString("monitor").getOrElse("A01")
+        ForwardManagerConfig(server, monitor)
+      }
+    } catch {
+      case ex: Exception =>
+        Logger.error("failed to get server config", ex)
+        None
+    }
+  }
 
-  //val enable = serverConfig.getBoolean("enable").getOrElse(false)
+  trait Factory {
+    def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String): Actor
+  }
+
+  case class ForwardHourRecord(start: DateTime, end: DateTime)
+
+  case class ForwardMinRecord(start: DateTime, end: DateTime)
 
   case object ForwardHour
-  case class ForwardHourRecord(start: DateTime, end: DateTime)
+
   case object ForwardMin
-  case class ForwardMinRecord(start: DateTime, end: DateTime)
+
   case object ForwardCalibration
+
   case object ForwardAlarm
+
   case object ForwardInstrumentStatus
+
   case object UpdateInstrumentStatusType
+
   case object GetInstrumentCmd
 
   var managerOpt: Option[ActorRef] = None
   var count = 0
 
   def updateInstrumentStatusType = {
-    managerOpt map { _ ! UpdateInstrumentStatusType }
-  }
+    managerOpt map {
+      _ ! UpdateInstrumentStatusType
+    }
 
-  def forwardHourData = {
-    managerOpt map { _ ! ForwardHour }
   }
-
-  def forwardHourRecord(start: DateTime, end: DateTime) = {
-    managerOpt map { _ ! ForwardHourRecord(start, end) }
-  }
-
-  def forwardMinData = {
-    managerOpt map { _ ! ForwardMin }
-  }
-
-  def forwardMinRecord(start: DateTime, end: DateTime) = {
-    managerOpt map { _ ! ForwardMinRecord(start, end) }
-  }
-
 }
 
-import javax.inject._
-class ForwardManager @Inject()
-(system: ActorSystem, dataCollectManagerOp: DataCollectManagerOp, ws: WSClient, configuration: Configuration)
-() extends Actor {
-  import ForwardManager._
-  val serverConfig = configuration.getConfig("server").getOrElse(Configuration.empty)
-  val server = serverConfig.getString("host").getOrElse("localhost")
-  val monitor = serverConfig.getString("monitor").getOrElse("A01")
-  Logger.info(s"create forwarder to $server/$monitor")
+class ForwardManager @Inject()(ws:WSClient,
+                                hourRecordForwarderFactory: HourRecordForwarder.Factory,
+                               minRecordForwarderFactory: MinRecordForwarder.Factory)
+                                (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor with InjectedActorSupport {
+    import ForwardManager._
 
-  val hourRecordForwarder = context.actorOf(Props(classOf[HourRecordForwarder], server, monitor),
-    "hourForwarder")
+    Logger.info(s"create forwarder to $server/$monitor")
 
-  val minRecordForwarder = context.actorOf(Props(classOf[MinRecordForwarder], server, monitor),
-    "minForwarder")
+    val hourRecordForwarder: ActorRef = injectedChild(hourRecordForwarderFactory(server, monitor), "hourForwarder")
+
+    val minRecordForwarder: ActorRef = injectedChild(minRecordForwarderFactory(server, monitor), "minForwarder")
+
 
   val calibrationForwarder = context.actorOf(Props(classOf[CalibrationForwarder], server, monitor),
     "calibrationForwarder")
@@ -81,29 +91,29 @@ class ForwardManager @Inject()
     "statusTypeForwarder")
 
   {
-    import scala.concurrent.duration._
-
-    system.scheduler.scheduleOnce(Duration(30, SECONDS), statusTypeForwarder, UpdateInstrumentStatusType)
+    import context.dispatcher
+    context.system.scheduler.scheduleOnce(FiniteDuration(30, SECONDS), statusTypeForwarder, UpdateInstrumentStatusType)
   }
 
   val timer = {
-    import scala.concurrent.duration._
-    system.scheduler.schedule(Duration(30, SECONDS), Duration(10, MINUTES), instrumentStatusForwarder, ForwardInstrumentStatus)
+    import context.dispatcher
+    context.system.scheduler.schedule(FiniteDuration(30, SECONDS), FiniteDuration(10, MINUTES), instrumentStatusForwarder, ForwardInstrumentStatus)
   }
 
   val timer2 = {
-    import scala.concurrent.duration._
-    system.scheduler.schedule(Duration(30, SECONDS), Duration(5, MINUTES), calibrationForwarder, ForwardCalibration)
+    import context.dispatcher
+    context.system.scheduler.schedule(FiniteDuration(30, SECONDS), FiniteDuration(5, MINUTES), calibrationForwarder, ForwardCalibration)
   }
 
   val timer3 = {
     import scala.concurrent.duration._
-    system.scheduler.schedule(Duration(30, SECONDS), Duration(3, MINUTES), alarmForwarder, ForwardAlarm)
+    import context.dispatcher
+    context.system.scheduler.schedule(FiniteDuration(30, SECONDS), FiniteDuration(3, MINUTES), alarmForwarder, ForwardAlarm)
   }
 
   val timer4 = {
-    import scala.concurrent.duration._
-    system.scheduler.scheduleOnce(Duration(3, SECONDS), self, GetInstrumentCmd)
+    import context.dispatcher
+    context.system.scheduler.scheduleOnce(FiniteDuration(3, SECONDS), self, GetInstrumentCmd)
   }
 
   def receive = handler
@@ -133,6 +143,7 @@ class ForwardManager @Inject()
     case UpdateInstrumentStatusType =>
       statusTypeForwarder ! UpdateInstrumentStatusType
 
+      /*
     case GetInstrumentCmd =>
       val url = s"http://$server/InstrumentCmd/$monitor"
       val f = ws.url(url).get().map {
@@ -175,7 +186,7 @@ class ForwardManager @Inject()
           import scala.concurrent.duration._
           system.scheduler.scheduleOnce(Duration(10, SECONDS), self, GetInstrumentCmd)
         }
-      }            
+      } */
   }
 
   override def postStop(): Unit = {
