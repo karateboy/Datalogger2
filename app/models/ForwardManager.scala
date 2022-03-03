@@ -67,27 +67,28 @@ object ForwardManager {
 
 class ForwardManager @Inject()(ws:WSClient,
                                 hourRecordForwarderFactory: HourRecordForwarder.Factory,
-                               minRecordForwarderFactory: MinRecordForwarder.Factory)
+                               minRecordForwarderFactory: MinRecordForwarder.Factory,
+                               calibrationForwarderFactory: CalibrationForwarder.Factory,
+                               alarmForwarderFactory: AlarmForwarder.Factory,
+                               instrumentStatusForwarderFactory: InstrumentStatusForwarder.Factory,
+                               instrumentStatusTypeForwarderFactory: InstrumentStatusTypeForwarder.Factory)
                                 (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor with InjectedActorSupport {
     import ForwardManager._
 
     Logger.info(s"create forwarder to $server/$monitor")
 
-    val hourRecordForwarder: ActorRef = injectedChild(hourRecordForwarderFactory(server, monitor), "hourForwarder")
+    val hourRecordForwarder = injectedChild(hourRecordForwarderFactory(server, monitor), "hourForwarder")
 
-    val minRecordForwarder: ActorRef = injectedChild(minRecordForwarderFactory(server, monitor), "minForwarder")
+    val minRecordForwarder = injectedChild(minRecordForwarderFactory(server, monitor), "minForwarder")
 
+  val calibrationForwarder = injectedChild(calibrationForwarderFactory(server, monitor), "calibrationForwarder")
 
-  val calibrationForwarder = context.actorOf(Props(classOf[CalibrationForwarder], server, monitor),
-    "calibrationForwarder")
+  val alarmForwarder = injectedChild(alarmForwarderFactory(server, monitor), "alarmForwarder")
 
-  val alarmForwarder = context.actorOf(Props(classOf[AlarmForwarder], server, monitor),
-    "alarmForwarder")
-
-  val instrumentStatusForwarder = context.actorOf(Props(classOf[InstrumentStatusForwarder], server, monitor),
+  val instrumentStatusForwarder = injectedChild(instrumentStatusForwarderFactory(server, monitor),
     "instrumentStatusForwarder")
 
-  val statusTypeForwarder = context.actorOf(Props(classOf[InstrumentStatusTypeForwarder], server, monitor),
+  val statusTypeForwarder = injectedChild(instrumentStatusTypeForwarderFactory(server, monitor),
     "statusTypeForwarder")
 
   {
@@ -116,8 +117,7 @@ class ForwardManager @Inject()(ws:WSClient,
     context.system.scheduler.scheduleOnce(FiniteDuration(3, SECONDS), self, GetInstrumentCmd)
   }
 
-  def receive = handler
-  def handler: Receive = {
+  def receive =  {
     case ForwardHour =>
       hourRecordForwarder ! ForwardHour
 

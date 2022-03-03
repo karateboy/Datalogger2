@@ -1,5 +1,6 @@
 package models
 import akka.actor.{Actor, actorRef2Scala}
+import com.google.inject.assistedinject.Assisted
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.{WS, WSClient}
@@ -8,7 +9,11 @@ import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 case class InstrumentStatusTypeMap(instrumentId: String, statusTypeSeq: Seq[InstrumentStatusType])
-
+object InstrumentStatusTypeForwarder {
+  trait Factory {
+    def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String): Actor
+  }
+}
 class InstrumentStatusTypeForwarder @Inject()
 (instrumentOp: InstrumentOp, ws:WSClient)
 (server: String, monitor: String) extends Actor {

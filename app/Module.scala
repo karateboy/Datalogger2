@@ -50,6 +50,10 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bindActorFactory[ForwardManager, ForwardManager.Factory]
     bindActorFactory[HourRecordForwarder, HourRecordForwarder.Factory]
     bindActorFactory[MinRecordForwarder, MinRecordForwarder.Factory]
+    bindActorFactory[CalibrationForwarder, CalibrationForwarder.Factory]
+    bindActorFactory[AlarmForwarder, AlarmForwarder.Factory]
+    bindActorFactory[InstrumentStatusForwarder, InstrumentStatusForwarder.Factory]
+    bindActorFactory[InstrumentStatusTypeForwarder, InstrumentStatusTypeForwarder.Factory]
 
     //bind(classOf[ForwardManager])
     // Use the system clock as the default implementation of Clock

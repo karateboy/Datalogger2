@@ -59,7 +59,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordOp)
 
     for (record <- recordFuture) {
       import recordOp.recordListWrite
-      if (!record.isEmpty) {
+      if (record.nonEmpty) {
         val url = s"http://$server/MinRecord/$monitor"
         val f = ws.url(url).put(Json.toJson(record))
 
