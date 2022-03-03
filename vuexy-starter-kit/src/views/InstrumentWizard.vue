@@ -210,6 +210,11 @@
             :param-str="form.param"
             @param-changed="onParamChange"
           />
+          <verewa-config
+            v-else-if="form.instType === 'VEREWA_F701'"
+            :param-str="form.param"
+            @param-changed="onParamChange"
+          />
           <div v-else>TBD {{ form.instType }}</div>
         </validation-observer>
       </tab-content>
@@ -247,6 +252,7 @@ import AkConfigPage from './AkConfigPage.vue';
 import Adam4000ConfigPage from './Adam4000ConfigPage.vue';
 import MoxaE1212ConfigPage from './Moxa1212ConfigPage.vue';
 import MoxaE1240ConfigPage from './MoxaE1240ConfigPage.vue';
+import VerewaConfig from './VerewaConfig.vue';
 
 interface ProtocolParam {
   protocol: 'tcp' | 'serial' | undefined;
@@ -290,6 +296,7 @@ export default Vue.extend({
     Adam4000ConfigPage,
     MoxaE1212ConfigPage,
     MoxaE1240ConfigPage,
+    VerewaConfig,
   },
   props: {
     isNew: {
