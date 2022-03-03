@@ -4,18 +4,21 @@ import akka.actor._
 import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
 import play.api._
-import play.api.libs.json._
 import play.api.libs.concurrent.InjectedActorSupport
+import play.api.libs.json._
 import play.api.libs.ws.WSClient
 
 import javax.inject.Inject
 import scala.concurrent.duration.{FiniteDuration, MINUTES, SECONDS}
+
 case class LatestRecordTime(time: Long)
 
 case class ForwardManagerConfig(server: String, monitor: String)
 
 object ForwardManager {
   implicit val latestRecordTimeRead: Reads[LatestRecordTime] = Json.reads[LatestRecordTime]
+  var managerOpt: Option[ActorRef] = None
+  var count = 0
 
   def getConfig(configuration: Configuration): Option[ForwardManagerConfig] = {
     try {
@@ -30,6 +33,13 @@ object ForwardManager {
         Logger.error("failed to get server config", ex)
         None
     }
+  }
+
+  def updateInstrumentStatusType = {
+    managerOpt map {
+      _ ! UpdateInstrumentStatusType
+    }
+
   }
 
   trait Factory {
@@ -53,33 +63,24 @@ object ForwardManager {
   case object UpdateInstrumentStatusType
 
   case object GetInstrumentCmd
-
-  var managerOpt: Option[ActorRef] = None
-  var count = 0
-
-  def updateInstrumentStatusType = {
-    managerOpt map {
-      _ ! UpdateInstrumentStatusType
-    }
-
-  }
 }
 
-class ForwardManager @Inject()(ws:WSClient,
-                                hourRecordForwarderFactory: HourRecordForwarder.Factory,
+class ForwardManager @Inject()(ws: WSClient,
+                               hourRecordForwarderFactory: HourRecordForwarder.Factory,
                                minRecordForwarderFactory: MinRecordForwarder.Factory,
                                calibrationForwarderFactory: CalibrationForwarder.Factory,
                                alarmForwarderFactory: AlarmForwarder.Factory,
                                instrumentStatusForwarderFactory: InstrumentStatusForwarder.Factory,
                                instrumentStatusTypeForwarderFactory: InstrumentStatusTypeForwarder.Factory)
-                                (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor with InjectedActorSupport {
-    import ForwardManager._
+                              (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor with InjectedActorSupport {
 
-    Logger.info(s"create forwarder to $server/$monitor")
+  import ForwardManager._
 
-    val hourRecordForwarder = injectedChild(hourRecordForwarderFactory(server, monitor), "hourForwarder")
+  Logger.info(s"create forwarder to $server/$monitor")
 
-    val minRecordForwarder = injectedChild(minRecordForwarderFactory(server, monitor), "minForwarder")
+  val hourRecordForwarder = injectedChild(hourRecordForwarderFactory(server, monitor), "hourForwarder")
+
+  val minRecordForwarder = injectedChild(minRecordForwarderFactory(server, monitor), "minForwarder")
 
   val calibrationForwarder = injectedChild(calibrationForwarderFactory(server, monitor), "calibrationForwarder")
 
@@ -107,8 +108,9 @@ class ForwardManager @Inject()(ws:WSClient,
   }
 
   val timer3 = {
-    import scala.concurrent.duration._
     import context.dispatcher
+
+    import scala.concurrent.duration._
     context.system.scheduler.schedule(FiniteDuration(30, SECONDS), FiniteDuration(3, MINUTES), alarmForwarder, ForwardAlarm)
   }
 
@@ -117,7 +119,7 @@ class ForwardManager @Inject()(ws:WSClient,
     context.system.scheduler.scheduleOnce(FiniteDuration(3, SECONDS), self, GetInstrumentCmd)
   }
 
-  def receive =  {
+  def receive = {
     case ForwardHour =>
       hourRecordForwarder ! ForwardHour
 
@@ -143,50 +145,50 @@ class ForwardManager @Inject()(ws:WSClient,
     case UpdateInstrumentStatusType =>
       statusTypeForwarder ! UpdateInstrumentStatusType
 
-      /*
-    case GetInstrumentCmd =>
-      val url = s"http://$server/InstrumentCmd/$monitor"
-      val f = ws.url(url).get().map {
-        response =>
+    /*
+  case GetInstrumentCmd =>
+    val url = s"http://$server/InstrumentCmd/$monitor"
+    val f = ws.url(url).get().map {
+      response =>
 
-          val result = response.json.validate[Seq[InstrumentCommand]]
-          result.fold(
-            error => {
-              Logger.error(JsError.toJson(error).toString())
-            },
-            cmdSeq => {
-              if (!cmdSeq.isEmpty) {
-                Logger.info("receive cmd from server=>")
-                Logger.info(cmdSeq.toString())
-                for (cmd <- cmdSeq) {
-                  cmd.cmd match {
-                    case InstrumentCommand.AutoCalibration.cmd =>
-                      dataCollectManagerOp.autoCalibration(cmd.instId)
+        val result = response.json.validate[Seq[InstrumentCommand]]
+        result.fold(
+          error => {
+            Logger.error(JsError.toJson(error).toString())
+          },
+          cmdSeq => {
+            if (!cmdSeq.isEmpty) {
+              Logger.info("receive cmd from server=>")
+              Logger.info(cmdSeq.toString())
+              for (cmd <- cmdSeq) {
+                cmd.cmd match {
+                  case InstrumentCommand.AutoCalibration.cmd =>
+                    dataCollectManagerOp.autoCalibration(cmd.instId)
 
-                    case InstrumentCommand.ManualZeroCalibration.cmd =>
-                      dataCollectManagerOp.zeroCalibration(cmd.instId)
+                  case InstrumentCommand.ManualZeroCalibration.cmd =>
+                    dataCollectManagerOp.zeroCalibration(cmd.instId)
 
-                    case InstrumentCommand.ManualSpanCalibration.cmd =>
-                      dataCollectManagerOp.spanCalibration(cmd.instId)
+                  case InstrumentCommand.ManualSpanCalibration.cmd =>
+                    dataCollectManagerOp.spanCalibration(cmd.instId)
 
-                    case InstrumentCommand.BackToNormal.cmd =>
-                      dataCollectManagerOp.setInstrumentState(cmd.instId, MonitorStatus.NormalStat)
-                  }
+                  case InstrumentCommand.BackToNormal.cmd =>
+                    dataCollectManagerOp.setInstrumentState(cmd.instId, MonitorStatus.NormalStat)
                 }
               }
-            })
-            
+            }
+          })
+
+    }
+    f onFailure {
+      case ex: Throwable =>
+        ModelHelper.logException(ex)
+    }
+    f onComplete { x =>
+      {
+        import scala.concurrent.duration._
+        system.scheduler.scheduleOnce(Duration(10, SECONDS), self, GetInstrumentCmd)
       }
-      f onFailure {
-        case ex: Throwable =>
-          ModelHelper.logException(ex)
-      }
-      f onComplete { x =>
-        {
-          import scala.concurrent.duration._
-          system.scheduler.scheduleOnce(Duration(10, SECONDS), self, GetInstrumentCmd)
-        }
-      } */
+    } */
   }
 
   override def postStop(): Unit = {

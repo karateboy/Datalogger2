@@ -15,9 +15,11 @@ object InstrumentStatusForwarder{
   }
 }
 
-class InstrumentStatusForwarder @Inject()(ws:WSClient, instrumentStatusOp: InstrumentStatusOp)(server: String, monitor: String) extends Actor {
+class InstrumentStatusForwarder @Inject()(ws:WSClient, instrumentStatusOp: InstrumentStatusOp)
+                                         (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
   import ForwardManager._
-  self ! ForwardInstrumentStatus
+  Logger.info(s"InstrumentStatusForwarder started $server/$monitor")
+
   def receive = handler(None)
   def checkLatest = {
     val url = s"http://$server/InstrumentStatusRange/$monitor"

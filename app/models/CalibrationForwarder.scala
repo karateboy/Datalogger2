@@ -15,10 +15,12 @@ object CalibrationForwarder {
     def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String): Actor
   }
 }
-class CalibrationForwarder @Inject()(ws:WSClient, calibrationOp: CalibrationOp)(server: String, monitor: String) extends Actor {
+
+class CalibrationForwarder @Inject()(ws:WSClient, calibrationOp: CalibrationOp)
+                                    (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
   import ForwardManager._
 
-  self ! ForwardCalibration
+  Logger.info(s"CalibrationForwarder started $server/$monitor")
 
   def receive = handler(None)
 
