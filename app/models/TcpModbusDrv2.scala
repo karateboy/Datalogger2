@@ -32,10 +32,14 @@ case class DataReg(monitorType: String, address: Int, multiplier: Float)
 
 case class CalibrationReg(zeroAddress: Int, spanAddress: Int)
 
+case class FilterRule(monitorType:String, min:Double, max:Double)
+
 case class TcpModelReg(dataRegs: List[DataReg], calibrationReg: Option[CalibrationReg],
                        inputRegs: List[InputReg], holdingRegs: List[HoldingReg],
                        modeRegs: List[DiscreteInputReg], warnRegs: List[DiscreteInputReg],
-                       coilRegs: List[CoilReg], mulitipler: Float = 1, byteSwapMode:Int = DataType.FOUR_BYTE_FLOAT)
+                       coilRegs: List[CoilReg], multiplier: Float = 1, byteSwapMode:Int = DataType.FOUR_BYTE_FLOAT,
+                       filterRules: Seq[FilterRule] = Seq.empty[FilterRule])
+
 
 case class TcpModbusDeviceModel(id: String, description: String, tcpModelReg: TcpModelReg, protocols: Seq[Protocol.Value])
 
@@ -70,7 +74,7 @@ object TcpModbusDrv2 {
         Seq(Protocol.tcp)
     }
 
-    val mulitipler: Float = try {
+    val multiplier: Float = try {
       driverConfig.getDouble("multiplier").toFloat
     } catch {
       case _: Throwable =>
@@ -174,10 +178,25 @@ object TcpModbusDrv2 {
       }
     }
 
+    val filterRules: Seq[FilterRule] = {
+      try{
+        val filterRules = driverConfig.getAnyRefList(s"Filter")
+        for {
+          i <- 0 to filterRules.size() - 1
+          rule = filterRules.get(i)
+          v = rule.asInstanceOf[ArrayList[Any]]
+        } yield {
+          FilterRule(v.get(0).asInstanceOf[String], v.get(1).asInstanceOf[Double], v.get(2).asInstanceOf[Double])
+        }
+      } catch {
+        case _: Throwable =>
+          Seq.empty[FilterRule]
+      }
+    }
     TcpModbusDeviceModel(id = id, description = description, protocols = protocols,
       tcpModelReg = TcpModelReg(dataRegList.toList, calibrationReg, inputRegList.toList,
         holdingRegList.toList, modeRegList.toList, warnRegList.toList, coilRegList.toList,
-        mulitipler, byteSwapMode = byteSwapMode))
+        multiplier, byteSwapMode = byteSwapMode, filterRules = filterRules))
   }
 
   trait Factory {

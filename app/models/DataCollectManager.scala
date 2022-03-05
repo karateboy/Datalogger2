@@ -3,7 +3,7 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports._
 import models.DataCollectManager.{calculateHourAvgMap, calculateMinAvgMap}
-import models.ForwardManager.{ForwardHour, ForwardHourRecord, ForwardMin, ForwardMinRecord}
+import models.ForwardManager.{ForwardHour, ForwardMin}
 import models.ModelHelper._
 import org.mongodb.scala.result.UpdateResult
 import play.api._
@@ -43,6 +43,8 @@ case class ExecuteSeq(seqName: String, on: Boolean)
 case object PurgeSeq
 
 case object CalculateData
+
+case object AutoSetState
 
 case class AutoCalibration(instId: String)
 
@@ -196,9 +198,9 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         val mtDataList = calculateHourAvgMap(mtMap, alwaysValid)
         val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
         val f = recordOp.replaceRecord(recordList)(recordOp.HourCollection)
-        if(forward)
+        if (forward)
           f.andThen({
-            case _=>
+            case _ =>
               manager ! ForwardHour
           })
 
@@ -353,17 +355,28 @@ class DataCollectManager @Inject()
     //Try to trigger at 30 sec
     val next30 = DateTime.now().withSecondOfMinute(30).plusMinutes(1)
     val postSeconds = new org.joda.time.Duration(DateTime.now, next30).getStandardSeconds
-    system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
+    context.system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
   }
 
+  val autoStateConfigOpt: Option[Seq[AutoStateConfig]] = AutoState.getConfig(config)
+  val autoStateTimerOpt: Option[Cancellable] =
+    if (autoStateConfigOpt.nonEmpty) {
+      import scala.concurrent.duration._
+      //Try to trigger at 30 sec
+      val next = DateTime.now().withSecondOfMinute(0).plusMinutes(1)
+      val postSeconds = new org.joda.time.Duration(DateTime.now, next).getStandardSeconds
+      Some(context.system.scheduler.schedule(FiniteDuration(postSeconds, SECONDS), Duration(1, MINUTES), self, AutoState))
+    } else
+      None
+
   startReaders()
+  val forwardManagerOpt =
+    for (serverConfig <- ForwardManager.getConfig(config)) yield
+      injectedChild(forwardManagerFactory(serverConfig.server, serverConfig.monitor), "forwardManager")
   var calibratorOpt: Option[ActorRef] = None
   var digitalOutputOpt: Option[ActorRef] = None
   var onceTimer: Option[Cancellable] = None
   var signalTypeHandlerMap = Map.empty[String, Map[ActorRef, Boolean => Unit]]
-  val forwardManagerOpt =
-    for (serverConfig <- ForwardManager.getConfig(config)) yield
-      injectedChild(forwardManagerFactory(serverConfig.server, serverConfig.monitor), "forwardManager")
 
   def startReaders(): Unit = {
     SpectrumReader.start(config, system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
@@ -379,10 +392,6 @@ class DataCollectManager @Inject()
           self ! StartInstrument(inst)
     }
     Logger.info("DataCollect manager started")
-  }
-
-  def evtOperationHighThreshold {
-    alarmOp.log(alarmOp.Src(), alarmOp.Level.INFO, "進行高值觸發事件行動..")
   }
 
   def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord]) = {
@@ -421,11 +430,11 @@ class DataCollectManager @Inject()
               signalTypeHandlerMap: Map[String, Map[ActorRef, Boolean => Unit]],
               signalDataMap: Map[String, (DateTime, Boolean)]): Receive = {
     case ForwardHour =>
-      for(forwardManager<-forwardManagerOpt)
+      for (forwardManager <- forwardManagerOpt)
         forwardManager ! ForwardHour
 
     case ForwardMin =>
-      for(forwardManager<-forwardManagerOpt)
+      for (forwardManager <- forwardManagerOpt)
         forwardManager ! ForwardMin
 
     /*
@@ -437,6 +446,15 @@ class DataCollectManager @Inject()
       for(forwardManager<-forwardManagerOpt)
         forwardManager !fmr
     */
+
+    case AutoState =>
+      for (autoStateConfigs <- autoStateConfigOpt)
+        autoStateConfigs.foreach(config=>{
+          if(config.period == "Hour" && config.time.toInt == DateTime.now().getMinuteOfHour){
+            Logger.info(s"AutoState=>$config")
+            self ! SetState(config.instID, config.state)
+          }
+        })
 
     case StartInstrument(inst) =>
       if (!instrumentTypeOp.map.contains(inst.instType)) {
@@ -665,7 +683,7 @@ class DataCollectManager @Inject()
           latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap)
         val f = recordOp.upsertRecord(RecordList(currentMintues.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeID))(recordOp.MinCollection)
         f.andThen({
-          case Success(_)=>
+          case Success(_) =>
             self ! ForwardMin
         })
         f
@@ -688,6 +706,7 @@ class DataCollectManager @Inject()
     }
 
     case SetState(instId, state) =>
+      Logger.info(s"SetState($instId, $state)")
       instrumentMap.get(instId).map { param =>
         param.actor ! SetState(instId, state)
       }
@@ -814,6 +833,7 @@ class DataCollectManager @Inject()
 
   override def postStop(): Unit = {
     timer.cancel()
+    autoStateTimerOpt.map(_.cancel())
     onceTimer map {
       _.cancel()
     }
