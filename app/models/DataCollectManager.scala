@@ -3,6 +3,7 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports._
 import models.DataCollectManager.{calculateHourAvgMap, calculateMinAvgMap}
+import models.ForwardManager.{ForwardHour, ForwardMin}
 import models.ModelHelper._
 import org.mongodb.scala.result.UpdateResult
 import play.api._
@@ -42,6 +43,8 @@ case class ExecuteSeq(seqName: String, on: Boolean)
 case object PurgeSeq
 
 case object CalculateData
+
+case object AutoSetState
 
 case class AutoCalibration(instId: String)
 
@@ -83,7 +86,7 @@ case class WriteSignal(mtId: String, bit: Boolean)
 
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentOp,
-                                     monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, alarmOp: AlarmOp)() {
+                                     recordOp: RecordOp, alarmOp: AlarmOp)() {
   def startCollect(inst: Instrument) {
     manager ! StartInstrument(inst)
   }
@@ -196,7 +199,10 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
         val f = recordOp.replaceRecord(recordList)(recordOp.HourCollection)
         if (forward)
-          f map { _ => ForwardManager.forwardHourData }
+          f.andThen({
+            case _ =>
+              manager ! ForwardHour
+          })
 
         f
       }
@@ -340,7 +346,8 @@ object DataCollectManager {
 class DataCollectManager @Inject()
 (config: Configuration, system: ActorSystem, recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp,
  dataCollectManagerOp: DataCollectManagerOp,
- instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmOp, instrumentOp: InstrumentOp, sysConfig: SysConfig) extends Actor with InjectedActorSupport {
+ instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmOp, instrumentOp: InstrumentOp,
+ sysConfig: SysConfig, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
   val storeSecondData = config.getBoolean("storeSecondData").getOrElse(false)
   Logger.info(s"store second data = $storeSecondData")
   val timer = {
@@ -348,10 +355,24 @@ class DataCollectManager @Inject()
     //Try to trigger at 30 sec
     val next30 = DateTime.now().withSecondOfMinute(30).plusMinutes(1)
     val postSeconds = new org.joda.time.Duration(DateTime.now, next30).getStandardSeconds
-    system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
+    context.system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
   }
 
+  val autoStateConfigOpt: Option[Seq[AutoStateConfig]] = AutoState.getConfig(config)
+  val autoStateTimerOpt: Option[Cancellable] =
+    if (autoStateConfigOpt.nonEmpty) {
+      import scala.concurrent.duration._
+      //Try to trigger at 30 sec
+      val next = DateTime.now().withSecondOfMinute(0).plusMinutes(1)
+      val postSeconds = new org.joda.time.Duration(DateTime.now, next).getStandardSeconds
+      Some(context.system.scheduler.schedule(FiniteDuration(postSeconds, SECONDS), Duration(1, MINUTES), self, AutoState))
+    } else
+      None
+
   startReaders()
+  val forwardManagerOpt =
+    for (serverConfig <- ForwardManager.getConfig(config)) yield
+      injectedChild(forwardManagerFactory(serverConfig.server, serverConfig.monitor), "forwardManager")
   var calibratorOpt: Option[ActorRef] = None
   var digitalOutputOpt: Option[ActorRef] = None
   var onceTimer: Option[Cancellable] = None
@@ -371,10 +392,6 @@ class DataCollectManager @Inject()
           self ! StartInstrument(inst)
     }
     Logger.info("DataCollect manager started")
-  }
-
-  def evtOperationHighThreshold {
-    alarmOp.log(alarmOp.Src(), alarmOp.Level.INFO, "進行高值觸發事件行動..")
   }
 
   def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord]) = {
@@ -412,6 +429,33 @@ class DataCollectManager @Inject()
               restartList: Seq[String],
               signalTypeHandlerMap: Map[String, Map[ActorRef, Boolean => Unit]],
               signalDataMap: Map[String, (DateTime, Boolean)]): Receive = {
+    case ForwardHour =>
+      for (forwardManager <- forwardManagerOpt)
+        forwardManager ! ForwardHour
+
+    case ForwardMin =>
+      for (forwardManager <- forwardManagerOpt)
+        forwardManager ! ForwardMin
+
+    /*
+    case fhr: ForwardHourRecord=>
+      for(forwardManager<-forwardManagerOpt)
+        forwardManager !fhr
+
+    case fmr: ForwardMinRecord=>
+      for(forwardManager<-forwardManagerOpt)
+        forwardManager !fmr
+    */
+
+    case AutoState =>
+      for (autoStateConfigs <- autoStateConfigOpt)
+        autoStateConfigs.foreach(config=>{
+          if(config.period == "Hour" && config.time.toInt == DateTime.now().getMinuteOfHour){
+            Logger.info(s"AutoState=>$config")
+            self ! SetState(config.instID, config.state)
+          }
+        })
+
     case StartInstrument(inst) =>
       if (!instrumentTypeOp.map.contains(inst.instType)) {
         Logger.error(s"${inst._id} of ${inst.instType} is unknown!")
@@ -638,7 +682,10 @@ class DataCollectManager @Inject()
         context become handler(instrumentMap, collectorInstrumentMap,
           latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap)
         val f = recordOp.upsertRecord(RecordList(currentMintues.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeID))(recordOp.MinCollection)
-        f map { _ => ForwardManager.forwardMinData }
+        f.andThen({
+          case Success(_) =>
+            self ! ForwardMin
+        })
         f
       }
 
@@ -659,6 +706,7 @@ class DataCollectManager @Inject()
     }
 
     case SetState(instId, state) =>
+      Logger.info(s"SetState($instId, $state)")
       instrumentMap.get(instId).map { param =>
         param.actor ! SetState(instId, state)
       }
@@ -785,6 +833,7 @@ class DataCollectManager @Inject()
 
   override def postStop(): Unit = {
     timer.cancel()
+    autoStateTimerOpt.map(_.cancel())
     onceTimer map {
       _.cancel()
     }

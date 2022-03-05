@@ -2,6 +2,7 @@ package models
 
 import akka.actor.Actor
 import com.github.nscala_time.time.Imports._
+import com.google.inject.assistedinject.Assisted
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
@@ -9,9 +10,21 @@ import play.api.libs.ws.WSClient
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class AlarmForwarder @Inject()(alarmOp: AlarmOp, ws: WSClient)(server: String, monitor: String) extends Actor {
+object AlarmForwarder {
+  trait Factory {
+    def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String): Actor
+  }
+}
+
+class AlarmForwarder @Inject()(alarmOp: AlarmOp, ws: WSClient)
+  (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
+
   import ForwardManager._
+
+  Logger.info(s"AlarmForwarder started $server/$monitor")
+
   def receive = handler(None)
+
   def checkLatest = {
     val url = s"http://$server/AlarmRecordRange/$monitor"
     val f = ws.url(url).get().map {
@@ -44,7 +57,9 @@ class AlarmForwarder @Inject()(alarmOp: AlarmOp, ws: WSClient)(server: String, m
     val recordFuture = alarmOp.getAlarmsFuture(new DateTime(latestAlarm + 1), DateTime.now)
     for (records <- recordFuture) {
       if (!records.isEmpty) {
-        val recordJSON = records.map { _.toJson }
+        val recordJSON = records.map {
+          _.toJson
+        }
         val url = s"http://$server/AlarmRecord/$monitor"
         import alarmOp.jsonWrite
         val f = ws.url(url).put(Json.toJson(recordJSON))

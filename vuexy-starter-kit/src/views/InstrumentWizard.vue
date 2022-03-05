@@ -199,6 +199,22 @@
             :param-str="form.param"
             @param-changed="onParamChange"
           />
+          <moxa-e-1212-config-page
+            v-else-if="form.instType === 'moxaE1212'"
+            :param-str="form.param"
+            @param-changed="onParamChange"
+          >
+          </moxa-e-1212-config-page>
+          <moxa-e-1240-config-page
+            v-else-if="form.instType === 'moxaE1240'"
+            :param-str="form.param"
+            @param-changed="onParamChange"
+          />
+          <verewa-config
+            v-else-if="form.instType === 'VEREWA_F701'"
+            :param-str="form.param"
+            @param-changed="onParamChange"
+          />
           <div v-else>TBD {{ form.instType }}</div>
         </validation-observer>
       </tab-content>
@@ -234,6 +250,9 @@ import DuoConfig2 from './DuoConfig2.vue';
 import { TextStrValue } from './types';
 import AkConfigPage from './AkConfigPage.vue';
 import Adam4000ConfigPage from './Adam4000ConfigPage.vue';
+import MoxaE1212ConfigPage from './Moxa1212ConfigPage.vue';
+import MoxaE1240ConfigPage from './MoxaE1240ConfigPage.vue';
+import VerewaConfig from './VerewaConfig.vue';
 
 interface ProtocolParam {
   protocol: 'tcp' | 'serial' | undefined;
@@ -275,6 +294,9 @@ export default Vue.extend({
     DuoConfig2,
     AkConfigPage,
     Adam4000ConfigPage,
+    MoxaE1212ConfigPage,
+    MoxaE1240ConfigPage,
+    VerewaConfig,
   },
   props: {
     isNew: {
@@ -363,7 +385,7 @@ export default Vue.extend({
         't400',
         'baseline9000',
         'horiba370',
-        'picarroG2401',        
+        'picarroG2401',
       ];
       for (const t of types) {
         if (this.form.instType === t) return true;

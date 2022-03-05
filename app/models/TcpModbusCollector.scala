@@ -156,7 +156,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
         idx = st_idx._2
       } yield{
         try{
-          (st_idx._1, results.getFloatValue(idx).toFloat * modelReg.mulitipler)
+          (st_idx._1, results.getFloatValue(idx).toFloat * modelReg.multiplier)
         }catch{
           case ex:Exception=>
             Logger.error(s"failed at ${idx}")
@@ -684,30 +684,22 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
   }
 
   def getDataRegValue(regValue: ModelRegValue)(addr: Int): Option[(InstrumentStatusType, Float)] = {
-    val dataReg = (regValue.inputRegs ++ regValue.holdingRegs).find(r_idx => r_idx._1.addr == addr)
+    val dataRegOpt = (regValue.inputRegs ++ regValue.holdingRegs).find(r_idx => r_idx._1.addr == addr)
 
-    if (dataReg.isEmpty) {
-      Logger.warn("Cannot found Data register!")
-      None
-    } else
-      Some(dataReg.get)
-  }
-
-  def findDataRegIdx(regValue: ModelRegValue)(addr: Int) = {
-    val dataReg = (regValue.inputRegs ++ regValue.holdingRegs).find(r_idx => r_idx._1.addr == addr)
-
-    if (dataReg.isEmpty) {
-      Logger.warn("Cannot found Data register!")
-      None
-    } else
-      Some(dataReg.get._2)
+    for(dataReg<-dataRegOpt) yield
+      dataReg
   }
 
   def reportData(regValue: ModelRegValue) = {
     val optValues: Seq[Option[(String, (InstrumentStatusType, Float))]] = {
       for (dataReg <- modelReg.dataRegs) yield {
-        for (rawValue <- getDataRegValue(regValue)(dataReg.address)) yield
-          (dataReg.monitorType, (rawValue._1, rawValue._2 * dataReg.multiplier))
+        def passFilter(v:Double) =
+          modelReg.filterRules.forall(rule=> rule.monitorType == dataReg.monitorType
+            && rule.min < v && rule.max > v)
+
+        for {rawValue <- getDataRegValue(regValue)(dataReg.address)
+             v = rawValue._2 * dataReg.multiplier if passFilter(v)} yield
+          (dataReg.monitorType, (rawValue._1, v))
       }
     }
 

@@ -132,7 +132,7 @@ import javax.inject._
 class Horiba370Collector @Inject()
 (instrumentOp: InstrumentOp, instrumentStatusOp: InstrumentStatusOp,
  calibrationOp: CalibrationOp, monitorTypeOp: MonitorTypeOp, actorSystem: ActorSystem)
-(@Assisted id: String, @Assisted targetAddr: String, @Assisted config: Horiba370Config) extends Actor {
+(@Assisted id: String, @Assisted protocol: ProtocolParam, @Assisted config: Horiba370Config) extends Actor {
 
   import Horiba370Collector._
   import TapiTxx._
@@ -140,6 +140,7 @@ class Horiba370Collector @Inject()
   import scala.concurrent.{Future, blocking}
   import scala.concurrent.duration._
 
+  Logger.info(s"Horiba370Collector created $id:${protocol} ${config}")
   var (collectorState, instrumentStatusTypesOpt) = {
     val instrument = instrumentOp.getInstrument(id)
     val inst = instrument(0)
@@ -175,11 +176,9 @@ class Horiba370Collector @Inject()
     }
   }
 
-  val timerOpt: Option[Cancellable] = Some(actorSystem.scheduler.schedule(Duration(1, SECONDS), Duration(2, SECONDS),
-    self, ReadData))
+  val timer = context.system.scheduler.schedule(Duration(1, SECONDS), Duration(2, SECONDS), self, ReadData)
 
-  val statusTimerOpt: Option[Cancellable] = Some(actorSystem.scheduler.schedule(Duration(30, SECONDS), Duration(1, MINUTES),
-    self, CheckStatus))
+  val statisTimer = context.system.scheduler.schedule(Duration(30, SECONDS), Duration(1, MINUTES), self, CheckStatus)
 
   // override postRestart so we don't call preStart and schedule a new message
   override def postRestart(reason: Throwable) = {}
@@ -265,7 +264,7 @@ class Horiba370Collector @Inject()
 
   import java.net._
 
-  IO(UdpConnected) ! UdpConnected.Connect(self, new InetSocketAddress(targetAddr, 53700))
+  IO(UdpConnected) ! UdpConnected.Connect(self, new InetSocketAddress(protocol.host.get, 53700))
 
   def receive = {
     case UdpConnected.Connected =>
@@ -647,11 +646,7 @@ class Horiba370Collector @Inject()
   }
 
   override def postStop() = {
-    for (timer <- timerOpt) {
       timer.cancel()
-    }
-    for (timer <- statusTimerOpt) {
-      timer.cancel()
-    }
+      statisTimer.cancel()
   }
 }

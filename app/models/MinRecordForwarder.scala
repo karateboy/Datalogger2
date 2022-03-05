@@ -1,16 +1,28 @@
 package models
 import akka.actor.Actor
 import com.github.nscala_time.time.Imports._
+import com.google.inject.assistedinject.Assisted
+import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
-import play.api.{Application, Logger}
 
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class MinRecordForwarder @Inject()
-(ws:WSClient, recordOp: RecordOp, app:Application)(server: String, monitor: String) extends Actor {
+object MinRecordForwarder {
+  trait Factory {
+    def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String): Actor
+  }
+}
+
+class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordOp)
+                                  (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
+  Logger.info(s"MinRecordForwarder created with server=$server monitor=$monitor")
+
   import ForwardManager._
+
+  self ! ForwardMin
+
   def receive = handler(None)
   def checkLatest = {
     val url = s"http://$server/MinRecordRange/$monitor"
@@ -47,7 +59,7 @@ class MinRecordForwarder @Inject()
 
     for (record <- recordFuture) {
       import recordOp.recordListWrite
-      if (!record.isEmpty) {
+      if (record.nonEmpty) {
         val url = s"http://$server/MinRecord/$monitor"
         val f = ws.url(url).put(Json.toJson(record))
 

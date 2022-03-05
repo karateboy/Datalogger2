@@ -1,19 +1,31 @@
 package models
+
 import akka.actor.{Actor, actorRef2Scala}
+import com.google.inject.assistedinject.Assisted
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
-import play.api.libs.ws.{WS, WSClient}
+import play.api.libs.ws.WSClient
 
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 case class InstrumentStatusTypeMap(instrumentId: String, statusTypeSeq: Seq[InstrumentStatusType])
 
-class InstrumentStatusTypeForwarder @Inject()
-(instrumentOp: InstrumentOp, ws:WSClient)
-(server: String, monitor: String) extends Actor {
+object InstrumentStatusTypeForwarder {
+  trait Factory {
+    def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String): Actor
+  }
+}
+
+class InstrumentStatusTypeForwarder @Inject()(instrumentOp: InstrumentOp, ws: WSClient)
+  (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
+
   import ForwardManager._
+
+  Logger.info(s"InstrumentStatusTypeForwarder started $server/$monitor")
+
   def receive = handler(None)
+
   def handler(instrumentStatusTypeIdOpt: Option[String]): Receive = {
     case UpdateInstrumentStatusType =>
       try {
@@ -38,7 +50,9 @@ class InstrumentStatusTypeForwarder @Inject()
         } else {
           val recordFuture = instrumentOp.getAllInstrumentFuture
           for (records <- recordFuture) {
-            val withStatusType = records.filter { _.statusType.isDefined }
+            val withStatusType = records.filter {
+              _.statusType.isDefined
+            }
             if (!withStatusType.isEmpty) {
               val myIds = withStatusType.map { inst =>
                 inst._id + inst.statusType.get.mkString("")
@@ -50,18 +64,17 @@ class InstrumentStatusTypeForwarder @Inject()
                   InstrumentStatusTypeMap(inst._id, inst.statusType.get)
                 }
                 val url = s"http://$server/InstrumentStatusTypeMap/$monitor"
-                import instrumentOp.ipWrite
+                implicit val write1 = Json.writes[InstrumentStatusType]
                 implicit val writer = Json.writes[InstrumentStatusTypeMap]
                 val f = ws.url(url).put(Json.toJson(istMaps))
                 f onSuccess {
-                  case response =>
+                  case _ =>
                     context become handler(Some(myIds))
                 }
                 f onFailure {
                   case ex: Throwable =>
                     ModelHelper.logException(ex)
                 }
-
               }
             }
           }

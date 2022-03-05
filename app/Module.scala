@@ -46,6 +46,15 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bindActorFactory[Ma350Collector, Ma350Drv.Factory]
   	bindActorFactory[AkDrvCollector, AkDrv.Factory]
 	  bindActorFactory[DuoCollector, Duo.Factory]
+
+    bindActorFactory[ForwardManager, ForwardManager.Factory]
+    bindActorFactory[HourRecordForwarder, HourRecordForwarder.Factory]
+    bindActorFactory[MinRecordForwarder, MinRecordForwarder.Factory]
+    bindActorFactory[CalibrationForwarder, CalibrationForwarder.Factory]
+    bindActorFactory[AlarmForwarder, AlarmForwarder.Factory]
+    bindActorFactory[InstrumentStatusForwarder, InstrumentStatusForwarder.Factory]
+    bindActorFactory[InstrumentStatusTypeForwarder, InstrumentStatusTypeForwarder.Factory]
+
     //bind(classOf[ForwardManager])
     // Use the system clock as the default implementation of Clock
     //bind(classOf[Clock]).toInstance(Clock.systemDefaultZone)

@@ -1,6 +1,8 @@
 package controllers
 
+import akka.actor.ActorRef
 import com.github.nscala_time.time.Imports._
+import models.ForwardManager.{ForwardHourRecord, ForwardMinRecord}
 import models.ModelHelper.errorHandler
 import models._
 import play.api._
@@ -18,7 +20,8 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
                                userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
                                monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorOp, groupOp: GroupOp,
                                instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp,
-                               sensorOp: MqttSensorOp, adam6066: Adam6066, WSClient: WSClient) extends Controller {
+                               sensorOp: MqttSensorOp, adam6066: Adam6066, WSClient: WSClient,
+                               @Named("dataCollectManager") manager: ActorRef) extends Controller {
 
   val title = "資料擷取器"
 
@@ -550,9 +553,9 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
 
     tab match {
       case TableType.min =>
-        ForwardManager.forwardMinRecord(start, end)
+        manager ! ForwardMinRecord(start, end)
       case TableType.hour =>
-        ForwardManager.forwardHourRecord(start, end)
+        manager ! ForwardHourRecord(start, end)
     }
 
     Ok(Json.obj("ok" -> true))
