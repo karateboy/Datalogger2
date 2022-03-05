@@ -12,6 +12,7 @@ import play.api.Logger
 import java.time.Instant
 import java.util.Date
 import javax.inject._
+import scala.collection.JavaConversions.asScalaBuffer
 import scala.concurrent.Future
 
 case class LogoImage(filename:String, image:Array[Byte])
@@ -26,13 +27,18 @@ class SysConfig @Inject()(mongoDB: MongoDB){
   val SpectrumLastParseTime = "SpectrumLastParseTime"
   val WeatherLastParseTime = "WeatherLastParseTime"
   val WeatherSkipLine = "WeatherSkipLine"
+  val EffectiveRatio = "EffectiveRatio"
+  val AlertEmailTaget = "AlertEmailTarget"
 
   val defaultConfig = Map(
     MonitorTypeVer -> Document(valueKey -> 1),
     Logo -> Document(valueKey->Array.empty[Byte], "filename"->""),
     SpectrumLastParseTime -> Document(valueKey->new Date(0)),
     WeatherLastParseTime -> Document(valueKey->new Date(0)),
-    WeatherSkipLine->Document(valueKey-> 0))
+    WeatherSkipLine->Document(valueKey-> 0),
+    AlertEmailTaget -> Document(valueKey -> Seq("karateboy.tw@gmail.com")),
+    EffectiveRatio ->Document(valueKey->0.75)
+  )
 
   def init() {
     for(colNames <- mongoDB.database.listCollectionNames().toFuture()) {
@@ -62,6 +68,7 @@ class SysConfig @Inject()(mongoDB: MongoDB){
   }
 
   def set(_id: String, v: BsonValue) = upsert(_id, Document(valueKey -> v))
+  def set(_id: String, v: Seq[String]) = upsert(_id, Document(valueKey -> v))
 
   def getLogo = {
     val f = collection.find(Filters.equal("_id", Logo)).headOption()
@@ -96,4 +103,14 @@ class SysConfig @Inject()(mongoDB: MongoDB){
 
   def getWeatherSkipLine(): Future[Int] = get(WeatherSkipLine).map(_.asNumber().intValue())
   def setWeatherSkipLine(v:Int): Future[UpdateResult] = set(WeatherSkipLine, BsonNumber(v))
+
+  def getEffectiveRatio(): Future[Double] = get(EffectiveRatio).map(_.asNumber().doubleValue())
+  def setEffectiveRation(v:Double): Future[UpdateResult] = set(EffectiveRatio, BsonNumber(v))
+
+  def getAlertEmailTarget() =
+    for(v<-get(AlertEmailTaget)) yield
+      v.asArray().toSeq.map(_.asString().getValue)
+
+  def setAlertEmailTarget(emails: Seq[String]) = set(AlertEmailTaget, emails)
+
 }

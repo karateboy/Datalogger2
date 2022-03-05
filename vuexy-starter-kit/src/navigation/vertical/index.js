@@ -111,6 +111,10 @@ export default [
         title: '資料管理',
         route: 'data-management',
       },
+      {
+        title: '參數設定',
+        route: 'system-config',
+      },
     ],
   },
 ];
