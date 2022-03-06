@@ -108,6 +108,10 @@ export default [
         route: 'group-management',
       },
       {
+        title: '資料檢核設定',
+        route: 'audit-config',
+      },
+      {
         title: '資料管理',
         route: 'data-management',
       },

@@ -35,7 +35,7 @@
       </b-form>
     </b-card>
     <b-card title="異常通報">
-      <b-table :items="emails" :fields="fields">
+      <b-table :items="emails" :fields="fields" bordered>
         <template #thead-top>
           <b-tr>
             <b-td colspan="2">
@@ -113,10 +113,6 @@ export default Vue.extend({
       {
         key: '_id',
         label: 'email',
-      },
-      {
-        key: 'counties',
-        label: '縣市',
       },
       {
         key: 'operation',

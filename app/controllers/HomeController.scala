@@ -6,8 +6,6 @@ import models.ForwardManager.{ForwardHourRecord, ForwardMinRecord}
 import models.ModelHelper.errorHandler
 import models._
 import play.api._
-import play.api.data.Forms._
-import play.api.data._
 import play.api.libs.json._
 import play.api.libs.ws.{WSClient, WSResponse}
 import play.api.mvc._
@@ -15,7 +13,6 @@ import play.api.mvc._
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.Success
 
 class HomeController @Inject()(environment: play.api.Environment,
                                userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,

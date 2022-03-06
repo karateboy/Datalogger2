@@ -381,6 +381,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/audit-config',
+      name: 'audit-config',
+      component: () => import('@/views/AuditConfig.vue'),
+      meta: {
+        pageTitle: '資料檢核設定',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '資料檢核設定',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/Login.vue'),
