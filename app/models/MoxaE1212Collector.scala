@@ -42,6 +42,16 @@ class MoxaE1212Collector @Inject()
 
   var cancelable: Cancellable = _
 
+  val resetTimer = {
+    import com.github.nscala_time.time.Imports._
+
+    val resetTime = DateTime.now().withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0) + 1.hour
+    val duration = new Duration(DateTime.now(), resetTime)
+    import scala.concurrent.duration._
+    context.system.scheduler.schedule(FiniteDuration(duration.getStandardSeconds, SECONDS),
+      scala.concurrent.duration.Duration(1, HOURS), self, ResetCounter)
+  }
+
   self ! ConnectHost
   def decodeDiCounter(values: Seq[Int], collectorState: String) = {
     val dataOptList =
@@ -203,5 +213,6 @@ class MoxaE1212Collector @Inject()
     if (cancelable != null)
       cancelable.cancel()
 
+    resetTimer.cancel()
   }
 }
