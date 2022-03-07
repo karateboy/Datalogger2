@@ -6,8 +6,6 @@ import models.ForwardManager.{ForwardHourRecord, ForwardMinRecord}
 import models.ModelHelper.errorHandler
 import models._
 import play.api._
-import play.api.data.Forms._
-import play.api.data._
 import play.api.libs.json._
 import play.api.libs.ws.{WSClient, WSResponse}
 import play.api.mvc._
@@ -16,11 +14,13 @@ import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class HomeController @Inject()(environment: play.api.Environment, recordOp: RecordOp,
+class HomeController @Inject()(environment: play.api.Environment,
                                userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
                                monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorOp, groupOp: GroupOp,
                                instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp,
                                sensorOp: MqttSensorOp, adam6066: Adam6066, WSClient: WSClient,
+                               emailTargetOp: EmailTargetOp,
+                               sysConfig: SysConfig,
                                @Named("dataCollectManager") manager: ActorRef) extends Controller {
 
   val title = "資料擷取器"
@@ -736,6 +736,59 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     }
   }
 
+  def getAlertEmailTargets = Security.Authenticated.async({
+    import EmailTarget._
+    val f = emailTargetOp.getList()
+    f onFailure (errorHandler)
+    for (ret <- f) yield
+      Ok(Json.toJson((ret)))
+  })
 
-  case class EditData(id: String, data: String)
+  def saveAlertEmailTargets() = Security.Authenticated.async(BodyParsers.parse.json)({
+    implicit request =>
+      import EmailTarget._
+      val ret = request.body.validate[Seq[EmailTarget]]
+      ret.fold(
+        error => {
+          Logger.error(JsError.toJson(error).toString())
+          Future{
+            BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+          }
+        },
+        emails => {
+          for(_<- emailTargetOp.deleteAll) yield {
+            emailTargetOp.upsertMany(emails)
+            Ok(Json.obj("ok" -> true))
+          }
+        })
+  })
+
+  def getEffectiveRatio = Security.Authenticated.async({
+    val f = sysConfig.getEffectiveRatio()
+    f onFailure (errorHandler)
+    for (ret <- f) yield
+      Ok(Json.toJson(ret))
+  })
+
+  def saveEffectiveRatio() = Security.Authenticated(BodyParsers.parse.json) {
+    implicit request =>
+      implicit val reads = Json.reads[EditData]
+      val ret = request.body.validate[EditData]
+
+      ret.fold(
+        error => {
+          Logger.error(JsError.toJson(error).toString())
+          BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+        },
+        param => {
+          val ratio = param.value.toDouble
+          if(ratio <1 && ratio > 0){
+            sysConfig.setEffectiveRation(ratio)
+            DataCollectManager.effectiveRatio = ratio
+            Ok(Json.obj("ok" -> true))
+          }else
+            BadRequest("Invalid effective ratio")
+        })
+  }
+  case class EditData(id: String, value: String)
 }

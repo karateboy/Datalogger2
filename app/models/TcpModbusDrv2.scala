@@ -179,6 +179,17 @@ object TcpModbusDrv2 {
     }
 
     val filterRules: Seq[FilterRule] = {
+      def getNumber(v:Any):Double={
+        v match {
+          case v: Integer =>
+            v.asInstanceOf[Integer].toDouble
+          case v: Double =>
+            v.asInstanceOf[Double]
+          case v:Float=>
+            v.asInstanceOf[Float].toDouble
+        }
+      }
+
       try{
         val filterRules = driverConfig.getAnyRefList(s"Filter")
         for {
@@ -186,13 +197,16 @@ object TcpModbusDrv2 {
           rule = filterRules.get(i)
           v = rule.asInstanceOf[ArrayList[Any]]
         } yield {
-          FilterRule(v.get(0).asInstanceOf[String], v.get(1).asInstanceOf[Double], v.get(2).asInstanceOf[Double])
+          FilterRule(v.get(0).asInstanceOf[String], getNumber(v.get(1)), getNumber(v.get(2)))
         }
       } catch {
-        case _: Throwable =>
+        case ex: Throwable =>
           Seq.empty[FilterRule]
       }
     }
+    if(filterRules.nonEmpty)
+      Logger.info(s"$id applies filters=>$filterRules")
+
     TcpModbusDeviceModel(id = id, description = description, protocols = protocols,
       tcpModelReg = TcpModelReg(dataRegList.toList, calibrationReg, inputRegList.toList,
         holdingRegList.toList, modeRegList.toList, warnRegList.toList, coilRegList.toList,

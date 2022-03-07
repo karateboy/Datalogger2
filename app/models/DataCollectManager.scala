@@ -212,7 +212,12 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 }
 
 object DataCollectManager {
-  val effectivRatio = 0.75
+  var effectiveRatio = 0.75
+
+  def updateEffectiveRatio(sysConfig: SysConfig): Unit ={
+    for(ratio <-sysConfig.getEffectiveRatio())
+      effectiveRatio = ratio
+  }
 
   def calculateMinAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
     for {
@@ -229,7 +234,7 @@ object DataCollectManager {
         val statusKV = {
           val kv = statusMap.maxBy(kv => kv._2.length)
           if (kv._1 == MonitorStatus.NormalStat && (alwaysValid ||
-            statusMap(kv._1).size < totalSize * effectivRatio)) {
+            statusMap(kv._1).size < totalSize * effectiveRatio)) {
             //return most status except normal
             val noNormalStatusMap = statusMap - kv._1
             noNormalStatusMap.maxBy(kv => kv._2.length)
@@ -290,7 +295,7 @@ object DataCollectManager {
         val statusKV = {
           val kv = statusMap.maxBy(kv => kv._2.length)
           if (kv._1 == MonitorStatus.NormalStat && (alwaysValid ||
-            statusMap(kv._1).size < totalSize * effectivRatio)) {
+            statusMap(kv._1).size < totalSize * effectiveRatio)) {
             //return most status except normal
             val noNormalStatusMap = statusMap - kv._1
             noNormalStatusMap.maxBy(kv => kv._2.length)
@@ -350,6 +355,8 @@ class DataCollectManager @Inject()
  sysConfig: SysConfig, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
   val storeSecondData = config.getBoolean("storeSecondData").getOrElse(false)
   Logger.info(s"store second data = $storeSecondData")
+  DataCollectManager.updateEffectiveRatio(sysConfig)
+
   val timer = {
     import scala.concurrent.duration._
     //Try to trigger at 30 sec

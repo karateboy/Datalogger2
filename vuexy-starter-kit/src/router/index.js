@@ -363,6 +363,42 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/system-config',
+      name: 'system-config',
+      component: () => import('@/views/SystemConfig.vue'),
+      meta: {
+        pageTitle: '參數設定',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '參數設定',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
+      path: '/audit-config',
+      name: 'audit-config',
+      component: () => import('@/views/AuditConfig.vue'),
+      meta: {
+        pageTitle: '資料檢核設定',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '資料檢核設定',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/Login.vue'),
