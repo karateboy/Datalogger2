@@ -63,7 +63,7 @@ object HessenProtocol {
         Some(measure)
       }catch {
         case ex:Throwable=>
-          Logger.error("Invalid measure", ex)
+          Logger.debug("Invalid measure", ex)
           None
       }
     }
