@@ -33,7 +33,7 @@ class AlarmOp @Inject()(mongoDB: MongoDB) {
   }
   val alarmLevelList: Seq[Int] = Level.INFO to Level.ERR
 
-  def Src(mt: String) = s"T:${mt.toString}"
+  def Src(src: String) = s"T:$src"
   def Src(inst: Instrument) = s"I:${inst._id}"
   def instStr(id: String) = s"I:$id"
   def Src() = "S:System"

@@ -164,9 +164,6 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     val mtDataList = calculateHourAvgMap(mtMap, alwaysValid)
     val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
     val f = recordOp.upsertRecord(recordList)(recordOp.HourCollection)
-    if (forward)
-      f map { _ => ForwardManager.forwardHourData }
-
     f
   }
 
@@ -231,9 +228,9 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
       if (MonitorStatus.isValid(status))
         for (std_law <- mtCase.std_law) {
           if (value > std_law) {
-            val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
-            alarmOp.log(alarmOp.Src(mt), alarmOp.Level.INFO, msg)
             for(group<-groupOpt){
+              val msg = s"$group > ${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
+              alarmOp.log(alarmOp.Src(group), alarmOp.Level.INFO, msg)
               for(groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(group)){
                 groupDoInstruments.foreach(
                   inst =>
@@ -564,7 +561,7 @@ class DataCollectManager @Inject()
 
         context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData, restartList)
         val f = recordOp.upsertRecord(RecordList(currentMintues.minusMinutes(1), minuteMtAvgList.toList, Monitor.SELF_ID))(recordOp.MinCollection)
-        f map { _ => ForwardManager.forwardMinData }
+
         f
       }
 

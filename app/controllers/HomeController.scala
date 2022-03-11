@@ -470,7 +470,7 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
         Ok(Json.toJson(mList2))
       } else {
         val mList2 =
-          for(m <-group.monitors if monitorOp.map.contains(m)) yield
+          for (m <- group.monitors if monitorOp.map.contains(m)) yield
             monitorOp.map(m)
 
         Ok(Json.toJson(mList2))
@@ -544,10 +544,10 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
   }
 
   def getSignalInstrumentList = Security.Authenticated.async {
-    implicit request=>
+    implicit request =>
       val userInfo = request.user
       val f = instrumentOp.getGroupDoInstrumentList(userInfo.group)
-      for(ret <- f) yield {
+      for (ret <- f) yield {
         Logger.info(s"getSignalInstrumentList group=${userInfo.group} #=${ret.size}")
         implicit val write = Json.writes[InstrumentInfo]
 
@@ -608,35 +608,22 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     Ok(Json.obj("ok" -> true))
   }
 
-  def uploadData(tabStr: String, startStr: String, endStr: String) = Security.Authenticated {
-    val tab = TableType.withName(tabStr)
-    val start = DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
-    val end = DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
-
-    tab match {
-      case TableType.min =>
-        ForwardManager.forwardMinRecord(start, end)
-      case TableType.hour =>
-        ForwardManager.forwardHourRecord(start, end)
-    }
-
-    Ok(Json.obj("ok" -> true))
-  }
-
   def testEvtOptHigh = Security.Authenticated {
     dataCollectManagerOp.evtOperationHighThreshold
     Ok("ok")
   }
 
   def testSpray = Security.Authenticated {
-    Logger.info("testSpray")
-    val ret: Seq[Instrument] = instrumentOp.getInstrumentList().filter(p => p.instType == InstrumentType.ADAM6066)
-    ret map {
-      inst =>
-        dataCollectManagerOp.toggleTargetDO(inst._id, 17, 10)
-    }
+    implicit request =>
+      val userInfo = request.user
+      val group = userInfo.group
+      val groupInstruments: Seq[Instrument] = instrumentOp.getInstrumentList().filter { p =>
+        p.instType == InstrumentType.ADAM6066 && p.group.contains(group)
+      }
 
-    Ok("ok")
+      groupInstruments.foreach(inst=>dataCollectManagerOp.toggleTargetDO(inst._id, 17, 10))
+
+      Ok("ok")
   }
 
   def getSensors = Security.Authenticated.async {

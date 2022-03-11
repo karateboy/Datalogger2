@@ -3,7 +3,6 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports.{DateTime, DateTimeFormat}
 import com.google.inject.assistedinject.Assisted
-import models.MqttCollector.{ConnectBroker, CreateClient, SubscribeTopic}
 import models.MqttCollector2.{CheckTimeout, HandleMessage, timeout}
 import models.Protocol.ProtocolParam
 import org.eclipse.paho.client.mqttv3._
@@ -14,6 +13,8 @@ import java.nio.file.Files
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, MINUTES, SECONDS}
 import scala.concurrent.{Future, blocking}
+
+case class EventConfig(instId: String, bit: Int, seconds: Option[Int])
 
 case class MqttConfig2(topic: String)
 
@@ -51,7 +52,7 @@ object MqttCollector2 extends DriverOps {
     f2(id, protocol, config)
   }
 
-  def validateParam(json: String) = {
+  def validateParam(json: String): MqttConfig2 = {
     val ret = Json.parse(json).validate[MqttConfig2]
     ret.fold(
       error => {
@@ -88,7 +89,7 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
                              (@Assisted id: String,
                               @Assisted protocolParam: ProtocolParam,
                               @Assisted config: MqttConfig2) extends Actor with MqttCallback {
-
+  import MqttCollector2._
   val payload =
     """{"id":"861108035994663",
       |"desc":"柏昇SAQ-200",

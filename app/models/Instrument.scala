@@ -59,15 +59,16 @@ class InstrumentOp @Inject() (mongoDB: MongoDB) {
   init
 
   import org.mongodb.scala.model.Filters._
-  def upsertInstrument(inst: Instrument) = {    
+  def upsertInstrument(inst: Instrument): Boolean = {
     import org.mongodb.scala.model.ReplaceOptions
     val f = collection.replaceOne(equal("_id", inst._id), inst, ReplaceOptions().upsert(true)).toFuture()
     waitReadyResult(f)
     true
   }
 
-  def getInstrumentList() = {
+  def getInstrumentList(): Seq[Instrument] = {
     val f = collection.find().toFuture()
+
     waitReadyResult(f)
   }
 
@@ -147,10 +148,6 @@ class InstrumentOp @Inject() (mongoDB: MongoDB) {
     f.onFailure({
       case ex:Exception=>
         ModelHelper.logException(ex)
-    })
-    f.onSuccess({
-      case _=>
-        ForwardManager.updateInstrumentStatusType
     })
     f
   }

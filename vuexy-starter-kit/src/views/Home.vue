@@ -376,7 +376,6 @@ export default {
     },
     async getSignalInstrumentList() {
       const res = await axios.get('/DoInstrumentInfoList');
-      console.log(res.data);
       if (res.data.length === 0) this.hasSpray = false;
       else this.hasSpray = true;
     },
