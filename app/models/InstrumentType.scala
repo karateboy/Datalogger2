@@ -74,7 +74,6 @@ class InstrumentTypeOp @Inject()
  adam6017Drv: Adam6017, adam6017Factory: Adam6017Collector.Factory,
  adam6066Drv: Adam6066, adam6066Factory: Adam6066Collector.Factory,
  moxaE1240Drv: MoxaE1240, moxaE1240Factory: MoxaE1240Collector.Factory,
- verewaF701Factory: VerewaF701Collector.Factory,
  moxaE1212Drv: MoxaE1212, moxaE1212Factory: MoxaE1212Collector.Factory,
  mqtt2Factory: MqttCollector2.Factory,
  gpsFactory: GpsCollector.Factory) extends InjectedActorSupport {
@@ -90,8 +89,7 @@ class InstrumentTypeOp @Inject()
     InstrumentType(GPS, "GPS", List(Serial()), GpsCollector, gpsFactory).infoPair,
     InstrumentType(MOXAE1240, "MOXA E1240", List(Tcp()), moxaE1240Drv, moxaE1240Factory).infoPair,
     InstrumentType(MOXAE1212, "MOXA E1212", List(Tcp()), moxaE1212Drv, moxaE1212Factory).infoPair,
-    InstrumentType(MQTT_CLIENT2, "MQTT Client2", List(Tcp()), MqttCollector2, mqtt2Factory).infoPair,
-    InstrumentType(VEREWA_F701, "Verewa F701-20", List(Serial()), VerewaF701Collector, verewaF701Factory).infoPair
+    InstrumentType(MQTT_CLIENT2, "MQTT Client2", List(Tcp()), MqttCollector2, mqtt2Factory).infoPair
   )
 
   var count = 0
