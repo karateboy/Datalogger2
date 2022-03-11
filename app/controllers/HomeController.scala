@@ -546,17 +546,12 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.obj("ok" -> true))
   }
 
-  def uploadData(tabStr: String, startStr: String, endStr: String) = Security.Authenticated {
-    val tab = TableType.withName(tabStr)
-    val start = DateTime.parse(startStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
-    val end = DateTime.parse(endStr, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm"))
+  def uploadData(startNum: Long, endNum: Long) = Security.Authenticated {
+    val start = new DateTime(startNum)
+    val end = new DateTime(endNum)
 
-    tab match {
-      case TableType.min =>
-        manager ! ForwardMinRecord(start, end)
-      case TableType.hour =>
-        manager ! ForwardHourRecord(start, end)
-    }
+    manager ! ForwardMinRecord(start, end)
+    manager ! ForwardHourRecord(start, end)
 
     Ok(Json.obj("ok" -> true))
   }

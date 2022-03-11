@@ -72,7 +72,7 @@ DELETE   /Sensor/:id                                                            
 #Data Management
 
 GET      /Recalculate/:monitors/:start/:end                                       controllers.HomeController.recalculateHour(monitors, start:Long, end:Long)
-GET      /Upload/:tab/:start/:end                                                 controllers.HomeController.uploadData(tab, start, end)
+GET      /Upload/:start/:end                                                      controllers.HomeController.uploadData(start:Long, end:Long)
 
 #Realtime
 GET      /MonitorTypeStatusList                                                   controllers.Realtime.MonitorTypeStatusList()
