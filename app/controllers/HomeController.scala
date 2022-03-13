@@ -115,28 +115,6 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     Ok(Json.toJson(groups))
   }
 
-  def saveMonitorTypeConfig() = Security.Authenticated {
-    implicit request =>
-      try {
-        val mtForm = Form(
-          mapping(
-            "id" -> text,
-            "data" -> text)(EditData.apply)(EditData.unapply))
-
-        val mtData = mtForm.bindFromRequest.get
-        val mtInfo = mtData.id.split(":")
-        val mt = (mtInfo(0))
-
-        monitorTypeOp.updateMonitorType(mt, mtInfo(1), mtData.data)
-
-        Ok(mtData.data)
-      } catch {
-        case ex: Throwable =>
-          Logger.error(ex.getMessage, ex)
-          BadRequest(ex.toString)
-      }
-  }
-
   def getInstrumentTypes = Security.Authenticated {
     implicit val w1 = Json.writes[ProtocolInfo]
     implicit val write = Json.writes[InstrumentTypeInfo]
@@ -497,25 +475,33 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
   }
 
-  def monitorTypeList = Security.Authenticated {
+  def monitorTypeList = Security.Authenticated.async {
     implicit request =>
       val userInfo = Security.getUserinfo(request).get
       val group = groupOp.getGroupByID(userInfo.group).get
 
-      val mtList = if (userInfo.isAdmin)
-        monitorTypeOp.mtvList map monitorTypeOp.map
+      val mtListFuture = if (userInfo.isAdmin)
+        Future{
+          monitorTypeOp.mtvList map monitorTypeOp.map
+        }
       else {
-        group.monitorTypes map monitorTypeOp.map
-        //val pm25 = monitorTypeOp.mtvList.filter(p => p == "PM25")
-        //pm25 map monitorTypeOp.map
+        val groupID= group._id
+        for(groupMap<-monitorTypeOp.getGroupMapAsync(group._id)) yield
+          group.monitorTypes map { mtID=>
+            groupMap.getOrElse(s"${mtID}_$groupID", monitorTypeOp.map(mtID))
+          }
       }
 
-      Ok(Json.toJson(mtList))
+      for(mtList<-mtListFuture) yield
+        Ok(Json.toJson(mtList))
   }
 
   def upsertMonitorType(id: String) = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
       Logger.info(s"upsert Mt:${id}")
+      val userInfo = Security.getUserinfo(request).get
+      val group = groupOp.getGroupByID(userInfo.group).get
+
       val mtResult = request.body.validate[MonitorType]
 
       mtResult.fold(
@@ -524,6 +510,12 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
           BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
         },
         mt => {
+          if(!mt._id.contains(group._id)) {
+            val mtID = mt._id
+            mt._id = s"${mtID}_${group._id}"
+          }
+
+          mt.group = Some(group._id)
           Logger.info(mt.toString)
           monitorTypeOp.upsertMonitorType(mt)
           Ok(Json.obj("ok" -> true))

@@ -224,7 +224,14 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
       value = hourMtData.value
       status = hourMtData.status
     } {
-      val mtCase = monitorTypeOp.map(mt)
+      val mtCase =
+        if(groupOpt.nonEmpty) {
+          val groupID = groupOpt.get
+          val groupMap = waitReadyResult(monitorTypeOp.getGroupMapAsync(groupID))
+          groupMap.getOrElse(s"${mt}_$groupID", monitorTypeOp.map(mt))
+        } else
+          monitorTypeOp.map(mt)
+
       if (MonitorStatus.isValid(status))
         for (std_law <- mtCase.std_law) {
           if (value > std_law) {
