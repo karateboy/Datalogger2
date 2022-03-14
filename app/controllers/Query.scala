@@ -51,7 +51,7 @@ case class UpdateRecordParam(time: Long, mt: String, status: String)
 @Singleton
 class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp,
                       instrumentStatusOp: InstrumentStatusOp, instrumentOp: InstrumentOp,
-                      alarmOp: AlarmOp, calibrationOp: CalibrationOp,
+                      alarmOp: AlarmOp, calibrationOp: CalibrationOp, groupOp: GroupOp,
                       manualAuditLogOp: ManualAuditLogOp, excelUtility: ExcelUtility) extends Controller {
 
   implicit val cdWrite = Json.writes[CellData]
@@ -407,7 +407,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
         val timeMtMonitorMap = Map.empty[DateTime, Map[String, Map[String, CellData]]]
         recordList map {
           r =>
-            val stripedTime = new DateTime(r.time).withSecondOfMinute(0).withMillisOfSecond(0)
+            val stripedTime = new DateTime(r._id.time).withSecondOfMinute(0).withMillisOfSecond(0)
             val mtMonitorMap = timeMtMonitorMap.getOrElseUpdate(stripedTime, Map.empty[String, Map[String, CellData]])
             for(mt <- monitorTypes.toSeq){
               val monitorMap = mtMonitorMap.getOrElseUpdate(mt, Map.empty[String, CellData])
@@ -418,7 +418,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
               }else
                 emtpyCell
 
-              monitorMap.update(r.monitor, cellData)
+              monitorMap.update(r._id.monitor, cellData)
             }
         }
         val timeList = timeMtMonitorMap.keys.toList.sorted
@@ -463,7 +463,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
         val timeMtMonitorMap = Map.empty[DateTime, Map[String, Map[String, CellData]]]
         recordList map {
           r =>
-            val stripedTime = new DateTime(r.time).withSecondOfMinute(0).withMillisOfSecond(0)
+            val stripedTime = new DateTime(r._id.time).withSecondOfMinute(0).withMillisOfSecond(0)
             val mtMonitorMap = timeMtMonitorMap.getOrElseUpdate(stripedTime, Map.empty[String, Map[String, CellData]])
             for(mt <- monitorTypes.toSeq){
               val monitorMap = mtMonitorMap.getOrElseUpdate(mt, Map.empty[String, CellData])
@@ -474,7 +474,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
               }else
                 emtpyCell
 
-              monitorMap.update(r.monitor, cellData)
+              monitorMap.update(r._id.monitor, cellData)
             }
         }
         val timeList = timeMtMonitorMap.keys.toList.sorted
@@ -573,16 +573,21 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
     Ok(Json.toJson(jsonReport))
   }
 
-  def alarmReport(level: Int, startNum: Long, endNum: Long) = Security.Authenticated {
+  def alarmReport(level: Int, startNum: Long, endNum: Long) = Security.Authenticated.async {
+    implicit request=>
+    val userInfo = Security.getUserinfo(request).get
+    val group = groupOp.getGroupByID(userInfo.group).get
+
     implicit val write = Json.writes[Alarm2JSON]
     val (start, end) =
       (new DateTime(startNum),
         new DateTime(endNum))
-    val report: Seq[Alarm] = alarmOp.getAlarms(level, start, end + 1.day)
-    val jsonReport = report map {
-      _.toJson
+    for(report<-alarmOp.getAlarms(level, group._id, start, end + 1.day))yield {
+      val jsonReport = report map {
+        _.toJson
+      }
+      Ok(Json.toJson(jsonReport))
     }
-    Ok(Json.toJson(jsonReport))
   }
 
   def instrumentStatusReport(id: String, startNum: Long, endNum: Long) = Security.Authenticated {

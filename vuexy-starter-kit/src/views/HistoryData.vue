@@ -210,8 +210,10 @@ export default Vue.extend({
         item.cellData[i].cellClassName;
     },
     getMtDesc(mt: string) {
-      const mtCase = this.mtMap.get(mt);
-      return `${mtCase.desp}(${mtCase.unit})`;
+      if (this.mtMap.get(mt)) {
+        const mtCase = this.mtMap.get(mt);
+        return `${mtCase.desp}(${mtCase.unit})`;
+      } else return '';
     },
     getColumns() {
       const ret = [];

@@ -2,16 +2,18 @@ package models
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.implicitConversions
-
 import org.mongodb.scala._
-
 import com.github.nscala_time.time.Imports._
-
 import ModelHelper._
+import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
+import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import play.api._
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import play.api.libs.json.Reads._
+
+import java.util.Date
+import scala.concurrent.Future
 
 //alarm src format: 'T':"MonitorType"
 //                  'I':"Instrument"
@@ -19,8 +21,8 @@ import play.api.libs.json.Reads._
 import javax.inject._
 case class Alarm2JSON(time: Long, src: String, level: Int, info: String)
 
-case class Alarm(time: DateTime, src: String, level: Int, desc: String) {
-  def toJson = Alarm2JSON(time.getMillis, src, level, desc)
+case class Alarm(time: Date, src: String, level: Int, desc: String) {
+  def toJson = Alarm2JSON(time.getTime, src, level, desc)
 }
 
 @Singleton
@@ -38,53 +40,24 @@ class AlarmOp @Inject()(mongoDB: MongoDB) {
   def instStr(id: String) = s"I:$id"
   def Src() = "S:System"
 
-  def getSrcForDisplay(src: String) = {
-    val part = src.split(':')
-    if (part.length >= 2) {
-      val srcType = part(0) match {
-        case "S" =>
-          "系統"
-        case "I" =>
-          "設備:" + part(1)
-        case "T" =>
-          "測項:" + part(1)
-      }
-      srcType
-    }else{
-      Logger.error(s"Invalid format $src")
-      src
-    }
-  }
-
   implicit val write = Json.writes[Alarm]
   implicit val jsonWrite = Json.writes[Alarm2JSON]
-  //implicit val format = Json.format[Alarm]
 
-  val collectionName = "alarms"
-  val collection = mongoDB.database.getCollection(collectionName)
-  def toDocument(ar: Alarm) = {
-    import org.mongodb.scala.bson._
-    Document("time" -> (ar.time: BsonDateTime), "src" -> ar.src, "level" -> ar.level, "desc" -> ar.desc)
-  }
+  import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
+  import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
+  import org.mongodb.scala.bson.codecs.Macros._
 
-  def toAlarm(doc: Document) = {
-    val time = new DateTime(doc.get("time").get.asDateTime().getValue)
-    val src = doc.get("src").get.asString().getValue
-    val level = doc.get("level").get.asInt32().getValue
-    val desc = doc.get("desc").get.asString().getValue
-    Alarm(time, src, level, desc)
-  }
+  val codecRegistry = fromRegistries(fromProviders(classOf[Alarm]), DEFAULT_CODEC_REGISTRY)
+  val colName = "alarms"
+  val collection = mongoDB.database.getCollection[Alarm](colName).withCodecRegistry(codecRegistry)
+
 
   def init() {
-    import org.mongodb.scala.model.Indexes._
-    for(colNames <- mongoDB.database.listCollectionNames().toFuture()) {
-      if (!colNames.contains(collectionName)) {
-        val f = mongoDB.database.createCollection(collectionName).toFuture()
+    for (colNames <- mongoDB.database.listCollectionNames().toFuture()) {
+      if (!colNames.contains(colName)) { // New
+        val f = mongoDB.database.createCollection(colName).toFuture()
         f.onFailure(errorHandler)
-        f.onSuccess({
-          case _ =>
-            collection.createIndex(ascending("time", "level", "src"))
-        })
+        waitReadyResult(f)
       }
     }
   }
@@ -95,31 +68,26 @@ class AlarmOp @Inject()(mongoDB: MongoDB) {
   import org.mongodb.scala.model.Projections._
   import org.mongodb.scala.model.Sorts._
 
-  def getAlarms(level: Int, start: DateTime, end: DateTime) = {
-    import org.mongodb.scala.bson.BsonDateTime
-    val startB: BsonDateTime = start
-    val endB: BsonDateTime = end
-    val f = collection.find(and(gte("time", startB), lt("time", endB), gte("level", level))).sort(ascending("time")).toFuture()
-
-    val docs = waitReadyResult(f)
-    docs.map { toAlarm }
+  def getAlarms(level: Int, src:String, start: DateTime, end: DateTime): Future[Seq[Alarm]] = {
+    val f = collection.find(and(gte("time", start.toDate),
+      lt("time", end.toDate),
+      gte("level", level),
+      regex("src", src)
+    )).sort(ascending("time")).toFuture()
+    f onFailure(errorHandler)
+    f
   }
 
-  def getAlarmsFuture(start: DateTime, end: DateTime) = {
-    import org.mongodb.scala.bson.BsonDateTime
-    val startB: BsonDateTime = start
-    val endB: BsonDateTime = end
-    val f = collection.find(and(gte("time", startB), lt("time", endB))).sort(ascending("time")).toFuture()
 
-    for (docs <- f)
-      yield docs.map { toAlarm }
+  def getAlarmsFuture(start: DateTime, end: DateTime): Future[Seq[Alarm]] = {
+    val f = collection.find(and(gte("time", start.toDate), lt("time", end.toDate))).sort(ascending("time")).toFuture()
+    f onFailure(errorHandler)
+    f
   }
 
   private def logFilter(ar: Alarm, coldPeriod:Int = 30){
-    import org.mongodb.scala.bson.BsonDateTime
-    //None blocking...
-    val start: BsonDateTime = ar.time - coldPeriod.minutes
-    val end: BsonDateTime = ar.time
+    val start = new DateTime(ar.time).minusMinutes(coldPeriod).toDate
+    val end = new DateTime(ar.time).toDate
 
     val countObserver = collection.countDocuments(and(gte("time", start), lt("time", end),
       equal("src", ar.src), equal("level", ar.level), equal("desc", ar.desc)))
@@ -127,7 +95,8 @@ class AlarmOp @Inject()(mongoDB: MongoDB) {
     countObserver.subscribe(
       (count: Long) => {
         if (count == 0){
-          val f = collection.insertOne(toDocument(ar)).toFuture()
+          val f = collection.insertOne(ar).toFuture()
+          f onFailure(errorHandler)
         }
       }, // onNext
       (ex: Throwable) => Logger.error("Alarm failed:", ex), // onError
@@ -137,7 +106,7 @@ class AlarmOp @Inject()(mongoDB: MongoDB) {
   }
 
   def log(src: String, level: Int, desc: String, coldPeriod:Int = 30) {
-    val ar = Alarm(DateTime.now(), src, level, desc)
+    val ar = Alarm(DateTime.now().toDate, src, level, desc)
     logFilter(ar, coldPeriod)
   }  
 }

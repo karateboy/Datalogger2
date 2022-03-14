@@ -116,11 +116,12 @@ class Adam6066Collector @Inject()
                 v = result(idx)
               } yield {
                 newDiValueMap = newDiValueMap + (idx -> v)
-                monitorTypeOp.updateSignalValueMap(myInstrument.group.getOrElse(Group.PLATFORM_ADMIN), mt, v)
+                val groupID = myInstrument.group.getOrElse(Group.PLATFORM_ADMIN)
+                monitorTypeOp.updateSignalValueMap(groupID, mt, v)
                 // Log on difference
                 if (!diValueMap.contains(idx) || diValueMap(idx) != v) {
                   // FIXME hot code invert
-                  monitorTypeOp.logDiMonitorType(mt, !v)
+                  monitorTypeOp.logDiMonitorType(mt, !v, groupID)
                 }
               }
               context become handler(collectorState, masterOpt, newDiValueMap)

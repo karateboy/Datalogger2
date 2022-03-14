@@ -264,7 +264,7 @@ export default {
     this.refresh();
     this.refreshTimer = setInterval(() => {
       this.refresh();
-    }, 30000);
+    }, 60000);
     await this.fetchMonitors();
     await this.fetchMonitorTypes();
   },
@@ -308,12 +308,14 @@ export default {
         this.form.monitorTypes = [];
         this.form.monitorTypes.push(this.monitorTypes[0]._id);
       }
+      console.log(this.monitorTypes);
 
       await this.fetchMonitors();
       if (this.monitors.length !== 0) {
         this.form.monitors = [];
         for (const m of this.monitors) this.form.monitors.push(m._id);
       }
+      console.log(this.monitors);
 
       this.query();
       this.getRealtimeStatus();
@@ -341,8 +343,10 @@ export default {
       return (_value, _key, item) => item.cellData[i].cellClassName;
     },
     getMtDesc(mt) {
-      const mtCase = this.mtMap.get(mt);
-      return `${mtCase.desp}(${mtCase.unit})`;
+      if (this.mtMap.get(mt)) {
+        const mtCase = this.mtMap.get(mt);
+        return `${mtCase.desp}(${mtCase.unit})`;
+      } else return '';
     },
     getColumns() {
       const ret = [];

@@ -70,9 +70,10 @@ case class IsTargetConnected(instId: String)
 
 case object IsConnected
 
+case object CleanOldData
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentOp, recordOp: RecordOp,
-                                     alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp)() {
+                                     alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp, groupOp: GroupOp)() {
   val effectivRatio = 0.75
 
   def startCollect(inst: Instrument) {
@@ -235,10 +236,11 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
       if (MonitorStatus.isValid(status))
         for (std_law <- mtCase.std_law) {
           if (value > std_law) {
-            for(group<-groupOpt){
-              val msg = s"$group > ${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
-              alarmOp.log(alarmOp.Src(group), alarmOp.Level.INFO, msg)
-              for(groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(group)){
+            for(groupID<-groupOpt){
+              val groupName = groupOp.map(groupID)
+              val msg = s"$groupName > ${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
+              alarmOp.log(alarmOp.Src(groupID), alarmOp.Level.INFO, msg)
+              for(groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(groupID)){
                 groupDoInstruments.foreach(
                   inst =>
                     for(thresholdConfig <- mtCase.thresholdConfig){
@@ -266,10 +268,14 @@ class DataCollectManager @Inject()
 
   val timer = {
     import scala.concurrent.duration._
-    //Try to trigger at 30 sec
     val next30 = DateTime.now().withSecondOfMinute(30).plusMinutes(1)
     val postSeconds = new org.joda.time.Duration(DateTime.now, next30).getStandardSeconds
-    system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
+    context.system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
+  }
+
+  val cleanupTimer = {
+    import scala.concurrent.duration._
+    context.system.scheduler.schedule(FiniteDuration(5, SECONDS), Duration(1, DAYS), self, CleanOldData)
   }
 
   var calibratorOpt: Option[ActorRef] = None
@@ -348,6 +354,9 @@ class DataCollectManager @Inject()
                latestDataMap: Map[String, Map[String, Record]],
                mtDataList: List[(DateTime, String, List[MonitorTypeData])],
                restartList: Seq[String]): Receive = {
+    case CleanOldData =>
+      recordOp.cleanupOldData(recordOp.MinCollection)()
+
     case StartInstrument(inst) =>
       val instType = instrumentTypeOp.map(inst.instType)
       val collector = instrumentTypeOp.start(inst.instType, inst._id, inst.protocol, inst.param)
@@ -713,6 +722,7 @@ class DataCollectManager @Inject()
     onceTimer map {
       _.cancel()
     }
+    cleanupTimer.cancel()
   }
 
   case class InstrumentParam(actor: ActorRef, mtList: List[String], calibrationTimerOpt: Option[Cancellable])

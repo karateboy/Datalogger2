@@ -110,7 +110,7 @@ object MonitorType {
 }
 
 @Singleton
-class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
+class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp, groupOp: GroupOp) {
 
   import MonitorType._
   import org.mongodb.scala.bson._
@@ -209,15 +209,18 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     signalValueMap map { p => p._1 -> p._2._2 }
   }
 
-  def logDiMonitorType(mt: String, v: Boolean) = {
+  def logDiMonitorType(mt: String, v: Boolean, groupID:String = "") = {
     if (!signalMtvList.contains(mt))
       Logger.warn(s"${mt} is not DI monitor type!")
 
     val mtCase = map(mt)
+    val groupName =
+      groupOp.map.getOrElse(groupID, "")
+
     if (v) {
-      alarmOp.log(alarmOp.Src(), alarmOp.Level.WARN, s"${mtCase.desp}=>觸發", 1)
+      alarmOp.log(alarmOp.Src(groupID), alarmOp.Level.WARN, s"$groupName> ${mtCase.desp}=>觸發", 1)
     } else {
-      alarmOp.log(alarmOp.Src(), alarmOp.Level.INFO, s"${mtCase.desp}=>解除", 1)
+      alarmOp.log(alarmOp.Src(groupID), alarmOp.Level.INFO, s"$groupName> ${mtCase.desp}=>解除", 1)
     }
 
   }

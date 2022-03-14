@@ -84,13 +84,20 @@ class GroupOp @Inject()(mongoDB: MongoDB) {
 
   import org.mongodb.scala.model.Filters._
 
+  var map : Map[String, Group] = {
+    val groups = getAllGroups
+    groups.map(g=>g._id->g).toMap
+  }
+
   def deleteGroup(_id: String) = {
     val f = collection.deleteOne(equal("_id", _id)).toFuture()
+    map = map- _id
     waitReadyResult(f)
   }
 
   def updateGroup(group: Group) = {
     val f = collection.replaceOne(equal("_id", group._id), group).toFuture()
+    map = map + (group._id->group)
     waitReadyResult(f)
   }
 
