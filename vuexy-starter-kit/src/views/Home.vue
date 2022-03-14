@@ -308,14 +308,12 @@ export default {
         this.form.monitorTypes = [];
         this.form.monitorTypes.push(this.monitorTypes[0]._id);
       }
-      console.log(this.monitorTypes);
 
       await this.fetchMonitors();
       if (this.monitors.length !== 0) {
         this.form.monitors = [];
         for (const m of this.monitors) this.form.monitors.push(m._id);
       }
-      console.log(this.monitors);
 
       this.query();
       this.getRealtimeStatus();

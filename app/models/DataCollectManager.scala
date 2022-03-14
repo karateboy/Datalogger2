@@ -237,7 +237,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         for (std_law <- mtCase.std_law) {
           if (value > std_law) {
             for(groupID<-groupOpt){
-              val groupName = groupOp.map(groupID)
+              val groupName = groupOp.map(groupID).name
               val msg = s"$groupName > ${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
               alarmOp.log(alarmOp.Src(groupID), alarmOp.Level.INFO, msg)
               for(groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(groupID)){
