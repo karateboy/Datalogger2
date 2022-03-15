@@ -186,14 +186,19 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp, groupOp: Group
     MonitorType(_id, desp, "N/A", 0, signalOrder, true)
   }
 
-  def getGroupMapAsync(group: String): Future[Map[String, MonitorType]] = {
-    val f = collection.find(Filters.equal("group", group)).toFuture()
+  def getGroupMapAsync(groupID: String): Future[Map[String, MonitorType]] = {
+    val f = collection.find(Filters.equal("group", groupID)).toFuture()
     f onFailure errorHandler()
-    val pairFuture =
-      for(mtList<-f) yield
-        mtList.map(mt=>mt._id->mt)
-
-    pairFuture.map(_.toMap)
+    var groupMap = map
+    for(groupMtList<-f) yield {
+      groupMtList.foreach{
+        mtCase =>
+          val mtID = mtCase._id.reverse.drop(groupID.length + 1).reverse
+          mtCase._id = mtID
+          groupMap = groupMap + (mtID -> mtCase)
+      }
+      groupMap
+    }
   }
 
   def updateSignalValueMap(groupID: String, mt: String, v: Boolean) = {
@@ -377,20 +382,20 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp, groupOp: Group
     }
   }
 
-  def getOverStd(mt: String, r: Option[Record]) = {
+  def getOverStd(mt: String, r: Option[Record], mtMap:Map[String, MonitorType]): Boolean = {
     if (r.isEmpty)
       false
     else {
-      val (overInternal, overLaw) = overStd(mt, r.get.value)
+      val (overInternal, overLaw) = overStd(mt, r.get.value, mtMap)
       overInternal || overLaw
     }
   }
 
-  def formatRecord(mt: String, r: Option[Record]) = {
+  def formatRecord(mt: String, r: Option[Record],  mtMap:Map[String, MonitorType]) = {
     if (r.isEmpty)
       "-"
     else {
-      val (overInternal, overLaw) = overStd(mt, r.get.value)
+      val (overInternal, overLaw) = overStd(mt, r.get.value, mtMap)
       val prec = map(mt).prec
       val value = s"%.${prec}f".format(r.get.value)
       if (overInternal || overLaw)
@@ -400,7 +405,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp, groupOp: Group
     }
   }
 
-  def overStd(mt: String, v: Double) = {
+  def overStd(mt: String, v: Double, map:Map[String, MonitorType]) = {
     val mtCase = map(mt)
     val overInternal =
       if (mtCase.std_internal.isDefined) {
@@ -421,17 +426,17 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp, groupOp: Group
     (overInternal, overLaw)
   }
 
-  def getCssClassStr(record: MtRecord) = {
-    val (overInternal, overLaw) = overStd(record.mtName, record.value)
+  def getCssClassStr(record: MtRecord,  mtMap:Map[String, MonitorType]) = {
+    val (overInternal, overLaw) = overStd(record.mtName, record.value, mtMap)
     MonitorStatus.getCssClassStr(record.status, overInternal, overLaw)
   }
 
-  def getCssClassStr(mt: String, r: Option[Record]) = {
+  def getCssClassStr(mt: String, r: Option[Record], mtMap:Map[String, MonitorType]) = {
     if (r.isEmpty)
       Seq.empty[String]
     else {
       val v = r.get.value
-      val (overInternal, overLaw) = overStd(mt, v)
+      val (overInternal, overLaw) = overStd(mt, v, mtMap)
       MonitorStatus.getCssClassStr(r.get.status, overInternal, overLaw)
     }
   }

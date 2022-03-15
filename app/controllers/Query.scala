@@ -158,6 +158,9 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
   def historyTrendChart(monitorStr: String, monitorTypeStr: String, reportUnitStr: String, statusFilterStr: String,
                         startNum: Long, endNum: Long, outputTypeStr: String) = Security.Authenticated {
     implicit request =>
+      val groupID = request.user.group
+      val groupMtMap = waitReadyResult(monitorTypeOp.getGroupMapAsync(groupID))
+
       val monitors = monitorStr.split(':')
       val monitorTypeStrArray = monitorTypeStr.split(':')
       val monitorTypes = monitorTypeStrArray
@@ -388,6 +391,9 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
   def historyData(monitorStr: String, monitorTypeStr: String, tabTypeStr: String,
                   startNum: Long, endNum: Long) = Security.Authenticated.async {
     implicit request =>
+      val groupID = request.user.group
+      val groupMtMap = waitReadyResult(monitorTypeOp.getGroupMapAsync(groupID))
+
       val monitors = monitorStr.split(":")
       val monitorTypes = monitorTypeStr.split(':')
       val tabType = TableType.withName(tabTypeStr)
@@ -414,7 +420,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
               val cellData = if(r.mtMap.contains(mt)){
                 val mtRecord = r.mtMap(mt)
                 CellData(monitorTypeOp.format(mt, Some(mtRecord.value)),
-                  monitorTypeOp.getCssClassStr(mtRecord), Some(mtRecord.status))
+                  monitorTypeOp.getCssClassStr(mtRecord, groupMtMap), Some(mtRecord.status))
               }else
                 emtpyCell
 
@@ -447,6 +453,9 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
 
   def latestData(monitorStr: String, monitorTypeStr: String, tabTypeStr: String) = Security.Authenticated.async {
     implicit request =>
+      val groupID = request.user.group
+      val groupMtMap = waitReadyResult(monitorTypeOp.getGroupMapAsync(groupID))
+
       val monitors = monitorStr.split(":")
       val monitorTypes = monitorTypeStr.split(':')
       val tabType = TableType.withName(tabTypeStr)
@@ -470,7 +479,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
               val cellData = if(r.mtMap.contains(mt)){
                 val mtRecord = r.mtMap(mt)
                 CellData(monitorTypeOp.format(mt, Some(mtRecord.value)),
-                  monitorTypeOp.getCssClassStr(mtRecord), Some(mtRecord.status))
+                  monitorTypeOp.getCssClassStr(mtRecord, groupMtMap), Some(mtRecord.status))
               }else
                 emtpyCell
 

@@ -26,6 +26,7 @@ case class HourEntry(time: Long, cells: CellData)
 case class DailyReport(columnNames: Seq[String], hourRows: Seq[RowData], statRows: Seq[StatRow])
 
 case class MonthlyHourReport(columnNames: Seq[String], rows: Seq[RowData], statRows: Seq[StatRow])
+
 @Singleton
 class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: Query) extends Controller {
   implicit val w3 = Json.writes[CellData]
@@ -35,7 +36,10 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
 
   def getMonitorReport(reportTypeStr: String, startNum: Long, outputTypeStr: String) = Security.Authenticated {
     implicit request =>
-      val reportType = PeriodReport.withName(reportTypeStr)
+        val groupID = request.user.group
+        val groupMtMap = waitReadyResult(monitorTypeOp.getGroupMapAsync(groupID))
+
+        val reportType = PeriodReport.withName(reportTypeStr)
       val outputType = OutputType.withName(outputTypeStr)
 
       if (outputType == OutputType.html || outputType == OutputType.pdf) {
@@ -83,16 +87,18 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
             val statRows = Seq(avgRow, maxRow, minRow, effectiveRow)
 
             val hourRows =
-              for(i <- 0 to 23) yield {
+              for (i <- 0 to 23) yield {
                 val recordTime = startDate + i.hour
                 val mtData =
                   for (mt <- mtList) yield {
-                    CellData(monitorTypeOp.formatRecord(mt, mtTimeMap(mt).get(recordTime)),
-                      monitorTypeOp.getCssClassStr(mt, mtTimeMap(mt).get(recordTime)))
+                    CellData(monitorTypeOp.formatRecord(mt, mtTimeMap(mt).get(recordTime), groupMtMap),
+                      monitorTypeOp.getCssClassStr(mt, mtTimeMap(mt).get(recordTime), groupMtMap))
                   }
                 RowData(recordTime.getMillis, mtData)
               }
-            val columnNames = mtList map { monitorTypeOp.map(_).desp}
+            val columnNames = mtList map {
+              monitorTypeOp.map(_).desp
+            }
             val dailyReport = DailyReport(columnNames, hourRows, statRows)
 
             Ok(Json.toJson(dailyReport))
@@ -134,7 +140,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
             val statRows = Seq(avgRow, maxRow, minRow, effectiveRow)
 
             val dayRows =
-              for(recordTime<-getPeriods(start, start + 1.month, 1.day)) yield {
+              for (recordTime <- getPeriods(start, start + 1.month, 1.day)) yield {
                 val mtData =
                   for (mt <- mtList) yield {
                     CellData(monitorTypeOp.format(mt, statMap(mt)(recordTime).avg),
@@ -142,7 +148,9 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
                   }
                 RowData(recordTime.getMillis, mtData)
               }
-            val columnNames = mtList map { monitorTypeOp.map(_).desp}
+            val columnNames = mtList map {
+              monitorTypeOp.map(_).desp
+            }
             val dailyReport = DailyReport(columnNames, dayRows, statRows)
             Ok(Json.toJson(dailyReport))
 
@@ -245,106 +253,109 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
   }
 
   def monthlyHourReport(monitorTypeStr: String, startDate: Long, outputTypeStr: String) = Security.Authenticated {
-    val mt = (monitorTypeStr)
-    val start = new DateTime(startDate).withMillisOfDay(0).withDayOfMonth(1)
-    val outputType = OutputType.withName(outputTypeStr)
-    val title = "月份時報表"
-    if (outputType == OutputType.html || outputType == OutputType.pdf) {
-      val recordList = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.SELF_ID, List(mt), start, start + 1.month)(mt)
-      val timePair = recordList.map { r => r.time -> r }
-      val timeMap = Map(timePair: _*)
+    implicit request =>
+      val groupID = request.user.group
+      val groupMtMap = waitReadyResult(monitorTypeOp.getGroupMapAsync(groupID))
+      val mt = (monitorTypeStr)
+      val start = new DateTime(startDate).withMillisOfDay(0).withDayOfMonth(1)
+      val outputType = OutputType.withName(outputTypeStr)
+      val title = "月份時報表"
+      if (outputType == OutputType.html || outputType == OutputType.pdf) {
+        val recordList = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.SELF_ID, List(mt), start, start + 1.month)(mt)
+        val timePair = recordList.map { r => r.time -> r }
+        val timeMap = Map(timePair: _*)
 
-      def getHourPeriodStat(records: Seq[Record], hourList: List[DateTime]) = {
-        if (records.length == 0)
-          Stat(None, None, None, 0, 0, 0)
-        else {
-          val values = records.map { r => r.value }
-          val min = values.min
-          val max = values.max
-          val sum = values.sum
-          val count = records.length
-          val total = new Duration(start, start + 1.month).getStandardDays.toInt
-          val overCount = if (monitorTypeOp.map(mt).std_law.isDefined) {
-            values.count {
-              _ > monitorTypeOp.map(mt).std_law.get
+        def getHourPeriodStat(records: Seq[Record], hourList: List[DateTime]) = {
+          if (records.length == 0)
+            Stat(None, None, None, 0, 0, 0)
+          else {
+            val values = records.map { r => r.value }
+            val min = values.min
+            val max = values.max
+            val sum = values.sum
+            val count = records.length
+            val total = new Duration(start, start + 1.month).getStandardDays.toInt
+            val overCount = if (monitorTypeOp.map(mt).std_law.isDefined) {
+              values.count {
+                _ > monitorTypeOp.map(mt).std_law.get
+              }
+            } else
+              0
+
+            val avg = if (mt == MonitorType.WIN_DIRECTION) {
+              val windDir = records
+              val windSpeed = hourList.map(timeMap)
+              windAvg(windSpeed, windDir)
+            } else {
+              sum / total
             }
-          } else
-            0
-
-          val avg = if (mt == MonitorType.WIN_DIRECTION) {
-            val windDir = records
-            val windSpeed = hourList.map(timeMap)
-            windAvg(windSpeed, windDir)
-          } else {
-            sum / total
+            Stat(
+              avg = Some(avg),
+              min = Some(min),
+              max = Some(max),
+              total = total,
+              count = count,
+              overCount = overCount)
           }
-          Stat(
-            avg = Some(avg),
-            min = Some(min),
-            max = Some(max),
-            total = total,
-            count = count,
-            overCount = overCount)
         }
-      }
 
-      val hourValues =
-        for {
-          h <- 0 to 23
-          hourList = query.getPeriods(start + h.hour, start + 1.month, 1.day)
-        } yield {
-          h -> getHourPeriodStat(hourList.flatMap {
-            timeMap.get
-          }, hourList)
+        val hourValues =
+          for {
+            h <- 0 to 23
+            hourList = query.getPeriods(start + h.hour, start + 1.month, 1.day)
+          } yield {
+            h -> getHourPeriodStat(hourList.flatMap {
+              timeMap.get
+            }, hourList)
+          }
+        val hourStatMap = Map(hourValues: _*)
+        val dayStatMap = query.getPeriodStatReportMap(Map(mt -> recordList), 1.day)(start, start + 1.month)
+        val overallStat = query.getPeriodStatReportMap(Map(mt -> recordList), 1.day)(start, start + 1.month)(mt)(start)
+        var columns = Seq.empty[String]
+        for (i <- 0 to 23) {
+          columns = columns.:+(s"$i:00")
         }
-      val hourStatMap = Map(hourValues: _*)
-      val dayStatMap = query.getPeriodStatReportMap(Map(mt -> recordList), 1.day)(start, start + 1.month)
-      val overallStat = query.getPeriodStatReportMap(Map(mt -> recordList), 1.day)(start, start + 1.month)(mt)(start)
-      var columns = Seq.empty[String]
-      for(i <- 0 to 23){
-        columns = columns.:+(s"$i:00")
-      }
-      columns= columns ++ Seq("平均", "最大", "最小", "有效筆數")
+        columns = columns ++ Seq("平均", "最大", "最小", "有效筆數")
 
-      val avgRow = {
-        var avgData =
-          for (h <- 0 to 23) yield {
-            CellData(monitorTypeOp.format(mt, hourStatMap(h).avg), Seq.empty[String])
-          }
-        avgData = avgData.:+(CellData("",Seq.empty[String]))
-        avgData = avgData.:+(CellData("",Seq.empty[String]))
-        avgData = avgData.:+(CellData("",Seq.empty[String]))
-        StatRow("平均", avgData)
-      }
-      val maxRow = {
-        var maxData =
-          for (h <- 0 to 23 ) yield {
-            CellData(monitorTypeOp.format(mt, hourStatMap(h).max), Seq.empty[String])
-          }
-        maxData = maxData.:+(CellData("",Seq.empty[String]))
-        maxData = maxData.:+(CellData(monitorTypeOp.format(mt, overallStat.max),Seq.empty[String]))
-        maxData = maxData.:+(CellData("",Seq.empty[String]))
-        StatRow("最大", maxData)
-      }
-      val minRow = {
-        var minData =
-          for (h <- 0 to 23) yield {
-            CellData(monitorTypeOp.format(mt, hourStatMap(h).min), Seq.empty[String])
-          }
-        minData = minData.:+(CellData("",Seq.empty[String]))
-        minData = minData.:+(CellData("",Seq.empty[String]))
-        minData = minData.:+(CellData(monitorTypeOp.format(mt, overallStat.min),Seq.empty[String]))
-        StatRow("最小", minData)
-      }
+        val avgRow = {
+          var avgData =
+            for (h <- 0 to 23) yield {
+              CellData(monitorTypeOp.format(mt, hourStatMap(h).avg), Seq.empty[String])
+            }
+          avgData = avgData.:+(CellData("", Seq.empty[String]))
+          avgData = avgData.:+(CellData("", Seq.empty[String]))
+          avgData = avgData.:+(CellData("", Seq.empty[String]))
+          StatRow("平均", avgData)
+        }
+        val maxRow = {
+          var maxData =
+            for (h <- 0 to 23) yield {
+              CellData(monitorTypeOp.format(mt, hourStatMap(h).max), Seq.empty[String])
+            }
+          maxData = maxData.:+(CellData("", Seq.empty[String]))
+          maxData = maxData.:+(CellData(monitorTypeOp.format(mt, overallStat.max), Seq.empty[String]))
+          maxData = maxData.:+(CellData("", Seq.empty[String]))
+          StatRow("最大", maxData)
+        }
+        val minRow = {
+          var minData =
+            for (h <- 0 to 23) yield {
+              CellData(monitorTypeOp.format(mt, hourStatMap(h).min), Seq.empty[String])
+            }
+          minData = minData.:+(CellData("", Seq.empty[String]))
+          minData = minData.:+(CellData("", Seq.empty[String]))
+          minData = minData.:+(CellData(monitorTypeOp.format(mt, overallStat.min), Seq.empty[String]))
+          StatRow("最小", minData)
+        }
 
-      val statRows = Seq(avgRow, maxRow, minRow)
+        val statRows = Seq(avgRow, maxRow, minRow)
 
-      var rows = Seq.empty[RowData]
-        for(day<-getPeriods(start, start+1.month, 1.day)) yield{
+        var rows = Seq.empty[RowData]
+        for (day <- getPeriods(start, start + 1.month, 1.day)) yield {
           val date = day.getMillis
           var cellData = Seq.empty[CellData]
-          for(h<- 0 to 23){
-            cellData = cellData.:+(CellData(monitorTypeOp.formatRecord(mt, timeMap.get(day + h.hour)), Seq.empty[String]))
+          for (h <- 0 to 23) {
+            cellData = cellData.:+(CellData(monitorTypeOp.formatRecord(mt, timeMap.get(day + h.hour), groupMtMap), Seq.empty[String]))
           }
           cellData = cellData.:+(CellData(monitorTypeOp.format(mt, dayStatMap(mt)(day).avg), Seq.empty[String]))
           cellData = cellData.:+(CellData(monitorTypeOp.format(mt, dayStatMap(mt)(day).max), Seq.empty[String]))
@@ -352,10 +363,10 @@ class Report @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, query: 
           cellData = cellData.:+(CellData(dayStatMap(mt)(day).count.toString, Seq.empty[String]))
           rows = rows.:+(RowData(date, cellData))
         }
-      implicit val write = Json.writes[MonthlyHourReport]
-      Ok(Json.toJson(MonthlyHourReport(columns, rows, statRows)))
-    } else {
-      Ok("")
-    }
+        implicit val write = Json.writes[MonthlyHourReport]
+        Ok(Json.toJson(MonthlyHourReport(columns, rows, statRows)))
+      } else {
+        Ok("")
+      }
   }
 }

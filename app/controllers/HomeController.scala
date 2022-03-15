@@ -485,11 +485,8 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
           monitorTypeOp.mtvList map monitorTypeOp.map
         }
       else {
-        val groupID= group._id
         for(groupMap<-monitorTypeOp.getGroupMapAsync(group._id)) yield
-          group.monitorTypes map { mtID=>
-            groupMap.getOrElse(s"${mtID}_$groupID", monitorTypeOp.map(mtID))
-          }
+          group.monitorTypes map groupMap
       }
 
       for(mtList<-mtListFuture) yield
@@ -540,7 +537,6 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
       val userInfo = request.user
       val f = instrumentOp.getGroupDoInstrumentList(userInfo.group)
       for (ret <- f) yield {
-        Logger.info(s"getSignalInstrumentList group=${userInfo.group} #=${ret.size}")
         implicit val write = Json.writes[InstrumentInfo]
 
         val ret2 = ret.map { inst =>

@@ -1,8 +1,10 @@
 package controllers
 import com.github.nscala_time.time.Imports._
+import models.ModelHelper.waitReadyResult
 import models._
 import play.api.libs.json._
 import play.api.mvc._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import javax.inject._
 
@@ -13,6 +15,8 @@ class Realtime @Inject()
   case class MonitorTypeStatus(_id:String, desp: String, value: String, unit: String, instrument: String, status: String, classStr: Seq[String], order: Int)
   def MonitorTypeStatusList() = Security.Authenticated.async {
     implicit request =>
+      val groupID = request.user.group
+      val groupMtMap = waitReadyResult(monitorTypeOp.getGroupMapAsync(groupID))
 
 
       implicit val mtsWrite = Json.writes[MonitorTypeStatus]
@@ -33,7 +37,7 @@ class Realtime @Inject()
               if (recordOpt.isDefined) {
                 val record = recordOpt.get
                 val duration = new Duration(record.time, DateTime.now())
-                val (overInternal, overLaw) = monitorTypeOp.overStd(mt, record.value)
+                val (overInternal, overLaw) = monitorTypeOp.overStd(mt, record.value, groupMtMap)
                 val status = if (duration.getStandardSeconds <= overTimeLimit)
                   monitorStatusOp.map(record.status).desp
                 else

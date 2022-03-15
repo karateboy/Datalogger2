@@ -9,6 +9,7 @@ import play.api.libs.concurrent.InjectedActorSupport
 import javax.inject._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration.SECONDS
 import scala.language.postfixOps
 import scala.util.Success
@@ -218,42 +219,42 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
   }
 
   def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord], groupOpt: Option[String] = None) = {
-    var overThreshold = false
     for {
       hourMtData <- minMtAvgList
       mt = hourMtData.mtName
       value = hourMtData.value
       status = hourMtData.status
     } {
-      val mtCase =
-        if(groupOpt.nonEmpty) {
-          val groupID = groupOpt.get
-          val groupMap = waitReadyResult(monitorTypeOp.getGroupMapAsync(groupID))
-          groupMap.getOrElse(s"${mt}_$groupID", monitorTypeOp.map(mt))
-        } else
-          monitorTypeOp.map(mt)
-
-      if (MonitorStatus.isValid(status))
-        for (std_law <- mtCase.std_law) {
-          if (value > std_law) {
-            for(groupID<-groupOpt){
-              val groupName = groupOp.map(groupID).name
-              val msg = s"$groupName > ${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
-              alarmOp.log(alarmOp.Src(groupID), alarmOp.Level.INFO, msg)
-              for(groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(groupID)){
-                groupDoInstruments.foreach(
-                  inst =>
-                    for(thresholdConfig <- mtCase.thresholdConfig){
-                      manager ! ToggleMonitorTypeDO(inst._id, MonitorType.SPRAY, thresholdConfig.elapseTime)
-                    }
-                )
-              }
+      if (MonitorStatus.isValid(status)) {
+        val mtCaseFuture =
+          if(groupOpt.nonEmpty) {
+            val groupMtMapFuture = monitorTypeOp.getGroupMapAsync(groupOpt.get)
+            for(groupMtMap<-groupMtMapFuture) yield
+              groupMtMap.getOrElse(mt, monitorTypeOp.map(mt))
+          } else
+            Future{
+              monitorTypeOp.map(mt)
             }
-            overThreshold = true
+
+        for{mtCase<-mtCaseFuture
+            std_law <- mtCase.std_law if value > std_law
+            }{
+          for(groupID<-groupOpt){
+            val groupName = groupOp.map(groupID).name
+            val msg = s"$groupName > ${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
+            alarmOp.log(alarmOp.Src(groupID), alarmOp.Level.INFO, msg)
+            for(groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(groupID)){
+              groupDoInstruments.foreach(
+                inst =>
+                  for(thresholdConfig <- mtCase.thresholdConfig){
+                    manager ! ToggleMonitorTypeDO(inst._id, MonitorType.SPRAY, thresholdConfig.elapseTime)
+                  }
+              )
+            }
           }
         }
+      }
     }
-    overThreshold
   }
 }
 
