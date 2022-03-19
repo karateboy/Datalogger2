@@ -220,7 +220,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp, groupOp: Group
 
     val mtCase = map(mt)
     val groupName =
-      groupOp.map.getOrElse(groupID, "")
+      groupOp.map.get(groupID).getOrElse(s"$groupID")
 
     if (v) {
       alarmOp.log(alarmOp.Src(groupID), alarmOp.Level.WARN, s"$groupName> ${mtCase.desp}=>觸發", 1)

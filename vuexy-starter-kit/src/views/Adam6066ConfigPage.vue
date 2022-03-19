@@ -6,9 +6,6 @@
     <template #cell(enable)="row">
       <b-form-checkbox v-model="row.item.enable" @change="onChange" />
     </template>
-    <template #cell(repairMode)="row">
-      <b-form-checkbox v-model="row.item.repairMode" @change="onChange" />
-    </template>
     <template #cell(mt)="row">
       <v-select
         id="monitorType"
@@ -54,14 +51,13 @@ export default Vue.extend({
     if (this.paramStr !== '') paramObj = JSON.parse(this.paramStr);
 
     const fields = [
-      'index',
+      {
+        key: 'index',
+        label: 'Relay',
+      },
       {
         key: 'enable',
         label: '啟用',
-      },
-      {
-        key: 'repairMode',
-        label: '維修模式',
       },
       {
         key: 'mt',

@@ -9,7 +9,7 @@ import play.api._
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-case class Adam6066ChannelCfg(enable: Boolean, mt: Option[String], repairMode: Option[Boolean])
+case class Adam6066ChannelCfg(enable: Boolean, mt: Option[String])
 
 case class Adam6066Param(chs: Seq[Adam6066ChannelCfg])
 
@@ -165,7 +165,7 @@ class Adam6066Collector @Inject()
         idx = cfg._2
       } yield {
         Logger.info(s"WriteMonitorTypeDO $mtID $idx $on")
-        self ! WriteDO(17 + idx, on)
+        self ! WriteDO(16 + idx, on)
       }
   }
 

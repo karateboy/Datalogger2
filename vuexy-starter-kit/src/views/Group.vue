@@ -88,12 +88,11 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import { mapState } from 'vuex';
+import { mapState, mapGetters } from 'vuex';
 import axios from 'axios';
 import { Group, TextStrValue } from './types';
 const Ripple = require('vue-ripple-directive');
 import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
-const emptyPassword = '';
 
 export default Vue.extend({
   directives: {
@@ -151,6 +150,7 @@ export default Vue.extend({
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapState('monitors', ['monitors']),
+    ...mapGetters('monitors', ['mMap']),
     btnTitle(): string {
       if (this.isNew) return '新增';
       return '更新';
@@ -169,6 +169,8 @@ export default Vue.extend({
       }
 
       for (const m of monitors) ret.push({ text: m.desc, value: m._id });
+      console.info('monitorOptions');
+      console.info(ret);
       return ret;
     },
     monitorTypeOptions(): Array<TextStrValue> {
@@ -219,7 +221,11 @@ export default Vue.extend({
       const res = await axios.get('/Groups');
       if (res.status == 200) this.groupList = res.data;
     },
+    sanityCheck() {
+      this.group.monitors = this.group.monitors.filter(m => this.mMap.get(m));
+    },
     upsert() {
+      this.sanityCheck();
       if (this.isNew) {
         axios.post(`/Group`, this.group).then(res => {
           if (res.status === 200) {

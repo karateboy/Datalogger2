@@ -114,11 +114,7 @@ export default {
   data() {
     const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
     return {
-      dataTypes: [
-        // { txt: '小時資料', id: 'hour' },
-        { txt: '分鐘資料', id: 'min' },
-        // { txt: '秒資料', id: 'second' },
-      ],
+      dataTypes: [{ txt: '分鐘資料', id: 'min' }],
       form: {
         monitors: [],
         dataType: 'min',
@@ -175,7 +171,6 @@ export default {
         lngMin = 1000;
 
       for (const stat of this.realTimeStatus) {
-        if (!this.mMap.get(stat.monitor)) continue;
         const latEntry = stat.mtDataList.find(v => v.mtName === 'LAT');
         if (!latEntry) continue;
 
@@ -197,7 +192,6 @@ export default {
     },
     markers() {
       const ret = [];
-      let count = 0;
       const getIconUrl = (v, mt) => {
         let url = `https://chart.googleapis.com/chart?chst=d_bubble_text_small_withshadow&&chld=bb|`;
 
@@ -228,22 +222,20 @@ export default {
 
         const mt = this.userInfo.monitorTypeOfInterest[0];
         const mtEntry = stat.mtDataList.find(v => v.mtName === mt);
-
         if (!mtEntry) continue;
 
         const iconUrl = getIconUrl(mtEntry.value, mt);
-        if (!this.mMap.get(stat.monitor)) continue;
+        const monitor = this.mMap.get(stat._id.monitor);
+        if (!monitor) continue;
 
         ret.push({
-          title: this.mMap.get(stat.monitor).desc,
+          title: monitor.desc,
           position: { lat, lng },
           pm25,
-          infoText: `<strong>${this.mMap.get(stat.monitor).desc}</strong>`,
+          infoText: `<strong>${monitor.desc}</strong>`,
           iconUrl,
         });
-        count++;
       }
-
       return ret;
     },
   },
@@ -334,8 +326,12 @@ export default {
       this.rows = ret.data.rows;
     },
     async getRealtimeStatus() {
-      const ret = await axios.get('/RealtimeStatus');
-      this.realTimeStatus = ret.data;
+      try {
+        const ret = await axios.get('/RealtimeStatus');
+        this.realTimeStatus = ret.data;
+      } catch (ex) {
+        throw new Error('failed');
+      }
     },
     cellDataTd(i) {
       return (_value, _key, item) => item.cellData[i].cellClassName;
@@ -354,9 +350,7 @@ export default {
       });
       let i = 0;
       for (const mt of this.userInfo.monitorTypeOfInterest) {
-        const mtCase = this.mtMap.get(mt);
         for (const m of this.form.monitors) {
-          // emtpyCell  ${mtCase.desp}(${mtCase.unit})
           const mCase = this.mMap.get(m);
           ret.push({
             key: `cellData[${i}].v`,

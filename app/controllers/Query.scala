@@ -512,17 +512,20 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
 
   def realtimeStatus() = Security.Authenticated.async {
     implicit request =>
+      val userInfo = request.user
+      val groupID = userInfo.group
+      val group = groupOp.map(groupID)
       import recordOp.recordListWrite
-      val monitors = monitorOp.mvList
+      val monitors = group.monitors
       val tabType = TableType.min
-
-      val futures = for(m <- monitors.toSeq) yield
+      Logger.info(s"group=$groupID monitors=${monitors}")
+      val futures = for(m <- monitors) yield
         recordOp.getLatestRecordFuture(TableType.mapCollection(tabType))(m)
 
       val allFutures = Future.sequence(futures)
 
-      for (allRecordlist <- allFutures) yield {
-        val recordList = allRecordlist.fold(Seq.empty[RecordList])((a,b)=>{ a ++ b})
+      for (allRecords <- allFutures) yield {
+        val recordList = allRecords.fold(Seq.empty[RecordList])((a, b)=>{ a ++ b})
 
         Ok(Json.toJson(recordList))
       }
