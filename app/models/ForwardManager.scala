@@ -65,8 +65,7 @@ object ForwardManager {
   case object GetInstrumentCmd
 }
 
-class ForwardManager @Inject()(ws: WSClient,
-                               hourRecordForwarderFactory: HourRecordForwarder.Factory,
+class ForwardManager @Inject()(hourRecordForwarderFactory: HourRecordForwarder.Factory,
                                minRecordForwarderFactory: MinRecordForwarder.Factory,
                                calibrationForwarderFactory: CalibrationForwarder.Factory,
                                alarmForwarderFactory: AlarmForwarder.Factory,

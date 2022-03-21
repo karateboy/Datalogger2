@@ -72,7 +72,7 @@ DELETE   /Sensor/:id                                                            
 #Data Management
 
 GET      /Recalculate/:monitors/:start/:end                                       controllers.HomeController.recalculateHour(monitors, start:Long, end:Long)
-GET      /Upload/:tab/:start/:end                                                 controllers.HomeController.uploadData(tab, start, end)
+GET      /Upload/:start/:end                                                      controllers.HomeController.uploadData(start:Long, end:Long)
 
 #Realtime
 GET      /MonitorTypeStatusList                                                   controllers.Realtime.MonitorTypeStatusList()
@@ -118,7 +118,20 @@ POST     /ConfigDuoMonitorTypes/:host               controllers.HomeController.c
 GET      /DuoFixedMonitorTypes                      controllers.HomeController.getDuoFixedMonitorTypes
 
 GET		/WindRose/:monitor/:monitorType/:tabType/:nWay/:start/:end                controllers.Query.windRoseReport(monitor: String, monitorType: String, tabType:String, nWay: Int, start: Long, end: Long)
-#GET		/WindRose/:monitor/:monitorType/:tabType/:nWay/:start/:end/:level1/:level2/:level3   controllers.Query.windRoseReport(monitor: String, monitorType: String, tabType:String, nWay: Int, start: Long, end: Long, level1: Double, level2: Double, level3: Double)
 
-#GET		/MonitorTypeRose		controllers.Query.monitorTypeRose
-#GET		/WindRoseReport/:monitor/:monitorType/:nWays/:start/:end	controllers.Query.windRoseReport(monitor, monitorType, nWays:Int, start, end)
+#SYSCONFIG
+GET      /AlertEmailTargets                                                       controllers.HomeController.getAlertEmailTargets
+POST     /AlertEmailTargets                                                       controllers.HomeController.saveAlertEmailTargets
+GET      /SystemConfig/EffectiveRatio                                             controllers.HomeController.getEffectiveRatio
+POST     /SystemConfig/EffectiveRatio                                             controllers.HomeController.saveEffectiveRatio
+
+#Rules
+GET     /SpikeRules                             controllers.RuleController.getSpikeRules
+POST    /SpikeRule                              controllers.RuleController.upsertSpikeRule
+DELETE  /SpikeRule/:monitor/:monitorType        controllers.RuleController.deleteSpikeRule(monitor, monitorType)
+GET     /ConstantRules                          controllers.RuleController.getConstantRules
+POST    /ConstantRule                           controllers.RuleController.upsertConstantRule
+DELETE  /ConstantRule/:monitor/:monitorType     controllers.RuleController.deleteConstantRule(monitor, monitorType)
+GET     /VariationRules                         controllers.RuleController.getVariationRules
+POST    /VariationRule                          controllers.RuleController.upsertVariationRule
+DELETE  /VariationRule/:monitor/:monitorType    controllers.RuleController.deleteVariationRule(monitor, monitorType)

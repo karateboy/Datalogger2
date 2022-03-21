@@ -207,7 +207,6 @@ class VerewaF701Collector @Inject()
             serial.port.writeBytes(cmd)
             val replies = serial.getMessageByCrWithTimeout(timeout = 3)
             for (reply <- replies if reply.contains("MD")) {
-              Logger.info(reply)
               val pos = reply.indexOf("MD")
               val measureList = HessenProtocol.decode(reply.drop(pos))
               for {

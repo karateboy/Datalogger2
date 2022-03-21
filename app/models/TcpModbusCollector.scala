@@ -14,14 +14,19 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
                                    alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
                                    calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
-                                  (@Assisted("instId") instId: String, @Assisted("desc") desc:String, @Assisted modelReg: TcpModelReg,
+                                  (@Assisted("instId") instId: String, @Assisted("desc") desc: String, @Assisted modelReg: TcpModelReg,
                                    @Assisted deviceConfig: DeviceConfig, @Assisted("protocol") protocol: ProtocolParam) extends Actor {
-  var timerOpt: Option[Cancellable] = None
+  val InputKey = "Input"
 
   import TapiTxxCollector._
   import com.serotonin.modbus4j._
   import com.serotonin.modbus4j.ip.IpParameters
+  val HoldingKey = "Holding"
+  val ModeKey = "Mode"
 
+  self ! ConnectHost
+  val WarnKey = "Warn"
+  var timerOpt: Option[Cancellable] = None
   var masterOpt: Option[ModbusMaster] = None
   var (collectorState: String, instrumentStatusTypesOpt) = {
     val instList = instrumentOp.getInstrument(instId)
@@ -31,13 +36,25 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
     } else
       (MonitorStatus.NormalStat, None)
   }
+  var connected = false
+  var oldModelReg: Option[ModelRegValue] = None
+  var nextLoggingStatusTime = {
+    def getNextTime(period: Int) = {
+      import com.github.nscala_time.time.Imports._
+      val now = DateTime.now()
+      val nextMin = (now.getMinuteOfHour / period + 1) * period
+      val hour = (now.getHourOfDay + (nextMin / 60)) % 24
+      val nextDay = (now.getHourOfDay + (nextMin / 60)) / 24
 
-  self ! ConnectHost
+      now.withHourOfDay(hour).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0) + nextDay.day
+    }
 
-  val InputKey = "Input"
-  val HoldingKey = "Holding"
-  val ModeKey = "Mode"
-  val WarnKey = "Warn"
+    // suppose every 10 min
+    val period = 30
+    val nextTime = getNextTime(period)
+    //Logger.debug(s"$instId next logging time= $nextTime")
+    nextTime
+  }
 
   def probeInstrumentStatusType: Seq[InstrumentStatusType] = {
     Logger.info("Probing supported modbus registers...")
@@ -128,7 +145,6 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
     import com.serotonin.modbus4j.BatchRead
     val batch = new BatchRead[Integer]
 
-    import com.serotonin.modbus4j.code.DataType
     import com.serotonin.modbus4j.locator.BaseLocator
 
     for {
@@ -154,11 +170,11 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
       for {
         st_idx <- statusTypeList.zipWithIndex if st_idx._1.key.startsWith(InputKey)
         idx = st_idx._2
-      } yield{
-        try{
+      } yield {
+        try {
           (st_idx._1, results.getFloatValue(idx).toFloat * modelReg.multiplier)
-        }catch{
-          case ex:Exception=>
+        } catch {
+          case ex: Exception =>
             Logger.error(s"failed at ${idx}")
             throw ex
         }
@@ -185,12 +201,9 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
     ModelRegValue(inputs, holdings, modes, warns)
   }
 
-  var connected = false
-  var oldModelReg: Option[ModelRegValue] = None
+  import scala.concurrent.{Future, blocking}
 
   def receive(): Receive = normalReceive
-
-  import scala.concurrent.{Future, blocking}
 
   def readRegFuture(recordCalibration: Boolean) =
     Future {
@@ -260,7 +273,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
                 val master = modbusFactory.createRtuMaster(serialWrapper)
                 master.init()
                 masterOpt = Some(master)
-              }else{
+              } else {
                 masterOpt.get.init()
               }
             }
@@ -333,6 +346,8 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
       List.empty[(String, Double)], endState, timer)
   }
 
+  import com.github.nscala_time.time.Imports._
+
   def calibrationErrorHandler(id: String, timer: Cancellable, endState: String): PartialFunction[Throwable, Unit] = {
     case ex: Exception =>
       timer.cancel()
@@ -342,8 +357,6 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
       collectorState = endState
       context become normalReceive
   }
-
-  import com.github.nscala_time.time.Imports._
 
   def calibration(calibrationType: CalibrationType, startTime: DateTime, recordCalibration: Boolean, calibrationReadingList: List[ReportData],
                   zeroReading: List[(String, Double)],
@@ -541,7 +554,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
 
       deviceConfig.calibrateZeoSeq map {
         seq =>
-            context.parent ! ExecuteSeq(seq, v)
+          context.parent ! ExecuteSeq(seq, v)
 
       }
 
@@ -593,30 +606,13 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
 
   def triggerCalibratorPurge(v: Boolean) {
     try {
-      for(seq <-deviceConfig.calibratorPurgeSeq){
+      for (seq <- deviceConfig.calibratorPurgeSeq) {
         context.parent ! ExecuteSeq(seq, v)
       }
     } catch {
       case ex: Exception =>
         ModelHelper.logException(ex)
     }
-  }
-
-  var nextLoggingStatusTime = {
-    def getNextTime(period: Int) = {
-      val now = DateTime.now()
-      val nextMin = (now.getMinuteOfHour / period + 1) * period
-      val hour = (now.getHourOfDay + (nextMin / 60)) % 24
-      val nextDay = (now.getHourOfDay + (nextMin / 60)) / 24
-
-      now.withHourOfDay(hour).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0) + nextDay.day
-    }
-
-    // suppose every 10 min
-    val period = 30
-    val nextTime = getNextTime(period)
-    //Logger.debug(s"$instId next logging time= $nextTime")
-    nextTime
   }
 
   def regValueReporter(regValue: ModelRegValue)(recordCalibration: Boolean) = {
@@ -686,16 +682,19 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
   def getDataRegValue(regValue: ModelRegValue)(addr: Int): Option[(InstrumentStatusType, Float)] = {
     val dataRegOpt = (regValue.inputRegs ++ regValue.holdingRegs).find(r_idx => r_idx._1.addr == addr)
 
-    for(dataReg<-dataRegOpt) yield
+    for (dataReg <- dataRegOpt) yield
       dataReg
   }
 
-  def reportData(regValue: ModelRegValue) = {
+  def reportData(regValue: ModelRegValue): Option[ReportData] = {
     val optValues: Seq[Option[(String, (InstrumentStatusType, Float))]] = {
       for (dataReg <- modelReg.dataRegs) yield {
-        def passFilter(v:Double) =
-          modelReg.filterRules.forall(rule=> rule.monitorType == dataReg.monitorType
-            && rule.min < v && rule.max > v)
+        def passFilter(v: Double) =
+          modelReg.filterRules.forall(rule =>
+            if (rule.monitorType == dataReg.monitorType)
+              rule.min < v && rule.max > v
+            else
+              true)
 
         for {rawValue <- getDataRegValue(regValue)(dataReg.address)
              v = rawValue._2 * dataReg.multiplier if passFilter(v)} yield
