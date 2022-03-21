@@ -125,7 +125,9 @@
       >
         <template #thead-top>
           <b-tr>
-            <b-th></b-th>
+            <b-th
+              ><b-button variant="info" @click="selectAll">全選</b-button></b-th
+            >
             <b-th></b-th>
             <b-th
               v-for="mt in form.monitorTypes"
@@ -138,10 +140,7 @@
           </b-tr>
         </template>
         <template #cell(include)="data">
-          <b-form-checkbox
-            v-model="data.item.include"
-            :disabled="!canInclude(data.item)"
-          />
+          <b-form-checkbox v-model="data.item.include" />
         </template>
       </b-table>
       <b-pagination
@@ -267,11 +266,12 @@ export default Vue.extend({
 
       const ret = await axios.get(url);
       this.setLoading({ loading: false });
+      this.rows.splice(0, this.rows.length);
       for (const row of ret.data.rows) {
         row.dateStr = moment(row.date).format('lll');
+        row.include = false;
+        this.rows.push(row);
       }
-
-      this.rows = ret.data.rows;
     },
     cellDataTd(i: number) {
       return (_value: any, _key: any, item: any) =>
@@ -339,10 +339,15 @@ export default Vue.extend({
     },
     canInclude(item: any) {
       for (const cellData of item.cellData) {
-        if (cellData.v !== '-') return true;
+        if (cellData.v == '-') return false;
       }
 
-      return false;
+      return true;
+    },
+    selectAll() {
+      for (let item of this.rows) {
+        item.include = !item.include;
+      }
     },
   },
 });

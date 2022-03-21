@@ -369,4 +369,54 @@ class ExcelUtility @Inject()
     new File(reportFilePath.toAbsolutePath().toString())
   }
 
+  def calibrationReport(start:DateTime, end:DateTime, calibrationList: Seq[Calibration]): File ={
+    val (reportFilePath, pkg, wb) = prepareTemplate("calibrationReport.xlsx")
+    val evaluator = wb.getCreationHelper().createFormulaEvaluator()
+
+    val sheet = wb.getSheetAt(0)
+    sheet.getRow(0).getCell(0).setCellValue(s"資料日期:${start.toString("YYYY/MM/dd")}~${end.toString("YYYY/MM/dd")}")
+
+    val normalStyle = sheet.getRow(1).getCell(10).getCellStyle
+    val failedStyle = sheet.getRow(1).getCell(11).getCellStyle
+    for((calibration, idx) <- calibrationList.zipWithIndex){
+      val row = sheet.createRow(3+idx)
+      val mt = calibration.monitorType
+      val mtCase = monitorTypeOp.map(mt)
+      row.createCell(0).setCellValue(monitorTypeOp.map(calibration.monitorType).desp)
+      row.createCell(1).setCellValue(calibration.startTime.toString("YYYY年MM月dd日 HH:mm"))
+      row.createCell(2).setCellValue(calibration.endTime.toString("YYYY年MM月dd日 HH:mm"))
+      row.createCell(3).setCellValue(monitorTypeOp.format(mt, calibration.zero_val))
+      row.createCell(4).setCellValue(monitorTypeOp.format(mt, mtCase.zd_law))
+      row.createCell(5).setCellValue(monitorTypeOp.format(mt, calibration.span_val))
+      row.createCell(6).setCellValue(monitorTypeOp.format(mt, mtCase.span))
+      row.createCell(7).setCellValue(monitorTypeOp.format(mt, calibration.span_dev))
+      row.createCell(8).setCellValue(monitorTypeOp.format(mt, mtCase.span_dev_law))
+      val mOpt =
+        for{span_val <- calibration.span_val; zero_val<-calibration.zero_val;
+            span_std<-mtCase.span if span_val - zero_val != 0} yield
+          span_std/(span_val - zero_val)
+
+      val mStr = mOpt.map(s"%.2f".format(_)).getOrElse("-")
+      row.createCell(9).setCellValue(mStr)
+      val bOpt =
+        for{span_val <- calibration.span_val; zero_val<-calibration.zero_val;
+            span_std<-mtCase.span if span_val - zero_val != 0} yield
+          (-zero_val * span_std)/(span_val - zero_val)
+
+      val bStr = bOpt.map(s"%.2f".format(_)).getOrElse("-")
+      row.createCell(10).setCellValue(bStr)
+      val statusCell = row.createCell(11)
+      if(calibration.success(monitorTypeOp)) {
+        statusCell.setCellValue("成功")
+        statusCell.setCellStyle(normalStyle)
+      } else{
+        statusCell.setCellValue("失敗")
+        statusCell.setCellStyle(failedStyle)
+      }
+      for(i <- 0 to 10)
+        row.getCell(i).setCellStyle(normalStyle)
+
+    }
+    finishExcel(reportFilePath, pkg, wb)
+  }
 }
