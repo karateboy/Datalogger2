@@ -369,29 +369,35 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
   implicit val idWrite = Json.writes[RecordListID]
   implicit val recordListWrite = Json.writes[RecordList]
 
-  def getRecordWithLimitFuture(colName: String)(startTime: DateTime, endTime: DateTime, limit: Int, monitor: String = Monitor.SELF_ID) = {
+  def getRecordWithLimitFuture(colName: String)(startTime: DateTime, endTime: DateTime, limit: Int, monitor: String = Monitor.SELF_ID):
+  Future[Seq[RecordList]] = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
     val col = getCollection(colName)
-    col.find(and(equal("_id.monitor", monitor), gte("_id.time", startTime.toDate()), lt("_id.time", endTime.toDate())))
+    val f = col.find(and(equal("_id.monitor", monitor),
+      gte("_id.time", startTime.toDate()), lt("_id.time", endTime.toDate())))
       .limit(limit).sort(ascending("_id.time")).toFuture()
-
+    f onFailure errorHandler
+    f
   }
 
-  def getLatestRecordFuture(colName: String)(monitor: String) = {
+  def getLatestRecordFuture(colName: String)(monitor: String): Future[Seq[RecordList]] = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
     val col = getCollection(colName)
-    col.find(equal("_id.monitor", monitor))
+    val f = col.find(equal("_id.monitor", monitor))
       .sort(descending("_id.time")).limit(1).toFuture()
+    f onFailure errorHandler
+    f
   }
 
   def getWindRose(colName: String)(monitor: String, monitorType: String,
                                    start: DateTime, end: DateTime,
                                    level: List[Double], nDiv: Int = 16): Future[Map[Int, Array[Double]]] = {
-    for (windRecords <- getRecordValueSeqFuture(colName)(Seq(MonitorType.WIN_DIRECTION, monitorType), start, end, monitor)) yield {
+    for (windRecords <- getRecordValueSeqFuture(colName)
+    (Seq(MonitorType.WIN_DIRECTION, monitorType), start, end, monitor)) yield {
 
       val step = 360f / nDiv
       import scala.collection.mutable.ListBuffer

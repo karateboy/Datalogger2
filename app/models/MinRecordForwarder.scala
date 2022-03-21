@@ -2,12 +2,15 @@ package models
 import akka.actor.Actor
 import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
+import models.ModelHelper.errorHandler
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
 
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.{FiniteDuration, SECONDS}
+import scala.util.{Failure, Success}
 
 object MinRecordForwarder {
   trait Factory {
@@ -18,6 +21,8 @@ object MinRecordForwarder {
 class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordOp)
                                   (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
   Logger.info(s"MinRecordForwarder created with server=$server monitor=$monitor")
+
+  val postUrl = s"http://$server/Record/Min/$monitor"
 
   import ForwardManager._
 
@@ -53,31 +58,29 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordOp)
   }
 
   def uploadRecord(latestRecordTime: Long) {
+
     val serverRecordStart = new DateTime(latestRecordTime + 1)
     val recordFuture =
       recordOp.getRecordWithLimitFuture(recordOp.MinCollection)(serverRecordStart, DateTime.now, 60)
 
-    for (record <- recordFuture) {
+    for (records <- recordFuture) {
       import recordOp.recordListWrite
-      if (record.nonEmpty) {
-        val url = s"http://$server/MinRecord/$monitor"
-        val f = ws.url(url).put(Json.toJson(record))
+      if (records.nonEmpty) {
+        val f = ws.url(postUrl).withRequestTimeout(FiniteDuration(10, SECONDS)).post(Json.toJson(records))
 
-        f onSuccess {
-          case response =>
+        f onComplete {
+          case Success(response) =>
             if (response.status == 200) {
-              if (record.last._id.time.getTime > latestRecordTime) {
-                context become handler(Some(record.last._id.time.getTime))
+              if (records.last._id.time.getTime > latestRecordTime) {
+                context become handler(Some(records.last._id.time.getTime))
               }
             } else {
               Logger.error(s"${response.status}:${response.statusText}")
               context become handler(None)
             }
-        }
-        f onFailure {
-          case ex: Throwable =>
+          case Failure(exception)=>
             context become handler(None)
-            ModelHelper.logException(ex)
+            errorHandler(exception)
         }
       }
     }
@@ -92,8 +95,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordOp)
         Logger.info(s"Total ${record.length} records")
         import recordOp.recordListWrite
         for (chunk <- record.grouped(60)) {
-          val url = s"http://$server/MinRecord/$monitor"
-          val f = ws.url(url).put(Json.toJson(chunk))
+          val f = ws.url(postUrl).post(Json.toJson(chunk))
 
           f onSuccess {
             case response =>

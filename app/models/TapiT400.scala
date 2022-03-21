@@ -68,7 +68,7 @@ class T400Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Monit
       super.triggerSpanCalibration(v)
 
       if (config.skipInternalVault != Some(true)) {
-        val locator = BaseLocator.coilStatus(config.slaveID, 21)
+        val locator = BaseLocator.coilStatus(config.slaveID, 22)
         masterOpt.get.setValue(locator, v)
       }
     } catch {
@@ -83,7 +83,7 @@ class T400Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Monit
 
       if (config.skipInternalVault != Some(true)) {
         masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
-        masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)
+        masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 22), false)
       }
     } catch {
       case ex: Exception =>

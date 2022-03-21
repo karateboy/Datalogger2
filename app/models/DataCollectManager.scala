@@ -3,7 +3,7 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports._
 import models.DataCollectManager.{calculateHourAvgMap, calculateMinAvgMap}
-import models.ForwardManager.{ForwardHour, ForwardMin}
+import models.ForwardManager.{ForwardHour, ForwardHourRecord, ForwardMin, ForwardMinRecord}
 import models.ModelHelper._
 import org.mongodb.scala.result.UpdateResult
 import play.api._
@@ -15,7 +15,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.SECONDS
 import scala.language.postfixOps
-import scala.util.Success
+import scala.util.{Failure, Success}
 
 
 case class StartInstrument(inst: Instrument)
@@ -444,7 +444,7 @@ class DataCollectManager @Inject()
       for (forwardManager <- forwardManagerOpt)
         forwardManager ! ForwardMin
 
-    /*
+
     case fhr: ForwardHourRecord=>
       for(forwardManager<-forwardManagerOpt)
         forwardManager !fhr
@@ -452,7 +452,7 @@ class DataCollectManager @Inject()
     case fmr: ForwardMinRecord=>
       for(forwardManager<-forwardManagerOpt)
         forwardManager !fmr
-    */
+
 
     case AutoState =>
       for (autoStateConfigs <- autoStateConfigOpt)
@@ -689,26 +689,29 @@ class DataCollectManager @Inject()
         context become handler(instrumentMap, collectorInstrumentMap,
           latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap)
         val f = recordOp.upsertRecord(RecordList(currentMintues.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeID))(recordOp.MinCollection)
-        f.andThen({
+        f onComplete {
           case Success(_) =>
             self ! ForwardMin
-        })
+          case Failure(exception)=>
+            errorHandler(exception)
+        }
         f
       }
 
       val current = DateTime.now().withSecondOfMinute(0).withMillisOfSecond(0)
       if (monitorOp.hasSelfMonitor) {
         val f = calculateMinData(current)
-        f onFailure (errorHandler)
-        f.andThen({
-          case Success(x) =>
+        f onComplete {
+          case Success(_) =>
             if (current.getMinuteOfHour == 0) {
               for (m <- monitorOp.mvList) {
                 dataCollectManagerOp.recalculateHourData(monitor = m,
                   current = current)(monitorTypeOp.realtimeMtvList)
               }
             }
-        })
+          case Failure(exception)=>
+            errorHandler(exception)
+        }
       }
     }
 

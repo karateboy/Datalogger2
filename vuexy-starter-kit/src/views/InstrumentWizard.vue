@@ -383,6 +383,7 @@ export default Vue.extend({
         't300',
         't360',
         't400',
+        't700',
         'baseline9000',
         'horiba370',
         'picarroG2401',
