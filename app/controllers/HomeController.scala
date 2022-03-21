@@ -556,22 +556,6 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.obj("ok" -> true))
   }
 
-  def testEvtOptHigh = Security.Authenticated {
-    dataCollectManagerOp.evtOperationHighThreshold
-    Ok("ok")
-  }
-
-  def testSpray = Security.Authenticated {
-    Logger.info("testSpray")
-    val ret: Seq[Instrument] = instrumentOp.getInstrumentList().filter(p => p.instType == adam6066.id)
-    ret map {
-      inst =>
-        dataCollectManagerOp.toggleTargetDO(inst._id, 17, 10)
-    }
-
-    Ok("ok")
-  }
-
   def getSensors = Security.Authenticated.async {
     import MqttSensor.write
     val f = sensorOp.getAllSensorList

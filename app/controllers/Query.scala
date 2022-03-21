@@ -9,6 +9,7 @@ import play.api._
 import play.api.libs.json._
 import play.api.mvc._
 
+import java.nio.file.Files
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -730,15 +731,29 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       }
   }
 
-  def calibrationRecordList(start: Long, end: Long) = Action.async {
+  def calibrationRecordList(start: Long, end: Long, outputTypeStr:String) = Action.async {
     implicit request =>
       val startTime = new DateTime(start)
       val endTime = new DateTime(end)
+      val outputType = OutputType.withName(outputTypeStr)
       val recordListF = calibrationOp.calibrationReportFuture(startTime, endTime)
       implicit val w = Json.writes[Calibration]
       for (recordList <- recordListF) yield {
-        Ok(Json.toJson(recordList))
+        outputType match {
+          case OutputType.html =>
+            implicit val write = Json.writes[CalibrationJSON]
+            Ok(Json.toJson(recordList.map(_.toJSON)))
+          case OutputType.excel =>
+            val excelFile = excelUtility.calibrationReport(startTime, endTime, recordList)
+            Ok.sendFile(excelFile, fileName = _ =>
+              s"校正紀錄.xlsx",
+              onClose = () => {
+                Files.deleteIfExists(excelFile.toPath())
+              })
+        }
       }
+
+
   }
 
   def alertRecordList(start: Long, end: Long) = Action.async {
