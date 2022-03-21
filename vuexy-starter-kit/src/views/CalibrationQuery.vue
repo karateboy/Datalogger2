@@ -23,13 +23,20 @@
           <!-- submit and reset -->
           <b-col offset-md="3">
             <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
               type="submit"
-              variant="primary"
+              variant="gradient-primary"
               class="mr-1"
               @click="query"
             >
               查詢
+            </b-button>
+            <b-button
+              type="submit"
+              variant="gradient-primary"
+              class="mr-1"
+              @click="downloadExcel"
+            >
+              匯出Excel
             </b-button>
             <b-button
               v-ripple.400="'rgba(186, 191, 199, 0.15)'"
@@ -60,7 +67,8 @@ import moment from 'moment';
 import axios from 'axios';
 import { mapActions, mapGetters } from 'vuex';
 import { MonitorType } from './types';
-import { Monitor } from '@/store/monitors/types';
+const excel = require('../libs/excel');
+const _ = require('lodash');
 
 interface CalibrationJSON {
   monitorType: string;
@@ -317,12 +325,12 @@ export default Vue.extend({
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     async query() {
       try {
-        const url = `/CalibrationReport/${this.form.range[0]}/${this.form.range[1]}`;
+        const url = `/CalibrationRecord/${this.form.range[0]}/${this.form.range[1]}`;
         const res = await axios.get(url);
         const ret = res.data;
         this.rows = ret;
       } catch (err) {
-        throw new Error(err);
+        throw new Error('failed');
       } finally {
         this.display = true;
       }
@@ -353,6 +361,14 @@ export default Vue.extend({
     },
     getStatus(item: CalibrationJSON): boolean {
       return this.getZeroStatus(item) && this.getSpanStatus(item);
+    },
+    async downloadExcel() {
+      const baseUrl =
+        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
+
+      const url = `${baseUrl}Excel/CalibrationRecord/${this.form.range[0]}/${this.form.range[1]}`;
+
+      window.open(url);
     },
   },
 });
