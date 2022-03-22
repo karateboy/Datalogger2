@@ -1,6 +1,5 @@
 package controllers
 
-import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import controllers.Highchart._
 import models.ModelHelper.windAvg
@@ -91,7 +90,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
     }
 
     def getPeriodStat(records: Seq[Record], mt: String, period_start: DateTime) = {
-      val values = records.flatMap(x=>x.value)
+      val values = records.flatMap(x => x.value)
       if (values.length == 0)
         Stat(None, None, None, 0, 0, 0)
       else {
@@ -112,8 +111,8 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           val windSpeed = periodSlice(recordListMap(MonitorType.WIN_SPEED), period_start, period_start + period)
           windAvg(windSpeed, windDir)
         } else {
-          if(total != 0)
-          Some(sum / total)
+          if (total != 0)
+            Some(sum / total)
           else
             None
         }
@@ -314,9 +313,17 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
               (time.getMillis, Some(valueMap(time)))
             }
           }
-        val timeValues = timeData.flatMap{t=>
-          for(x<-t._2) yield (t._1, x._1)}
-        val timeStatus = timeData.flatMap{t=>for(x<-t._2) yield x._2}
+        val timeValues = timeData.map {
+          t =>
+            val time = t._1
+            val valueOpt = for (x <- t._2) yield x._1
+            (time, valueOpt.getOrElse(None))
+        }
+        val timeStatus = timeData.map {
+          t =>
+            val statusOpt = for (x <- t._2) yield x._2
+            statusOpt.getOrElse(None)
+        }
         seqData(name = s"${monitorOp.map(m).desc}_${monitorTypeOp.map(mt).desp}",
           data = timeValues, yAxis = yAxisUnitMap(monitorTypeOp.map(mt).unit),
           tooltip = Tooltip(monitorTypeOp.map(mt).prec), statusList = timeStatus)
@@ -368,6 +375,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
     val mtRecordPairs =
       for (mt <- mtList) yield {
         val recordList = mtRecordListMap(mt)
+
         def periodSlice(period_start: DateTime, period_end: DateTime) = {
           recordList.dropWhile {
             _.time < period_start
@@ -390,7 +398,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
                 period_start -> (windAvg(windSpeed, windDir), None)
               } else {
                 val values = records.flatMap { r => r.value }
-                if(values.nonEmpty)
+                if (values.nonEmpty)
                   period_start -> (Some(values.sum / values.length), None)
                 else
                   period_start -> (None, None)
@@ -731,7 +739,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       }
   }
 
-  def calibrationRecordList(start: Long, end: Long, outputTypeStr:String) = Action.async {
+  def calibrationRecordList(start: Long, end: Long, outputTypeStr: String) = Action.async {
     implicit request =>
       val startTime = new DateTime(start)
       val endTime = new DateTime(end)

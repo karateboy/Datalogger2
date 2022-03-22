@@ -41,9 +41,9 @@ class Adam6066Collector @Inject()
 
   var cancelable: Cancellable = _
 
-  def receive = handler(MonitorStatus.NormalStat, None, Map.empty[Int, Boolean])
+  def receive = handler(MonitorStatus.NormalStat, None)
 
-  def handler(collectorState: String, masterOpt: Option[ModbusMaster], diValueMap: Map[Int, Boolean]): Receive = {
+  def handler(collectorState: String, masterOpt: Option[ModbusMaster]): Receive = {
     case ConnectHost =>
       Future {
         blocking {
@@ -58,7 +58,7 @@ class Adam6066Collector @Inject()
             master.setRetries(1)
             master.setConnected(true)
             master.init();
-            context become handler(collectorState, Some(master), diValueMap)
+            context become handler(collectorState, Some(master))
             import scala.concurrent.duration._
             cancelable = system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
           } catch {
@@ -81,10 +81,6 @@ class Adam6066Collector @Inject()
           try {
             import com.serotonin.modbus4j.BatchRead
             import com.serotonin.modbus4j.locator.BaseLocator
-
-            // DI Value ...
-            var newDiValueMap = diValueMap
-
             val batch = new BatchRead[Integer]
             for (idx <- 0 to 7)
               batch.addLocator(idx, BaseLocator.inputStatus(1, idx))
@@ -102,18 +98,11 @@ class Adam6066Collector @Inject()
                 mt = chCfg.mt.get
                 idx = cfg._2
                 v = result(idx)
-              } yield {
-                newDiValueMap = newDiValueMap + (idx -> v)
-                // Log on difference
-                if (!diValueMap.contains(idx) || diValueMap(idx) != v) {
-                  // FIXME hot code invert
-                  monitorTypeOp.logDiMonitorType(mt, !v)
-                }
-                SignalData(mt, v)
-              }
+              } yield
+                SignalData(mt, !v)
             context.parent ! ReportSignalData(dataList)
 
-            context become handler(collectorState, masterOpt, newDiValueMap)
+            context become handler(collectorState, masterOpt)
 
             import scala.concurrent.duration._
             cancelable = system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
@@ -121,7 +110,7 @@ class Adam6066Collector @Inject()
             case ex: Throwable =>
               Logger.error("Read reg failed", ex)
               masterOpt.get.destroy()
-              context become handler(collectorState, None, diValueMap)
+              context become handler(collectorState, None)
               self ! ConnectHost
           }
         }
@@ -130,7 +119,7 @@ class Adam6066Collector @Inject()
     case SetState(id, state) =>
       Logger.info(s"$self => $state")
       instrumentOp.setState(id, state)
-      context become handler(state, masterOpt, diValueMap)
+      context become handler(state, masterOpt)
 
     case WriteDO(bit, on) =>
       Logger.info(s"Output DO $bit to $on")
