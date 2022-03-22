@@ -179,15 +179,19 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     MonitorType(_id, desp, "N/A", 0, signalOrder, true)
   }
 
-  def logDiMonitorType(mt: String, v: Boolean) = {
+  var diValueMap = Map.empty[String, Boolean]
+  def logDiMonitorType(mt: String, v: Boolean): Unit = {
     if (!signalMtvList.contains(mt))
       Logger.warn(s"${mt} is not DI monitor type!")
 
-    val mtCase = map(mt)
-    if (v) {
-      alarmOp.log(alarmOp.Src(), alarmOp.Level.WARN, s"${mtCase.desp}=>觸發", 1)
-    } else {
-      alarmOp.log(alarmOp.Src(), alarmOp.Level.INFO, s"${mtCase.desp}=>解除", 1)
+    val previousValue = diValueMap.getOrElse(mt, !v)
+    diValueMap = diValueMap + (mt -> v)
+    if(previousValue != v){
+      val mtCase = map(mt)
+      if (v)
+        alarmOp.log(alarmOp.Src(), alarmOp.Level.WARN, s"${mtCase.desp}=>觸發", 1)
+      else
+        alarmOp.log(alarmOp.Src(), alarmOp.Level.INFO, s"${mtCase.desp}=>解除", 1)
     }
   }
 
