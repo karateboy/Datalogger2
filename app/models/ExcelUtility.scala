@@ -115,28 +115,22 @@ class ExcelUtility @Inject()
             cell.setCellValue(d.doubleValue())
             for (status <- series.statusList(row - 1)) {
               val tagInfo = MonitorStatus.getTagInfo(status)
+              val statusCell = thisRow.createCell(pos + 1)
+              pos += 1
+              val monitorStatus = monitorStatusOp.map(status)
+              statusCell.setCellValue(monitorStatus.desp)
               if (MonitorStatus.isCalbration(status)) {
                 cell.setCellStyle(calibrationStyle)
+                statusCell.setCellStyle(calibrationStyle)
               } else if (tagInfo.statusType == StatusType.ManualValid ||
                 tagInfo.statusType == StatusType.ManualInvalid) {
                 cell.setCellStyle(manualStyle)
-              } else if (MonitorStatus.isMaintenance(status))
+                statusCell.setCellStyle(manualStyle)
+              } else if (MonitorStatus.isMaintenance(status)) {
                 cell.setCellStyle(maintanceStyle)
+                statusCell.setCellStyle(maintanceStyle)
+              }
             }
-          }
-          for (status <- series.statusList(row - 1)) {
-            val statusCell = thisRow.createCell(pos + 1)
-            pos += 1
-            val monitorStatus = monitorStatusOp.map(status)
-            statusCell.setCellValue(monitorStatus.desp)
-            val tagInfo = MonitorStatus.getTagInfo(status)
-            if (MonitorStatus.isCalbration(status)) {
-              statusCell.setCellStyle(calibrationStyle)
-            } else if (tagInfo.statusType == StatusType.ManualValid ||
-              tagInfo.statusType == StatusType.ManualInvalid) {
-              statusCell.setCellStyle(manualStyle)
-            } else if (MonitorStatus.isMaintenance(status))
-              statusCell.setCellStyle(maintanceStyle)
           }
         }
       }

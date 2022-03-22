@@ -833,6 +833,7 @@ class DataCollectManager @Inject()
         handler(bit)
 
     case ReportSignalData(dataList) =>
+      dataList.foreach(signalData=>monitorTypeOp.logDiMonitorType(signalData.mt, signalData.value))
       val updateMap: Map[String, (DateTime, Boolean)] = dataList.map(signal => {
         signal.mt -> (DateTime.now(), signal.value)
       }).toMap

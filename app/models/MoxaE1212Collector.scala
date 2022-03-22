@@ -1,22 +1,18 @@
 package models
-import play.api._
-import akka.actor._
-import play.api.Play.current
-import play.api.libs.concurrent.Akka
-import ModelHelper._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import Protocol.ProtocolParam
+import akka.actor._
 import com.google.inject.assistedinject.Assisted
+import models.ModelHelper._
+import models.Protocol.ProtocolParam
+import play.api._
 
 import javax.inject._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object MoxaE1212Collector {
 
-  case object ConnectHost
-  case object Collect
-
   var count = 0
+
   def start(id: String, protocolParam: ProtocolParam, param: MoxaE1212Param)(implicit context: ActorContext) = {
     val prop = Props(classOf[MoxaE1212Collector], id, protocolParam, param)
     val collector = context.actorOf(prop, name = "MoxaE1212Collector" + count)
@@ -31,16 +27,17 @@ object MoxaE1212Collector {
   trait Factory {
     def apply(id: String, protocol: ProtocolParam, param: MoxaE1212Param): Actor
   }
+
+  case object ConnectHost
+
+  case object Collect
 }
 
 class MoxaE1212Collector @Inject()
 (instrumentOp: InstrumentOp, monitorTypeOp: MonitorTypeOp, system: ActorSystem)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: MoxaE1212Param) extends Actor with ActorLogging {
-  import MoxaE1212Collector._
-  import java.io.BufferedReader
-  import java.io._
 
-  var cancelable: Cancellable = _
+  import MoxaE1212Collector._
 
   val resetTimer = {
     import com.github.nscala_time.time.Imports._
@@ -51,8 +48,10 @@ class MoxaE1212Collector @Inject()
     context.system.scheduler.schedule(FiniteDuration(duration.getStandardSeconds, SECONDS),
       scala.concurrent.duration.Duration(1, HOURS), self, ResetCounter)
   }
+  var cancelable: Cancellable = _
 
   self ! ConnectHost
+
   def decodeDiCounter(values: Seq[Int], collectorState: String) = {
     val dataOptList =
       for {
@@ -67,17 +66,17 @@ class MoxaE1212Collector @Inject()
           MonitorStatus.MaintainStat
         else
           collectorState
-          
+
         Some(MonitorTypeData(mt, v, state))
       }
     val dataList = dataOptList.flatMap { d => d }
     context.parent ! ReportData(dataList.toList)
   }
 
-  import scala.concurrent.Future
-  import scala.concurrent.blocking
   import com.serotonin.modbus4j._
   import com.serotonin.modbus4j.ip.IpParameters
+
+  import scala.concurrent.{Future, blocking}
 
   def receive = handler(MonitorStatus.NormalStat, None)
 
@@ -117,8 +116,8 @@ class MoxaE1212Collector @Inject()
         blocking {
           try {
             import com.serotonin.modbus4j.BatchRead
-            import com.serotonin.modbus4j.locator.BaseLocator
             import com.serotonin.modbus4j.code.DataType
+            import com.serotonin.modbus4j.locator.BaseLocator
 
             //DI Counter ...
             {
@@ -147,16 +146,16 @@ class MoxaE1212Collector @Inject()
               val result =
                 for (idx <- 0 to 7) yield rawResult.getValue(idx).asInstanceOf[Boolean]
 
-              for {
-                cfg <- param.chs.zipWithIndex
-                chCfg = cfg._1 if chCfg.enable && chCfg.mt.isDefined
-                mt = chCfg.mt.get
-                idx = cfg._2
-                v = result(idx)
-              } yield {
-                if(monitorTypeOp.signalMtvList.contains(mt))
-                  monitorTypeOp.logDiMonitorType(mt, v)
-              }
+              val dataList: Seq[SignalData] =
+                for {
+                  cfg <- param.chs.zipWithIndex
+                  chCfg = cfg._1 if chCfg.enable && chCfg.mt.isDefined
+                  mt = chCfg.mt.get
+                  idx = cfg._2
+                  v = result(idx)
+                } yield
+                  SignalData(mt, v)
+              context.parent ! ReportSignalData(dataList)
             }
 
             import scala.concurrent.duration._
@@ -180,7 +179,6 @@ class MoxaE1212Collector @Inject()
       Logger.info("Reset counter to 0")
       try {
         import com.serotonin.modbus4j.locator.BaseLocator
-        import com.serotonin.modbus4j.code.DataType
         val resetRegAddr = 272
 
         for {
@@ -200,7 +198,6 @@ class MoxaE1212Collector @Inject()
       Logger.info(s"Output DO $bit to $on")
       try {
         import com.serotonin.modbus4j.locator.BaseLocator
-        import com.serotonin.modbus4j.code.DataType
         val locator = BaseLocator.coilStatus(1, bit)
         masterOpt.get.setValue(locator, on)
       } catch {
