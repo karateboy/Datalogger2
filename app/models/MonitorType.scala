@@ -103,6 +103,7 @@ object MonitorType {
   val H2S = "H2S"
   val H2 = "H2"
   val NH3 = "NH3"
+  val VOC = "VOC"
   val SPRAY = "SPRAY"
   var rangeOrder = 0
   var signalOrder = 1000

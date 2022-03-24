@@ -228,8 +228,13 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
     val mtMap = Map[String, String](
       "pm2_5" -> MonitorType.PM25,
       "pm10" -> MonitorType.PM10,
-      "humidity" -> "HUMID"
-    )
+      "humidity" -> MonitorType.HUMID,
+      "o3" -> MonitorType.O3,
+      "temperature"-> MonitorType.TEMP,
+      "voc"-> MonitorType.VOC,
+      "no2"-> MonitorType.NO2,
+      "h2s"-> MonitorType.H2S,
+      "nh3"-> MonitorType.NH3)
     val ret = Json.parse(payload).validate[Message]
     ret.fold(err => {
       Logger.error(JsError.toJson(err).toString())
@@ -240,6 +245,7 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
             val sensor = (data \ "sensor").get.validate[String].get
             val value: Option[Double] = (data \ "value").get.validate[Double].fold(
               err => {
+                Logger.error(JsError(err).toString)
                 None
               },
               v => Some(v)
