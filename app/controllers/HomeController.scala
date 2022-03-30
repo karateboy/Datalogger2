@@ -12,7 +12,7 @@ import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class HomeController @Inject()(environment: play.api.Environment, recordOp: RecordOp,
+class HomeController @Inject()(environment: play.api.Environment,
                                userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
                                monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorOp, groupOp: GroupOp,
                                instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp,
@@ -596,21 +596,14 @@ class HomeController @Inject()(environment: play.api.Environment, recordOp: Reco
     Ok(Json.obj("ok" -> true))
   }
 
-  def testEvtOptHigh = Security.Authenticated {
-    dataCollectManagerOp.evtOperationHighThreshold
-    Ok("ok")
-  }
-
   def testSpray = Security.Authenticated {
     implicit request =>
       val userInfo = request.user
-      val group = userInfo.group
-      val groupInstruments: Seq[Instrument] = instrumentOp.getInstrumentList().filter { p =>
-        p.instType == InstrumentType.ADAM6066 && p.group.contains(group)
+      val groupID = userInfo.group
+      for(groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(groupID)){
+        groupDoInstruments.foreach(inst =>
+            dataCollectManagerOp.toggleMonitorTypeDO(inst._id, MonitorType.SPRAY, 10))
       }
-
-      groupInstruments.foreach(inst=>dataCollectManagerOp.toggleTargetDO(inst._id, 17, 10))
-
       Ok("ok")
   }
 

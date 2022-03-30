@@ -114,6 +114,10 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! ToggleTargetDO(id, bit, seconds)
   }
 
+  def toggleMonitorTypeDO(id: String, mt:String, seconds: Int) = {
+    manager ! ToggleMonitorTypeDO(id, mt, seconds)
+  }
+
   def executeSeq(seq: Int) {
     manager ! ExecuteSeq(seq, true)
   }
