@@ -68,7 +68,7 @@ object Baseline9000Collector extends DriverOps {
 
   override def description: String = "Baseline 9000 MNME Analyzer"
 
-  override def protocol: List[Protocol.Value] = List(serial)
+  override def protocol: List[String] = List(serial)
 }
 
 import javax.inject._

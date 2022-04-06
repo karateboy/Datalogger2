@@ -24,7 +24,7 @@ object T200Collector extends TapiTxx(ModelConfig("T200", List("NOx", "NO", "NO2"
 
   override def description: String = "TAPI T200"
 
-  override def protocol: List[Protocol.Value] = List(tcp)
+  override def protocol: List[String] = List(tcp)
 }
 
 import javax.inject._

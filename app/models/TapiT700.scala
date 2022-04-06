@@ -24,7 +24,7 @@ object T700Collector extends TapiTxx(ModelConfig("T700", List.empty[String])) {
 
   override def description: String = "TAPI T700"
 
-  override def protocol: List[Protocol.Value] = List(tcp)
+  override def protocol: List[String] = List(tcp)
 
   override def isCalibrator: Boolean = true
 }

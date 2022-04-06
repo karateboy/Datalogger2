@@ -9,7 +9,7 @@ object AbstractDrv {
 
 }
 
-abstract class AbstractDrv(_id: String, desp: String, protocols: List[Protocol.Value]) extends DriverOps {
+abstract class AbstractDrv(_id: String, desp: String, protocols: List[String]) extends DriverOps {
   implicit val cfgReads = Json.reads[DeviceConfig]
   implicit val cfgWrites = Json.writes[DeviceConfig]
 
@@ -64,5 +64,5 @@ abstract class AbstractDrv(_id: String, desp: String, protocols: List[Protocol.V
 
   override def description: String = desp
 
-  override def protocol: List[Protocol.Value] = protocols
+  override def protocol: List[String] = protocols
 }

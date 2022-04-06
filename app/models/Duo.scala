@@ -72,7 +72,7 @@ object Duo extends DriverOps {
 
   override def description: String = "01dB Duo"
 
-  override def protocol: List[Protocol.Value] = List(Protocol.tcp)
+  override def protocol: List[String] = List(Protocol.tcp)
 
   override def verifyParam(param: String): String = {
     val ret = Json.parse(param).validate[DuoConfig]

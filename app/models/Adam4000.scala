@@ -42,7 +42,7 @@ object Adam4000 extends DriverOps {
 
   override def description: String = "Adam 4017/4068/4069"
 
-  override def protocol: List[Protocol.Value] = List(serial)
+  override def protocol: List[String] = List(serial)
 
   implicit val reads: Reads[Adam4000Module] = Json.reads[Adam4000Module]
 

@@ -19,7 +19,7 @@ case class AkDeviceConfig(stationNo: String, channelNum:String, calibrationTime:
                         calibratorPurgeSeq: Option[String], calibratorPurgeTime: Option[Int],
                         calibrateZeoDO: Option[Int], calibrateSpanDO: Option[Int], skipInternalVault: Option[Boolean])
 
-class AkDrv(_id:String, desp:String, protocols:List[Protocol.Value], tcpModelReg: AkModelReg) extends DriverOps {
+class AkDrv(_id:String, desp:String, protocols:List[String], tcpModelReg: AkModelReg) extends DriverOps {
   implicit val cfgReads = Json.reads[AkDeviceConfig]
   implicit val cfgWrites = Json.writes[AkDeviceConfig]
 
@@ -78,7 +78,7 @@ class AkDrv(_id:String, desp:String, protocols:List[Protocol.Value], tcpModelReg
 
   override def description: String = desp
 
-  override def protocol: List[Protocol.Value] = protocols
+  override def protocol: List[String] = protocols
 }
 
 object AkDrv {

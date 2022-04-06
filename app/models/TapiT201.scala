@@ -22,7 +22,7 @@ object T201Collector extends TapiTxx(ModelConfig("T201", List("TNX", "NH3", "NOx
 
   override def description: String = "TAPI T201"
 
-  override def protocol: List[Protocol.Value] = List(tcp)
+  override def protocol: List[String] = List(tcp)
 }
 
 import akka.actor.ActorSystem

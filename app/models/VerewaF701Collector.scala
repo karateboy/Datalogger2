@@ -85,7 +85,7 @@ object VerewaF701Collector extends DriverOps{
 
   override def description: String = "Verewa F701-20"
 
-  override def protocol: List[Protocol.Value] = List(serial)
+  override def protocol: List[String] = List(serial)
 }
 
 import javax.inject._
