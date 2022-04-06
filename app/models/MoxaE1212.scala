@@ -80,7 +80,7 @@ class MoxaE1212 @Inject()
 
   override def description: String = "MOXA E1212"
 
-  override def protocol: List[Protocol.Value] = List(tcp)
+  override def protocol: List[String] = List(tcp)
 
   override def isDoInstrument: Boolean = true
 }

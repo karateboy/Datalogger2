@@ -38,7 +38,7 @@ object GpsCollector extends DriverOps {
 
   override def description: String = "GPS"
 
-  override def protocol: List[Protocol.Value] = List(serial)
+  override def protocol: List[String] = List(serial)
 }
 
 import net.sf.marineapi.nmea.io.ExceptionListener;

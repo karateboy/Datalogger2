@@ -9,10 +9,10 @@ import scala.language.implicitConversions
 
 import javax.inject._
 @Singleton
-class InstrumentStatusOp @Inject()(mongoDB: MongoDB) {
+class InstrumentStatusOp @Inject()(mongodb: MongoDB) {
   import org.mongodb.scala._
   val collectionName = "instrumentStatus"
-  val collection = mongoDB.database.getCollection(collectionName)
+  val collection = mongodb.database.getCollection(collectionName)
 
   case class Status(key: String, value: Double)
   case class InstrumentStatusJSON(time:Long, instID: String, statusList: Seq[Status])
@@ -35,9 +35,9 @@ class InstrumentStatusOp @Inject()(mongoDB: MongoDB) {
 
   def init() {
     import org.mongodb.scala.model.Indexes._
-    for(colNames <- mongoDB.database.listCollectionNames().toFuture()) {
+    for(colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(collectionName)) {
-        val f = mongoDB.database.createCollection(collectionName).toFuture()
+        val f = mongodb.database.createCollection(collectionName).toFuture()
         f.onFailure(errorHandler)
         f.onSuccess({
           case _ =>
@@ -98,12 +98,5 @@ class InstrumentStatusOp @Inject()(mongoDB: MongoDB) {
       yield f.map { toInstrumentStatus }
   }
 
-  def formatValue(v: Double) = {
-    if (Math.abs(v) < 10)
-      s"%.2f".format(v)
-    else if (Math.abs(v) < 100)
-      s"%.1f".format(v)
-    else
-      s"%.0f".format(v)
-  }
+  def formatValue(v: Double, prec:Int = 2): String =s"%.${prec}f".format(v)
 }

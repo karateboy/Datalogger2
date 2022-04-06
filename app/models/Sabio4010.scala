@@ -24,7 +24,7 @@ object Sabio4010 extends DriverOps {
 
   override def description: String = "Sabio 4010 Calibrator"
 
-  override def protocol: List[Protocol.Value] = List(Protocol.serial)
+  override def protocol: List[String] = List(Protocol.serial)
 
   override def verifyParam(param: String): String = {
     val ret = Json.parse(param).validate[Sabio4010Config]
