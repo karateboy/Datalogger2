@@ -41,12 +41,12 @@ case class TcpModelReg(dataRegs: List[DataReg], calibrationReg: Option[Calibrati
                        filterRules: Seq[FilterRule] = Seq.empty[FilterRule])
 
 
-case class TcpModbusDeviceModel(id: String, description: String, tcpModelReg: TcpModelReg, protocols: Seq[Protocol.Value])
+case class TcpModbusDeviceModel(id: String, description: String, tcpModelReg: TcpModelReg, protocols: Seq[String])
 
 object TcpModbusDrv2 {
   val deviceTypeHead = "TcpModbus."
 
-  def getInstrumentTypeList(environment: play.api.Environment, factory: TcpModbusDrv2.Factory, monitorTypeOp: MonitorTypeOp) = {
+  def getInstrumentTypeList(environment: play.api.Environment, factory: TcpModbusDrv2.Factory, monitorTypeOp: MonitorTypeOp): Array[InstrumentType] = {
     val docRoot = environment.rootPath + "/conf/TcpModbus/"
     val files = new File(docRoot).listFiles()
     for (file <- files) yield {
@@ -64,13 +64,10 @@ object TcpModbusDrv2 {
 
     val id = driverConfig.getString("ID")
     val description = driverConfig.getString("description")
-    val protocols: Seq[Protocol.Value] = try {
-      val protocolStrArray: Seq[String] = driverConfig.getStringList("protocol").asScala
-      protocolStrArray.map {
-        Protocol.withName
-      }
-    } catch {
-      case _: Throwable =>
+    val protocols: Seq[String] = try {
+      driverConfig.getStringList("protocol").asScala
+    }catch{
+      case _:Throwable =>
         Seq(Protocol.tcp)
     }
 
@@ -248,7 +245,7 @@ object TcpModbusDrv2 {
   }
 }
 
-class TcpModbusDrv2(_id: String, desp: String, protocols: List[Protocol.Value], tcpModelReg: TcpModelReg) extends DriverOps {
+class TcpModbusDrv2(_id: String, desp: String, protocols: List[String], tcpModelReg: TcpModelReg) extends DriverOps {
   implicit val cfgReads = Json.reads[DeviceConfig]
   implicit val cfgWrites = Json.writes[DeviceConfig]
 
@@ -306,5 +303,5 @@ class TcpModbusDrv2(_id: String, desp: String, protocols: List[Protocol.Value], 
 
   override def description: String = desp
 
-  override def protocol: List[Protocol.Value] = protocols
+  override def protocol: List[String] = protocols
 }

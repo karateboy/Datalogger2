@@ -6,11 +6,11 @@ import play.api.Logger
 import play.api.libs.concurrent.InjectedActorSupport
 import play.api.libs.json._
 
-case class ProtocolInfo(id: Protocol.Value, desp: String)
+case class ProtocolInfo(id: String, desp: String)
 
 case class InstrumentTypeInfo(id: String, desp: String, protocolInfo: List[ProtocolInfo])
 
-case class InstrumentType(id: String, desp: String, protocol: List[Protocol.Value],
+case class InstrumentType(id: String, desp: String, protocol: List[String],
                           driver: DriverOps, diFactory: AnyRef, analog: Boolean)
 
 object InstrumentType {
@@ -25,7 +25,7 @@ trait DriverOps {
 
   def id: String
   def description: String
-  def protocol: List[Protocol.Value]
+  def protocol: List[String]
 
   def verifyParam(param: String): String
 

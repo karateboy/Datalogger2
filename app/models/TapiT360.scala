@@ -24,7 +24,7 @@ object T360Collector extends TapiTxx(ModelConfig("T360", List("CO2"))) {
 
   override def description: String = "TAPI T360"
 
-  override def protocol: List[Protocol.Value] = List(tcp)
+  override def protocol: List[String] = List(tcp)
 }
 
 import javax.inject._

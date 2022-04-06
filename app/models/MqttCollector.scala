@@ -74,7 +74,7 @@ object MqttCollector extends DriverOps {
 
   override def description: String = "MQTT collector 1"
 
-  override def protocol: List[Protocol.Value] = List(Protocol.tcp)
+  override def protocol: List[String] = List(Protocol.tcp)
 }
 
 import javax.inject._

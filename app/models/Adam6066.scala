@@ -76,7 +76,7 @@ class Adam6066 @Inject()
 
   override def description: String = "Adam 6066"
 
-  override def protocol: List[Protocol.Value] = List(tcp)
+  override def protocol: List[String] = List(tcp)
 
   override def isDoInstrument: Boolean = true
 }

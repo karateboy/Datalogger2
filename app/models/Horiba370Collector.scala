@@ -124,7 +124,7 @@ object Horiba370Collector extends DriverOps{
 
   override def description: String = "Horiba APXX-370"
 
-  override def protocol: List[Protocol.Value] = List(tcp)
+  override def protocol: List[String] = List(tcp)
 }
 
 import javax.inject._

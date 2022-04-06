@@ -652,13 +652,15 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
 
     val statusTypeMap = instrumentOp.getStatusTypeMap(id)
 
-    val columnNames = keyList map statusTypeMap
+    val columnNames: Seq[String] = keyList.map(statusTypeMap).map(_.desc)
     val rows = for (report <- reportMap) yield {
-      val cellData = for (key <- keyList) yield
+      val cellData = for (key <- keyList) yield {
+        val instrumentStatusType = statusTypeMap(key)
         if (report._2.contains(key))
-          CellData(instrumentStatusOp.formatValue(report._2(key)), Seq.empty[String])
+          CellData(instrumentStatusOp.formatValue(report._2(key), instrumentStatusType.prec.getOrElse(2)), Seq.empty[String])
         else
           CellData("-", Seq.empty[String])
+      }
       RowData(report._1.getMillis, cellData)
     }
 

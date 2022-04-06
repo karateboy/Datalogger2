@@ -80,7 +80,7 @@ object ThetaCollector extends DriverOps {
 
   override def description: String = "THETA"
 
-  override def protocol: List[Protocol.Value] = List(serial)
+  override def protocol: List[String] = List(serial)
 }
 
 import javax.inject._
