@@ -128,7 +128,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
 
         } finally {
           import scala.concurrent.duration._
-          timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
+          timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(5, SECONDS), self, ReadRegister))
         }
       }
     }
@@ -154,7 +154,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
                 throw new Exception("Probe register failed. Data register is not in there...");
             }
             import scala.concurrent.duration._
-            timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(10, SECONDS), self, ReadRegister))
+            timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(5, SECONDS), self, ReadRegister))
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)

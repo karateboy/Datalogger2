@@ -791,14 +791,14 @@ class DataCollectManager @Inject()
       sender() ! resultMap
 
     case GetLatestData =>
-      //Filter out older than 6 second
+      //Filter out older than 10 second
       val latestMap = latestDataMap.flatMap { kv =>
         val mt = kv._1
         val instRecordMap = kv._2
         val timeout = if (mt == MonitorType.LAT || mt == MonitorType.LNG)
           1.minute
         else
-          6.second
+          10.second
 
         val filteredRecordMap = instRecordMap.filter {
           kv =>
