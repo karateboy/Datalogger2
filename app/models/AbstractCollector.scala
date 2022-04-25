@@ -9,13 +9,14 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 case class ModelRegValue2(inputRegs: List[(InstrumentStatusType, Double)],
-                         modeRegs: List[(InstrumentStatusType, Boolean)],
+                          modeRegs: List[(InstrumentStatusType, Boolean)],
                           warnRegs: List[(InstrumentStatusType, Boolean)])
 
 abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-                                           alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
-                                           calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
-                                          (instId: String, desc: String, deviceConfig: DeviceConfig, protocol: ProtocolParam) extends Actor {
+                                 alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
+                                 calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
+                                (instId: String, desc: String, deviceConfig: DeviceConfig, protocol: ProtocolParam) extends Actor {
+
   import TapiTxxCollector._
 
   self ! ConnectHost
@@ -56,9 +57,9 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
 
   def readRegHanlder(recordCalibration: Boolean): Unit = {
     try {
-      for(instrumentStatusTypes<-instrumentStatusTypesOpt){
+      for (instrumentStatusTypes <- instrumentStatusTypesOpt) {
         for (regValueOpt <- readReg(instrumentStatusTypes)) {
-          for(regValues<-regValueOpt) {
+          for (regValues <- regValueOpt) {
             regValueReporter(regValues)(recordCalibration)
           }
         }
@@ -74,7 +75,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
     } finally {
       import scala.concurrent.duration._
       timerOpt = if (protocol.protocol == Protocol.tcp)
-        Some(context.system.scheduler.scheduleOnce(Duration(2, SECONDS), self, ReadRegister))
+        Some(context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
       else
         Some(context.system.scheduler.scheduleOnce(Duration(5, SECONDS), self, ReadRegister))
     }
@@ -249,11 +250,6 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
         blocking {
           Logger.info(s"${self.path.name} => DownStart (${calibrationReadingList.length})")
           import scala.concurrent.duration._
-          if (calibrationType.zero) {
-            triggerZeroCalibration(false)
-          } else {
-            triggerSpanCalibration(false)
-          }
 
           val calibrationTimer =
             if (calibrationType.auto && calibrationType.zero) {
@@ -266,6 +262,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
             }
           context become calibrationPhase(calibrationType, startTime, false, calibrationReadingList,
             zeroReading, endState, calibrationTimer)
+
+          if (calibrationType.zero)
+            triggerZeroCalibration(false)
+          else
+            triggerSpanCalibration(false)
         }
       } onFailure (calibrationErrorHandler(instId, timer, endState))
 
@@ -308,7 +309,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
             }
 
             context become calibrationPhase(AutoSpan, startTime, false, List.empty[ReportData],
-              values.toList, endState, raiseStartTimer)
+              values, endState, raiseStartTimer)
           } else {
             val endTime = DateTime.now()
 
@@ -533,7 +534,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
   }
 
   override def postStop(): Unit = {
-    for(timer<-timerOpt)
+    for (timer <- timerOpt)
       timer.cancel()
   }
 }
