@@ -32,7 +32,7 @@ object T300Collector extends TapiTxx(ModelConfig("T300", List("CO"))) {
 import javax.inject._
 
 class T300Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
-                              alarmOp: AlarmDB, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                              alarmOp: AlarmDB, system: ActorSystem, monitorTypeOp: MonitorTypeDB,
                               calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                              (@Assisted("instId") instId: String, @Assisted modelReg: ModelReg,
                               @Assisted config: TapiConfig, @Assisted host:String)
@@ -41,7 +41,7 @@ class T300Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     calibrationOp, instrumentStatusOp)(instId, modelReg, config, host){
   val CO = ("CO")
 
-  override def reportData(regValue: ModelRegValue) = {
+  override def reportData(regValue: ModelRegValue): Option[ReportData] = {
 
     for (idx <- findDataRegIdx(regValue)(18)) yield {
       val vCO = regValue.inputRegs(idx)

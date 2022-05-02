@@ -26,7 +26,7 @@ case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTi
       span_std, span_val)
   }
 
-  def success(implicit monitorTypeOp: MonitorTypeOp): Boolean = {
+  def success(implicit monitorTypeOp: MonitorTypeDB): Boolean = {
     val mtCase = monitorTypeOp.map(monitorType)
     passStandard(zero_val, mtCase.zd_law) &&
       passStandard(span_val, mtCase.span_dev_law)
@@ -81,7 +81,7 @@ trait CalibrationDB {
   def calibrationReport(mt: String, start: Imports.DateTime, end: Imports.DateTime): Seq[Calibration]
 
   def getCalibrationMap(startDate: Imports.DateTime, endDate: Imports.DateTime)
-                       (implicit monitorTypeOp: MonitorTypeOp): Future[Map[String, List[(Imports.DateTime, Calibration)]]]
+                       (implicit monitorTypeOp: MonitorTypeDB): Future[Map[String, List[(Imports.DateTime, Calibration)]]]
 
   def insert(cal: Calibration)
 }

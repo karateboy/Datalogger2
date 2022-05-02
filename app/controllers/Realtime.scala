@@ -9,7 +9,7 @@ import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class Realtime @Inject()
-(monitorTypeOp: MonitorTypeOp, dataCollectManagerOp: DataCollectManagerOp, instrumentOp: InstrumentDB,
+(monitorTypeOp: MonitorTypeDB, dataCollectManagerOp: DataCollectManagerOp, instrumentOp: InstrumentDB,
  monitorStatusOp: MonitorStatusDB) extends Controller {
   val overTimeLimit = 6
 

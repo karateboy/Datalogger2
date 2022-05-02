@@ -46,7 +46,7 @@ case class TcpModbusDeviceModel(id: String, description: String, tcpModelReg: Tc
 object TcpModbusDrv2 {
   val deviceTypeHead = "TcpModbus."
 
-  def getInstrumentTypeList(environment: play.api.Environment, factory: TcpModbusDrv2.Factory, monitorTypeOp: MonitorTypeOp): Array[InstrumentType] = {
+  def getInstrumentTypeList(environment: play.api.Environment, factory: TcpModbusDrv2.Factory, monitorTypeOp: MonitorTypeDB): Array[InstrumentType] = {
     val docRoot = environment.rootPath + "/conf/TcpModbus/"
     val files = new File(docRoot).listFiles()
     for (file <- files) yield {

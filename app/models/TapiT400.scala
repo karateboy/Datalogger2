@@ -31,7 +31,7 @@ object T400Collector extends TapiTxx(ModelConfig("T400", List("O3"))) {
 import javax.inject._
 
 class T400Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
-                              alarmOp: AlarmDB, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                              alarmOp: AlarmDB, system: ActorSystem, monitorTypeOp: MonitorTypeDB,
                               calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                              (@Assisted("instId") instId: String, @Assisted modelReg: ModelReg,
                               @Assisted config: TapiConfig, @Assisted host:String)

@@ -20,7 +20,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object SpectrumReader {
   def start(configuration: Configuration, actorSystem: ActorSystem,
-            sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeOp,
+            sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
             recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp) = {
     def getConfig: Option[SpectrumReaderConfig] = {
       for {config <- configuration.getConfig("spectrumReader")
@@ -36,7 +36,7 @@ object SpectrumReader {
       actorSystem.actorOf(props(config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp), "spectrumReader")
   }
 
-  def props(config: SpectrumReaderConfig, sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeOp,
+  def props(config: SpectrumReaderConfig, sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
             recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp) =
     Props(classOf[SpectrumReader], config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
 
@@ -74,7 +74,7 @@ object SpectrumReader {
 }
 
 class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
-                     monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp) extends Actor {
+                     monitorTypeOp: MonitorTypeDB, recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp) extends Actor {
   Logger.info(s"SpectrumReader start reading: ${config.dir}")
 
   import SpectrumReader._

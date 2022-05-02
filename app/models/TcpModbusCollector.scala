@@ -13,7 +13,7 @@ import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
-                                   alarmOp: AlarmDB, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                                   alarmOp: AlarmDB, system: ActorSystem, monitorTypeOp: MonitorTypeDB,
                                    calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                                   (@Assisted("instId") instId: String, @Assisted("desc") desc: String, @Assisted modelReg: TcpModelReg,
                                    @Assisted deviceConfig: DeviceConfig, @Assisted("protocol") protocol: ProtocolParam) extends Actor {

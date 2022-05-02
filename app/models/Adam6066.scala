@@ -10,9 +10,7 @@ import javax.inject._
 // case class ChannelCfg(enable: Boolean, mt: Option[String], scale: Option[Double], repairMode: Option[Boolean])
 
 @Singleton
-class Adam6066 @Inject()
-(monitorTypeOp: MonitorTypeOp)
-  extends DriverOps {
+class Adam6066 @Inject()() extends DriverOps {
 
   implicit val cfgReads = Json.reads[Adam6066ChannelCfg]
   implicit val reads = Json.reads[Adam6066Param]

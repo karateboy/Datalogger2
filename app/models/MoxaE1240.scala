@@ -10,7 +10,7 @@ import javax.inject._
 case class MoxaE1240Param(addr: Int, chs: Seq[AiChannelCfg])
 
 @Singleton
-class MoxaE1240 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
+class MoxaE1240 @Inject()() extends DriverOps {
   override def getMonitorTypes(param: String) = {
     val e1240Param = validateParam(param)
     val mtList = e1240Param.chs.filter {

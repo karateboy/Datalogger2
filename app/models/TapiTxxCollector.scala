@@ -20,7 +20,7 @@ import models.TapiTxx._
 
 import javax.inject._
 abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
-                                          alarmOp: AlarmDB, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                                          alarmOp: AlarmDB, system: ActorSystem, monitorTypeOp: MonitorTypeDB,
                                           calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                                          (instId: String, modelReg: ModelReg, tapiConfig: TapiConfig, host:String) extends Actor {
   var timerOpt: Option[Cancellable] = None

@@ -76,7 +76,7 @@ import javax.inject._
 
 class Baseline9000Collector @Inject()
 (instrumentOp: InstrumentDB, calibrationOp: CalibrationDB,
- monitorTypeOp: MonitorTypeOp)
+ monitorTypeOp: MonitorTypeDB)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: Baseline9000Config) extends Actor {
 
   import Baseline9000Collector._

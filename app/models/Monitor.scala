@@ -1,6 +1,6 @@
 package models
 
-case class Monitor(_id: String, desc: String)
+case class Monitor(_id: String, desc: String, lat: Option[Double] = None, lng: Option[Double] = None)
 
 object Monitor {
   val SELF_ID = "me"

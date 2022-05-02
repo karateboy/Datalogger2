@@ -85,7 +85,7 @@ object MqttCollector2 extends DriverOps {
 
 import javax.inject._
 
-class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmDB,
+class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeDB, alarmOp: AlarmDB,
                                recordOp: RecordOp, monitorOp: MonitorDB, dataCollectManager: DataCollectManager,
                                mqttSensorOp: MqttSensorDB)
                              (@Assisted id: String,

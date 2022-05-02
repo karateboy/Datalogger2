@@ -49,7 +49,7 @@ case class ManualAuditParam(reason: String, updateList: Seq[UpdateRecordParam])
 case class UpdateRecordParam(time: Long, mt: String, status: String)
 
 @Singleton
-class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorDB,
+class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
                       instrumentStatusOp: InstrumentStatusDB, instrumentOp: InstrumentDB,
                       alarmOp: AlarmDB, calibrationOp: CalibrationDB,
                       manualAuditLogOp: ManualAuditLogDB, excelUtility: ExcelUtility, configuration: Configuration) extends Controller {

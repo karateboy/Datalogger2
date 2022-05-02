@@ -16,7 +16,7 @@ import scala.math.BigDecimal.RoundingMode
 
 @Singleton
 class ExcelUtility @Inject()
-(environment: play.api.Environment, monitorTypeOp: MonitorTypeOp, monitorStatusOp: MonitorStatusDB) {
+(environment: play.api.Environment, monitorTypeOp: MonitorTypeDB, monitorStatusOp: MonitorStatusDB) {
   val docRoot = environment.rootPath + "/report_template/"
 
   def exportChartData(chart: HighchartData, monitorTypes: Array[String], showSec: Boolean): File = {

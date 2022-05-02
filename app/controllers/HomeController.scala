@@ -17,7 +17,7 @@ import scala.concurrent.Future
 
 class HomeController @Inject()(environment: play.api.Environment,
                                userOp: UserDB, instrumentOp: InstrumentDB, dataCollectManagerOp: DataCollectManagerOp,
-                               monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorDB, groupOp: GroupDB,
+                               monitorTypeOp: MonitorTypeDB, query: Query, monitorOp: MonitorDB, groupOp: GroupDB,
                                instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusDB,
                                sensorOp: MqttSensorDB, WSClient: WSClient,
                                emailTargetOp: EmailTargetDB,
@@ -490,7 +490,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       Ok(Json.toJson(mtList.sortBy(_.order)))
   }
 
-  def upsertMonitorType(id: String) = Security.Authenticated(BodyParsers.parse.json) {
+  def upsertMonitorType(id: String) = Security.Authenticated.async(BodyParsers.parse.json) {
     implicit request =>
       Logger.info(s"upsert Mt:${id}")
       val mtResult = request.body.validate[MonitorType]
@@ -498,12 +498,12 @@ class HomeController @Inject()(environment: play.api.Environment,
       mtResult.fold(
         error => {
           Logger.error(JsError.toJson(error).toString())
-          BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+          Future.successful(BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString())))
         },
         mt => {
           Logger.info(mt.toString)
-          monitorTypeOp.upsertMonitorType(mt)
-          Ok(Json.obj("ok" -> true))
+          for(_<-monitorTypeOp.upsertMonitorTypeFuture(mt)) yield
+            Ok(Json.obj("ok" -> true))
         })
   }
 

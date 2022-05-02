@@ -132,7 +132,7 @@ import javax.inject._
 
 class Horiba370Collector @Inject()
 (instrumentOp: InstrumentDB, instrumentStatusOp: InstrumentStatusDB,
- calibrationOp: CalibrationDB, monitorTypeOp: MonitorTypeOp, actorSystem: ActorSystem)
+ calibrationOp: CalibrationDB, monitorTypeOp: MonitorTypeDB)
 (@Assisted id: String, @Assisted protocol: ProtocolParam, @Assisted config: Horiba370Config) extends Actor {
 
   import Horiba370Collector._
@@ -520,7 +520,7 @@ class Horiba370Collector @Inject()
               reqSpanCalibration(connection)
             }
           for(raiseTime<-config.raiseTime)
-            calibrateTimerOpt = Some(actorSystem.scheduler.scheduleOnce(Duration(raiseTime, SECONDS), self, HoldStart))
+            calibrateTimerOpt = Some(context.system.scheduler.scheduleOnce(Duration(raiseTime, SECONDS), self, HoldStart))
         }
       }
 

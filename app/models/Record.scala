@@ -3,7 +3,7 @@ package models
 import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
-import models.mongodb.{CalibrationOp, MongoDB}
+import models.mongodb.{CalibrationOp, MongoDB, MonitorTypeOp}
 import org.mongodb.scala._
 import org.mongodb.scala.bson.BsonDateTime
 import org.mongodb.scala.bson.conversions.Bson
@@ -28,7 +28,7 @@ case class RecordList(var mtDataList: Seq[MtRecord], _id: RecordListID) {
     pairs.toMap
   }
 
-  def doCalibrate(monitorTypeOp: MonitorTypeOp, calibrationMap: Map[String, List[(DateTime, Calibration)]]): Unit = {
+  def doCalibrate(monitorTypeOp: MonitorTypeDB, calibrationMap: Map[String, List[(DateTime, Calibration)]]): Unit = {
     def getCalibrateItem(mt: String) = {
       def findCalibration(calibrationList: List[(DateTime, Calibration)]): Option[(Imports.DateTime, Calibration)] = {
         val recordTime: DateTime = new DateTime(_id.time)
@@ -152,29 +152,6 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     f.onFailure({
       case ex: Exception => Logger.error(ex.getMessage, ex)
     })
-    f
-  }
-
-  def findAndUpdate(dt: DateTime, dataList: List[(String, (Double, String))])(colName: String) = {
-    import org.mongodb.scala.bson._
-    import org.mongodb.scala.model._
-
-    val bdt: BsonDateTime = dt
-
-    val updates =
-      for {
-        data <- dataList
-        mt = data._1
-        (v, s) = data._2
-      } yield {
-        Updates.set(monitorTypeOp.BFName(mt), Document("v" -> v, "s" -> s))
-      }
-    Updates.combine(updates: _*)
-
-    val col = getCollection(colName)
-    val f = col.findOneAndUpdate(Filters.equal("time", bdt), Updates.combine(updates: _*),
-      FindOneAndUpdateOptions().upsert(true)).toFuture()
-    f.onFailure(errorHandler)
     f
   }
 

@@ -120,7 +120,7 @@ object Duo extends DriverOps {
     f2(id, protocolParam, config)
   }
 
-  def ensureSpectrumTypes(duoMT: DuoMonitorType)(monitorTypeOp: MonitorTypeOp) =
+  def ensureSpectrumTypes(duoMT: DuoMonitorType)(monitorTypeOp: MonitorTypeDB) =
     for (mt <- getSpectrumMonitorTypes(duoMT))
       monitorTypeOp.ensureMonitorType(mt)
 

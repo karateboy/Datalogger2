@@ -11,29 +11,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class CalibrationOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp) extends CalibrationDB {
+class CalibrationOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeDB) extends CalibrationDB {
 
   val collectionName = "calibration"
   val collection = mongodb.database.getCollection(collectionName)
 
   import org.mongodb.scala._
   import org.mongodb.scala.model.Indexes._
-
-  private def init() {
-    for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
-      if (!colNames.contains(collectionName)) {
-        val f = mongodb.database.createCollection(collectionName).toFuture()
-        f.onFailure(errorHandler)
-        f.onSuccess({
-          case _ =>
-            val cf = collection.createIndex(ascending("monitorType", "startTime", "endTime")).toFuture()
-            cf.onFailure(errorHandler)
-        })
-      }
-    }
-  }
-
-  init
 
   override def calibrationReport(start: DateTime, end: DateTime): Seq[Calibration] = {
     import org.mongodb.scala.model.Filters._
@@ -46,16 +30,7 @@ class CalibrationOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp) ex
     }
   }
 
-  override def calibrationReportFuture(start: DateTime, end: DateTime): Future[Seq[Calibration]] = {
-    import org.mongodb.scala.model.Filters._
-    import org.mongodb.scala.model.Sorts._
-
-    val f = collection.find(and(gte("startTime", start.toDate()), lt("startTime", end.toDate()))).sort(ascending("startTime")).toFuture()
-    for (docs <- f)
-      yield docs.map {
-        toCalibration
-      }
-  }
+  init
 
   def toCalibration(doc: Document) = {
     import org.mongodb.scala.bson.BsonDouble
@@ -72,6 +47,17 @@ class CalibrationOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp) ex
     val span_std = doc.get("span_std").collect(doublePf)
     val span_val = doc.get("span_val").collect(doublePf)
     Calibration(monitorType, startTime, endTime, zero_val, span_std, span_val)
+  }
+
+  override def calibrationReportFuture(start: DateTime, end: DateTime): Future[Seq[Calibration]] = {
+    import org.mongodb.scala.model.Filters._
+    import org.mongodb.scala.model.Sorts._
+
+    val f = collection.find(and(gte("startTime", start.toDate()), lt("startTime", end.toDate()))).sort(ascending("startTime")).toFuture()
+    for (docs <- f)
+      yield docs.map {
+        toCalibration
+      }
   }
 
   override def calibrationReportFuture(start: DateTime): Future[Seq[Calibration]] = {
@@ -97,7 +83,7 @@ class CalibrationOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp) ex
   }
 
   override def getCalibrationMap(startDate: DateTime, endDate: DateTime)
-                                (implicit monitorTypeOp: MonitorTypeOp): Future[Map[String, List[(Imports.DateTime, Calibration)]]] = {
+                                (implicit monitorTypeOp: MonitorTypeDB): Future[Map[String, List[(Imports.DateTime, Calibration)]]] = {
     val begin = (startDate - 5.day).toDate
     val end = (endDate + 1.day).toDate
     val filter = Filters.and(Filters.gte("startTime", begin), Filters.lt("endTime", end))
@@ -134,5 +120,19 @@ class CalibrationOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp) ex
     Document("monitorType" -> cal.monitorType, "startTime" -> (cal.startTime: BsonDateTime),
       "endTime" -> (cal.endTime: BsonDateTime), "zero_val" -> cal.zero_val,
       "span_std" -> cal.span_std, "span_val" -> cal.span_val)
+  }
+
+  private def init() {
+    for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
+      if (!colNames.contains(collectionName)) {
+        val f = mongodb.database.createCollection(collectionName).toFuture()
+        f.onFailure(errorHandler)
+        f.onSuccess({
+          case _ =>
+            val cf = collection.createIndex(ascending("monitorType", "startTime", "endTime")).toFuture()
+            cf.onFailure(errorHandler)
+        })
+      }
+    }
   }
 }

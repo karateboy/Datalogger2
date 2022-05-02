@@ -66,13 +66,13 @@ object PicarroG2131i extends AbstractDrv(_id = "picarroG2131i", desp = "Picarro 
 }
 
 class PicarroG2131iCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
-                                       alarmOp: AlarmDB, monitorTypeOp: MonitorTypeOp,
+                                       alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
                                        calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                                       (@Assisted("instId") instId: String, @Assisted("desc") desc: String,
                                        @Assisted("config") deviceConfig: DeviceConfig,
                                        @Assisted("protocolParam") protocolParam: ProtocolParam)
   extends AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
-    alarmOp: AlarmDB, monitorTypeOp: MonitorTypeOp,
+    alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
 
   import PicarroG2131i._

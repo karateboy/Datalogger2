@@ -11,14 +11,14 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class ManualAuditLogOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp) extends ManualAuditLogDB {
+class ManualAuditLogOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeDB) extends ManualAuditLogDB {
   private val collectionName = "auditLogs"
   private val collection = mongodb.database.getCollection(collectionName)
   import org.mongodb.scala.model.Filters._
   override def upsertLog(log: ManualAuditLog):Future[UpdateResult] = {
     import org.mongodb.scala.bson.BsonDateTime
     import org.mongodb.scala.model.ReplaceOptions
-    val f = collection.replaceOne(and(equal("dataTime", log.dataTime: BsonDateTime), equal("mt", monitorTypeOp.BFName(log.mt))),
+    val f = collection.replaceOne(and(equal("dataTime", log.dataTime: BsonDateTime), equal("mt", log.mt)),
       toDocument(log), ReplaceOptions().upsert(true)).toFuture()
 
     f.onFailure(errorHandler)
@@ -27,7 +27,7 @@ class ManualAuditLogOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp)
 
   private def toDocument(al: ManualAuditLog) = {
     import org.mongodb.scala.bson._
-    Document("dataTime" -> (al.dataTime: BsonDateTime), "mt" -> monitorTypeOp.BFName(al.mt),
+    Document("dataTime" -> (al.dataTime: BsonDateTime), "mt" -> al.mt,
       "modifiedTime" -> (al.modifiedTime: BsonDateTime), "operator" -> al.operator, "changedStatus" -> al.changedStatus, "reason" -> al.reason)
   }
 

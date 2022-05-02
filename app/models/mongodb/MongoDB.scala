@@ -14,7 +14,7 @@ class MongoDB @Inject() (config: Configuration){
   val mongoClient: MongoClient = MongoClient(url.get)
   val database: MongoDatabase = mongoClient.getDatabase(dbName.get)
   val below44 = config.getBoolean("my.mongodb.below44").getOrElse(false)
-  
+  Logger.info("mongodb ready")
   def cleanup={
     mongoClient.close()
   }

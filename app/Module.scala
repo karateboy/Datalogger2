@@ -1,6 +1,6 @@
 import com.google.inject.AbstractModule
 import models._
-import models.mongodb.MongoDB
+import models.mongodb.{MongoDB, MonitorTypeOp}
 import play.api._
 import play.api.libs.concurrent.AkkaGuiceSupport
 /**
@@ -17,7 +17,7 @@ class Module(environment: Environment,
              configuration: Configuration) extends AbstractModule with AkkaGuiceSupport {
   override def configure() = {
     bind(classOf[MongoDB])
-    bind(classOf[MonitorTypeOp])
+    //bind(classOf[MonitorTypeOp])
 
     bindActor[DataCollectManager]("dataCollectManager")
     bindActorFactory[Adam6017Collector, Adam6017Collector.Factory]

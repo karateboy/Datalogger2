@@ -13,7 +13,7 @@ case class Adam6017Param(chs: Seq[AiChannelCfg])
 
 @Singleton
 class Adam6017 @Inject()
-(monitorTypeOp: MonitorTypeOp)
+(monitorTypeOp: MonitorTypeDB)
   extends DriverOps {
 
   implicit val cfgReads = Json.reads[AiChannelCfg]

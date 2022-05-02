@@ -53,7 +53,7 @@ import net.sf.marineapi.nmea.sentence.SentenceValidator;
 
 import javax.inject._
 
-class GpsCollector @Inject()(monitorTypeOp: MonitorTypeOp)(@Assisted id: String, @Assisted protocolParam: ProtocolParam) extends Actor
+class GpsCollector @Inject()()(@Assisted id: String, @Assisted protocolParam: ProtocolParam) extends Actor
     with ActorLogging with SentenceListener with ExceptionListener with PositionListener {
   val comm: SerialComm = SerialComm.open(protocolParam.comPort.get)
   var reader: SentenceReader = _

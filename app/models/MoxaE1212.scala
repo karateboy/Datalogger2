@@ -13,7 +13,7 @@ case class MoxaE1212Param(addr: Int, chs: Seq[E1212ChannelCfg])
 
 @Singleton
 class MoxaE1212 @Inject()
-(monitorTypeOp: MonitorTypeOp)
+(monitorTypeOp: MonitorTypeDB)
   extends DriverOps {
 
   implicit val cfgReads = Json.reads[E1212ChannelCfg]

@@ -14,7 +14,7 @@ case class ModelRegValue2(inputRegs: List[(InstrumentStatusType, Double)],
                           warnRegs: List[(InstrumentStatusType, Boolean)])
 
 abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
-                                 alarmOp: AlarmDB, monitorTypeOp: MonitorTypeOp,
+                                 alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
                                  calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                                 (instId: String, desc: String, deviceConfig: DeviceConfig, protocol: ProtocolParam) extends Actor {
 

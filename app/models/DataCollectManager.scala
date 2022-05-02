@@ -350,7 +350,7 @@ object DataCollectManager {
 
 @Singleton
 class DataCollectManager @Inject()
-(config: Configuration, system: ActorSystem, recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorDB,
+(config: Configuration, recordOp: RecordOp, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
  dataCollectManagerOp: DataCollectManagerOp,
  instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentOp,
  sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
@@ -387,8 +387,9 @@ class DataCollectManager @Inject()
   var signalTypeHandlerMap = Map.empty[String, Map[ActorRef, Boolean => Unit]]
 
   def startReaders(): Unit = {
-    SpectrumReader.start(config, system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
-    WeatherReader.start(config, system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
+    SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
+    WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
+    VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp)
   }
 
 
@@ -480,7 +481,7 @@ class DataCollectManager @Inject()
             new Duration(DateTime.now(), calibrationTime + 1.day)
 
           import scala.concurrent.duration._
-          system.scheduler.schedule(
+          context.system.scheduler.schedule(
             Duration(duration.getStandardSeconds + 1, SECONDS),
             Duration(1, DAYS), self, AutoCalibration(inst._id))
         }
@@ -747,7 +748,7 @@ class DataCollectManager @Inject()
       onceTimer map { t => t.cancel() }
       Logger.debug(s"ToggleTargetDO($instId, $bit)")
       self ! WriteTargetDO(instId, bit, true)
-      onceTimer = Some(system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
+      onceTimer = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
         self, WriteTargetDO(instId, bit, false)))
 
     case IsTargetConnected(instId) =>

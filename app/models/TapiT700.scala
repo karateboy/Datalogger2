@@ -32,7 +32,7 @@ object T700Collector extends TapiTxx(ModelConfig("T700", List.empty[String])) {
 
 import javax.inject._
 class T700Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
-                              alarmOp: AlarmDB, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                              alarmOp: AlarmDB, system: ActorSystem, monitorTypeOp: MonitorTypeDB,
                               calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                              (@Assisted("instId") instId: String, @Assisted modelReg: ModelReg,
                               @Assisted config: TapiConfig, @Assisted host:String)

@@ -34,7 +34,7 @@ object MoxaE1212Collector {
 }
 
 class MoxaE1212Collector @Inject()
-(instrumentOp: InstrumentDB, monitorTypeOp: MonitorTypeOp, system: ActorSystem)
+(instrumentOp: InstrumentDB)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: MoxaE1212Param) extends Actor with ActorLogging {
 
   import MoxaE1212Collector._
@@ -98,14 +98,14 @@ class MoxaE1212Collector @Inject()
             master.init();
             context become handler(collectorState, Some(master))
             import scala.concurrent.duration._
-            cancelable = system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
+            cancelable = context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)
               Logger.info("Try again 1 min later...")
               //Try again
               import scala.concurrent.duration._
-              cancelable = system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
+              cancelable = context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
           }
 
         }
@@ -159,7 +159,7 @@ class MoxaE1212Collector @Inject()
             }
 
             import scala.concurrent.duration._
-            cancelable = system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
+            cancelable = context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Throwable =>
               Logger.error("Read reg failed", ex)

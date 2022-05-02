@@ -67,7 +67,7 @@ class InstrumentTypeOp @Inject()
  picarroG2401Factory: PicarroG2401.Factory,
  picarroG2131iFactory: PicarroG2131i.Factory,
  ma350Factory: Ma350Drv.Factory,
- monitorTypeOp: MonitorTypeOp) extends InjectedActorSupport {
+ monitorTypeOp: MonitorTypeDB) extends InjectedActorSupport {
 
   import Protocol._
 
