@@ -17,7 +17,7 @@ object InstrumentStatusTypeForwarder {
   }
 }
 
-class InstrumentStatusTypeForwarder @Inject()(instrumentOp: InstrumentOp, ws: WSClient)
+class InstrumentStatusTypeForwarder @Inject()(instrumentOp: InstrumentDB, ws: WSClient)
   (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
 
   import ForwardManager._

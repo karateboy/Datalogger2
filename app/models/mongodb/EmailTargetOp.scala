@@ -1,37 +1,30 @@
-package models
-
-import org.mongodb.scala.model.{ReplaceOneModel, ReplaceOptions}
-import play.api.libs.json.Json
-
-import scala.concurrent.ExecutionContext.Implicits.global
-
-case class EmailTarget(_id:String, topic:Seq[String])
-
-object EmailTarget {
-  implicit val reads = Json.reads[EmailTarget]
-  implicit val writes = Json.writes[EmailTarget]
-}
+package models.mongodb
 
 import models.ModelHelper.{errorHandler, waitReadyResult}
-import org.mongodb.scala.model.{Filters, Indexes}
+import models.{EmailTarget, EmailTargetDB, SysConfigDB}
+import org.mongodb.scala.BulkWriteResult
+import org.mongodb.scala.model.{Filters, ReplaceOneModel, ReplaceOptions}
+import org.mongodb.scala.result.{DeleteResult, UpdateResult}
 
 import javax.inject._
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 @Singleton
-class EmailTargetOp @Inject()(mongoDB: MongoDB, sysConfig: SysConfig) {
+class EmailTargetOp @Inject()(mongodb: MongoDB, sysConfig: SysConfigDB) extends EmailTargetDB {
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
 
-  val colName = "emailTargets"
+  private val colName = "emailTargets"
 
-  val codecRegistry = fromRegistries(fromProviders(classOf[EmailTarget]), DEFAULT_CODEC_REGISTRY)
-  val collection = mongoDB.database.getCollection[EmailTarget](colName).withCodecRegistry(codecRegistry)
+  private val codecRegistry = fromRegistries(fromProviders(classOf[EmailTarget]), DEFAULT_CODEC_REGISTRY)
+  private val collection = mongodb.database.getCollection[EmailTarget](colName).withCodecRegistry(codecRegistry)
 
-  def init(): Unit = {
-    val colNames = waitReadyResult(mongoDB.database.listCollectionNames().toFuture())
+  private def init(): Unit = {
+    val colNames = waitReadyResult(mongodb.database.listCollectionNames().toFuture())
     if (!colNames.contains(colName)) {
-      val f = mongoDB.database.createCollection(colName).toFuture()
+      val f = mongodb.database.createCollection(colName).toFuture()
       f.onFailure(errorHandler)
       for(_ <-f){
         importFromSysConfig()
@@ -39,7 +32,7 @@ class EmailTargetOp @Inject()(mongoDB: MongoDB, sysConfig: SysConfig) {
     }
   }
 
-  def importFromSysConfig(): Unit ={
+  private def importFromSysConfig(): Unit ={
     for(targets <- sysConfig.getAlertEmailTarget()){
       val emailTargets = targets.map(email=>{
         EmailTarget(email, Seq.empty)
@@ -50,19 +43,19 @@ class EmailTargetOp @Inject()(mongoDB: MongoDB, sysConfig: SysConfig) {
 
   init
 
-  def upsert(et: EmailTarget) = {
+  override def upsert(et: EmailTarget): Future[UpdateResult] = {
     val f = collection.replaceOne(Filters.equal("_id", et._id), et, ReplaceOptions().upsert(true)).toFuture()
     f.onFailure(errorHandler)
     f
   }
 
-  def get(_id:String) = {
+  override def get(_id:String): Future[EmailTarget] = {
     val f = collection.find(Filters.equal("_id", _id)).first().toFuture()
     f.onFailure(errorHandler())
     f
   }
 
-  def upsertMany(etList:Seq[EmailTarget])={
+  override def upsertMany(etList:Seq[EmailTarget]): Future[BulkWriteResult] ={
     val updateModels: Seq[ReplaceOneModel[EmailTarget]] = etList map {
       et =>
         ReplaceOptions().upsert(true)
@@ -73,18 +66,18 @@ class EmailTargetOp @Inject()(mongoDB: MongoDB, sysConfig: SysConfig) {
     f
   }
 
-  def getList() = {
+  override def getList(): Future[Seq[EmailTarget]] = {
     val f = collection.find(Filters.exists("_id")).toFuture()
     f onFailure(errorHandler())
     f
   }
 
-  def delete(_id: String) = {
+  override def delete(_id: String): Future[DeleteResult] = {
     val f = collection.deleteOne(Filters.equal("_id", _id)).toFuture()
     f onFailure(errorHandler())
     f
   }
-  def deleteAll = {
+  override def deleteAll(): Future[DeleteResult] = {
     val f = collection.deleteMany(Filters.exists("_id")).toFuture()
     f
   }

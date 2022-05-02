@@ -1,7 +1,7 @@
 package models
 
 import akka.actor.Actor
-import models.Auditor.Audit
+import models.mongodb.VariationRuleOp
 import play.api.Logger
 
 import javax.inject.Inject
@@ -24,9 +24,9 @@ object Auditor {
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class Auditor @Inject()(recordOp:RecordOp,
-                        spikeRuleOp: SpikeRuleOp,
-                        constantRuleOp: ConstantRuleOp,
-                        variationRuleOp: VariationRuleOp) extends Actor {
+                        spikeRuleOp: SpikeRuleDB,
+                        constantRuleOp: ConstantRuleDB,
+                        variationRuleOp: VariationRuleDB) extends Actor {
   import Auditor._
   override def receive: Receive = {
     case Audit =>

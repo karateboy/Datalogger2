@@ -82,7 +82,7 @@ class VocReaderOp @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, sy
 
         try {
           val v = line(5).toDouble
-          Some(((mtID), (v, MonitorStatus.NormalStat)))
+          Some((mtID, (v, MonitorStatus.NormalStat)))
         } catch {
           case ex: Throwable =>
             None
@@ -125,11 +125,11 @@ class VocReaderOp @Inject()(monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, sy
   }
 }
 
-class VocReader @Inject()(vocReaderOp: VocReaderOp, system: ActorSystem)(dir: String) extends Actor {
+class VocReader @Inject()(vocReaderOp: VocReaderOp)(dir: String) extends Actor {
   import vocReaderOp._
   def resetTimer = {
     import scala.concurrent.duration._
-    system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ReadFile)
+    context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ReadFile)
   }
 
   var timer = resetTimer

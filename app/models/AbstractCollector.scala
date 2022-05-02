@@ -3,6 +3,7 @@ package models
 import akka.actor._
 import models.ModelHelper._
 import models.Protocol.ProtocolParam
+import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 import play.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -12,9 +13,9 @@ case class ModelRegValue2(inputRegs: List[(InstrumentStatusType, Double)],
                           modeRegs: List[(InstrumentStatusType, Boolean)],
                           warnRegs: List[(InstrumentStatusType, Boolean)])
 
-abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-                                 alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
-                                 calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
+abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
+                                 alarmOp: AlarmDB, monitorTypeOp: MonitorTypeOp,
+                                 calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                                 (instId: String, desc: String, deviceConfig: DeviceConfig, protocol: ProtocolParam) extends Actor {
 
   import TapiTxxCollector._
@@ -69,7 +70,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
       case ex: Exception =>
         Logger.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
         if (connected)
-          alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
+          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
 
         connected = false
     } finally {
@@ -128,7 +129,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
           } catch {
             case ex: Exception =>
               Logger.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
-              alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
               context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
@@ -459,7 +460,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
     } {
       if (enable) {
         if (oldModelReg.isEmpty || oldModelReg.get.modeRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.INFO, statusType.desc)
+          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, statusType.desc)
         }
       }
     }
@@ -472,11 +473,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: Mo
     } {
       if (enable) {
         if (oldModelReg.isEmpty || oldModelReg.get.warnRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.WARN, statusType.desc)
+          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.WARN, statusType.desc)
         }
       } else {
         if (oldModelReg.isDefined && oldModelReg.get.warnRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.INFO, s"${statusType.desc} 解除")
+          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, s"${statusType.desc} 解除")
         }
       }
     }

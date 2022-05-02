@@ -1,5 +1,6 @@
 import com.google.inject.AbstractModule
 import models._
+import models.mongodb.MongoDB
 import play.api._
 import play.api.libs.concurrent.AkkaGuiceSupport
 /**
@@ -12,8 +13,8 @@ import play.api.libs.concurrent.AkkaGuiceSupport
  * adding `play.modules.enabled` settings to the `application.conf`
  * configuration file.
  */
-class Module extends AbstractModule with AkkaGuiceSupport {
-  Logger.info("Module...")
+class Module(environment: Environment,
+             configuration: Configuration) extends AbstractModule with AkkaGuiceSupport {
   override def configure() = {
     bind(classOf[MongoDB])
     bind(classOf[MonitorTypeOp])
@@ -27,7 +28,6 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bindActorFactory[Horiba370Collector, Horiba370Collector.Factory]
     bindActorFactory[MoxaE1212Collector, MoxaE1212Collector.Factory]
     bindActorFactory[MoxaE1240Collector, MoxaE1240Collector.Factory]
-    bindActorFactory[MqttCollector, MqttCollector.Factory]
     bindActorFactory[MqttCollector2, MqttCollector2.Factory]
     bindActorFactory[T100Collector, T100Collector.Factory]
     bindActorFactory[T200Collector, T200Collector.Factory]

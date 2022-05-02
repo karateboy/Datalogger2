@@ -5,6 +5,7 @@ import com.github.nscala_time.time.Imports._
 import models.DataCollectManager.{calculateHourAvgMap, calculateMinAvgMap}
 import models.ForwardManager.{ForwardHour, ForwardHourRecord, ForwardMin, ForwardMinRecord}
 import models.ModelHelper._
+import models.mongodb.{AlarmOp, InstrumentOp}
 import org.mongodb.scala.result.UpdateResult
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
@@ -85,8 +86,8 @@ case class AddSignalTypeHandler(mtId: String, handler: Boolean => Unit)
 case class WriteSignal(mtId: String, bit: Boolean)
 
 @Singleton
-class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentOp,
-                                     recordOp: RecordOp, alarmOp: AlarmOp)() {
+class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentDB,
+                                     recordOp: RecordOp, alarmOp: AlarmDB)() {
   def startCollect(inst: Instrument) {
     manager ! StartInstrument(inst)
   }
@@ -155,7 +156,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
   }
 
   def evtOperationHighThreshold {
-    alarmOp.log(alarmOp.Src(), alarmOp.Level.INFO, "進行高值觸發事件行動..")
+    alarmOp.log(alarmOp.src(), alarmOp.Level.INFO, "進行高值觸發事件行動..")
     manager ! EvtOperationOverThreshold
   }
 
@@ -214,7 +215,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 object DataCollectManager {
   var effectiveRatio = 0.75
 
-  def updateEffectiveRatio(sysConfig: SysConfig): Unit ={
+  def updateEffectiveRatio(sysConfig: SysConfigDB): Unit ={
     for(ratio <-sysConfig.getEffectiveRatio())
       effectiveRatio = ratio
   }
@@ -349,10 +350,10 @@ object DataCollectManager {
 
 @Singleton
 class DataCollectManager @Inject()
-(config: Configuration, system: ActorSystem, recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp,
+(config: Configuration, system: ActorSystem, recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorDB,
  dataCollectManagerOp: DataCollectManagerOp,
- instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmOp, instrumentOp: InstrumentOp,
- sysConfig: SysConfig, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
+ instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentOp,
+ sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
   val storeSecondData = config.getBoolean("storeSecondData").getOrElse(false)
   Logger.info(s"store second data = $storeSecondData")
   DataCollectManager.updateEffectiveRatio(sysConfig)
@@ -414,7 +415,7 @@ class DataCollectManager @Inject()
         for (std_law <- mtCase.std_law; v <- value) {
           if (v > std_law) {
             val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, value)}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
-            alarmOp.log(alarmOp.Src(mt), alarmOp.Level.INFO, msg)
+            alarmOp.log(alarmOp.src(mt), alarmOp.Level.INFO, msg)
             overThreshold = true
           }
         }

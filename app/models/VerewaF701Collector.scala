@@ -8,6 +8,7 @@ import Protocol.{ProtocolParam, serial}
 import scala.concurrent.ExecutionContext.Implicits.global
 import ModelHelper._
 import com.google.inject.assistedinject.Assisted
+import models.mongodb.AlarmOp
 import play.api.libs.json.{JsError, Json}
 
 case class F701_20Config(monitorType: String)
@@ -90,7 +91,7 @@ object VerewaF701Collector extends DriverOps{
 
 import javax.inject._
 class VerewaF701Collector @Inject()
-(alarmOp: AlarmOp, monitorStatusOp: MonitorStatusOp, instrumentOp: InstrumentOp, system: ActorSystem)
+(alarmOp: AlarmDB, monitorStatusOp: MonitorStatusDB, instrumentOp: InstrumentDB, system: ActorSystem)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: F701_20Config) extends Actor {
   import VerewaF701Collector._
   import scala.concurrent.duration._
@@ -106,29 +107,29 @@ class VerewaF701Collector @Inject()
     import alarmOp._
     if ((instrumentStatus & 0x1) != (status & 0x1)) {
       if ((status & 0x1) == 1)
-        alarmOp.log(alarmOp.instStr(id), alarmOp.Level.INFO, "standby")
+        alarmOp.log(alarmOp.instrumentSrc(id), alarmOp.Level.INFO, "standby")
       else
-        alarmOp.log(instStr(id), Level.INFO, "concentration")
+        alarmOp.log(instrumentSrc(id), Level.INFO, "concentration")
     }
 
     if ((instrumentStatus & 0x2) != (status & 0x2)) {
       if ((status & 0x2) == 1)
-        alarmOp.log(alarmOp.instStr(id), alarmOp.Level.INFO, "Film measurement")
+        alarmOp.log(alarmOp.instrumentSrc(id), alarmOp.Level.INFO, "Film measurement")
     }
 
     if ((instrumentStatus & 0x4) != (status & 0x4)) {
       if ((status & 0x4) == 1)
-        alarmOp.log(alarmOp.instStr(id), Level.INFO, "Zero point measurement")
+        alarmOp.log(alarmOp.instrumentSrc(id), Level.INFO, "Zero point measurement")
     }
 
     if ((instrumentStatus & 0x8) != (status & 0x8)) {
       if ((status & 0x8) == 1)
-        log(instStr(id), Level.INFO, "Reference measurement (Reference check)")
+        log(instrumentSrc(id), Level.INFO, "Reference measurement (Reference check)")
     }
 
     if ((instrumentStatus & 0x80) != (status & 0x80)) {
       if ((status & 0x80) == 1)
-        log(instStr(id), Level.INFO, "Measurement")
+        log(instrumentSrc(id), Level.INFO, "Measurement")
     }
 
     instrumentStatus = status
@@ -137,27 +138,27 @@ class VerewaF701Collector @Inject()
   def checkErrorStatus(error: Byte) {
     import alarmOp._
     if ((error & 0x1) != 0) {
-      log(instStr(id), Level.WARN, "Volume error")
+      log(instrumentSrc(id), Level.WARN, "Volume error")
     }
 
     if ((error & 0x2) != 0) {
-      log(instStr(id), Level.WARN, "Vacuum break")
+      log(instrumentSrc(id), Level.WARN, "Vacuum break")
     }
 
     if ((error & 0x4) != 0) {
-      log(instStr(id), Level.WARN, "Volume<500 liter and 250 liter at 1/2 h sample time, respectively.")
+      log(instrumentSrc(id), Level.WARN, "Volume<500 liter and 250 liter at 1/2 h sample time, respectively.")
     }
 
     if ((error & 0x10) != 0) {
-      log(instStr(id), Level.ERR, "Volume < 25 liter")
+      log(instrumentSrc(id), Level.ERR, "Volume < 25 liter")
     }
 
     if ((error & 0x20) != 0) {
-      log(instStr(id), Level.ERR, "Change battery")
+      log(instrumentSrc(id), Level.ERR, "Change battery")
     }
 
     if ((error & 0x40) != 0) {
-      log(instStr(id), Level.ERR, "Filter crack")
+      log(instrumentSrc(id), Level.ERR, "Filter crack")
     }
   }
 

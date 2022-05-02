@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorSystem}
 import com.github.nscala_time.time.Imports
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
+import models.mongodb.AlarmOp
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
@@ -142,7 +143,7 @@ import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class DuoCollector @Inject()
-(alarmOp: AlarmOp, monitorStatusOp: MonitorStatusOp, instrumentOp: InstrumentOp, wsClient: WSClient, system: ActorSystem)
+(wsClient: WSClient, system: ActorSystem)
 (@Assisted instId: String, @Assisted protocolParam: ProtocolParam, @Assisted config: DuoConfig) extends Actor {
 
   import Duo._

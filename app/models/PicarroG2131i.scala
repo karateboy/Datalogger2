@@ -3,6 +3,7 @@ package models
 import akka.actor.Actor
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
+import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 import play.api.Logger
 import play.api.libs.json.Json
 
@@ -64,15 +65,15 @@ object PicarroG2131i extends AbstractDrv(_id = "picarroG2131i", desp = "Picarro 
   }
 }
 
-class PicarroG2131iCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-                                       alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
-                                       calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
+class PicarroG2131iCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
+                                       alarmOp: AlarmDB, monitorTypeOp: MonitorTypeOp,
+                                       calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                                       (@Assisted("instId") instId: String, @Assisted("desc") desc: String,
                                        @Assisted("config") deviceConfig: DeviceConfig,
                                        @Assisted("protocolParam") protocolParam: ProtocolParam)
-  extends AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-    alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
-    calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)(instId, desc, deviceConfig, protocolParam) {
+  extends AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
+    alarmOp: AlarmDB, monitorTypeOp: MonitorTypeOp,
+    calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
 
   import PicarroG2131i._
 

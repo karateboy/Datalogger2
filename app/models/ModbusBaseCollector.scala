@@ -1,5 +1,6 @@
 package models
 import akka.actor._
+import models.mongodb.{AlarmOp, InstrumentStatusOp}
 import play.api._
 import play.api.libs.concurrent.Akka
 
@@ -29,8 +30,8 @@ object ModbusBaseCollector {
 
 
 abstract class ModbusBaseCollector @Inject()
-(instrumentOp: InstrumentOp, alarmOp: AlarmOp, system: ActorSystem,
- instrumentStatusOp: InstrumentStatusOp, monitorStatusOp: MonitorStatusOp)(instId: String, slaveID: Int, modelReg: ModelReg, config: ModbusModelConfig) extends Actor {
+(instrumentOp: InstrumentDB, alarmOp: AlarmDB, system: ActorSystem,
+ instrumentStatusOp: InstrumentStatusDB, monitorStatusOp: MonitorStatusDB)(instId: String, slaveID: Int, modelReg: ModelReg, config: ModbusModelConfig) extends Actor {
   var timerOpt: Option[Cancellable] = None
 
   import ModbusBaseCollector._
@@ -214,7 +215,7 @@ abstract class ModbusBaseCollector @Inject()
           case ex: Exception =>
             Logger.error(ex.getMessage, ex)
             if (connected)
-              alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
 
             connected = false
         } finally {
@@ -252,7 +253,7 @@ abstract class ModbusBaseCollector @Inject()
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)
-              alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
               system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost(host))
@@ -314,7 +315,7 @@ abstract class ModbusBaseCollector @Inject()
     } {
       if (enable) {
         if (oldModelReg.isEmpty || oldModelReg.get.modeRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.INFO, statusType.desc)
+          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, statusType.desc)
         }
       }
     }
@@ -327,11 +328,11 @@ abstract class ModbusBaseCollector @Inject()
     } {
       if (enable) {
         if (oldModelReg.isEmpty || oldModelReg.get.warnRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.WARN, statusType.desc)
+          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.WARN, statusType.desc)
         }
       } else {
         if (oldModelReg.isDefined && oldModelReg.get.warnRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.INFO, s"${statusType.desc} 解除")
+          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, s"${statusType.desc} 解除")
         }
       }
     }

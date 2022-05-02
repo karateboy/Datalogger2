@@ -34,7 +34,7 @@ object MoxaE1212Collector {
 }
 
 class MoxaE1212Collector @Inject()
-(instrumentOp: InstrumentOp, monitorTypeOp: MonitorTypeOp, system: ActorSystem)
+(instrumentOp: InstrumentDB, monitorTypeOp: MonitorTypeOp, system: ActorSystem)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: MoxaE1212Param) extends Actor with ActorLogging {
 
   import MoxaE1212Collector._

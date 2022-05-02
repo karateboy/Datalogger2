@@ -4,6 +4,7 @@ import com.github.nscala_time.time.Imports._
 import controllers.Highchart._
 import models.ModelHelper.windAvg
 import models._
+import models.mongodb.{CalibrationOp, InstrumentStatusOp}
 import play.api._
 import play.api.libs.json._
 import play.api.mvc._
@@ -13,13 +14,12 @@ import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-case class Stat(
-                 avg: Option[Double],
-                 min: Option[Double],
-                 max: Option[Double],
-                 count: Int,
-                 total: Int,
-                 overCount: Int) {
+case class Stat(avg: Option[Double],
+                min: Option[Double],
+                max: Option[Double],
+                count: Int,
+                total: Int,
+                overCount: Int) {
   val effectPercent = {
     if (total > 0)
       Some(count.toDouble * 100 / total)
@@ -49,10 +49,10 @@ case class ManualAuditParam(reason: String, updateList: Seq[UpdateRecordParam])
 case class UpdateRecordParam(time: Long, mt: String, status: String)
 
 @Singleton
-class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp,
-                      instrumentStatusOp: InstrumentStatusOp, instrumentOp: InstrumentOp,
-                      alarmOp: AlarmOp, calibrationOp: CalibrationOp,
-                      manualAuditLogOp: ManualAuditLogOp, excelUtility: ExcelUtility, configuration: Configuration) extends Controller {
+class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorDB,
+                      instrumentStatusOp: InstrumentStatusDB, instrumentOp: InstrumentDB,
+                      alarmOp: AlarmDB, calibrationOp: CalibrationDB,
+                      manualAuditLogOp: ManualAuditLogDB, excelUtility: ExcelUtility, configuration: Configuration) extends Controller {
 
   implicit val cdWrite = Json.writes[CellData]
   implicit val rdWrite = Json.writes[RowData]
@@ -145,6 +145,19 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
   }
 
   import models.ModelHelper._
+
+  def getPeriods(start: DateTime, endTime: DateTime, d: Period): List[DateTime] = {
+    import scala.collection.mutable.ListBuffer
+
+    val buf = ListBuffer[DateTime]()
+    var current = start
+    while (current < endTime) {
+      buf.append(current)
+      current += d
+    }
+
+    buf.toList
+  }
 
   def historyTrendChart(monitorStr: String, monitorTypeStr: String, reportUnitStr: String, statusFilterStr: String,
                         startNum: Long, endNum: Long, outputTypeStr: String) = Security.Authenticated {
@@ -408,19 +421,6 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
         mt -> Map(pairs: _*)
       }
     mtRecordPairs.toMap
-  }
-
-  def getPeriods(start: DateTime, endTime: DateTime, d: Period): List[DateTime] = {
-    import scala.collection.mutable.ListBuffer
-
-    val buf = ListBuffer[DateTime]()
-    var current = start
-    while (current < endTime) {
-      buf.append(current)
-      current += d
-    }
-
-    buf.toList
   }
 
   def historyData(monitorStr: String, monitorTypeStr: String, tabTypeStr: String,

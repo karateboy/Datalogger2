@@ -6,14 +6,15 @@ import com.serotonin.modbus4j.locator.BaseLocator
 import com.serotonin.modbus4j.serial.SerialPortWrapper
 import models.ModelHelper._
 import models.Protocol.ProtocolParam
+import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 import play.api._
 
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-                                   alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
-                                   calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
+class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
+                                   alarmOp: AlarmDB, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                                   calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                                   (@Assisted("instId") instId: String, @Assisted("desc") desc: String, @Assisted modelReg: TcpModelReg,
                                    @Assisted deviceConfig: DeviceConfig, @Assisted("protocol") protocol: ProtocolParam) extends Actor {
   val InputKey = "Input"
@@ -218,7 +219,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
           case ex: Exception =>
             Logger.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
             if (connected)
-              alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
 
             connected = false
         } finally {
@@ -294,7 +295,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
           } catch {
             case ex: Exception =>
               Logger.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
-              alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
               system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
@@ -630,7 +631,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
     } {
       if (enable) {
         if (oldModelReg.isEmpty || oldModelReg.get.modeRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.INFO, statusType.desc)
+          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, statusType.desc)
         }
       }
     }
@@ -643,11 +644,11 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: 
     } {
       if (enable) {
         if (oldModelReg.isEmpty || oldModelReg.get.warnRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.WARN, statusType.desc)
+          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.WARN, statusType.desc)
         }
       } else {
         if (oldModelReg.isDefined && oldModelReg.get.warnRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.INFO, s"${statusType.desc} 解除")
+          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, s"${statusType.desc} 解除")
         }
       }
     }

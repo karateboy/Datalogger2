@@ -5,6 +5,7 @@ import com.github.nscala_time.time.Imports._
 import models.ForwardManager.{ForwardHourRecord, ForwardMinRecord}
 import models.ModelHelper.errorHandler
 import models._
+import models.mongodb.{EmailTargetOp, GroupOp, UserOp}
 import play.api._
 import play.api.libs.json._
 import play.api.libs.ws.{WSClient, WSResponse}
@@ -15,12 +16,12 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class HomeController @Inject()(environment: play.api.Environment,
-                               userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
-                               monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorOp, groupOp: GroupOp,
-                               instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp,
-                               sensorOp: MqttSensorOp, adam6066: Adam6066, WSClient: WSClient,
-                               emailTargetOp: EmailTargetOp,
-                               sysConfig: SysConfig,
+                               userOp: UserDB, instrumentOp: InstrumentDB, dataCollectManagerOp: DataCollectManagerOp,
+                               monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorDB, groupOp: GroupDB,
+                               instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusDB,
+                               sensorOp: MqttSensorDB, WSClient: WSClient,
+                               emailTargetOp: EmailTargetDB,
+                               sysConfig: SysConfigDB,
                                @Named("dataCollectManager") manager: ActorRef) extends Controller {
 
   val title = "資料擷取器"

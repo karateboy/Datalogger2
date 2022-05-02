@@ -1,22 +1,22 @@
 package models
 
 import akka.actor._
-import com.github.nscala_time.time.Imports.{DateTime, DateTimeFormat, richDateTime}
+import com.github.nscala_time.time.Imports.{DateTime, DateTimeFormat}
 import com.google.inject.assistedinject.Assisted
 import models.ModelHelper.waitReadyResult
-import models.MqttCollector.{ConnectBroker, CreateClient, SubscribeTopic}
-import models.MqttCollector2.{CheckTimeout, timeout}
 import models.Protocol.{ProtocolParam, tcp}
 import org.eclipse.paho.client.mqttv3._
 import play.api._
-import play.api.libs.json.{JsError, Json, _}
+import play.api.libs.json._
 
 import java.nio.file.Files
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{DAYS, Duration, MINUTES, SECONDS}
+import scala.concurrent.duration.{Duration, MINUTES}
 import scala.concurrent.{Future, blocking}
 
 case class MqttConfig2(topic: String, group:String, eventConfig: EventConfig)
+case class EventConfig(instId: String, bit: Int, seconds: Option[Int])
+case class MqttConfig(topic: String, monitor: String, eventConfig: EventConfig)
 
 object MqttCollector2 extends DriverOps {
 
@@ -85,13 +85,14 @@ object MqttCollector2 extends DriverOps {
 
 import javax.inject._
 
-class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, system: ActorSystem,
-                              recordOp: RecordOp, monitorOp: MonitorOp, dataCollectManager: DataCollectManager,
-                               mqttSensorOp: MqttSensorOp)
+class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmDB,
+                               recordOp: RecordOp, monitorOp: MonitorDB, dataCollectManager: DataCollectManager,
+                               mqttSensorOp: MqttSensorDB)
                              (@Assisted id: String,
                               @Assisted protocolParam: ProtocolParam,
                               @Assisted config: MqttConfig2) extends Actor with MqttCallback {
 
+  import MqttCollector2._
   val payload =
     """{"id":"861108035994663",
       |"desc":"柏昇SAQ-200",
@@ -145,8 +146,8 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
         case e: MqttException =>
           Logger.error("Unable to set up client: " + e.toString)
           import scala.concurrent.duration._
-          alarmOp.log(alarmOp.instStr(id), alarmOp.Level.ERR, s"無法連接:${e.getMessage}")
-          system.scheduler.scheduleOnce(Duration(1, MINUTES), self, CreateClient)
+          alarmOp.log(alarmOp.instrumentSrc(id), alarmOp.Level.ERR, s"無法連接:${e.getMessage}")
+          context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, CreateClient)
       }
     case ConnectBroker =>
       Future {
@@ -164,7 +165,7 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
               } catch {
                 case ex: Exception =>
                   Logger.error("connect broker failed.", ex)
-                  system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectBroker)
+                  context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectBroker)
               }
           }
         }
@@ -182,7 +183,7 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
               } catch {
                 case ex: Exception =>
                   Logger.error("Subscribe failed", ex)
-                  system.scheduler.scheduleOnce(Duration(1, MINUTES), self, SubscribeTopic)
+                  context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, SubscribeTopic)
               }
           }
         }

@@ -1,73 +1,26 @@
-package models
-
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.language.implicitConversions
-
-import org.mongodb.scala._
+package models.mongodb
 
 import com.github.nscala_time.time.Imports._
-
-import ModelHelper._
+import models.ModelHelper._
+import models.{Alarm, AlarmDB}
+import org.mongodb.scala._
 import play.api._
-import play.api.libs.functional.syntax._
-import play.api.libs.json._
-import play.api.libs.json.Reads._
 
-//alarm src format: 'T':"MonitorType"
-//                  'I':"Instrument"
-//                  'S':"System"
 import javax.inject._
-case class Alarm2JSON(time: Long, src: String, level: Int, info: String)
-
-case class Alarm(time: DateTime, src: String, level: Int, desc: String) {
-  def toJson = Alarm2JSON(time.getMillis, src, level, desc)
-}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.language.implicitConversions
 
 @Singleton
-class AlarmOp @Inject()(mongoDB: MongoDB) {
-  object Level {
-    val INFO = 1
-    val WARN = 2
-    val ERR = 3
-    val map = Map(INFO -> "資訊", WARN -> "警告", ERR -> "嚴重")
-  }
-  val alarmLevelList: Seq[Int] = Level.INFO to Level.ERR
-
-  def Src(mt: String) = s"T:${mt.toString}"
-  def Src(inst: Instrument) = s"I:${inst._id}"
-  def instStr(id: String) = s"I:$id"
-  def Src() = "S:System"
-
-  def getSrcForDisplay(src: String) = {
-    val part = src.split(':')
-    if (part.length >= 2) {
-      val srcType = part(0) match {
-        case "S" =>
-          "系統"
-        case "I" =>
-          "設備:" + part(1)
-        case "T" =>
-          "測項:" + part(1)
-      }
-      srcType
-    }else{
-      Logger.error(s"Invalid format $src")
-      src
-    }
-  }
-
-  implicit val write = Json.writes[Alarm]
-  implicit val jsonWrite = Json.writes[Alarm2JSON]
-  //implicit val format = Json.format[Alarm]
-
-  val collectionName = "alarms"
-  val collection = mongoDB.database.getCollection(collectionName)
-  def toDocument(ar: Alarm) = {
+class AlarmOp @Inject()(mongodb: MongoDB) extends AlarmDB {
+  private val collectionName = "alarms"
+  private val collection = mongodb.database.getCollection(collectionName)
+  private def toDocument(ar: Alarm) = {
     import org.mongodb.scala.bson._
     Document("time" -> (ar.time: BsonDateTime), "src" -> ar.src, "level" -> ar.level, "desc" -> ar.desc)
   }
 
-  def toAlarm(doc: Document) = {
+  private def toAlarm(doc: Document) = {
     val time = new DateTime(doc.get("time").get.asDateTime().getValue)
     val src = doc.get("src").get.asString().getValue
     val level = doc.get("level").get.asInt32().getValue
@@ -75,11 +28,11 @@ class AlarmOp @Inject()(mongoDB: MongoDB) {
     Alarm(time, src, level, desc)
   }
 
-  def init() {
+  private def init() {
     import org.mongodb.scala.model.Indexes._
-    for(colNames <- mongoDB.database.listCollectionNames().toFuture()) {
+    for(colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(collectionName)) {
-        val f = mongoDB.database.createCollection(collectionName).toFuture()
+        val f = mongodb.database.createCollection(collectionName).toFuture()
         f.onFailure(errorHandler)
         f.onSuccess({
           case _ =>
@@ -92,10 +45,9 @@ class AlarmOp @Inject()(mongoDB: MongoDB) {
   init
 
   import org.mongodb.scala.model.Filters._
-  import org.mongodb.scala.model.Projections._
   import org.mongodb.scala.model.Sorts._
 
-  def getAlarms(level: Int, start: DateTime, end: DateTime) = {
+  override def getAlarms(level: Int, start: DateTime, end: DateTime): Seq[Alarm] = {
     import org.mongodb.scala.bson.BsonDateTime
     val startB: BsonDateTime = start
     val endB: BsonDateTime = end
@@ -105,7 +57,7 @@ class AlarmOp @Inject()(mongoDB: MongoDB) {
     docs.map { toAlarm }
   }
 
-  def getAlarmsFuture(start: DateTime, end: DateTime) = {
+  override def getAlarmsFuture(start: DateTime, end: DateTime): Future[Seq[Alarm]] = {
     import org.mongodb.scala.bson.BsonDateTime
     val startB: BsonDateTime = start
     val endB: BsonDateTime = end
@@ -132,12 +84,12 @@ class AlarmOp @Inject()(mongoDB: MongoDB) {
       }, // onNext
       (ex: Throwable) => Logger.error("Alarm failed:", ex), // onError
       () => {} // onComplete
-      )
+    )
 
   }
 
-  def log(src: String, level: Int, desc: String, coldPeriod:Int = 30) {
+  override def log(src: String, level: Int, desc: String, coldPeriod:Int = 30): Unit = {
     val ar = Alarm(DateTime.now(), src, level, desc)
     logFilter(ar, coldPeriod)
-  }  
+  }
 }

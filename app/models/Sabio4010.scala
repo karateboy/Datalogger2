@@ -7,6 +7,7 @@ import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
 import models.Sabio4010Collector._
 import models.ThetaCollector.OpenComPort
+import models.mongodb.InstrumentStatusOp
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 
@@ -97,7 +98,7 @@ object Sabio4010Collector {
   case object CollectStatus
 }
 
-class Sabio4010Collector @Inject()(system: ActorSystem, instrumentOp: InstrumentOp, instrumentStatusOp: InstrumentStatusOp)
+class Sabio4010Collector @Inject()(instrumentOp: InstrumentDB, instrumentStatusOp: InstrumentStatusDB)
                                   (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: Sabio4010Config) extends Actor {
   val statusTimerOpt: Option[Cancellable] = None
   //val statusTimerOpt: Option[Cancellable] = Some(system.scheduler.schedule(Duration(5, MINUTES), Duration(10, MINUTES),
@@ -131,7 +132,7 @@ class Sabio4010Collector @Inject()(system: ActorSystem, instrumentOp: Instrument
           Logger.error(ex.getMessage, ex)
           Logger.info("Try again 1 min later...")
           //Try again
-          cancelable = system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort)
+          cancelable = context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort)
       }
 
     case ExecuteSeq(seq, on) =>

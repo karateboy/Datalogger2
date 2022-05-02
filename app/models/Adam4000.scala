@@ -6,6 +6,7 @@ import com.google.inject.assistedinject.Assisted
 import models.Adam4000.{ADAM4017, ADAM4069}
 import models.ModelHelper.errorHandler
 import models.Protocol.{ProtocolParam, serial}
+import models.mongodb.AlarmOp
 import play.api.Logger
 import play.api.libs.json.{JsError, Json, Reads}
 
@@ -123,7 +124,7 @@ object Adam4000Collector {
 }
 import scala.concurrent.ExecutionContext.Implicits.global
 import javax.inject._
-class Adam4000Collector @Inject()(instrumentOp: InstrumentOp, alarmOp: AlarmOp)
+class Adam4000Collector @Inject()(alarmOp: AlarmDB)
                                  (@Assisted instId: String, @Assisted protocolParam: ProtocolParam, @Assisted moduleList: List[Adam4000Module]) extends Actor {
   import Adam4000Collector._
   self ! OpenCom
@@ -195,7 +196,7 @@ class Adam4000Collector @Inject()(instrumentOp: InstrumentOp, alarmOp: AlarmOp)
       }catch{
         case ex: Exception =>
           Logger.error(ex.getMessage, ex)
-          alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
+          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
           import scala.concurrent.duration._
           context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenCom)
       }

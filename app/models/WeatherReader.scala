@@ -18,7 +18,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object WeatherReader {
   def start(configuration: Configuration, actorSystem: ActorSystem,
-            sysConfig: SysConfig, monitorTypeOp: MonitorTypeOp,
+            sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeOp,
             recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp) = {
     def getConfig: Option[WeatherReaderConfig] = {
       for {config <- configuration.getConfig("weatherReader")
@@ -33,14 +33,14 @@ object WeatherReader {
       actorSystem.actorOf(props(config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp), "weatherReader")
   }
 
-  def props(config: WeatherReaderConfig, sysConfig: SysConfig, monitorTypeOp: MonitorTypeOp,
+  def props(config: WeatherReaderConfig, sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeOp,
             recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp) =
     Props(classOf[WeatherReader], config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
 
   case object ParseReport
 }
 
-class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfig,
+class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
                     monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp) extends Actor {
   Logger.info(s"WeatherReader start reading: ${config.dir}")
 

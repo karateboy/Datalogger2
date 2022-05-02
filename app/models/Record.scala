@@ -3,6 +3,7 @@ package models
 import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
+import models.mongodb.{CalibrationOp, MongoDB}
 import org.mongodb.scala._
 import org.mongodb.scala.bson.BsonDateTime
 import org.mongodb.scala.bson.conversions.Bson
@@ -66,7 +67,7 @@ case class Record(time: DateTime, value: Option[Double], status: String, monitor
 import javax.inject._
 
 @Singleton
-class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibrationOp: CalibrationOp) {
+class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, calibrationOp: CalibrationDB) {
 
   import org.mongodb.scala.model._
   import play.api.libs.json._

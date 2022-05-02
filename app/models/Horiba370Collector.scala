@@ -5,6 +5,7 @@ import akka.util.ByteString
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.{ProtocolParam, tcp}
+import models.mongodb.{CalibrationOp, InstrumentStatusOp}
 import play.api._
 import play.api.libs.json.{JsError, Json}
 
@@ -130,8 +131,8 @@ object Horiba370Collector extends DriverOps{
 import javax.inject._
 
 class Horiba370Collector @Inject()
-(instrumentOp: InstrumentOp, instrumentStatusOp: InstrumentStatusOp,
- calibrationOp: CalibrationOp, monitorTypeOp: MonitorTypeOp, actorSystem: ActorSystem)
+(instrumentOp: InstrumentDB, instrumentStatusOp: InstrumentStatusDB,
+ calibrationOp: CalibrationDB, monitorTypeOp: MonitorTypeOp, actorSystem: ActorSystem)
 (@Assisted id: String, @Assisted protocol: ProtocolParam, @Assisted config: Horiba370Config) extends Actor {
 
   import Horiba370Collector._

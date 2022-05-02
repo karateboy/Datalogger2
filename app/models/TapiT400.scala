@@ -3,6 +3,7 @@ package models
 import akka.actor.ActorSystem
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.{ProtocolParam, tcp}
+import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 
 object T400Collector extends TapiTxx(ModelConfig("T400", List("O3"))) {
   lazy val modelReg = readModelSetting
@@ -29,9 +30,9 @@ object T400Collector extends TapiTxx(ModelConfig("T400", List("O3"))) {
 
 import javax.inject._
 
-class T400Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-                              alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
-                              calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
+class T400Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
+                              alarmOp: AlarmDB, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
+                              calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                              (@Assisted("instId") instId: String, @Assisted modelReg: ModelReg,
                               @Assisted config: TapiConfig, @Assisted host:String)
   extends TapiTxxCollector(instrumentOp, monitorStatusOp,

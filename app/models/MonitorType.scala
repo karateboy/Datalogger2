@@ -1,6 +1,7 @@
 package models
 
 import models.ModelHelper._
+import models.mongodb.{AlarmOp, MongoDB}
 import org.mongodb.scala.model._
 import org.mongodb.scala.result.{InsertOneResult, UpdateResult}
 import play.api._
@@ -107,7 +108,7 @@ object MonitorType {
 }
 
 @Singleton
-class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
+class MonitorTypeOp @Inject()(mongodb: MongoDB, alarmOp: AlarmDB) {
 
   import MonitorType._
   import org.mongodb.scala.bson._
@@ -128,10 +129,9 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
 
-  val codecRegistry = fromRegistries(fromProviders(classOf[MonitorType], classOf[ThresholdConfig]), DEFAULT_CODEC_REGISTRY)
-  val colName = "monitorTypes"
-  val collection = mongoDB.database.getCollection[MonitorType](colName).withCodecRegistry(codecRegistry)
-  val MonitorTypeVer = 2
+  private val codecRegistry = fromRegistries(fromProviders(classOf[MonitorType], classOf[ThresholdConfig]), DEFAULT_CODEC_REGISTRY)
+  private val colName = "monitorTypes"
+  private val collection = mongodb.database.getCollection[MonitorType](colName).withCodecRegistry(codecRegistry)
   val defaultMonitorTypes = List(
     rangeType(SO2, "二氧化硫", "ppb", 2),
     rangeType(NOx, "氮氧化物", "ppb", 2),
@@ -189,13 +189,13 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     if(previousValue != v){
       val mtCase = map(mt)
       if (v)
-        alarmOp.log(alarmOp.Src(), alarmOp.Level.WARN, s"${mtCase.desp}=>觸發", 1)
+        alarmOp.log(alarmOp.src(), alarmOp.Level.WARN, s"${mtCase.desp}=>觸發", 1)
       else
-        alarmOp.log(alarmOp.Src(), alarmOp.Level.INFO, s"${mtCase.desp}=>解除", 1)
+        alarmOp.log(alarmOp.src(), alarmOp.Level.INFO, s"${mtCase.desp}=>解除", 1)
     }
   }
 
-  def updateMt(): (List[String], List[String], Map[String, MonitorType]) = {
+  private def updateMt(): (List[String], List[String], Map[String, MonitorType]) = {
     val updateModels =
       for (mt <- defaultMonitorTypes) yield {
         UpdateOneModel(
@@ -210,9 +210,9 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
   }
 
   {
-    val colNames = waitReadyResult(mongoDB.database.listCollectionNames().toFuture())
+    val colNames = waitReadyResult(mongodb.database.listCollectionNames().toFuture())
     if (!colNames.contains(colName)) { // New
-      waitReadyResult(mongoDB.database.createCollection(colName).toFuture())
+      waitReadyResult(mongodb.database.createCollection(colName).toFuture())
       updateMt
     }
   }
@@ -224,11 +224,11 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     val mtPair =
       for (mt <- list) yield {
         try {
-          val mtv = (mt._id)
-          (mtv -> mt)
+          val mtv = mt._id
+          mtv -> mt
         } catch {
           case _: NoSuchElementException =>
-            (mt._id -> mt)
+            mt._id -> mt
         }
       }
 
@@ -243,40 +243,25 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
   }
 
   private def mtList: List[MonitorType] = {
-    val f = mongoDB.database.getCollection(colName).find().toFuture()
-    val r = waitReadyResult(f)
-    r.map {
-      toMonitorType
-    }.toList
+    val f = collection.find().toFuture()
+    waitReadyResult(f).toList
   }
 
-  def toMonitorType(d: Document) = {
-    val ret = Json.parse(d.toJson()).validate[MonitorType]
-
-    ret.fold(
-      error => {
-        Logger.error(JsError.toJson(error).toString())
-        throw new Exception(JsError.toJson(error).toString)
-      },
-      mt =>
-        mt)
-  }
-
-  def BFName(mt: String) = {
+  def BFName(mt: String): String = {
     val mtCase = map(mt)
     mtCase._id.replace(".", "_")
   }
 
   def exist(mt: MonitorType) = map.contains(mt._id)
 
-  def ensureMonitorType(id: String) = {
+  def ensureMonitorType(id: String): Unit = {
     if (!map.contains(id)) {
       val mt = rangeType(id, id, "??", 2)
       newMonitorType(mt)
     }
   }
 
-  def rangeType(_id: String, desp: String, unit: String, prec: Int) = {
+  def rangeType(_id: String, desp: String, unit: String, prec: Int): MonitorType = {
     rangeOrder += 1
     MonitorType(_id, desp, unit, prec, rangeOrder)
   }
@@ -298,7 +283,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     f
   }
 
-  def deleteMonitorType(_id: String) = {
+  def deleteMonitorType(_id: String): Unit = {
     if (map.contains(_id)) {
       val mt = map(_id)
       map = map - _id
@@ -312,18 +297,18 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     }
   }
 
-  def allMtvList = mtvList ++ signalMtvList
+  def allMtvList: List[String] = mtvList ++ signalMtvList
 
-  def diMtvList = List(RAIN) ++ signalMtvList
+  def diMtvList: List[String] = List(RAIN) ++ signalMtvList
 
-  def activeMtvList = mtvList.filter { mt => map(mt).measuringBy.isDefined }
+  def activeMtvList: List[String] = mtvList.filter { mt => map(mt).measuringBy.isDefined }
 
-  def addMeasuring(mt: String, instrumentId: String, append: Boolean) = {
+  def addMeasuring(mt: String, instrumentId: String, append: Boolean): Future[UpdateResult] = {
     map(mt).addMeasuring(instrumentId, append)
     upsertMonitorTypeFuture(map(mt))
   }
 
-  def upsertMonitorTypeFuture(mt: MonitorType) = {
+  def upsertMonitorTypeFuture(mt: MonitorType): Future[UpdateResult] = {
     import org.mongodb.scala.model.ReplaceOptions
 
     val f = collection.replaceOne(Filters.equal("_id", mt._id), mt, ReplaceOptions().upsert(true)).toFuture()
@@ -331,7 +316,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     f
   }
 
-  def stopMeasuring(instrumentId: String) = {
+  def stopMeasuring(instrumentId: String): Unit = {
     for {
       mt <- realtimeMtvList
       instrumentList = map(mt).measuringBy.get if instrumentList.contains(instrumentId)
@@ -375,18 +360,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     f
   }
 
-  //  def insertNewMonitorTypeFuture(mt: MonitorType) = {
-  //    import org.mongodb.scala.model.UpdateOptions
-  //    import org.mongodb.scala.bson.BsonString
-  //    import org.mongodb.scala.model.Updates
-  //    //Updates.setOnInsert(fieldName, value)
-  //
-  //    val f = collection.updateOne(equal("_id", mt._id), update, UpdateOptions().upsert(true)).toFuture()
-  //    f.onFailure(errorHandler)
-  //    f
-  //  }
-
-  def format(mt: String, v: Option[Double]) = {
+  def format(mt: String, v: Option[Double]): String = {
     if (v.isEmpty)
       "-"
     else {
@@ -395,7 +369,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     }
   }
 
-  def getOverStd(mt: String, r: Option[Record]) = {
+  def getOverStd(mt: String, r: Option[Record]): Boolean = {
     if (r.isEmpty)
       false
     else {
@@ -431,7 +405,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     ret.getOrElse("-")
   }
 
-  def getCssClassStr(record: MtRecord) = {
+  def getCssClassStr(record: MtRecord): Seq[String] = {
     val (overInternal, overLaw) = overStd(record.mtName, record.value)
     MonitorStatus.getCssClassStr(record.status, overInternal, overLaw)
   }
@@ -446,7 +420,7 @@ class MonitorTypeOp @Inject()(mongoDB: MongoDB, alarmOp: AlarmOp) {
     }
   }
 
-  def displayMeasuringBy(mt: String) = {
+  def displayMeasuringBy(mt: String): String = {
     val mtCase = map(mt)
     if (mtCase.measuringBy.isDefined) {
       val instrumentList = mtCase.measuringBy.get
