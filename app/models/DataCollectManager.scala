@@ -620,7 +620,7 @@ class DataCollectManager @Inject()
             }
           }
 
-          val docs = secRecordMap map { r => r._1 -> recordOp.toRecordList(r._1, r._2.toList) }
+          val docs = secRecordMap map { r => r._1 -> RecordList(r._1, r._2.toList) }
 
           val sortedDocs = docs.toSeq.sortBy { x => x._1 } map (_._2)
           if (sortedDocs.nonEmpty)
@@ -628,11 +628,11 @@ class DataCollectManager @Inject()
         }
       }
 
-      def calculateMinData(currentMintues: DateTime) = {
+      def calculateMinData(current: DateTime): Future[UpdateResult] = {
         import scala.collection.mutable.Map
         val mtMap = Map.empty[String, Map[String, ListBuffer[(String, DateTime, Double)]]]
 
-        val currentData = mtDataList.takeWhile(d => d._1 >= currentMintues)
+        val currentData = mtDataList.takeWhile(d => d._1 >= current)
         val minDataList = mtDataList.drop(currentData.length)
 
         for {
@@ -690,7 +690,7 @@ class DataCollectManager @Inject()
 
         context become handler(instrumentMap, collectorInstrumentMap,
           latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap)
-        val f = recordOp.upsertRecord(RecordList(currentMintues.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeID))(recordOp.MinCollection)
+        val f = recordOp.upsertRecord(RecordList(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeID))(recordOp.MinCollection)
         f onComplete {
           case Success(_) =>
             self ! ForwardMin

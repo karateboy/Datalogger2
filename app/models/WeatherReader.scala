@@ -118,7 +118,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
       if (docList.nonEmpty) {
         Logger.debug(s"update ${docList.head}")
         sysConfig.setWeatherSkipLine(skipLines + processedLine)
-        recordOp.upsertManyRecords2(recordOp.MinCollection)(docList)
+        recordOp.upsertManyRecords(recordOp.MinCollection)(docList)
 
         val start = new DateTime(Date.from(dataBegin.atZone(ZoneId.systemDefault()).toInstant))
         val end = new DateTime(Date.from(dataEnd.atZone(ZoneId.systemDefault()).toInstant))

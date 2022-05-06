@@ -55,7 +55,7 @@ class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordOp)
     val recordFuture =
       recordOp.getRecordWithLimitFuture(recordOp.HourCollection)(new DateTime(latestRecordTime + 1), DateTime.now, 60)
 
-    import recordOp.recordListWrite
+
     for (record <- recordFuture) {
       if (!record.isEmpty) {
         val url = s"http://$server/HourRecord/$monitor"
@@ -101,7 +101,7 @@ class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordOp)
     Logger.info(s"upload hour ${start.toString()} => ${end.toString}")
 
     val recordFuture = recordOp.getRecordListFuture(recordOp.HourCollection)(start, end)
-    import recordOp.recordListWrite
+
     for (record <- recordFuture) {
       if (!record.isEmpty) {
         for (chunk <- record.grouped(24)) {

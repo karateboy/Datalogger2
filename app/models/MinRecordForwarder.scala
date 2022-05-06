@@ -64,7 +64,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordOp)
       recordOp.getRecordWithLimitFuture(recordOp.MinCollection)(serverRecordStart, DateTime.now, 60)
 
     for (records <- recordFuture) {
-      import recordOp.recordListWrite
+
       if (records.nonEmpty) {
         val f = ws.url(postUrl).withRequestTimeout(FiniteDuration(10, SECONDS)).post(Json.toJson(records))
 
@@ -93,7 +93,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordOp)
     for (record <- recordFuture) {
       if (!record.isEmpty) {
         Logger.info(s"Total ${record.length} records")
-        import recordOp.recordListWrite
+
         for (chunk <- record.grouped(60)) {
           val f = ws.url(postUrl).post(Json.toJson(chunk))
 

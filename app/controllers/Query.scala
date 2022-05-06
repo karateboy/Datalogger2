@@ -543,7 +543,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeDB, monitorO
 
   def realtimeStatus() = Security.Authenticated.async {
     implicit request =>
-      import recordOp.recordListWrite
+
       val monitors = monitorOp.mvList
       val tabType = TableType.min
 
@@ -600,7 +600,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeDB, monitorO
       }
 
       val f = recordOp.getRecordListFuture(TableType.mapCollection(tabType))(start, end)
-      import recordOp.recordListWrite
+
       for (recordList <- f) yield
         Ok(Json.toJson(recordList))
   }
@@ -720,7 +720,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeDB, monitorO
   // FIXME Bypass security check
   def hourRecordList(start: Long, end: Long) = Action.async {
     implicit request =>
-      import recordOp.recordListWrite
+
       val startTime = new DateTime(start)
       val endTime = new DateTime(end)
       val recordListF = recordOp.getRecordListFuture(recordOp.HourCollection)(startTime, endTime)
@@ -735,7 +735,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeDB, monitorO
       val startTime = new DateTime(start)
       val endTime = new DateTime(end)
       val recordListF = recordOp.getRecordListFuture(recordOp.MinCollection)(startTime, endTime)
-      import recordOp.recordListWrite
+
       for (recordList <- recordListF) yield {
         Ok(Json.toJson(recordList))
       }
