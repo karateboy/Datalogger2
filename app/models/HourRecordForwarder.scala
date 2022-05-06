@@ -4,6 +4,7 @@ import play.api.libs.ws.WSClient
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import akka.actor.{Actor, actorRef2Scala}
+import models.mongodb.RecordOp
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 
@@ -15,7 +16,7 @@ object HourRecordForwarder {
   }
 }
 
-class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordOp)
+class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordDB)
                                    (@Assisted("server")server: String, @Assisted("monitor")monitor: String) extends Actor {
   Logger.info(s"HourRecordForwarder created with server=$server monitor=$monitor")
   import ForwardManager._

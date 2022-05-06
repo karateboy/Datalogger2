@@ -43,7 +43,7 @@ class SpikeRuleOp @Inject()(mongodb: MongoDB) extends SpikeRuleDB {
 
   override def delete(_id:SpikeRuleID): Future[DeleteResult] = {
     val f = collection.deleteOne(Filters.equal("_id", _id)).toFuture()
-    f onFailure(errorHandler())
+    f onFailure errorHandler()
     f
   }
 }

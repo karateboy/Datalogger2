@@ -5,6 +5,7 @@ import com.github.nscala_time.time.Imports.{DateTime, DateTimeFormat}
 import com.google.inject.assistedinject.Assisted
 import models.ModelHelper.waitReadyResult
 import models.Protocol.{ProtocolParam, tcp}
+import models.mongodb.RecordOp
 import org.eclipse.paho.client.mqttv3._
 import play.api._
 import play.api.libs.json._
@@ -86,7 +87,7 @@ object MqttCollector2 extends DriverOps {
 import javax.inject._
 
 class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeDB, alarmOp: AlarmDB,
-                               recordOp: RecordOp, monitorOp: MonitorDB, dataCollectManager: DataCollectManager,
+                               recordOp: RecordDB, dataCollectManager: DataCollectManager,
                                mqttSensorOp: MqttSensorDB)
                              (@Assisted id: String,
                               @Assisted protocolParam: ProtocolParam,

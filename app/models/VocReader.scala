@@ -3,6 +3,7 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper.errorHandler
+import models.mongodb.RecordOp
 import org.mongodb.scala.result.UpdateResult
 import play.api._
 
@@ -22,7 +23,7 @@ object VocReader {
   var count = 0
 
   def start(configuration: Configuration, actorSystem: ActorSystem, monitorOp: MonitorDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordOp) = {
+            recordOp: RecordDB) = {
     def getConfig: Option[VocReaderConfig] = {
       def getMonitorConfig(config: Configuration) = {
         val id = config.getString("id").get
@@ -54,7 +55,7 @@ object VocReader {
   }
 
   def props(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordOp) =
+            recordOp: RecordDB) =
     Props(classOf[VocReader], config, monitorTypeOp, recordOp)
 
 
@@ -113,7 +114,7 @@ object VocReader {
   }
 }
 
-class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp: RecordOp)
+class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp: RecordDB)
   extends Actor with ActorLogging {
   Logger.info("VocReader start")
   import VocReader._

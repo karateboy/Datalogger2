@@ -5,7 +5,7 @@ import com.github.nscala_time.time.Imports._
 import models.DataCollectManager.{calculateHourAvgMap, calculateMinAvgMap}
 import models.ForwardManager.{ForwardHour, ForwardHourRecord, ForwardMin, ForwardMinRecord}
 import models.ModelHelper._
-import models.mongodb.{AlarmOp, InstrumentOp}
+import models.mongodb.{AlarmOp, InstrumentOp, RecordOp}
 import org.mongodb.scala.result.UpdateResult
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
@@ -87,7 +87,7 @@ case class WriteSignal(mtId: String, bit: Boolean)
 
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentDB,
-                                     recordOp: RecordOp, alarmOp: AlarmDB)() {
+                                     recordOp: RecordDB, alarmOp: AlarmDB)() {
   def startCollect(inst: Instrument) {
     manager ! StartInstrument(inst)
   }
@@ -350,7 +350,7 @@ object DataCollectManager {
 
 @Singleton
 class DataCollectManager @Inject()
-(config: Configuration, recordOp: RecordOp, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
+(config: Configuration, recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
  dataCollectManagerOp: DataCollectManagerOp,
  instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentOp,
  sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {

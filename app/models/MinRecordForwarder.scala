@@ -3,6 +3,7 @@ import akka.actor.Actor
 import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
 import models.ModelHelper.errorHandler
+import models.mongodb.RecordOp
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
@@ -18,7 +19,7 @@ object MinRecordForwarder {
   }
 }
 
-class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordOp)
+class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
                                   (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
   Logger.info(s"MinRecordForwarder created with server=$server monitor=$monitor")
 

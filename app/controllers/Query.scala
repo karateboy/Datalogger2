@@ -4,7 +4,7 @@ import com.github.nscala_time.time.Imports._
 import controllers.Highchart._
 import models.ModelHelper.windAvg
 import models._
-import models.mongodb.{CalibrationOp, InstrumentStatusOp}
+import models.mongodb.{CalibrationOp, InstrumentStatusOp, RecordOp}
 import play.api._
 import play.api.libs.json._
 import play.api.mvc._
@@ -49,7 +49,7 @@ case class ManualAuditParam(reason: String, updateList: Seq[UpdateRecordParam])
 case class UpdateRecordParam(time: Long, mt: String, status: String)
 
 @Singleton
-class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
+class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
                       instrumentStatusOp: InstrumentStatusDB, instrumentOp: InstrumentDB,
                       alarmOp: AlarmDB, calibrationOp: CalibrationDB,
                       manualAuditLogOp: ManualAuditLogDB, excelUtility: ExcelUtility, configuration: Configuration) extends Controller {

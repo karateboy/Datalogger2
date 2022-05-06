@@ -5,6 +5,7 @@ import com.github.nscala_time.time.Imports.{DateTime, Period}
 import com.github.tototoshi.csv.CSVReader
 import models.ModelHelper.{errorHandler, getPeriods}
 import models.SpectrumReader.getLastModified
+import models.mongodb.RecordOp
 import play.api._
 
 import java.io.File
@@ -21,7 +22,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 object SpectrumReader {
   def start(configuration: Configuration, actorSystem: ActorSystem,
             sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp) = {
+            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) = {
     def getConfig: Option[SpectrumReaderConfig] = {
       for {config <- configuration.getConfig("spectrumReader")
            enable <- config.getBoolean("enable")
@@ -37,7 +38,7 @@ object SpectrumReader {
   }
 
   def props(config: SpectrumReaderConfig, sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp) =
+            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) =
     Props(classOf[SpectrumReader], config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
 
   def getLastModified(f: File): FileTime = {
@@ -74,7 +75,7 @@ object SpectrumReader {
 }
 
 class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
-                     monitorTypeOp: MonitorTypeDB, recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp) extends Actor {
+                     monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) extends Actor {
   Logger.info(s"SpectrumReader start reading: ${config.dir}")
 
   import SpectrumReader._

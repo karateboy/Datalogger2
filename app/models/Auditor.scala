@@ -1,7 +1,7 @@
 package models
 
 import akka.actor.Actor
-import models.mongodb.VariationRuleOp
+import models.mongodb.RecordOp
 import play.api.Logger
 
 import javax.inject.Inject
@@ -9,15 +9,15 @@ import javax.inject.Inject
 object Auditor {
   case object Audit
 
-  def checkSpikeRule(rules:Seq[SpikeRule], recordOp:RecordOp): Unit ={
+  def checkSpikeRule(rules:Seq[SpikeRule], recordOp:RecordDB): Unit ={
 
   }
 
-  def checkConstantRule(rules:Seq[ConstantRule], recordOp:RecordOp)={
+  def checkConstantRule(rules:Seq[ConstantRule], recordOp:RecordDB)={
 
   }
 
-  def checkVariationRule(rules:Seq[VariationRule], recordOp: RecordOp)={
+  def checkVariationRule(rules:Seq[VariationRule], recordOp: RecordDB)={
 
   }
 }

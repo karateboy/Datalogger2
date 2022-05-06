@@ -3,6 +3,7 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports.{DateTime, Period}
 import models.ModelHelper.{getHourBetween, getPeriods, waitReadyResult}
+import models.mongodb.RecordOp
 import play.api._
 
 import java.io.File
@@ -19,7 +20,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 object WeatherReader {
   def start(configuration: Configuration, actorSystem: ActorSystem,
             sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp) = {
+            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) = {
     def getConfig: Option[WeatherReaderConfig] = {
       for {config <- configuration.getConfig("weatherReader")
            enable <- config.getBoolean("enable")
@@ -34,14 +35,14 @@ object WeatherReader {
   }
 
   def props(config: WeatherReaderConfig, sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp) =
+            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) =
     Props(classOf[WeatherReader], config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
 
   case object ParseReport
 }
 
 class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
-                    monitorTypeOp: MonitorTypeDB, recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp) extends Actor {
+                    monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) extends Actor {
   Logger.info(s"WeatherReader start reading: ${config.dir}")
 
   import WeatherReader._

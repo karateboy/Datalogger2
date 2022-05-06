@@ -3,6 +3,7 @@ package controllers
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import models._
+import models.mongodb.RecordOp
 import play.api.libs.json.Json
 import play.api.mvc._
 
@@ -26,7 +27,7 @@ case class HourEntry(time: Long, cells: CellData)
 case class DisplayReport(columnNames: Seq[String], rows: Seq[RowData], statRows: Seq[StatRow])
 
 @Singleton
-class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordOp, query: Query, excelUtility: ExcelUtility) extends Controller {
+class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: Query, excelUtility: ExcelUtility) extends Controller {
   implicit val w3 = Json.writes[CellData]
   implicit val w2 = Json.writes[StatRow]
   implicit val w1 = Json.writes[RowData]
