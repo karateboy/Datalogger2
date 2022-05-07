@@ -16,8 +16,12 @@ import play.api.libs.concurrent.AkkaGuiceSupport
 class Module(environment: Environment,
              configuration: Configuration) extends AbstractModule with AkkaGuiceSupport {
   override def configure() = {
-    bind(classOf[MongoDB])
-    //bind(classOf[MonitorTypeOp])
+    val db = configuration.getString("logger.db").getOrElse("nosql")
+    if(db == "sql"){
+      bind(classOf[AlarmDB]).to(classOf[sql.AlarmOp])
+    }else{
+      bind(classOf[AlarmDB]).to(classOf[mongodb.AlarmOp])
+    }
 
     bindActor[DataCollectManager]("dataCollectManager")
     bindActorFactory[Adam6017Collector, Adam6017Collector.Factory]

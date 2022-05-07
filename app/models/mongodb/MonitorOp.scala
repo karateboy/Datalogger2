@@ -18,11 +18,11 @@ class MonitorOp @Inject()(mongodb: MongoDB, config: Configuration, sensorOp: Mqt
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
 
-  val hasSelfMonitor = config.getBoolean("selfMonitor").getOrElse(false)
+  override val hasSelfMonitor = config.getBoolean("logger.selfMonitor").getOrElse(true)
   private val colName = "monitors"
   private val codecRegistry = fromRegistries(fromProviders(classOf[Monitor]), DEFAULT_CODEC_REGISTRY)
   private val collection = mongodb.database.getCollection[Monitor](colName).withCodecRegistry(codecRegistry)
-  override var map: Map[String, Monitor] = {
+  map = {
     val pairs =
       for (m <- mList) yield {
         m._id -> m

@@ -11,7 +11,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class ManualAuditLogOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeDB) extends ManualAuditLogDB {
+class ManualAuditLogOp @Inject()(mongodb: MongoDB) extends ManualAuditLogDB {
   private val collectionName = "auditLogs"
   private val collection = mongodb.database.getCollection(collectionName)
   import org.mongodb.scala.model.Filters._

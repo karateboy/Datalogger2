@@ -354,7 +354,7 @@ class DataCollectManager @Inject()
  dataCollectManagerOp: DataCollectManagerOp,
  instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentOp,
  sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
-  val storeSecondData = config.getBoolean("storeSecondData").getOrElse(false)
+  val storeSecondData = config.getBoolean("logger.storeSecondData").getOrElse(false)
   Logger.info(s"store second data = $storeSecondData")
   DataCollectManager.updateEffectiveRatio(sysConfig)
 

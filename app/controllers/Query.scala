@@ -57,7 +57,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
   implicit val cdWrite = Json.writes[CellData]
   implicit val rdWrite = Json.writes[RowData]
   implicit val dtWrite = Json.writes[DataTab]
-  val trendShowActual = configuration.getBoolean("trendShowActual").getOrElse(false)
+  val trendShowActual = configuration.getBoolean("logger.trendShowActual").getOrElse(true)
 
   def getPeriodCount(start: DateTime, endTime: DateTime, p: Period) = {
     var count = 0

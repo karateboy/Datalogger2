@@ -11,7 +11,7 @@ case class Alarm2JSON(time: Long, src: String, level: Int, info: String)
 case class Alarm(time: DateTime, src: String, level: Int, desc: String) {
   def toJson = Alarm2JSON(time.getMillis, src, level, desc)
 }
-@ImplementedBy(classOf[models.mongodb.AlarmOp])
+
 trait AlarmDB {
   object Level {
     val INFO = 1

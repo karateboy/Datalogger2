@@ -11,7 +11,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class CalibrationOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeDB) extends CalibrationDB {
+class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
 
   val collectionName = "calibration"
   val collection = mongodb.database.getCollection(collectionName)
