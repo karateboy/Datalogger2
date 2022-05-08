@@ -75,35 +75,11 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
-    val f = collection.find(and(equal("monitorType", mt.toString), gte("startTime", start.toDate()), lt("startTime", end.toDate()))).sort(ascending("startTime")).toFuture()
+    val f = collection.find(and(equal("monitorType", mt), gte("startTime", start.toDate()), lt("startTime", end.toDate()))).sort(ascending("startTime")).toFuture()
     val docs = waitReadyResult(f)
     docs.map {
       toCalibration
     }
-  }
-
-  override def getCalibrationMap(startDate: DateTime, endDate: DateTime)
-                                (implicit monitorTypeOp: MonitorTypeDB): Future[Map[String, List[(Imports.DateTime, Calibration)]]] = {
-    val begin = (startDate - 5.day).toDate
-    val end = (endDate + 1.day).toDate
-    val filter = Filters.and(Filters.gte("startTime", begin), Filters.lt("endTime", end))
-
-    val f = collection.find(filter).sort(ascending("startTime")).toFuture()
-    f onFailure (errorHandler())
-    for (docs <- f)
-      yield {
-        val calibrationList = docs.map {
-          toCalibration
-        }
-        import scala.collection.mutable._
-        val resultMap = Map.empty[String, ListBuffer[(DateTime, Calibration)]]
-        for (item <- calibrationList.filter { c => c.success } if item.monitorType != MonitorType.NO2) {
-          val lb = resultMap.getOrElseUpdate(item.monitorType, ListBuffer.empty[(DateTime, Calibration)])
-          lb.append((item.endTime, item))
-        }
-
-        resultMap.map(kv => kv._1 -> kv._2.toList).toMap
-      }
   }
 
   override def insert(cal: Calibration) = {

@@ -16,7 +16,6 @@ object Group {
   val PLATFORM_USER = "platformUser"
 }
 
-@ImplementedBy(classOf[models.mongodb.GroupOp])
 trait GroupDB {
 
   implicit val readAbility = Json.reads[Ability]

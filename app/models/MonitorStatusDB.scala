@@ -1,14 +1,14 @@
 package models
 
 import com.google.inject.ImplementedBy
-import models.MonitorStatus.{BelowNormalStat, CalibrationDeviation, CalibrationResume, ExceedRangeStat, InvalidDataStat, MaintainStat, NormalStat, OverNormalStat, SpanCalibrationStat, ZeroCalibrationStat}
+import models.MonitorStatus.{BelowNormalStat, CalibrationDeviation, CalibrationResume, ExceedRangeStat, InvalidDataStat, MaintainStat, NormalStat, OverNormalStat, SpanCalibrationStat, ZeroCalibrationStat, getTagInfo}
 import play.api.libs.json.Json
 
 @ImplementedBy(classOf[mongodb.MonitorStatusOp])
 trait MonitorStatusDB {
-
   implicit val reads = Json.reads[MonitorStatus]
   implicit val writes = Json.writes[MonitorStatus]
+
   val defaultStatus = List(
     MonitorStatus(NormalStat, "正常"),
     MonitorStatus(OverNormalStat, "超過預設高值"),
@@ -21,7 +21,30 @@ trait MonitorStatusDB {
     MonitorStatus(MaintainStat, "維修、保養"),
     MonitorStatus(ExceedRangeStat, "超過量測範圍"))
 
-  def map(key: String): MonitorStatus
+  var _map: Map[String, MonitorStatus] = refreshMap
 
-  def getExplainStr(tag: String): String
+  protected def refreshMap(): Map[String, MonitorStatus] = {
+    _map = Map(msList.map { s => s.info.toString() -> s }: _*)
+    _map
+  }
+
+  def msList: Seq[MonitorStatus]
+
+  def map(key: String): MonitorStatus = {
+    _map.getOrElse(key, {
+      val tagInfo = getTagInfo(key)
+      tagInfo.statusType match {
+        case StatusType.Auto =>
+          val ruleId = tagInfo.auditRule.get.toLower
+          MonitorStatus(key, s"自動註記:${ruleId}")
+        case StatusType.ManualInvalid =>
+          MonitorStatus(key, StatusType.map(StatusType.ManualInvalid))
+        case StatusType.ManualValid =>
+          MonitorStatus(key, StatusType.map(StatusType.ManualValid))
+        case StatusType.Internal =>
+          MonitorStatus(key, "未知:" + key)
+      }
+    })
+  }
+
 }

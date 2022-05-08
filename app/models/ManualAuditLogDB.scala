@@ -14,14 +14,11 @@ case class ManualAuditLog(dataTime: DateTime, mt: String, modifiedTime: DateTime
 case class ManualAuditLog2(dataTime: Long, mt: String, modifiedTime: Long,
                            operator: String, changedStatus: String, reason: String)
 
-@ImplementedBy(classOf[mongodb.ManualAuditLogOp])
 trait ManualAuditLogDB {
 
   implicit val writer = Json.writes[ManualAuditLog]
 
   def upsertLog(log: ManualAuditLog): Future[UpdateResult]
-
-  def queryLog(startTime: Imports.DateTime, endTime: Imports.DateTime): Future[Seq[ManualAuditLog]]
 
   def queryLog2(startTime: Imports.DateTime, endTime: Imports.DateTime): Future[Seq[ManualAuditLog2]]
 }

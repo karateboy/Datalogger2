@@ -76,5 +76,4 @@ class InstrumentStatusOp @Inject()(mongodb: MongoDB) extends InstrumentStatusDB 
       yield f.map { toInstrumentStatus }
   }
 
-  override def formatValue(v: Double, prec:Int = 2): String =s"%.${prec}f".format(v)
 }

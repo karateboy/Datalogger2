@@ -9,7 +9,6 @@ import play.api.libs.json.Json
 import javax.inject.Singleton
 import scala.concurrent.Future
 
-@ImplementedBy(classOf[mongodb.MonitorTypeOp])
 trait MonitorTypeDB {
   implicit val configWrite = Json.writes[ThresholdConfig]
   implicit val configRead = Json.reads[ThresholdConfig]

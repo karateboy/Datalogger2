@@ -2,17 +2,71 @@ package models.sql
 
 import com.github.nscala_time.time.Imports
 import models.InstrumentStatusDB
+import play.api.libs.json.Json
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.Future
+import scalikejdbc._
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 @Singleton
-class InstrumentStatusOp @Inject()() extends InstrumentStatusDB {
-  override def log(is: InstrumentStatus): Unit = ???
+class InstrumentStatusOp @Inject()(sqlServer: SqlServer) extends InstrumentStatusDB {
+  private val tabName = "instrumentStatus"
+  private def init()(implicit session: DBSession = AutoSession): Unit ={
+    if (!sqlServer.getTables().contains(tabName)) {
+      sql"""
+          CREATE TABLE [dbo].[instrumentStatus](
+	          [id] [bigint] IDENTITY(1,1) NOT NULL,
+	          [time] [datetime2](7) NOT NULL,
+	          [instID] [nvarchar](50) NOT NULL,
+	          [statusList] [nvarchar](max) NOT NULL,
+            CONSTRAINT [PK_instrumentStatus] PRIMARY KEY CLUSTERED
+            (
+	            [id] ASC
+            )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+          ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+           """.execute().apply()
+    }
+  }
+  init()
 
-  override def query(id: String, start: Imports.DateTime, end: Imports.DateTime): Seq[InstrumentStatus] = ???
+  private def mapper(rs:WrappedResultSet): InstrumentStatus ={
+    val statusList = Json.parse(rs.string("statusList")).validate[Seq[Status]].asOpt.getOrElse(Seq.empty[Status])
+    InstrumentStatus(rs.jodaDateTime("time"), instID = rs.string("instID"), statusList)
+  }
 
-  override def queryFuture(start: Imports.DateTime, end: Imports.DateTime): Future[Seq[InstrumentStatus]] = ???
+  override def log(is: InstrumentStatus): Unit = {
+    implicit val session: DBSession = AutoSession
+    val statusList = Json.toJson(is.statusList).toString()
+    sql"""
+          INSERT INTO [dbo].[instrumentStatus]
+           ([time]
+           ,[instID]
+           ,[statusList])
+     VALUES
+           (${is.time.toDate}
+           ,${is.instID}
+           ,${statusList})
+         """.update().apply()
+  }
 
-  override def formatValue(v: Double, prec: Int): String = ???
+  override def query(id: String, start: Imports.DateTime, end: Imports.DateTime): Seq[InstrumentStatus] = {
+    implicit val session: DBSession = ReadOnlyAutoSession
+    sql"""
+         Select *
+         From [dbo].[instrumentStatus]
+         Where [instID] = $id and [time] >= ${start.toDate} and [time] < ${end.toDate}
+         """.map(mapper).list().apply()
+  }
+
+  override def queryFuture(start: Imports.DateTime, end: Imports.DateTime): Future[Seq[InstrumentStatus]] =
+    Future{
+        implicit val session: DBSession = ReadOnlyAutoSession
+        sql"""
+         Select *
+         From [dbo].[instrumentStatus]
+         Where [time] >= ${start.toDate} and [time] < ${end.toDate}
+         """.map(mapper).list().apply()
+    }
 }

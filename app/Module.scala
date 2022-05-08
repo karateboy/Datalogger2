@@ -18,9 +18,29 @@ class Module(environment: Environment,
   override def configure() = {
     val db = configuration.getString("logger.db").getOrElse("nosql")
     if(db == "sql"){
-      bind(classOf[AlarmDB]).to(classOf[sql.AlarmOp])
+      import models.sql._
+      bind(classOf[AlarmDB]).to(classOf[AlarmOp])
+      bind(classOf[CalibrationDB]).to(classOf[CalibrationOp])
+      bind(classOf[ConstantRuleDB]).to(classOf[ConstantRuleOp])
+      bind(classOf[EmailTargetDB]).to(classOf[EmailTargetOp])
+      bind(classOf[GroupDB]).to(classOf[GroupOp])
+      bind(classOf[InstrumentDB]).to(classOf[InstrumentOp])
+      bind(classOf[InstrumentStatusDB]).to(classOf[InstrumentStatusOp])
+      bind(classOf[ManualAuditLogDB]).to(classOf[ManualAuditLogOp])
+      bind(classOf[MonitorDB]).to(classOf[MonitorOp])
+      bind(classOf[MonitorStatusDB]).to(classOf[MonitorStatusOp])
     }else{
-      bind(classOf[AlarmDB]).to(classOf[mongodb.AlarmOp])
+      import models.mongodb._
+      bind(classOf[AlarmDB]).to(classOf[AlarmOp])
+      bind(classOf[CalibrationDB]).to(classOf[CalibrationOp])
+      bind(classOf[ConstantRuleDB]).to(classOf[ConstantRuleOp])
+      bind(classOf[EmailTargetDB]).to(classOf[EmailTargetOp])
+      bind(classOf[GroupDB]).to(classOf[GroupOp])
+      bind(classOf[InstrumentDB]).to(classOf[InstrumentOp])
+      bind(classOf[InstrumentStatusDB]).to(classOf[InstrumentStatusOp])
+      bind(classOf[ManualAuditLogDB]).to(classOf[ManualAuditLogOp])
+      bind(classOf[MonitorDB]).to(classOf[MonitorOp])
+      bind(classOf[MonitorStatusDB]).to(classOf[MonitorStatusOp])
     }
 
     bindActor[DataCollectManager]("dataCollectManager")

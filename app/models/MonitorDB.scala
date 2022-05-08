@@ -1,13 +1,10 @@
 package models
 
-import com.google.inject.ImplementedBy
 import org.mongodb.scala.result.DeleteResult
 import play.api.libs.json.Json
 
-import scala.collection.immutable
 import scala.concurrent.Future
 
-@ImplementedBy(classOf[mongodb.MonitorOp])
 trait MonitorDB {
 
   implicit val mWrite = Json.writes[Monitor]
@@ -15,15 +12,30 @@ trait MonitorDB {
   val hasSelfMonitor: Boolean = true
   var map: Map[String, Monitor] = Map.empty[String, Monitor]
 
-  def mvList: immutable.Seq[String]
+  def mvList: Seq[String] = map.map(_._1).toSeq
 
-  def ensureMonitor(_id: String): Unit
+  def ensureMonitor(_id: String): Unit = {
+    if (!map.contains(_id)) {
+      upsert(Monitor(_id, _id))
+    }
+  }
 
-  def newMonitor(m: Monitor): Unit
-
-  def format(v: Option[Double]): String
+  def format(v: Option[Double]): String = if (v.isEmpty)
+    "-"
+  else
+    v.get.toString
 
   def upsert(m: Monitor): Unit
 
   def deleteMonitor(_id: String): Future[DeleteResult]
+
+  def mList: List[Monitor]
+
+  def refresh {
+    val pairs =
+      for (m <- mList) yield {
+        m._id -> m
+      }
+    map = pairs.toMap
+  }
 }

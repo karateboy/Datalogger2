@@ -7,7 +7,6 @@ import play.api.libs.json.Json
 
 import scala.concurrent.Future
 
-@ImplementedBy(classOf[mongodb.InstrumentStatusOp])
 trait InstrumentStatusDB {
   case class Status(key: String, value: Double)
   case class InstrumentStatusJSON(time:Long, instID: String, statusList: Seq[Status])
@@ -35,5 +34,5 @@ trait InstrumentStatusDB {
 
   def queryFuture(start: Imports.DateTime, end: Imports.DateTime): Future[Seq[InstrumentStatus]]
 
-  def formatValue(v: Double, prec: Int = 2): String
+  def formatValue(v: Double, prec: Int = 2): String =s"%.${prec}f".format(v)
 }

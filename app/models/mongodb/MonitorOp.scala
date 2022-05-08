@@ -46,33 +46,12 @@ class MonitorOp @Inject()(mongodb: MongoDB, config: Configuration, sensorOp: Mqt
       refresh
   }
 
-
   override def mvList: immutable.Seq[String] = mList.map(_._id)
 
-  private def mList: List[Monitor] = {
+  override def mList: List[Monitor] = {
     val f = collection.find().sort(Sorts.ascending("_id")).toFuture()
     val ret = waitReadyResult(f)
     ret.toList
-  }
-
-  override def ensureMonitor(_id: String): Unit = {
-    if (!map.contains(_id)) {
-      newMonitor(Monitor(_id, _id))
-    }
-  }
-
-  override def newMonitor(m: Monitor): Unit = {
-    map = map + (m._id -> m)
-
-    val f = collection.insertOne(m).toFuture()
-    f onFailure (errorHandler)
-  }
-
-  override def format(v: Option[Double]): String = {
-    if (v.isEmpty)
-      "-"
-    else
-      v.get.toString
   }
 
   override def upsert(m: Monitor): Unit = {
@@ -88,13 +67,5 @@ class MonitorOp @Inject()(mongodb: MongoDB, config: Configuration, sensorOp: Mqt
         sensorOp.deleteByMonitor(_id)
         map = map.filter(p => p._1 != _id)
     })
-  }
-
-  private def refresh {
-    val pairs =
-      for (m <- mList) yield {
-        m._id -> m
-      }
-    map = pairs.toMap
   }
 }

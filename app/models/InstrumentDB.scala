@@ -6,8 +6,8 @@ import org.mongodb.scala.result.UpdateResult
 import play.api.libs.json.Json
 
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 
-@ImplementedBy(classOf[mongodb.InstrumentOp])
 trait InstrumentDB {
 
   implicit val ipRead = Json.reads[InstrumentStatusType]
@@ -20,11 +20,14 @@ trait InstrumentDB {
 
   def getInstrumentList(): Seq[Instrument]
 
-  def getInstrumentMap(): Future[Map[String, Instrument]]
-
-  def getInstrumentFuture(id: String): Future[Instrument]
+  def getInstrumentMap(): Future[Map[String, Instrument]] = {
+    for (instruments <- getAllInstrumentFuture) yield
+      instruments.map(inst => inst._id -> inst).toMap
+  }
 
   def getAllInstrumentFuture: Future[Seq[Instrument]]
+
+  def getInstrumentFuture(id:String) : Future[Instrument]
 
   def delete(id: String): Boolean
 
@@ -36,7 +39,19 @@ trait InstrumentDB {
 
   def updateStatusType(id: String, statusList: List[InstrumentStatusType]): Future[UpdateResult]
 
-  def getStatusTypeMap(id: String): Map[String, InstrumentStatusType]
+  def getStatusTypeMap(id: String): Map[String, InstrumentStatusType] = {
+    val instList = getInstrument(id)
+    if (instList.length != 1)
+      throw new Exception("no such Instrument")
+
+    val statusTypes = instList(0).statusType.getOrElse(List.empty[InstrumentStatusType])
+    val kv =
+      for (kv <- statusTypes)
+        yield
+          kv.key -> kv
+
+    Map(kv: _*)
+  }
 
   def getInstrument(id: String): Seq[Instrument]
 }

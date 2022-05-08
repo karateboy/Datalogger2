@@ -104,21 +104,6 @@ class InstrumentOp @Inject()(mongodb: MongoDB) extends InstrumentDB {
     f
   }
 
-  override def getStatusTypeMap(id: String): Map[String, InstrumentStatusType] = {
-    val instList = getInstrument(id)
-    if (instList.length != 1)
-      throw new Exception("no such Instrument")
-
-    val statusTypes = instList(0).statusType.getOrElse(List.empty[InstrumentStatusType])
-    val kv =
-      for (kv <- statusTypes)
-        yield
-          kv.key -> kv
-
-    Map(kv: _*)
-
-  }
-
   override def getInstrument(id: String): Seq[Instrument] = {
     val f = collection.find(equal("_id", id)).toFuture()
     f onFailure errorHandler

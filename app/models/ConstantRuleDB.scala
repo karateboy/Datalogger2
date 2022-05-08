@@ -15,7 +15,6 @@ object ConstantRule {
 
 }
 
-@ImplementedBy(classOf[models.mongodb.ConstantRuleOp])
 trait ConstantRuleDB {
 
   def getRules(): Future[Seq[ConstantRule]]

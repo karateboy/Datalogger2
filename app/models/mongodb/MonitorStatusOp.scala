@@ -48,47 +48,11 @@ class MonitorStatusOp @Inject()(mongodb: MongoDB) extends MonitorStatusDB {
 
   init
 
-  private def msList: Seq[MonitorStatus] = {
+  override def msList: Seq[MonitorStatus] = {
     val f = collection.find().toFuture()
     f.onFailure(errorHandler)
     waitReadyResult(f).map {
       toMonitorStatus
     }
   }
-
-  private def refreshMap() = {
-    _map = Map(msList.map { s => s.info.toString() -> s }: _*)
-    _map
-  }
-
-  private var _map: Map[String, MonitorStatus] = refreshMap
-
-  override def map(key: String): MonitorStatus = {
-    _map.getOrElse(key, {
-      val tagInfo = getTagInfo(key)
-      tagInfo.statusType match {
-        case StatusType.Auto =>
-          val ruleId = tagInfo.auditRule.get.toLower
-          MonitorStatus(key, s"自動註記:${ruleId}")
-        case StatusType.ManualInvalid =>
-          MonitorStatus(key, StatusType.map(StatusType.ManualInvalid))
-        case StatusType.ManualValid =>
-          MonitorStatus(key, StatusType.map(StatusType.ManualValid))
-        case StatusType.Internal =>
-          MonitorStatus(key, "未知:" + key)
-      }
-    })
-  }
-
-  override def getExplainStr(tag: String): String = {
-    val tagInfo = getTagInfo(tag)
-    if (tagInfo.statusType == StatusType.Auto) {
-      val t = tagInfo.auditRule.get
-      "自動註記"
-    } else {
-      val ms = map(tag)
-      ms.desp
-    }
-  }
-
 }

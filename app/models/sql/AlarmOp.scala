@@ -1,10 +1,12 @@
 package models.sql
 
 import com.github.nscala_time.time.Imports
+import com.github.nscala_time.time.Imports.DateTime
 import models.{Alarm, AlarmDB}
 import scalikejdbc._
 
 import javax.inject.{Inject, Singleton}
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
@@ -16,19 +18,54 @@ class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
     sql"""
           SELECT *
           FROM [dbo].[alarms]
-          Where time >= ${start.toDate} and time < ${end.toDate}
-         """.map(rs =>
-      Alarm(rs.jodaDateTime("time"),
-        rs.string("src"),
-        rs.int("level"),
-        rs.string("desc"))).list().apply()
+          Where time >= ${start.toDate} and time < ${end.toDate} and [level] >= $level
+         """.map(mapper).list().apply()
   }
+
+  private def mapper(rs: WrappedResultSet) =
+    Alarm(rs.jodaDateTime("time"),
+      rs.string("src"),
+      rs.int("level"),
+      rs.string("desc"))
 
   init()
 
-  override def getAlarmsFuture(start: Imports.DateTime, end: Imports.DateTime): Future[Seq[Alarm]] = ???
+  override def getAlarmsFuture(start: Imports.DateTime, end: Imports.DateTime): Future[Seq[Alarm]] = {
+    implicit val session: DBSession = ReadOnlyAutoSession
+    Future {
+      sql"""
+          SELECT *
+          FROM [dbo].[alarms]
+          Where time >= ${start.toDate} and time < ${end.toDate}
+         """.map(mapper).list().apply()
+    }
+  }
 
-  override def log(src: String, level: Int, desc: String, coldPeriod: Int): Unit = ???
+  override def log(src: String, level: Int, desc: String, coldPeriod: Int = 30): Unit = {
+    val ar = Alarm(DateTime.now(), src, level, desc)
+    logFilter(ar, coldPeriod)
+  }
+
+  private def logFilter(ar:Alarm, coldPeriod:Int = 30) ={
+    val start = ar.time
+    val end = ar.time.minusMinutes(coldPeriod)
+    implicit val session: DBSession = AutoSession
+    val countOpt = sql"""
+          Select Count(*)
+          FROM [dbo].[alarms]
+          Where [time] >= ${start.toDate} and [time] < ${end.toDate} and [src] = ${ar.src} and [desc] = ${ar.desc}
+         """.map(rs=>rs.int(1)).first().apply()
+    for(count<-countOpt){
+      if(count == 0){
+        sql"""
+             INSERT INTO [dbo].[alarms]
+                ([time],[src],[level],[desc])
+            VALUES
+            (${ar.time.toDate}, ${ar.src}, ${ar.level}, ${ar.desc})
+             """.execute().apply()
+      }
+    }
+  }
 
   private def init()(implicit session: DBSession = AutoSession): Unit = {
     if (!sqlServer.getTables().contains(tabName)) {

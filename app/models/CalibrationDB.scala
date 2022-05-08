@@ -1,11 +1,12 @@
 package models
 
-import com.github.nscala_time.time.Imports
-import com.github.nscala_time.time.Imports.DateTime
+import com.github.nscala_time.time.Imports._
 import com.google.inject.ImplementedBy
 import play.api.libs.json.Json
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import ModelHelper._
 
 case class CalibrationJSON(monitorType: String, startTime: Long, endTime: Long, zero_val: Option[Double],
                            span_std: Option[Double], span_val: Option[Double])
@@ -65,23 +66,38 @@ case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTi
       (value - zeroVal) * spanStd / (spanValue - zeroVal)
 }
 
-@ImplementedBy(classOf[models.mongodb.CalibrationOp])
 trait CalibrationDB {
 
   implicit val reads = Json.reads[Calibration]
   implicit val writes = Json.writes[Calibration]
   implicit val jsonWrites = Json.writes[CalibrationJSON]
 
-  def calibrationReport(start: Imports.DateTime, end: Imports.DateTime): Seq[Calibration]
+  def calibrationReport(start: DateTime, end: DateTime): Seq[Calibration]
 
-  def calibrationReportFuture(start: Imports.DateTime, end: Imports.DateTime): Future[Seq[Calibration]]
+  def calibrationReportFuture(start: DateTime, end: DateTime): Future[Seq[Calibration]]
 
-  def calibrationReportFuture(start: Imports.DateTime): Future[Seq[Calibration]]
+  def calibrationReportFuture(start: DateTime): Future[Seq[Calibration]]
 
-  def calibrationReport(mt: String, start: Imports.DateTime, end: Imports.DateTime): Seq[Calibration]
+  def calibrationReport(mt: String, start: DateTime, end: DateTime): Seq[Calibration]
 
-  def getCalibrationMap(startDate: Imports.DateTime, endDate: Imports.DateTime)
-                       (implicit monitorTypeOp: MonitorTypeDB): Future[Map[String, List[(Imports.DateTime, Calibration)]]]
+  def getCalibrationMap(startDate: DateTime, endDate: DateTime)
+                       (implicit monitorTypeOp: MonitorTypeDB): Future[Map[String, List[(DateTime, Calibration)]]] = {
+    val begin = (startDate - 5.day)
+    val end = (endDate + 1.day)
+
+    val f = calibrationReportFuture(begin, end)
+    f onFailure errorHandler()
+    for (calibrationList <- f)
+      yield {
+        import scala.collection.mutable._
+        val resultMap = Map.empty[String, ListBuffer[(DateTime, Calibration)]]
+        for (item <- calibrationList.filter { c => c.success } if item.monitorType != MonitorType.NO2) {
+          val lb = resultMap.getOrElseUpdate(item.monitorType, ListBuffer.empty[(DateTime, Calibration)])
+          lb.append((item.endTime, item))
+        }
+        resultMap.map(kv => kv._1 -> kv._2.toList).toMap
+      }
+  }
 
   def insert(cal: Calibration)
 }

@@ -31,30 +31,6 @@ class ManualAuditLogOp @Inject()(mongodb: MongoDB) extends ManualAuditLogDB {
       "modifiedTime" -> (al.modifiedTime: BsonDateTime), "operator" -> al.operator, "changedStatus" -> al.changedStatus, "reason" -> al.reason)
   }
 
-  override def queryLog(startTime: DateTime, endTime: DateTime): Future[Seq[ManualAuditLog]] = {
-    import org.mongodb.scala.bson.BsonDateTime
-    import org.mongodb.scala.model.Filters._
-    import org.mongodb.scala.model.Sorts._
-
-    val future = collection.find(and(gte("dataTime", startTime: BsonDateTime), lt("dataTime", endTime: BsonDateTime))).sort(ascending("dataTime")).toFuture()
-    for (f <- future) yield {
-      f.map {
-        toAuditLog
-      }
-    }
-  }
-
-  private def toAuditLog(doc: Document) = {
-    val dataTime = new DateTime(doc.get("dataTime").get.asDateTime().getValue)
-    val mt = (doc.get("mt").get.asString().getValue)
-    val modifiedTime = new DateTime(doc.get("modifiedTime").get.asDateTime().getValue)
-    val operator = doc.get("operator").get.asString().getValue
-    val changedStatus = doc.get("changedStatus").get.asString().getValue
-    val reason = doc.get("reason").get.asString().getValue
-
-    ManualAuditLog(dataTime = dataTime, mt = mt, modifiedTime = modifiedTime, operator = operator, changedStatus = changedStatus, reason = reason)
-  }
-
   init
 
   import org.mongodb.scala.model.Filters._

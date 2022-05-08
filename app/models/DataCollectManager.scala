@@ -352,7 +352,7 @@ object DataCollectManager {
 class DataCollectManager @Inject()
 (config: Configuration, recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
  dataCollectManagerOp: DataCollectManagerOp,
- instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentOp,
+ instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentDB,
  sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
   val storeSecondData = config.getBoolean("logger.storeSecondData").getOrElse(false)
   Logger.info(s"store second data = $storeSecondData")
