@@ -12,8 +12,8 @@ import scala.concurrent.Future
 
 @Singleton
 class ManualAuditLogOp @Inject()(mongodb: MongoDB) extends ManualAuditLogDB {
-  private val collectionName = "auditLogs"
-  private val collection = mongodb.database.getCollection(collectionName)
+  lazy private val collectionName = "auditLogs"
+  lazy private val collection = mongodb.database.getCollection(collectionName)
   import org.mongodb.scala.model.Filters._
   override def upsertLog(log: ManualAuditLog):Future[UpdateResult] = {
     import org.mongodb.scala.bson.BsonDateTime

@@ -30,7 +30,7 @@ class MonitorTypeOp @Inject()(mongodb: MongoDB, alarmDB: AlarmDB) extends Monito
   lazy val colName = "monitorTypes"
   lazy val collection: MongoCollection[MonitorType] = mongodb.database.getCollection[MonitorType](colName).withCodecRegistry(codecRegistry)
 
-  private def updateMt(): (List[String], List[String], Map[String, MonitorType]) = {
+  private def updateMt(): Unit = {
     def getUpdates(mt: MonitorType): Bson =
       Updates.combine(
         Updates.setOnInsert("_id", mt._id),
@@ -51,33 +51,20 @@ class MonitorTypeOp @Inject()(mongodb: MongoDB, alarmDB: AlarmDB) extends Monito
     val f = collection.bulkWrite(updateModels, BulkWriteOptions().ordered(true)).toFuture()
     f.onFailure(errorHandler)
     waitReadyResult(f)
-    refreshMtv
   }
 
   {
     val colNames = waitReadyResult(mongodb.database.listCollectionNames().toFuture())
     if (!colNames.contains(colName)) { // New
       waitReadyResult(mongodb.database.createCollection(colName).toFuture())
-      updateMt
+      updateMt()
     }
+    refreshMtv
   }
-  Logger.info("MonitorTypeOp init complete!")
 
   override def getList(): List[MonitorType] = {
     val f = collection.find().toFuture()
     waitReadyResult(f).toList
-  }
-
-  override def newMonitorType(mt: MonitorType): Future[InsertOneResult] = {
-    map = map + (mt._id -> mt)
-    if (mt.signalType)
-      signalMtvList = signalMtvList.:+(mt._id)
-    else
-      mtvList = mtvList.:+(mt._id)
-
-    val f = collection.insertOne(mt).toFuture()
-    f onFailure errorHandler
-    f
   }
 
   override def deleteMonitorType(_id: String): Unit = {
@@ -123,21 +110,4 @@ class MonitorTypeOp @Inject()(mongodb: MongoDB, alarmDB: AlarmDB) extends Monito
         alarmDB.log(alarmDB.src(), alarmDB.Level.INFO, s"${mtCase.desp}=>解除", 1)
     }
   }
-  /*
-  override def upsertMonitorType(mt: MonitorType): Future[UpdateResult] = {
-    import org.mongodb.scala.model.ReplaceOptions
-    map = map + (mt._id -> mt)
-    if (mt.signalType) {
-      if (!signalMtvList.contains(mt._id))
-        signalMtvList = signalMtvList :+ mt._id
-    } else {
-      if (!mtvList.contains(mt._id))
-        mtvList = mtvList :+ mt._id
-    }
-
-    val f = collection.replaceOne(equal("_id", mt._id), mt, ReplaceOptions().upsert(true)).toFuture()
-    f onFailure errorHandler
-    f
-  }
-*/
 }

@@ -264,9 +264,10 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeDB, alarmOp: AlarmDB,
           f.onFailure(ModelHelper.errorHandler)
 
           if (dataCollectManager.checkMinDataAlarm(recordList.mtDataList)) {
-            val mtCase = monitorTypeOp.map("PM25")
-            val thresholdConfig = mtCase.thresholdConfig.getOrElse(ThresholdConfig(30))
-            context.parent ! ToggleTargetDO(config.eventConfig.instId, config.eventConfig.bit, thresholdConfig.elapseTime)
+            // FIXME
+            // val mtCase = monitorTypeOp.map("PM25")
+            // val thresholdConfig = mtCase.thresholdConfig.getOrElse(ThresholdConfig(30))
+            // context.parent ! ToggleTargetDO(config.eventConfig.instId, config.eventConfig.bit, thresholdConfig.elapseTime)
           }
         }
       })

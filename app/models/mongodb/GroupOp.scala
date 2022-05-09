@@ -18,9 +18,9 @@ import scala.util.Success
 class GroupOp @Inject()(mongodb: MongoDB) extends GroupDB {
   import org.mongodb.scala._
 
-  val ColName = "groups"
-  val codecRegistry = fromRegistries(fromProviders(classOf[Group], classOf[Ability], DEFAULT_CODEC_REGISTRY))
-  val collection: MongoCollection[Group] = mongodb.database.withCodecRegistry(codecRegistry).getCollection(ColName)
+  lazy val ColName = "groups"
+  lazy val codecRegistry = fromRegistries(fromProviders(classOf[Group], classOf[Ability], DEFAULT_CODEC_REGISTRY))
+  lazy val collection: MongoCollection[Group] = mongodb.database.withCodecRegistry(codecRegistry).getCollection(ColName)
 
   private def init() {
     for(colNames <- mongodb.database.listCollectionNames().toFuture()){

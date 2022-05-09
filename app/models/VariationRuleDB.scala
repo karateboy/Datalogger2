@@ -14,7 +14,6 @@ object VariationRule {
   implicit val write = Json.writes[VariationRule]
 }
 
-@ImplementedBy(classOf[mongodb.VariationRuleOp])
 trait VariationRuleDB {
 
   def getRules(): Future[Seq[VariationRule]]

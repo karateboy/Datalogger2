@@ -11,7 +11,7 @@ import scala.collection.immutable
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 @Singleton
-class MonitorOp @Inject()(mongodb: MongoDB, config: Configuration, sensorOp: MqttSensorDB) extends MonitorDB {
+class MonitorOp @Inject()(mongodb: MongoDB, config: Configuration) extends MonitorDB {
 
   import Monitor._
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
@@ -19,9 +19,9 @@ class MonitorOp @Inject()(mongodb: MongoDB, config: Configuration, sensorOp: Mqt
   import org.mongodb.scala.bson.codecs.Macros._
 
   override val hasSelfMonitor = config.getBoolean("logger.selfMonitor").getOrElse(true)
-  private val colName = "monitors"
-  private val codecRegistry = fromRegistries(fromProviders(classOf[Monitor]), DEFAULT_CODEC_REGISTRY)
-  private val collection = mongodb.database.getCollection[Monitor](colName).withCodecRegistry(codecRegistry)
+  lazy private val colName = "monitors"
+  lazy private val codecRegistry = fromRegistries(fromProviders(classOf[Monitor]), DEFAULT_CODEC_REGISTRY)
+  lazy private val collection = mongodb.database.getCollection[Monitor](colName).withCodecRegistry(codecRegistry)
   map = {
     val pairs =
       for (m <- mList) yield {
@@ -61,11 +61,9 @@ class MonitorOp @Inject()(mongodb: MongoDB, config: Configuration, sensorOp: Mqt
   }
 
   override def deleteMonitor(_id: String): Future[DeleteResult] = {
+    map = map - _id
     val f = collection.deleteOne(Filters.equal("_id", _id)).toFuture()
-    f.andThen({
-      case _ =>
-        sensorOp.deleteByMonitor(_id)
-        map = map.filter(p => p._1 != _id)
-    })
+    f.onFailure(errorHandler)
+    f
   }
 }

@@ -2,7 +2,6 @@ package models
 
 import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports.DateTime
-import com.google.inject.ImplementedBy
 import play.api.libs.json.Json
 
 import scala.concurrent.Future

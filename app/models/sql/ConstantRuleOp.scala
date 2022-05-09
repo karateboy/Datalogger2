@@ -50,7 +50,7 @@ class ConstantRuleOp @Inject()(sqlServer: SqlServer) extends ConstantRuleDB {
               (${rule._id.monitor}, ${rule._id.monitorType}, ${rule.enable}, ${rule.count})
             END
           """.update().apply()
-      UpdateResult.acknowledged(0, ret, null)
+      UpdateResult.acknowledged(ret, ret, null)
     }
   }
 

@@ -29,13 +29,6 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
          """.map(mapper).list().apply()
   }
 
-  private def mapper(rs: WrappedResultSet) = Calibration(rs.string("monitorType"),
-    rs.jodaDateTime("startTime"),
-    rs.jodaDateTime("endTime"),
-    rs.doubleOpt("zero_val"),
-    rs.doubleOpt("span_std"),
-    rs.doubleOpt("span_val"))
-
   override def calibrationReportFuture(start: Imports.DateTime): Future[Seq[Calibration]] =
     Future {
       implicit val session: DBSession = ReadOnlyAutoSession
@@ -47,6 +40,12 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
          """.map(mapper).list().apply()
     }
 
+  private def mapper(rs: WrappedResultSet) = Calibration(rs.string("monitorType"),
+    rs.jodaDateTime("startTime"),
+    rs.jodaDateTime("endTime"),
+    rs.doubleOpt("zero_val"),
+    rs.doubleOpt("span_std"),
+    rs.doubleOpt("span_val"))
 
   override def calibrationReport(mt: String, start: Imports.DateTime, end: Imports.DateTime): Seq[Calibration] = {
     implicit val session: DBSession = ReadOnlyAutoSession

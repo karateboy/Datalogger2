@@ -1,12 +1,10 @@
 package models
 
-import com.google.inject.ImplementedBy
 import org.mongodb.scala.result.UpdateResult
 
 import java.time.Instant
 import scala.concurrent.Future
 
-@ImplementedBy(classOf[mongodb.SysConfig])
 trait SysConfigDB {
 
   val Logo = "Logo"
@@ -16,9 +14,9 @@ trait SysConfigDB {
   val EffectiveRatio = "EffectiveRatio"
   val AlertEmailTaget = "AlertEmailTarget"
 
-  def getLogo: Future[LogoImage]
+  // def getLogo: Future[LogoImage]
 
-  def setLogo(logo: LogoImage): Future[UpdateResult]
+  // def setLogo(logo: LogoImage): Future[UpdateResult]
 
   def getSpectrumLastParseTime(): Future[Instant]
 

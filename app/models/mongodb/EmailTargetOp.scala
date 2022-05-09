@@ -16,10 +16,10 @@ class EmailTargetOp @Inject()(mongodb: MongoDB, sysConfig: SysConfigDB) extends 
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
 
-  private val colName = "emailTargets"
+  lazy private val colName = "emailTargets"
 
-  private val codecRegistry = fromRegistries(fromProviders(classOf[EmailTarget]), DEFAULT_CODEC_REGISTRY)
-  private val collection = mongodb.database.getCollection[EmailTarget](colName).withCodecRegistry(codecRegistry)
+  lazy private val codecRegistry = fromRegistries(fromProviders(classOf[EmailTarget]), DEFAULT_CODEC_REGISTRY)
+  lazy private val collection = mongodb.database.getCollection[EmailTarget](colName).withCodecRegistry(codecRegistry)
 
   private def init(): Unit = {
     val colNames = waitReadyResult(mongodb.database.listCollectionNames().toFuture())

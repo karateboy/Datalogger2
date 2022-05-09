@@ -13,8 +13,8 @@ import scala.language.implicitConversions
 
 @Singleton
 class AlarmOp @Inject()(mongodb: MongoDB) extends AlarmDB {
-  private val collectionName = "alarms"
-  private val collection = mongodb.database.getCollection(collectionName)
+  lazy private val collectionName = "alarms"
+  lazy private val collection = mongodb.database.getCollection(collectionName)
   private def toDocument(ar: Alarm) = {
     import org.mongodb.scala.bson._
     Document("time" -> (ar.time: BsonDateTime), "src" -> ar.src, "level" -> ar.level, "desc" -> ar.desc)

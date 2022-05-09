@@ -12,7 +12,6 @@ object EmailTarget {
   implicit val writes = Json.writes[EmailTarget]
 }
 
-@ImplementedBy(classOf[models.mongodb.EmailTargetOp])
 trait EmailTargetDB {
 
   def upsert(et: EmailTarget): Future[UpdateResult]

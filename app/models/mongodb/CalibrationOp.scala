@@ -13,8 +13,8 @@ import scala.concurrent.Future
 @Singleton
 class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
 
-  val collectionName = "calibration"
-  val collection = mongodb.database.getCollection(collectionName)
+  lazy val collectionName = "calibration"
+  lazy val collection = mongodb.database.getCollection(collectionName)
 
   import org.mongodb.scala._
   import org.mongodb.scala.model.Indexes._

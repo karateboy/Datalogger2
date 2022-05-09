@@ -12,14 +12,14 @@ import scala.concurrent.Future
 
 @Singleton
 class SpikeRuleOp @Inject()(mongodb: MongoDB) extends SpikeRuleDB {
-  private val ColName = "spikeRules"
+  lazy private val ColName = "spikeRules"
 
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
 
-  private val codecRegistry = fromRegistries(fromProviders(classOf[SpikeRule], classOf[SpikeRuleID]), DEFAULT_CODEC_REGISTRY)
-  private val collection = mongodb.database.getCollection[SpikeRule](ColName).withCodecRegistry(codecRegistry)
+  lazy private val codecRegistry = fromRegistries(fromProviders(classOf[SpikeRule], classOf[SpikeRuleID]), DEFAULT_CODEC_REGISTRY)
+  lazy private val collection = mongodb.database.getCollection[SpikeRule](ColName).withCodecRegistry(codecRegistry)
 
   for(colNames <- mongodb.database.listCollectionNames().toFuture()) {
     if (!colNames.contains(ColName)) {

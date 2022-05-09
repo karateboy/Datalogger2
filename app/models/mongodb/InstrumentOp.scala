@@ -16,9 +16,9 @@ class InstrumentOp @Inject()(mongodb: MongoDB) extends InstrumentDB {
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
 
-  private val codecRegistry = fromRegistries(fromProviders(classOf[Instrument], classOf[ProtocolParam], classOf[InstrumentStatusType]), DEFAULT_CODEC_REGISTRY)
-  private val collectionName = "instruments"
-  private val collection = mongodb.database.getCollection[Instrument](collectionName).withCodecRegistry(codecRegistry)
+  lazy private val codecRegistry = fromRegistries(fromProviders(classOf[Instrument], classOf[ProtocolParam], classOf[InstrumentStatusType]), DEFAULT_CODEC_REGISTRY)
+  lazy private val collectionName = "instruments"
+  lazy private val collection = mongodb.database.getCollection[Instrument](collectionName).withCodecRegistry(codecRegistry)
 
   private def init() {
     for (colNames <- mongodb.database.listCollectionNames().toFuture()) {

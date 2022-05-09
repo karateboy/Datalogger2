@@ -2,7 +2,6 @@ package models
 
 import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports.DateTime
-import com.google.inject.ImplementedBy
 import models.ModelHelper.waitReadyResult
 import org.mongodb.scala.BulkWriteResult
 import org.mongodb.scala.result.{InsertManyResult, UpdateResult}
@@ -11,7 +10,6 @@ import play.api.libs.json.Json
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-@ImplementedBy(classOf[mongodb.RecordOp])
 trait RecordDB {
 
   implicit val writer = Json.writes[Record]

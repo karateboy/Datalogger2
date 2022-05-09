@@ -14,9 +14,9 @@ class MqttSensorOp @Inject()(mongodb: MongoDB, groupOp: GroupDB) extends MqttSen
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
 
-  private val ColName = "sensors"
-  private val codecRegistry = fromRegistries(fromProviders(classOf[Sensor]), DEFAULT_CODEC_REGISTRY)
-  private val collection = mongodb.database.getCollection[Sensor](ColName).withCodecRegistry(codecRegistry)
+  lazy private val ColName = "sensors"
+  lazy private val codecRegistry = fromRegistries(fromProviders(classOf[Sensor]), DEFAULT_CODEC_REGISTRY)
+  lazy private val collection = mongodb.database.getCollection[Sensor](ColName).withCodecRegistry(codecRegistry)
 
   import org.mongodb.scala.model._
 
@@ -25,26 +25,10 @@ class MqttSensorOp @Inject()(mongodb: MongoDB, groupOp: GroupDB) extends MqttSen
   collection.createIndex(Indexes.descending("topic"))
   collection.createIndex(Indexes.descending("monitor"))
 
-  override def getSensorList(group: String): Future[Seq[Sensor]] = {
-    val f = collection.find(Filters.eq("group", group)).toFuture()
-    f.onFailure(errorHandler())
-    f
-  }
-
   override def getAllSensorList: Future[Seq[Sensor]] = {
     val f = collection.find(Filters.exists("_id")).toFuture()
     f onFailure (errorHandler())
     f
-  }
-
-  override def getSensorMap: Future[Map[String, Sensor]] = {
-    for (sensorList <- getAllSensorList) yield {
-      val pairs =
-        for (sensor <- sensorList) yield
-          sensor.id -> sensor
-
-      pairs.toMap
-    }
   }
 
   override def upsert(sensor: Sensor): Future[UpdateResult] = {
@@ -56,12 +40,6 @@ class MqttSensorOp @Inject()(mongodb: MongoDB, groupOp: GroupDB) extends MqttSen
 
   override def delete(id: String): Future[DeleteResult] = {
     val f = collection.deleteOne(Filters.equal("id", id)).toFuture()
-    f onFailure (errorHandler)
-    f
-  }
-
-  override def deleteByMonitor(monitor: String): Future[DeleteResult] = {
-    val f = collection.deleteOne(Filters.equal("monitor", monitor)).toFuture()
     f onFailure (errorHandler)
     f
   }

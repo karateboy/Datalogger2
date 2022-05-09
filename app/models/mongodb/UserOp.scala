@@ -18,9 +18,9 @@ class UserOp @Inject()(mongoDB: MongoDB) extends UserDB {
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
 
-  private val ColName = "users"
-  private val codecRegistry = fromRegistries(fromProviders(classOf[User], classOf[AlarmConfig]), DEFAULT_CODEC_REGISTRY)
-  private val collection: MongoCollection[User] = mongoDB.database.withCodecRegistry(codecRegistry).getCollection(ColName)
+  lazy private val ColName = "users"
+  lazy private val codecRegistry = fromRegistries(fromProviders(classOf[User], classOf[AlarmConfig]), DEFAULT_CODEC_REGISTRY)
+  lazy private val collection: MongoCollection[User] = mongoDB.database.withCodecRegistry(codecRegistry).getCollection(ColName)
 
   private def init() {
     for (colNames <- mongoDB.database.listCollectionNames().toFuture()) {
@@ -34,8 +34,6 @@ class UserOp @Inject()(mongoDB: MongoDB) extends UserDB {
     f.onSuccess({
       case count: Long =>
         if (count == 0) {
-          val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn", true, Some(Group.PLATFORM_ADMIN),
-            Seq.empty[String])
           Logger.info("Create default user:" + defaultUser.toString())
           newUser(defaultUser)
         }

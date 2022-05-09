@@ -2,18 +2,43 @@ package models.sql
 
 import com.mongodb.client.result.DeleteResult
 import models.{Monitor, MonitorDB}
-import org.mongodb.scala.result.DeleteResult
-
-import javax.inject.{Inject, Singleton}
-import scala.concurrent.Future
 import scalikejdbc._
 
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 @Singleton
-class MonitorOp @Inject()(sqlServer: SqlServer) extends MonitorDB{
+class MonitorOp @Inject()(sqlServer: SqlServer) extends MonitorDB {
   private val tabName = "monitor"
-  private def init()(implicit session: DBSession = AutoSession): Unit ={
+
+  override def deleteMonitor(_id: String): Future[DeleteResult] = Future {
+    implicit val session: DBSession = AutoSession
+    val ret =
+      sql"""
+         DELETE FROM [dbo].[monitor]
+         Where [id] = ${_id}
+         """.update().apply()
+    DeleteResult.acknowledged(ret)
+  }
+
+  init()
+
+  override def mList: List[Monitor] = {
+    implicit val session: DBSession = ReadOnlyAutoSession
+    sql"""
+         Select *
+         FROM [dbo].[monitor]
+         """.map(mapper).list().apply()
+  }
+
+  private def mapper(rs: WrappedResultSet) = Monitor(rs.string("id"),
+    rs.string("name"),
+    rs.doubleOpt("lat"),
+    rs.doubleOpt("lng")
+  )
+
+  private def init()(implicit session: DBSession = AutoSession): Unit = {
     if (!sqlServer.getTables().contains(tabName)) {
       sql"""
           CREATE TABLE [dbo].[monitor](
@@ -29,18 +54,10 @@ class MonitorOp @Inject()(sqlServer: SqlServer) extends MonitorDB{
            """.execute().apply()
       upsert(Monitor.selfMonitor)
       refresh
-    }else{
+    } else {
       refresh
     }
   }
-
-  init()
-
-  private def mapper(rs:WrappedResultSet)=Monitor(rs.string("id"),
-    rs.string("name"),
-    rs.doubleOpt("lat"),
-    rs.doubleOpt("lng")
-  )
 
   override def upsert(m: Monitor): Unit = {
     implicit val session: DBSession = AutoSession
@@ -65,22 +82,5 @@ class MonitorOp @Inject()(sqlServer: SqlServer) extends MonitorDB{
               ,${m.lng})
             END
          """.update().apply()
-  }
-
-  override def deleteMonitor(_id: String): Future[DeleteResult] = Future{
-    implicit val session: DBSession = AutoSession
-    val ret = sql"""
-         DELETE FROM [dbo].[monitor]
-         Where [id] = ${_id}
-         """.update().apply()
-    DeleteResult.acknowledged(ret)
-  }
-
-  override def mList: List[Monitor] = {
-    implicit val session: DBSession = ReadOnlyAutoSession
-    sql"""
-         Select *
-         FROM [dbo].[monitor]
-         """.map(mapper).list().apply()
   }
 }

@@ -14,10 +14,10 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 @Singleton
 class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
-  private val ColName = "sysConfig"
-  private val collection = mongodb.database.getCollection(ColName)
+  lazy private val ColName = "sysConfig"
+  lazy private val collection = mongodb.database.getCollection(ColName)
 
-  private val valueKey = "value"
+  lazy private val valueKey = "value"
 
   private val defaultConfig = Map(
     Logo -> Document(valueKey -> Array.empty[Byte], "filename" -> ""),
@@ -60,6 +60,7 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
 
   private def set(_id: String, v: Seq[String]) = upsert(_id, Document(valueKey -> v))
 
+  /*
   override def getLogo: Future[LogoImage] = {
     val f = collection.find(Filters.equal("_id", Logo)).headOption()
     f onFailure (errorHandler())
@@ -77,6 +78,7 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     f onFailure (errorHandler)
     f
   }
+*/
 
   private def getInstant(tag: String)(): Future[Instant] =
     get(tag).map(

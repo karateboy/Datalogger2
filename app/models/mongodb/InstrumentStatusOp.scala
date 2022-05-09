@@ -12,8 +12,8 @@ import scala.language.implicitConversions
 @Singleton
 class InstrumentStatusOp @Inject()(mongodb: MongoDB) extends InstrumentStatusDB {
   import org.mongodb.scala._
-  private val collectionName = "instrumentStatus"
-  private val collection = mongodb.database.getCollection(collectionName)
+  lazy private val collectionName = "instrumentStatus"
+  lazy private val collection = mongodb.database.getCollection(collectionName)
 
   private def init() {
     import org.mongodb.scala.model.Indexes._

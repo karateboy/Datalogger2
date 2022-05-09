@@ -10,19 +10,23 @@ object MqttSensor {
   implicit val write = Json.writes[Sensor]
   implicit val read = Json.reads[Sensor]
 }
+import scala.concurrent.ExecutionContext.Implicits.global
 
-@ImplementedBy(classOf[mongodb.MqttSensorOp])
 trait MqttSensorDB {
-
-  def getSensorList(group: String): Future[Seq[Sensor]]
-
   def getAllSensorList: Future[Seq[Sensor]]
 
-  def getSensorMap: Future[Map[String, Sensor]]
+  def getSensorMap: Future[Map[String, Sensor]] = {
+    for (sensorList <- getAllSensorList) yield {
+      val pairs =
+        for (sensor <- sensorList) yield
+          sensor.id -> sensor
+
+      pairs.toMap
+    }
+  }
 
   def upsert(sensor: Sensor): Future[UpdateResult]
 
   def delete(id: String): Future[DeleteResult]
 
-  def deleteByMonitor(monitor: String): Future[DeleteResult]
 }

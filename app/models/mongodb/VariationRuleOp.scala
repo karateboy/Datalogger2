@@ -12,14 +12,14 @@ import scala.concurrent.Future
 
 @Singleton
 class VariationRuleOp @Inject()(mongodb: MongoDB) extends VariationRuleDB {
-  private val ColName = "variationRules"
+  lazy private val ColName = "variationRules"
 
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
 
-  private val codecRegistry = fromRegistries(fromProviders(classOf[VariationRule], classOf[VariationRuleID]), DEFAULT_CODEC_REGISTRY)
-  private val collection = mongodb.database.getCollection[VariationRule](ColName).withCodecRegistry(codecRegistry)
+  lazy private val codecRegistry = fromRegistries(fromProviders(classOf[VariationRule], classOf[VariationRuleID]), DEFAULT_CODEC_REGISTRY)
+  lazy private val collection = mongodb.database.getCollection[VariationRule](ColName).withCodecRegistry(codecRegistry)
 
   for(colNames <- mongodb.database.listCollectionNames().toFuture()) {
     if (!colNames.contains(ColName)) {

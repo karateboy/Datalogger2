@@ -4,7 +4,6 @@ import com.google.inject.ImplementedBy
 import models.MonitorStatus.{BelowNormalStat, CalibrationDeviation, CalibrationResume, ExceedRangeStat, InvalidDataStat, MaintainStat, NormalStat, OverNormalStat, SpanCalibrationStat, ZeroCalibrationStat, getTagInfo}
 import play.api.libs.json.Json
 
-@ImplementedBy(classOf[mongodb.MonitorStatusOp])
 trait MonitorStatusDB {
   implicit val reads = Json.reads[MonitorStatus]
   implicit val writes = Json.writes[MonitorStatus]

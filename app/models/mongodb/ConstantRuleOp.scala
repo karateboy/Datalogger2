@@ -12,14 +12,14 @@ import scala.concurrent.Future
 
 @Singleton
 class ConstantRuleOp @Inject()(mongodb: MongoDB) extends ConstantRuleDB {
-  val ColName = "constantRules"
+  lazy val ColName = "constantRules"
 
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
 
-  val codecRegistry = fromRegistries(fromProviders(classOf[ConstantRule], classOf[ConstantRuleID]), DEFAULT_CODEC_REGISTRY)
-  val collection = mongodb.database.getCollection[ConstantRule](ColName).withCodecRegistry(codecRegistry)
+  lazy val codecRegistry = fromRegistries(fromProviders(classOf[ConstantRule], classOf[ConstantRuleID]), DEFAULT_CODEC_REGISTRY)
+  lazy val collection = mongodb.database.getCollection[ConstantRule](ColName).withCodecRegistry(codecRegistry)
 
   for(colNames <- mongodb.database.listCollectionNames().toFuture()) {
     if (!colNames.contains(ColName)) {

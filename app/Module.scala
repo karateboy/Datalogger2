@@ -1,6 +1,5 @@
 import com.google.inject.AbstractModule
 import models._
-import models.mongodb.{MongoDB, MonitorTypeOp}
 import play.api._
 import play.api.libs.concurrent.AkkaGuiceSupport
 /**
@@ -19,6 +18,7 @@ class Module(environment: Environment,
     val db = configuration.getString("logger.db").getOrElse("nosql")
     if(db == "sql"){
       import models.sql._
+      //scalikejdbc.config.DBs.setupAll()
       bind(classOf[AlarmDB]).to(classOf[AlarmOp])
       bind(classOf[CalibrationDB]).to(classOf[CalibrationOp])
       bind(classOf[ConstantRuleDB]).to(classOf[ConstantRuleOp])
@@ -29,6 +29,13 @@ class Module(environment: Environment,
       bind(classOf[ManualAuditLogDB]).to(classOf[ManualAuditLogOp])
       bind(classOf[MonitorDB]).to(classOf[MonitorOp])
       bind(classOf[MonitorStatusDB]).to(classOf[MonitorStatusOp])
+      bind(classOf[MonitorTypeDB]).to(classOf[MonitorTypeOp])
+      bind(classOf[MqttSensorDB]).to(classOf[MqttSensorOp])
+      bind(classOf[RecordDB]).to(classOf[RecordOp])
+      bind(classOf[SpikeRuleDB]).to(classOf[SpikeRuleOp])
+      bind(classOf[SysConfigDB]).to(classOf[SysConfig])
+      bind(classOf[UserDB]).to(classOf[UserOp])
+      bind(classOf[VariationRuleDB]).to(classOf[VariationRuleOp])
     }else{
       import models.mongodb._
       bind(classOf[AlarmDB]).to(classOf[AlarmOp])
@@ -41,6 +48,13 @@ class Module(environment: Environment,
       bind(classOf[ManualAuditLogDB]).to(classOf[ManualAuditLogOp])
       bind(classOf[MonitorDB]).to(classOf[MonitorOp])
       bind(classOf[MonitorStatusDB]).to(classOf[MonitorStatusOp])
+      bind(classOf[MonitorTypeDB]).to(classOf[MonitorTypeOp])
+      bind(classOf[MqttSensorDB]).to(classOf[MqttSensorOp])
+      bind(classOf[RecordDB]).to(classOf[RecordOp])
+      bind(classOf[SpikeRuleDB]).to(classOf[SpikeRuleOp])
+      bind(classOf[SysConfigDB]).to(classOf[SysConfig])
+      bind(classOf[UserDB]).to(classOf[UserOp])
+      bind(classOf[VariationRuleDB]).to(classOf[VariationRuleOp])
     }
 
     bindActor[DataCollectManager]("dataCollectManager")

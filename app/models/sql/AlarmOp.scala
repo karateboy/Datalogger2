@@ -22,14 +22,6 @@ class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
          """.map(mapper).list().apply()
   }
 
-  private def mapper(rs: WrappedResultSet) =
-    Alarm(rs.jodaDateTime("time"),
-      rs.string("src"),
-      rs.int("level"),
-      rs.string("desc"))
-
-  init()
-
   override def getAlarmsFuture(start: Imports.DateTime, end: Imports.DateTime): Future[Seq[Alarm]] = {
     implicit val session: DBSession = ReadOnlyAutoSession
     Future {
@@ -41,22 +33,31 @@ class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
     }
   }
 
+  init()
+
+  private def mapper(rs: WrappedResultSet) =
+    Alarm(rs.jodaDateTime("time"),
+      rs.string("src"),
+      rs.int("level"),
+      rs.string("desc"))
+
   override def log(src: String, level: Int, desc: String, coldPeriod: Int = 30): Unit = {
     val ar = Alarm(DateTime.now(), src, level, desc)
     logFilter(ar, coldPeriod)
   }
 
-  private def logFilter(ar:Alarm, coldPeriod:Int = 30) ={
+  private def logFilter(ar: Alarm, coldPeriod: Int = 30) = {
     val start = ar.time
     val end = ar.time.minusMinutes(coldPeriod)
     implicit val session: DBSession = AutoSession
-    val countOpt = sql"""
+    val countOpt =
+      sql"""
           Select Count(*)
           FROM [dbo].[alarms]
           Where [time] >= ${start.toDate} and [time] < ${end.toDate} and [src] = ${ar.src} and [desc] = ${ar.desc}
-         """.map(rs=>rs.int(1)).first().apply()
-    for(count<-countOpt){
-      if(count == 0){
+         """.map(rs => rs.int(1)).first().apply()
+    for (count <- countOpt) {
+      if (count == 0) {
         sql"""
              INSERT INTO [dbo].[alarms]
                 ([time],[src],[level],[desc])
@@ -75,7 +76,7 @@ class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
 	                      [time] [datetime2](7) NOT NULL,
 	                      [src] [nvarchar](50) NOT NULL,
 	                      [level] [int] NOT NULL,
-	                      [desc] [nvarchar](50) NOT NULL,
+	                      [desc] [nvarchar](1024) NOT NULL,
                         CONSTRAINT [PK_alarms] PRIMARY KEY CLUSTERED
               (
 	              [id] ASC

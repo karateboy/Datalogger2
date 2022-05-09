@@ -1,12 +1,9 @@
 package models
 
-import com.google.inject.ImplementedBy
-import models.MonitorType.{CH2O, CH4, CO, CO2, DOOR, FLOW, H2, H2S, HUMID, LAT, LNG, NH3, NO, NO2, NOISE, NOY, NOY_NO, NOx, O3, PM10, PM25, PRESS, RAIN, SMOKE, SO2, SOLAR, TEMP, THC, TS, TVOC, WIN_DIRECTION, WIN_SPEED, rangeOrder, signalOrder}
-import org.mongodb.scala.result.{InsertOneResult, UpdateResult}
-import play.api.Logger
+import models.MonitorType._
+import org.mongodb.scala.result.UpdateResult
 import play.api.libs.json.Json
 
-import javax.inject.Singleton
 import scala.concurrent.Future
 
 trait MonitorTypeDB {
@@ -53,18 +50,20 @@ trait MonitorTypeDB {
     signalType(SMOKE, "煙霧"),
     signalType(FLOW, "採樣流量"),
     signalType("SPRAY", "灑水"))
-  var (mtvList, signalMtvList, map) = refreshMtv
+  var mtvList = List.empty[String]
+  var signalMtvList = List.empty[String]
+  var map = Map.empty[String, MonitorType]
+  //var (mtvList, signalMtvList, map) = refreshMtv
+  var diValueMap = Map.empty[String, Boolean]
 
   def signalType(_id: String, desp: String): MonitorType = {
     signalOrder += 1
     MonitorType(_id, desp, "N/A", 0, signalOrder, true)
   }
 
-  var diValueMap = Map.empty[String, Boolean]
-
   def logDiMonitorType(mt: String, v: Boolean): Unit
 
-  def refreshMtv: (List[String], List[String], Map[String, MonitorType]) = {
+  protected def refreshMtv(): Unit = {
     val list = getList.sortBy {
       _.order
     }
@@ -86,7 +85,6 @@ trait MonitorTypeDB {
     mtvList = rangeMtvList
     signalMtvList = signalMvList
     map = mtPair.toMap
-    (rangeMtvList, signalMvList, mtPair.toMap)
   }
 
   def getList: List[MonitorType]
@@ -96,7 +94,7 @@ trait MonitorTypeDB {
   def ensureMonitorType(id: String): Unit = {
     if (!map.contains(id)) {
       val mt = rangeType(id, id, "??", 2)
-      newMonitorType(mt)
+      upsertMonitorTypeFuture(mt)
     }
   }
 
@@ -105,12 +103,10 @@ trait MonitorTypeDB {
     MonitorType(_id, desp, unit, prec, rangeOrder)
   }
 
-  def ensureMonitorType(mt: MonitorType) = {
+  def ensureMonitorType(mt: MonitorType): Unit = {
     if (!map.contains(mt._id))
-      newMonitorType(mt)
+      upsertMonitorTypeFuture(mt)
   }
-
-  def newMonitorType(mt: MonitorType): Future[InsertOneResult]
 
   def deleteMonitorType(_id: String): Unit
 
@@ -172,24 +168,6 @@ trait MonitorTypeDB {
     }
   }
 
-  def overStd(mt: String, vOpt: Option[Double]): (Boolean, Boolean) = {
-    val mtCase = map(mt)
-    val overInternal =
-      for (std <- mtCase.std_internal; v <- vOpt) yield
-        if (v > std)
-          true
-        else
-          false
-
-    val overLaw =
-      for (std <- mtCase.std_law; v <- vOpt) yield
-        if (v > std)
-          true
-        else
-          false
-    (overInternal.getOrElse(false), overLaw.getOrElse(false))
-  }
-
   def formatRecord(mt: String, r: Option[Record]): String = {
     val ret =
       for (rec <- r if rec.value.isDefined) yield {
@@ -212,5 +190,23 @@ trait MonitorTypeDB {
       val (overInternal, overLaw) = overStd(mt, v)
       MonitorStatus.getCssClassStr(r.get.status, overInternal, overLaw)
     }
+  }
+
+  def overStd(mt: String, vOpt: Option[Double]): (Boolean, Boolean) = {
+    val mtCase = map(mt)
+    val overInternal =
+      for (std <- mtCase.std_internal; v <- vOpt) yield
+        if (v > std)
+          true
+        else
+          false
+
+    val overLaw =
+      for (std <- mtCase.std_law; v <- vOpt) yield
+        if (v > std)
+          true
+        else
+          false
+    (overInternal.getOrElse(false), overLaw.getOrElse(false))
   }
 }

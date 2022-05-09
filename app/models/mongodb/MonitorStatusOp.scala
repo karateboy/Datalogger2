@@ -1,17 +1,17 @@
 package models.mongodb
 
 import models.ModelHelper.{errorHandler, waitReadyResult}
-import models.{MonitorStatus, MonitorStatusDB, StatusType}
+import models.{MonitorStatus, MonitorStatusDB}
 import play.api.libs.json.Json
-import scala.concurrent.ExecutionContext.Implicits.global
+
 import javax.inject.{Inject, Singleton}
+import scala.concurrent.ExecutionContext.Implicits.global
 
 @Singleton
 class MonitorStatusOp @Inject()(mongodb: MongoDB) extends MonitorStatusDB {
-  private val collectionName = "status"
-  private val collection = mongodb.database.getCollection(collectionName)
+  lazy private val collectionName = "status"
+  lazy private val collection = mongodb.database.getCollection(collectionName)
 
-  import MonitorStatus._
   import org.mongodb.scala._
 
   private def toDocument(ms: MonitorStatus) = {

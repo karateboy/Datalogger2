@@ -1,10 +1,9 @@
 package models
 
-import com.google.inject.ImplementedBy
 case class User(_id: String, password: String, name: String, isAdmin: Boolean, group: Option[String], monitorTypeOfInterest: Seq[String])
 
-@ImplementedBy(classOf[mongodb.UserOp])
 trait UserDB {
+  val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn", true, Some(Group.PLATFORM_ADMIN), Seq.empty[String])
 
   def newUser(user: User)
 
