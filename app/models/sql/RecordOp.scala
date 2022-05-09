@@ -50,13 +50,13 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
                                  (monitor: String, mtList: Seq[String],
                                   startTime: DateTime, endTime: DateTime): Future[Map[String, Seq[Record]]] =
     Future {
-      implicit val session: DBSession = AutoSession
+      implicit val session: DBSession = ReadOnlyAutoSession
       val tab: SQLSyntax = getTab(colName)
       val records =
         sql"""
            Select *
            From $tab
-           Where [time] >= ${startTime.toDate} and [time] < ${endTime.toDate} and [monitor] = $monitor
+           Where [time] >= ${startTime} and [time] < ${endTime} and [monitor] = $monitor
            Order by [time]
            """.map(mapper).list().apply()
 
@@ -83,11 +83,11 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
     Future {
       implicit val session: DBSession = AutoSession
       val tab: SQLSyntax = getTab(colName)
-      val monitorIdStr = SQLSyntax.createUnsafely(monitors.mkString("('", "','", "')"))
+      val monitorIn = SQLSyntax.in(SQLSyntax.createUnsafely("[monitor]"), monitors)
       sql"""
            Select *
            From $tab
-           Where [time] >= ${startTime.toDate} and [time] < ${endTime.toDate} and [monitor] in $monitorIdStr
+           Where [time] >= ${startTime} and [time] < ${endTime} and $monitorIn
            Order by [time]
            """.map(mapper).list().apply()
     }
@@ -119,7 +119,7 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
   private def getTab(tabName: String) = SQLSyntax.createUnsafely(s"[dbo].[$tabName]")
 
   private def mapper(rs: WrappedResultSet): RecordList = {
-    val id = RecordListID(rs.date("time"), rs.string("monitor"))
+    val id = RecordListID(rs.jodaDateTime("time").toDate, rs.string("monitor"))
     val mtDataOptList =
       for (mt <- mtList) yield {
         for (status <- rs.stringOpt(s"${mt}_s")) yield
@@ -171,8 +171,14 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
            (${doc._id.monitor}, ${doc._id.time})
            """.update().apply()
     } else {
-      val fields = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"[${record.mtName}], [${record.mtName}_s]").mkString(","))
-      val values = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"${record.value}, ${record.status}").mkString(","))
+      val fields = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"[${record.mtName}],[${record.mtName}_s]").mkString(","))
+      def toStr(v:Option[Double])={
+        if(v.isDefined)
+          v.get.toString
+        else
+          "NULL"
+      }
+      val values = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"${toStr(record.value)}, '${record.status}'").mkString(","))
       sql"""
            INSERT INTO $tab
            ([monitor], [time], $fields)
@@ -237,7 +243,7 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
     val pk_tab = SQLSyntax.createUnsafely(s"[PK_$tabName]")
     sql"""
       CREATE TABLE $tab (
-	        [monitor] [nvarchar](10) NOT NULL,
+	        [monitor] [nvarchar](50) NOT NULL,
 	        [time] [datetime2](7) NOT NULL,
           CONSTRAINT $pk_tab PRIMARY KEY CLUSTERED
           (

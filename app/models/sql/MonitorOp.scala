@@ -43,7 +43,7 @@ class MonitorOp @Inject()(sqlServer: SqlServer) extends MonitorDB {
       sql"""
           CREATE TABLE [dbo].[monitor](
 	          [id] [nvarchar](50) NOT NULL,
-	          [name] [nvarchar](50) NOT NULL,
+	          [name] [nvarchar](256) NOT NULL,
 	          [lat] [float] NULL,
 	          [lng] [float] NULL,
           CONSTRAINT [PK_monitor] PRIMARY KEY CLUSTERED

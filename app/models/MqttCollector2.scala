@@ -5,7 +5,6 @@ import com.github.nscala_time.time.Imports.{DateTime, DateTimeFormat}
 import com.google.inject.assistedinject.Assisted
 import models.ModelHelper.waitReadyResult
 import models.Protocol.{ProtocolParam, tcp}
-import models.mongodb.RecordOp
 import org.eclipse.paho.client.mqttv3._
 import play.api._
 import play.api.libs.json._
@@ -14,6 +13,7 @@ import java.nio.file.Files
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, MINUTES}
 import scala.concurrent.{Future, blocking}
+import scala.util.Success
 
 case class MqttConfig2(topic: String, group:String, eventConfig: EventConfig)
 case class EventConfig(instId: String, bit: Int, seconds: Option[Int])
@@ -29,7 +29,7 @@ object MqttCollector2 extends DriverOps {
   implicit val read: Reads[MqttConfig2] = Json.reads[MqttConfig2]
 
   override def getMonitorTypes(param: String): List[String] = {
-    List("LAT", "LAT", "PM25")
+    List(MonitorType.LAT, MonitorType.LNG, MonitorType.PM25, MonitorType.PM10, MonitorType.HUMID)
   }
 
   override def verifyParam(json: String): String = {
@@ -86,7 +86,7 @@ object MqttCollector2 extends DriverOps {
 
 import javax.inject._
 
-class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeDB, alarmOp: AlarmDB,
+class MqttCollector2 @Inject()(monitorDB: MonitorDB,alarmOp: AlarmDB,
                                recordOp: RecordDB, dataCollectManager: DataCollectManager,
                                mqttSensorOp: MqttSensorDB)
                              (@Assisted id: String,
@@ -219,7 +219,7 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeDB, alarmOp: AlarmDB,
   override def messageArrived(topic: String, message: MqttMessage): Unit = {
     try {
       lastDataArrival = DateTime.now
-      messageHandler(new String(message.getPayload))
+      messageHandler(topic, new String(message.getPayload))
     } catch {
       case ex: Exception =>
         Logger.error("failed to handleMessage", ex)
@@ -227,11 +227,11 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeDB, alarmOp: AlarmDB,
 
   }
 
-  def messageHandler(payload: String): Unit = {
+  def messageHandler(topic:String, payload: String): Unit = {
     val mtMap = Map[String, String](
       "pm2_5" -> MonitorType.PM25,
       "pm10" -> MonitorType.PM10,
-      "humidity" -> "HUMID"
+      "humidity" -> MonitorType.HUMID
     )
     val ret = Json.parse(payload).validate[Message]
     ret.fold(err => {
@@ -251,12 +251,13 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeDB, alarmOp: AlarmDB,
                  v <- value
                  } yield
               MtRecord(mt, Some(v), MonitorStatus.NormalStat)
-
           }
         val latlon = Seq(MtRecord(MonitorType.LAT, Some(message.lat), MonitorStatus.NormalStat),
           MtRecord(MonitorType.LNG, Some(message.lon), MonitorStatus.NormalStat))
         val mtDataList: Seq[MtRecord] = mtData.flatten ++ latlon
         val time = DateTime.parse(message.time, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss"))
+          .withSecondOfMinute(0)
+
         if(sensorMap.contains(message.id)){
           val sensor = sensorMap(message.id)
           val recordList = RecordList(time.toDate, mtDataList, sensor.monitor)
@@ -269,6 +270,16 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeDB, alarmOp: AlarmDB,
             // val thresholdConfig = mtCase.thresholdConfig.getOrElse(ThresholdConfig(30))
             // context.parent ! ToggleTargetDO(config.eventConfig.instId, config.eventConfig.bit, thresholdConfig.elapseTime)
           }
+        }else{
+          monitorDB.upsert(Monitor(message.id, message.id, Some(message.lat), Some(message.lon)))
+          val sensor = Sensor(id = message.id, topic = topic, monitor = message.id, group = config.group)
+          mqttSensorOp.upsert(sensor).andThen({
+            case Success(_) =>
+              sensorMap = sensorMap + (message.id -> sensor)
+          })
+          val recordList = RecordList(time.toDate, mtDataList, sensor.monitor)
+          val f = recordOp.upsertRecord(recordList)(recordOp.MinCollection)
+          f.onFailure(ModelHelper.errorHandler)
         }
       })
   }
