@@ -1,17 +1,16 @@
 package models
+
 import play.api._
 
-import scala.collection.immutable
-
-object HessenProtocol {
-  val STX: Byte = 0x02
+object BayernHessenProtocol {
+  val ESC: Byte = 0x1B
   val ETX: Byte = 0x03
   val CR: Byte = 0x0D
   val SP: Byte = 0x20
   def buildCommand(cmdTxt: Array[Byte]) = {
     val cmd = new Array[Byte](2 + cmdTxt.length)
 
-    cmd(0) = STX
+    cmd(0) = ESC
     for (i <- 0 to cmdTxt.length - 1) {
       cmd(1 + i) = cmdTxt(i)
     }
@@ -21,11 +20,7 @@ object HessenProtocol {
   }
 
   def dataQuery(): Array[Byte] = {
-    buildCommand("DA".getBytes)
-  }
-
-  def dataQuery(addr: Array[Byte]): Array[Byte] = {
-    buildCommand(s"DA${addr.toString()}".getBytes)
+    buildCommand("Q".getBytes)
   }
 
   case class Measure(channel: Int, value: Double, status: Byte, error: Byte, serial: String, free: String)
