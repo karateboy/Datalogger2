@@ -28,6 +28,10 @@ libraryDependencies += "org.apache.poi" % "poi-ooxml" % "5.0.0"
 
 // https://mvnrepository.com/artifact/com.microsoft.sqlserver/mssql-jdbc
 libraryDependencies += "com.microsoft.sqlserver" % "mssql-jdbc" % "9.4.1.jre8"
+// https://mvnrepository.com/artifact/com.microsoft.sqlserver/mssql-jdbc_auth
+libraryDependencies += "com.microsoft.sqlserver" % "mssql-jdbc_auth" % "9.4.1.x64"
+// https://mvnrepository.com/artifact/com.microsoft.sqlserver/mssql-jdbc_auth
+libraryDependencies += "com.microsoft.sqlserver" % "mssql-jdbc_auth" % "9.4.1.x86"
 
 // https://mvnrepository.com/artifact/io.github.java-native/jssc
 libraryDependencies += "io.github.java-native" % "jssc" % "2.9.4"
