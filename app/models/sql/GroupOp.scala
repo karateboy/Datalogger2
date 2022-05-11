@@ -80,8 +80,8 @@ class GroupOp @Inject()(sqlServer: SqlServer) extends GroupDB {
     val abilities = Json.parse(rs.string("abilities")).validate[Seq[Ability]].asOpt.getOrElse(Seq.empty[Ability])
     Group(rs.string("id"),
       name = rs.string("name"),
-      monitors = rs.string("monitors").split(","),
-      monitorTypes = rs.string("monitorTypes").split(","),
+      monitors = rs.string("monitors").split(",").filter(_.nonEmpty),
+      monitorTypes = rs.string("monitorTypes").split(",").filter(_.nonEmpty),
       admin = rs.boolean("admin"),
       abilities = abilities,
       parent = rs.stringOpt("parent")

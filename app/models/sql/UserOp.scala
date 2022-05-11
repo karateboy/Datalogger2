@@ -35,7 +35,7 @@ class UserOp @Inject()(sqlServer: SqlServer) extends UserDB{
       name = rs.string("name"),
       isAdmin = rs.boolean("isAdmin"),
       group = rs.stringOpt("group"),
-      monitorTypeOfInterest = rs.string("monitorTypeOfInterest").split(",")
+      monitorTypeOfInterest = rs.string("monitorTypeOfInterest").split(",").filter(_.nonEmpty)
     )
   }
   override def newUser(user: User): Unit = {
@@ -68,10 +68,20 @@ class UserOp @Inject()(sqlServer: SqlServer) extends UserDB{
 
   override def updateUser(user: User): Unit = {
     implicit val session: DBSession = AutoSession
+    if(user.password.nonEmpty)
     sql"""
          UPDATE [dbo].[user]
           SET [password] = ${user.password}
               ,[name] = ${user.name}
+              ,[isAdmin] = ${user.isAdmin}
+              ,[group] = ${user.group}
+              ,[monitorTypeOfInterest] = ${user.monitorTypeOfInterest.mkString(",")}
+          WHERE [id] = ${user._id}
+         """.update().apply()
+    else
+      sql"""
+         UPDATE [dbo].[user]
+          SET [name] = ${user.name}
               ,[isAdmin] = ${user.isAdmin}
               ,[group] = ${user.group}
               ,[monitorTypeOfInterest] = ${user.monitorTypeOfInterest.mkString(",")}

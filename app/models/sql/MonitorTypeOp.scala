@@ -3,7 +3,6 @@ package models.sql
 import com.mongodb.client.result.UpdateResult
 import models.ModelHelper.waitReadyResult
 import models.{AlarmDB, MonitorType, MonitorTypeDB}
-import org.mongodb.scala.result.UpdateResult
 import play.api.Logger
 import scalikejdbc._
 
@@ -47,8 +46,8 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer, alarmDB: AlarmDB, recordOp: 
   }
 
   private def mapper(rs: WrappedResultSet): MonitorType = {
-    val measuringBy = rs.stringOpt("measuringBy").map(_.split(",").toList)
-    val levels = rs.stringOpt("levels").map(_.split(",").toSeq.map(_.toDouble))
+    val measuringBy = rs.stringOpt("measuringBy").map(_.split(",").filter(_.nonEmpty).toList)
+    val levels = rs.stringOpt("levels").map(_.split(",").filter(_.nonEmpty).toSeq.map(_.toDouble))
     MonitorType(_id = rs.string("id"),
       desp = rs.string("desp"),
       unit = rs.string("unit"),
@@ -78,8 +77,7 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer, alarmDB: AlarmDB, recordOp: 
     val ret =
       sql"""
           UPDATE [dbo].[monitorType]
-            SET [id] = ${mt._id}
-                ,[desp] = ${mt.desp}
+            SET [desp] = ${mt.desp}
                 ,[unit] = ${mt.unit}
                 ,[prec] = ${mt.prec}
                 ,[order] = ${mt.order}

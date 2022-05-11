@@ -66,7 +66,7 @@ class EmailTargetOp @Inject()(sqlServer: SqlServer) extends EmailTargetDB {
   }
 
   private def mapper(rs: WrappedResultSet) =
-    EmailTarget(rs.string("id"), rs.string("topics").split(","))
+    EmailTarget(rs.string("id"), rs.string("topics").split(",").filter(_.nonEmpty))
 
   override def delete(_id: String): Future[DeleteResult] = {
     implicit val session: DBSession = AutoSession

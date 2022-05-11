@@ -2,6 +2,7 @@ package models
 
 import akka.actor.ActorSystem
 import com.google.inject.assistedinject.Assisted
+import models.MonitorType.{NO, NO2, NOx}
 import models.Protocol.{ProtocolParam, tcp}
 import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 
@@ -39,9 +40,6 @@ class T200Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     alarmOp, system, monitorTypeOp,
     calibrationOp, instrumentStatusOp)(instId, modelReg, config, host) {
 
-  val NO = ("NO")
-  val NO2 = ("NO2")
-  val NOx = ("NOx")
 
   override def reportData(regValue: ModelRegValue) =
     for {

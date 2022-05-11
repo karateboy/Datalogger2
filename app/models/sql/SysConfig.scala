@@ -100,7 +100,7 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
     val valueOpt = get(AlertEmailTaget)
     val ret =
       for (value <- valueOpt) yield
-        value.v.split(",").toSeq
+        value.v.split(",").filter(_.nonEmpty).toSeq
     ret.getOrElse(Seq.empty[String])
   }
 

@@ -67,7 +67,6 @@ object MonitorType {
   val NOx = "NOx"
   val NO2 = "NO2"
   val NO = "NO"
-  val NOX = "NOX"
   val CO = "CO"
   val CO2 = "CO2"
   val CH4 = "CH4"
