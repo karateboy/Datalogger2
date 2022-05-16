@@ -206,7 +206,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
   }
 
   def trendHelper(monitors: Seq[String], monitorTypes: Seq[String], tabType: TableType.Value,
-                  reportUnit: ReportUnit.Value, start: DateTime, end: DateTime, showActual: Boolean = false)(statusFilter: MonitorStatusFilter.Value) = {
+                  reportUnit: ReportUnit.Value, start: DateTime, end: DateTime, showActual: Boolean = true)(statusFilter: MonitorStatusFilter.Value) = {
     val period: Period =
       reportUnit match {
         case ReportUnit.Min =>
