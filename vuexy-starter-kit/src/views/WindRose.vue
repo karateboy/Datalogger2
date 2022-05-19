@@ -25,7 +25,7 @@
                 v-model="form.monitorType"
                 label="desp"
                 :reduce="mt => mt._id"
-                :options="levelMt"
+                :options="monitorTypes"
               />
             </b-form-group>
             <small class="text-danger">{{ errorMsg }}</small>
@@ -157,7 +157,7 @@ export default Vue.extend({
     await this.fetchMonitors();
 
     if (this.monitorTypes.length !== 0) {
-      this.form.monitorType = 'PM25';
+      this.form.monitorType = this.monitorTypes[0]._id;
     }
 
     if (this.monitors.length !== 0) {

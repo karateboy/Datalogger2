@@ -37,43 +37,19 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer, alarmDB: AlarmDB, recordOp: 
     upsertMonitorTypeFuture(map(mt))
   }
 
-  override def getList: List[MonitorType] = {
-    implicit val session: DBSession = ReadOnlyAutoSession
-    sql"""
-          SELECT *
-          FROM [dbo].[monitorType]
-         """.map(mapper).list().apply()
-  }
-
-  private def mapper(rs: WrappedResultSet): MonitorType = {
-    val measuringBy = rs.stringOpt("measuringBy").map(_.split(",").filter(_.nonEmpty).toList)
-    val levels = rs.stringOpt("levels").map(_.split(",").filter(_.nonEmpty).toSeq.map(_.toDouble))
-    MonitorType(_id = rs.string("id"),
-      desp = rs.string("desp"),
-      unit = rs.string("unit"),
-      prec = rs.int("prec"),
-      order = rs.int("order"),
-      signalType = rs.boolean("signalType"),
-      std_law = rs.doubleOpt("std_law"),
-      std_internal = rs.doubleOpt("std_internal"),
-      zd_internal = rs.doubleOpt("zd_internal"),
-      zd_law = rs.doubleOpt("zd_law"),
-      span = rs.doubleOpt("span"),
-      span_dev_internal = rs.doubleOpt("span_dev_internal"),
-      span_dev_law = rs.doubleOpt("span_dev_law"),
-      measuringBy = measuringBy,
-      acoustic = rs.booleanOpt("acoustic"),
-      spectrum = rs.booleanOpt("spectrum"),
-      levels = levels,
-      calibrate = rs.booleanOpt("calibrate"),
-      accumulated = rs.booleanOpt("accumulated"))
-  }
-
   override def upsertMonitorTypeFuture(mt: MonitorType): Future[UpdateResult] = Future {
     implicit val session: DBSession = AutoSession
     val measuringBy = mt.measuringBy.map(instList => instList.mkString(","))
     val levels = mt.levels.map(levelValues => levelValues.mkString(","))
 
+    map = map + (mt._id -> mt)
+    if (mt.signalType) {
+      if (!signalMtvList.contains(mt._id))
+        signalMtvList = signalMtvList :+ mt._id
+    } else {
+      if (!mtvList.contains(mt._id))
+        mtvList = mtvList :+ mt._id
+    }
     val ret =
       sql"""
           UPDATE [dbo].[monitorType]
@@ -143,12 +119,53 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer, alarmDB: AlarmDB, recordOp: 
     UpdateResult.acknowledged(ret, ret, null)
   }
 
+  override def getList: List[MonitorType] = {
+    implicit val session: DBSession = ReadOnlyAutoSession
+    sql"""
+          SELECT *
+          FROM [dbo].[monitorType]
+         """.map(mapper).list().apply()
+  }
+
+  private def mapper(rs: WrappedResultSet): MonitorType = {
+    val measuringBy = rs.stringOpt("measuringBy").map(_.split(",").filter(_.nonEmpty).toList)
+    val levels = rs.stringOpt("levels").map(_.split(",").filter(_.nonEmpty).toSeq.map(_.toDouble))
+    MonitorType(_id = rs.string("id"),
+      desp = rs.string("desp"),
+      unit = rs.string("unit"),
+      prec = rs.int("prec"),
+      order = rs.int("order"),
+      signalType = rs.boolean("signalType"),
+      std_law = rs.doubleOpt("std_law"),
+      std_internal = rs.doubleOpt("std_internal"),
+      zd_internal = rs.doubleOpt("zd_internal"),
+      zd_law = rs.doubleOpt("zd_law"),
+      span = rs.doubleOpt("span"),
+      span_dev_internal = rs.doubleOpt("span_dev_internal"),
+      span_dev_law = rs.doubleOpt("span_dev_law"),
+      measuringBy = measuringBy,
+      acoustic = rs.booleanOpt("acoustic"),
+      spectrum = rs.booleanOpt("spectrum"),
+      levels = levels,
+      calibrate = rs.booleanOpt("calibrate"),
+      accumulated = rs.booleanOpt("accumulated"))
+  }
+
   override def deleteMonitorType(_id: String): Unit = {
     implicit val session: DBSession = AutoSession
-    sql"""
+    if (map.contains(_id)) {
+      val mt = map(_id)
+      map = map - _id
+      if (mt.signalType)
+        signalMtvList = signalMtvList.filter(p => p != _id)
+      else
+        mtvList = mtvList.filter(p => p != _id)
+
+      sql"""
         DELETE FROM [dbo].[monitorType]
         WHERE [id] = ${_id}
          """.update().apply()
+    }
   }
 
   private def init()(implicit session: DBSession = AutoSession): Unit = {
