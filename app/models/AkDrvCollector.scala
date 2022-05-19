@@ -270,7 +270,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
   def findDataRegIdx(regValue: AkModelRegValue)(addr: Int) = {
     val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
     if (dataReg.isEmpty) {
-      Logger.warn("Cannot found Data register!")
+      Logger.warn(s"$instId Cannot found Data register!")
       None
     } else
       Some(dataReg.get._2)

@@ -624,7 +624,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
   def findDataRegIdx(regValue: ModelRegValue)(addr: Int) = {
     val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
     if (dataReg.isEmpty) {
-      Logger.warn("Cannot found Data register!")
+      Logger.warn(s"$instId Cannot found Data register!")
       None
     } else
       Some(dataReg.get._2)

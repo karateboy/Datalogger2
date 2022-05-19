@@ -41,6 +41,8 @@ protocols = List(Protocol.serial)){
     f2(id, desc = super.description, config, protocol)
   }
 
+  override def verifyParam(json: String) = json
+
   trait Factory {
     def apply(@Assisted("instId") instId: String, @Assisted("desc") desc: String, @Assisted("config") config: DeviceConfig,
               @Assisted("protocolParam") protocol: ProtocolParam): Actor
@@ -61,6 +63,8 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
 
   var serialOpt: Option[SerialComm] = None
 
+  Logger.info(s"MetOne1020 collector start")
+
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = MetOne1020.instrumentStatusKeyList
 
   override def readReg(statusTypeList: List[InstrumentStatusType]): Future[Option[ModelRegValue2]] =  Future {
@@ -72,16 +76,21 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
             serial.port.writeBytes(cmd)
             val replies = serial.getMessageByCrWithTimeout(timeout = 2)
             if(replies.nonEmpty) {
-              val measure: Seq[(InstrumentStatusType, Double)] = {
-                val inputs = replies(0).split(",")
+              replies.foreach(line=>Logger.info(s"MetOne=>${line.trim}"))
+              val measure =
+              for(line<-replies if line.contains(",")) yield
+              {
+                val inputs = line.trim.split(",")
                 for(statusKey<-instrumentStatusKeyList if statusKey.addr < inputs.length) yield
                   (statusKey, inputs(statusKey.addr).toDouble)
               }
-              Some(ModelRegValue2(inputRegs = measure.toList,
+              Some(ModelRegValue2(inputRegs = measure.flatten,
                 modeRegs = List.empty[(InstrumentStatusType, Boolean)],
                 warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
-            }else
+            }else {
+              Logger.error("no reply")
               None
+            }
           }
         }
         ret.flatten

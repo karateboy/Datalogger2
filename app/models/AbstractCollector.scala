@@ -508,7 +508,8 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
   def findDataRegIdx(regValue: ModelRegValue2)(addr: Int): Option[Int] = {
     val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
     if (dataReg.isEmpty) {
-      Logger.warn("Cannot found Data register!")
+      Logger.warn(s"$instId Cannot found Data register $addr !")
+      Logger.info(regValue.inputRegs.toString())
       None
     } else
       Some(dataReg.get._2)

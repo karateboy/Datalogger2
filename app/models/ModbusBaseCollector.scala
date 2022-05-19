@@ -368,7 +368,7 @@ abstract class ModbusBaseCollector @Inject()
   def findDataRegIdx(regValue: ModelRegValue)(addr: Int) = {
     val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
     if (dataReg.isEmpty)
-      throw new Exception("Cannot found Data register!")
+      throw new Exception(s"$instId Cannot found Data register!")
 
     dataReg.get._2
   }
