@@ -67,7 +67,7 @@ class AkDrv(_id:String, desp:String, protocols:List[String], tcpModelReg: AkMode
     config.calibrationTime
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[AkDrv.Factory])
     val f2 = f.asInstanceOf[AkDrv.Factory]
     val config = validateParam(param)

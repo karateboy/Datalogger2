@@ -50,7 +50,7 @@ object Baseline9000Collector extends DriverOps {
       param => param)
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Baseline9000Collector.Factory])
     val f2 = f.asInstanceOf[Baseline9000Collector.Factory]
     val driverParam = validateParam(param)

@@ -10,5 +10,6 @@ object Protocol{
 
   val tcp = "tcp"
   val serial = "serial"
-  def map = Map(tcp->"TCP", serial->"RS232")
+  val tcpCli = "tcpCli"
+  def map = Map(tcp->"TCP", serial->"RS232", tcpCli->"TCP CLI")
 }

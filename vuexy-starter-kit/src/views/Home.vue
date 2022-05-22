@@ -69,6 +69,7 @@ import highcharts from 'highcharts';
 import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
 import highchartMore from 'highcharts/highcharts-more';
+import { Monitor } from '@/store/monitors/types';
 
 export default Vue.extend({
   data() {
@@ -114,6 +115,7 @@ export default Vue.extend({
   },
   computed: {
     ...mapState('user', ['userInfo']),
+    ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap']),
     skin() {
       const { skin } = useAppConfig();
@@ -190,8 +192,19 @@ export default Vue.extend({
       for (const mtStatus of this.realTimeStatus) {
         let data = Array<{ x: number; y: number }>();
         //data.push({ x: 1, y: 1 });
-        const wind = ['WD_SPEED', 'WD_DIR'];
-        const selectedMt = ['PM25'];
+        const wind = ['WD_DIR'];
+        const selectedMt = Array<string>();
+        let monitorTypes = this.monitorTypes as Array<MonitorType>;
+        let activeMonitorTypes = monitorTypes.filter(mt => {
+          if (mt.measuringBy && Array.isArray(mt.measuringBy)) {
+            return mt.measuringBy.length !== 0;
+          } else return false;
+        });
+        console.debug('activeMonitoeTypes', activeMonitorTypes);
+        if (activeMonitorTypes.length !== 0)
+          selectedMt.push(activeMonitorTypes[0]._id);
+
+        console.debug('selectedMT', selectedMt);
         const visible = selectedMt.indexOf(mtStatus._id) !== -1;
         if (wind.indexOf(mtStatus._id) === -1) {
           let yAxisIndex: number;

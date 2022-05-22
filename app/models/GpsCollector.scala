@@ -28,7 +28,7 @@ object GpsCollector extends DriverOps {
     def apply(id: String, protocolParam: ProtocolParam): Actor
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor ={
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor ={
     assert(f.isInstanceOf[Factory])
     val f2 = f.asInstanceOf[Factory]
     f2(id, protocol)

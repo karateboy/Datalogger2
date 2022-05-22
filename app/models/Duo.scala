@@ -113,7 +113,7 @@ object Duo extends DriverOps {
 
   override def getCalibrationTime(param: String): Option[Imports.LocalTime] = None
 
-  override def factory(id: String, protocolParam: Protocol.ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocolParam: Protocol.ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Duo.Factory])
     val f2 = f.asInstanceOf[Duo.Factory]
     val config: DuoConfig = Json.parse(param).validate[DuoConfig].get

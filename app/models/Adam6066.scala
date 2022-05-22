@@ -57,7 +57,7 @@ class Adam6066 @Inject()() extends DriverOps {
       })
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Adam6066Collector.Factory])
     val f2 = f.asInstanceOf[Adam6066Collector.Factory]
     val driverParam = validateParam(param)

@@ -35,7 +35,7 @@ protocols = List(Protocol.serial)){
 
   override def getCalibrationTime(param: String) = None
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     val f2 = f.asInstanceOf[MetOne1020.Factory]
     val config = DeviceConfig.default
     f2(id, desc = super.description, config, protocol)

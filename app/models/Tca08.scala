@@ -38,7 +38,7 @@ object Tca08Drv extends AbstractDrv(_id = "tca08", desp = "Total Carbon Analyzer
               @Assisted("protocolParam") protocol: ProtocolParam): Actor
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     val f2 = f.asInstanceOf[Tca08Drv.Factory]
     val config = DeviceConfig.default
     f2(id, desc = super.description, config, protocol)

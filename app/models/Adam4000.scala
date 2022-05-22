@@ -106,7 +106,7 @@ object Adam4000 extends DriverOps {
 
   override def getCalibrationTime(param: String): Option[LocalTime] = None
 
-  override def factory(id: String, protocol: Protocol.ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: Protocol.ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Adam4000Collector.Factory])
     val f2 = f.asInstanceOf[Adam4000Collector.Factory]
     val moduleList = Json.parse(param).validate[List[Adam4000Module]].asOpt.get

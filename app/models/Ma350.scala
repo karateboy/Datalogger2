@@ -42,7 +42,7 @@ object Ma350Drv extends AbstractDrv(_id = "MA350", desp = "microAeth MA350",
 
   override def getCalibrationTime(param: String) = None
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     val f2 = f.asInstanceOf[Ma350Drv.Factory]
     val config = DeviceConfig.default
     f2(id, desc = super.description, config, protocol)

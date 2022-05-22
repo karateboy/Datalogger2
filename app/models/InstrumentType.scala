@@ -11,11 +11,11 @@ case class ProtocolInfo(id: String, desp: String)
 case class InstrumentTypeInfo(id: String, desp: String, protocolInfo: List[ProtocolInfo])
 
 case class InstrumentType(id: String, desp: String, protocol: List[String],
-                          driver: DriverOps, diFactory: AnyRef, analog: Boolean)
+                          driver: DriverOps, diFactory: AnyRef, analog: Boolean, diFactory2: Option[AnyRef])
 
 object InstrumentType {
-  def apply(driver: DriverOps, diFactory: AnyRef, analog: Boolean = false): InstrumentType =
-    InstrumentType(driver.id, driver.description, driver.protocol, driver, diFactory, analog)
+  def apply(driver: DriverOps, diFactory: AnyRef, analog: Boolean = false, diFactory2: Option[AnyRef] = None): InstrumentType =
+    InstrumentType(driver.id, driver.description, driver.protocol, driver, diFactory, analog, diFactory2)
 }
 
 trait DriverOps {
@@ -33,7 +33,7 @@ trait DriverOps {
 
   def getCalibrationTime(param: String): Option[LocalTime]
 
-  def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor
+  def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, f2:Option[AnyRef]): Actor
 
   def isDoInstrument: Boolean = false
 
@@ -93,7 +93,7 @@ class InstrumentTypeOp @Inject()
     InstrumentType(moxaE1240Drv, moxaE1240Factory),
     InstrumentType(moxaE1212Drv, moxaE1212Factory),
     InstrumentType(MqttCollector2, mqtt2Factory),
-    InstrumentType(T100Collector, t100Factory),
+    InstrumentType(T100Collector, t100Factory, false, None),
     InstrumentType(T200Collector, t200Factory),
     InstrumentType(T201Collector, t201Factory),
     InstrumentType(T300Collector, t300Factory),
@@ -117,7 +117,7 @@ class InstrumentTypeOp @Inject()
   val DoInstruments = otherDeviceList.filter(_.driver.isDoInstrument)
   var count = 0
 
-  def getInstInfoPair(instType: InstrumentType) = {
+  def getInstInfoPair(instType: InstrumentType): (String, InstrumentType) = {
     instType.id -> instType
   }
 
@@ -127,7 +127,7 @@ class InstrumentTypeOp @Inject()
     count += 1
 
     val instrumentType = map(instType)
-    injectedChild(instrumentType.driver.factory(id, protocol, param)(instrumentType.diFactory), actorName)
+    injectedChild(instrumentType.driver.factory(id, protocol, param)(instrumentType.diFactory, None), actorName)
   }
 }
 

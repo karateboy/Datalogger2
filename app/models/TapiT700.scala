@@ -14,7 +14,7 @@ object T700Collector extends TapiTxx(ModelConfig("T700", List.empty[String])) {
     def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, host:String): Actor
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor ={
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor ={
     assert(f.isInstanceOf[Factory])
     val f2 = f.asInstanceOf[Factory]
     val driverParam = validateParam(param)

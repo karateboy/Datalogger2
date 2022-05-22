@@ -223,6 +223,8 @@ class HomeController @Inject()(environment: play.api.Environment,
               inst.protocol.host.get
             case Protocol.serial =>
               s"COM${inst.protocol.comPort.get}"
+            case Protocol.tcpCli =>
+              inst.protocol.host.getOrElse("")
           }
         val calibrationTime = getCalibrationTime.map { t => t.toString("HH:mm") }
 

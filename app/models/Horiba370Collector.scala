@@ -83,7 +83,7 @@ object Horiba370Collector extends DriverOps{
   import Protocol.ProtocolParam
   import akka.actor._
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor ={
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor ={
     assert(f.isInstanceOf[Horiba370Collector.Factory])
     val f2 = f.asInstanceOf[Horiba370Collector.Factory]
     val driverParam = validateParam(param)

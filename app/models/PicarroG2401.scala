@@ -52,7 +52,7 @@ object PicarroG2401 extends AbstractDrv(_id = "picarroG2401", desp = "Picarro G2
         DataReg(monitorType = ist.key, ist.addr, multiplier = 1)
     }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     val f2 = f.asInstanceOf[PicarroG2401.Factory]
     val config = validateParam(param)
     f2(id, desc = super.description, config, protocol)

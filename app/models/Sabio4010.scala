@@ -40,7 +40,7 @@ object Sabio4010 extends DriverOps {
 
   override def getCalibrationTime(param: String): Option[Imports.LocalTime] = None
 
-  override def factory(id: String, protocol: Protocol.ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: Protocol.ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Factory])
     val f2 = f.asInstanceOf[Factory]
     val config = Json.parse(param).validate[Sabio4010Config].get

@@ -83,7 +83,13 @@
                 </validation-provider>
               </b-form-group>
             </b-col>
-            <b-col v-if="form.protocol.protocol === 'tcp'" cols="12">
+            <b-col
+              v-if="
+                form.protocol.protocol === 'tcp' ||
+                form.protocol.protocol === 'tcpCli'
+              "
+              cols="12"
+            >
               <b-form-group label="網址" label-for="host" label-cols-md="3">
                 <validation-provider
                   v-slot="{ errors }"
@@ -255,7 +261,7 @@ import MoxaE1240ConfigPage from './MoxaE1240ConfigPage.vue';
 import VerewaConfig from './VerewaConfig.vue';
 
 interface ProtocolParam {
-  protocol: 'tcp' | 'serial' | undefined;
+  protocol: 'tcp' | 'serial' | 'tcpCli' | undefined;
   host?: string;
   comPort?: number;
   speed?: number;

@@ -1,6 +1,6 @@
 package models
 import com.google.inject.assistedinject.Assisted
-import models.Protocol.tcp
+import models.Protocol.{tcp, tcpCli}
 import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 object T100Collector extends TapiTxx(ModelConfig("T100", List("SO2"))) {
   lazy val modelReg = readModelSetting
@@ -12,7 +12,7 @@ object T100Collector extends TapiTxx(ModelConfig("T100", List("SO2"))) {
     def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, @Assisted("host") host:String): Actor
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor ={
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor ={
     assert(f.isInstanceOf[Factory])
     val f2 = f.asInstanceOf[Factory]
     val config = validateParam(param)
@@ -23,7 +23,7 @@ object T100Collector extends TapiTxx(ModelConfig("T100", List("SO2"))) {
 
   override def description: String = "TAPI T100"
 
-  override def protocol: List[String] = List(tcp)
+  override def protocol: List[String] = List(tcp, tcpCli)
 }
 
 import akka.actor.ActorSystem

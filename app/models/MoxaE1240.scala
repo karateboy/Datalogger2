@@ -49,7 +49,7 @@ class MoxaE1240 @Inject()() extends DriverOps {
 
   import Protocol.ProtocolParam
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[MoxaE1240Collector.Factory])
     val f2 = f.asInstanceOf[MoxaE1240Collector.Factory]
     val driverParam = validateParam(param)

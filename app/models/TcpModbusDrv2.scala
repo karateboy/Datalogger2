@@ -282,7 +282,7 @@ class TcpModbusDrv2(_id: String, desp: String, protocols: List[String], tcpModel
     config.calibrationTime
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[TcpModbusDrv2.Factory])
     val f2 = f.asInstanceOf[TcpModbusDrv2.Factory]
     val config = validateParam(param)

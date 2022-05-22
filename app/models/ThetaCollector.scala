@@ -50,7 +50,7 @@ object ThetaCollector extends DriverOps {
       NO, H2S, H2, NH3).toList
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Factory])
     val f2 = f.asInstanceOf[Factory]
     val driverParam = validateParam(param)

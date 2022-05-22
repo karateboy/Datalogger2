@@ -46,7 +46,7 @@ object MqttCollector2 extends DriverOps {
 
   override def getCalibrationTime(param: String) = None
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Factory])
     val config = validateParam(param)
     val f2 = f.asInstanceOf[Factory]
