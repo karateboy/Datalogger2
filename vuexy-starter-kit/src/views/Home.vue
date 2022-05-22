@@ -61,7 +61,7 @@
           <GmapMap
             ref="mapRef"
             :center="mapCenter"
-            :zoom="12"
+            :zoom="16"
             map-type-id="terrain"
             class="map_canvas"
           >

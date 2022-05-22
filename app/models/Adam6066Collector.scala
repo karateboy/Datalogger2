@@ -75,8 +75,7 @@ class Adam6066Collector @Inject()
             cancelable = system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Exception =>
-              Logger.error(ex.getMessage, ex)
-              Logger.info("Try again 1 min later...")
+              Logger.error(ex.getMessage)
               //Try again
               import scala.concurrent.duration._
               cancelable = system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)

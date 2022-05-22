@@ -143,7 +143,10 @@ export default Vue.extend({
   },
 
   data() {
-    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
+    const range = [
+      moment().subtract(1, 'days').minute(0).millisecond(0).valueOf(),
+      moment().minute(0).millisecond(0).valueOf(),
+    ];
     return {
       statusFilters: [
         { id: 'all', txt: '全部' },
