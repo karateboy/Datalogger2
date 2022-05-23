@@ -59,7 +59,9 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
   def readRegHanlder(recordCalibration: Boolean): Unit = {
     try {
       for (instrumentStatusTypes <- instrumentStatusTypesOpt) {
-        for (regValueOpt <- readReg(instrumentStatusTypes)) {
+        val readRegF = readReg(instrumentStatusTypes)
+        readRegF onFailure errorHandler()
+        for (regValueOpt <- readRegF) {
           for (regValues <- regValueOpt) {
             regValueReporter(regValues)(recordCalibration)
           }
@@ -114,11 +116,10 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
               val statusTypeList = probeInstrumentStatusType.toList
               if (getDataRegList.forall(reg => statusTypeList.exists(statusType => statusType.addr == reg.address))) {
                 // Data register must included in the list
-                instrumentStatusTypesOpt = Some(probeInstrumentStatusType.toList)
+                instrumentStatusTypesOpt = Some(statusTypeList)
                 instrumentOp.updateStatusType(instId, instrumentStatusTypesOpt.get)
               } else {
                 val dataReg = getDataRegList
-                val statusTypeList = probeInstrumentStatusType.toList
                 Logger.error(s"statusType ${statusTypeList}")
                 Logger.error(s"dataReg ${dataReg} not in statusType")
                 throw new Exception("Probe register failed. Data register is not in there...")

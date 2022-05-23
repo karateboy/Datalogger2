@@ -12,11 +12,24 @@ object T100Collector extends TapiTxx(ModelConfig("T100", List("SO2"))) {
     def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, @Assisted("host") host:String): Actor
   }
 
+  trait CliFactory {
+    def apply(@Assisted("instId") instId: String,
+              @Assisted("desc") desc: String,
+              @Assisted("config") config: DeviceConfig,
+              @Assisted("protocolParam") protocol: ProtocolParam): Actor
+  }
+
   override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor ={
     assert(f.isInstanceOf[Factory])
     val f2 = f.asInstanceOf[Factory]
-    val config = validateParam(param)
-    f2(id, T100Collector.modelReg, config, protocol.host.get)
+    val driverParam = validateParam(param)
+    if(protocol.protocol == Protocol.tcp)
+      f2(id, modelReg, driverParam, protocol.host.get)
+    else {
+      assert(fOpt.get.isInstanceOf[CliFactory])
+      val cliFactory = fOpt.get.asInstanceOf[CliFactory]
+      cliFactory(id, s"$id CLI", driverParam.toDeviceConfig, protocol)
+    }
   }
 
   override def id: String = "t100"

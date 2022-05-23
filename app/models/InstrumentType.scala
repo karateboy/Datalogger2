@@ -60,6 +60,10 @@ class InstrumentTypeOp @Inject()
  t100Factory: T100Collector.Factory, t200Factory: T200Collector.Factory, t201Factory: T201Collector.Factory,
  t300Factory: T300Collector.Factory, t360Factory: T360Collector.Factory, t400Factory: T400Collector.Factory,
  t700Factory: T700Collector.Factory, environment: play.api.Environment,
+ t100CliFactory: T100Collector.CliFactory,
+ t200CliFactory: T200Collector.CliFactory,
+ t300CliFactory: T300Collector.CliFactory,
+ t400CliFactory: T400Collector.CliFactory,
  akDrvFactory: AkDrv.Factory, duoFactory: Duo.Factory,
  tcpModbusFactory: TcpModbusDrv2.Factory,
  sabio4010Factory: Sabio4010.Factory,
@@ -93,12 +97,12 @@ class InstrumentTypeOp @Inject()
     InstrumentType(moxaE1240Drv, moxaE1240Factory),
     InstrumentType(moxaE1212Drv, moxaE1212Factory),
     InstrumentType(MqttCollector2, mqtt2Factory),
-    InstrumentType(T100Collector, t100Factory, false, None),
-    InstrumentType(T200Collector, t200Factory),
+    InstrumentType(T100Collector, t100Factory, false, Some(t100CliFactory)),
+    InstrumentType(T200Collector, t200Factory, false, Some(t200CliFactory)),
     InstrumentType(T201Collector, t201Factory),
-    InstrumentType(T300Collector, t300Factory),
+    InstrumentType(T300Collector, t300Factory, false, Some(t300CliFactory)),
     InstrumentType(T360Collector, t360Factory),
-    InstrumentType(T400Collector, t400Factory),
+    InstrumentType(T400Collector, t400Factory, false, Some(t400CliFactory)),
     InstrumentType(T700Collector, t700Factory),
     InstrumentType(VerewaF701Collector, verewaF701Factory),
     InstrumentType(ThetaCollector, thetaFactory),
@@ -127,7 +131,7 @@ class InstrumentTypeOp @Inject()
     count += 1
 
     val instrumentType = map(instType)
-    injectedChild(instrumentType.driver.factory(id, protocol, param)(instrumentType.diFactory, None), actorName)
+    injectedChild(instrumentType.driver.factory(id, protocol, param)(instrumentType.diFactory, instrumentType.diFactory2), actorName)
   }
 }
 

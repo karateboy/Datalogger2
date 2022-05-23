@@ -2,8 +2,7 @@ package models
 
 import akka.actor.ActorSystem
 import com.google.inject.assistedinject.Assisted
-import models.Protocol.{ProtocolParam, tcp}
-import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
+import models.Protocol.{ProtocolParam, tcp, tcpCli}
 
 object T400Collector extends TapiTxx(ModelConfig("T400", List("O3"))) {
   lazy val modelReg = readModelSetting
@@ -14,18 +13,30 @@ object T400Collector extends TapiTxx(ModelConfig("T400", List("O3"))) {
     assert(f.isInstanceOf[Factory])
     val f2 = f.asInstanceOf[Factory]
     val driverParam = validateParam(param)
-    f2(id, modelReg, driverParam, protocol.host.get)
+    if(protocol.protocol == Protocol.tcp)
+      f2(id, modelReg, driverParam, protocol.host.get)
+    else {
+      assert(fOpt.get.isInstanceOf[CliFactory])
+      val cliFactory = fOpt.get.asInstanceOf[CliFactory]
+      cliFactory(id, s"$id CLI", driverParam.toDeviceConfig, protocol)
+    }
   }
 
   trait Factory {
     def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, host:String): Actor
   }
 
+  trait CliFactory {
+    def apply(@Assisted("instId") instId: String,
+              @Assisted("desc") desc: String,
+              @Assisted("config") config: DeviceConfig,
+              @Assisted("protocolParam") protocol: ProtocolParam): Actor
+  }
   override def id: String = "t400"
 
   override def description: String = "TAPI T400"
 
-  override def protocol: List[String] = List(tcp)
+  override def protocol: List[String] = List(tcp, tcpCli)
 }
 
 import javax.inject._
