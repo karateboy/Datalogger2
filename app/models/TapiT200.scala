@@ -4,7 +4,6 @@ import akka.actor.ActorSystem
 import com.google.inject.assistedinject.Assisted
 import models.MonitorType.{NO, NO2, NOx}
 import models.Protocol.{ProtocolParam, tcp, tcpCli}
-import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 
 object T200Collector extends TapiTxx(ModelConfig("T200", List("NOx", "NO", "NO2"))) {
   lazy val modelReg = readModelSetting

@@ -30,8 +30,6 @@ GET      /HistoryTrend/:monitor/:monitorType/:reportUnit/:statusFilter/:start/:e
 GET      /HistoryTrend/excel/:monitor/:monitorType/:reportUnit/:statusFilter/:start/:end   controllers.Query.historyTrendChart(monitor, monitorType, reportUnit, statusFilter, start:Long, end:Long, outputTypeStr="excel")
 
 GET      /HistoryReport/:monitor/:monitorType/:tabType/:start/:end                controllers.Query.historyData(monitor, monitorType, tabType, start: Long, end: Long)
-GET      /LatestData/:monitor/:monitorType/:tabType                               controllers.Query.latestData(monitor, monitorType, tabType)
-GET      /RealtimeStatus                                                          controllers.Query.realtimeStatus()
 
 GET      /CalibrationReport/:start/:end                                           controllers.Query.calibrationReport(start:Long, end:Long)
 

@@ -104,18 +104,6 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
            """.map(mapper).list().apply()
   }
 
-  override def getLatestRecordFuture(colName: String)
-                                    (monitor: String): Future[Seq[RecordList]] = Future {
-    implicit val session: DBSession = AutoSession
-    val tab: SQLSyntax = getTab(colName)
-    sql"""
-           Select Top 1 *
-           From $tab
-           Where [monitor] = $monitor
-           Order by [time] desc
-           """.map(mapper).list().apply()
-  }
-
   private def getTab(tabName: String) = SQLSyntax.createUnsafely(s"[dbo].[$tabName]")
 
   private def mapper(rs: WrappedResultSet): RecordList = {

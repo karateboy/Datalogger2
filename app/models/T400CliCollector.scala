@@ -90,7 +90,7 @@ class T400CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     } catch {
       case _: SocketTimeoutException =>
         if (resp.isEmpty)
-          Logger.error("no response after timeout!")
+          Logger.warn(s"$instId no response after timeout!")
     }
     resp
   }
@@ -128,7 +128,7 @@ class T400CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   override def connectHost: Unit = {
     val socket = new Socket(protocolParam.host.get, 3000)
-    socket.setSoTimeout(500)
+    socket.setSoTimeout(700)
     socketOpt = Some(socket)
     outOpt = Some(socket.getOutputStream())
     inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream())))

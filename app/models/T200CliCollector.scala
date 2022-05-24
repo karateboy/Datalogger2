@@ -26,8 +26,8 @@ class T200CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   val dataInstrumentTypes = List(
     InstrumentStatusType(MonitorType.NOx, 0, "NOx", "ppb"),
-    InstrumentStatusType(MonitorType.NO, 0, "NO", "ppb"),
-    InstrumentStatusType(MonitorType.NO2, 0, "NO2", "ppb")
+    InstrumentStatusType(MonitorType.NO, 1, "NO", "ppb"),
+    InstrumentStatusType(MonitorType.NO2, 2, "NO2", "ppb")
   )
   var socketOpt: Option[Socket] = None
   var outOpt: Option[OutputStream] = None
@@ -50,7 +50,7 @@ class T200CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
         val ret =
           for {line <- resp} yield {
             addr = addr + 1
-            for ((key, unit, _) <- getKeyUnitValue(line)) yield
+            for ((key, unit, _) <- getKeyUnitValue(line) if dataInstrumentTypes.forall(ist=>ist.key != key)) yield
               InstrumentStatusType(key, addr, key, unit)
           }
         ret.flatten
@@ -105,29 +105,25 @@ class T200CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           out <- outOpt
         } yield {
           out.write("T NOX\r\n".getBytes())
-          val data1: List[(InstrumentStatusType, Double)] = readTillTimeout(in, expectOneLine = true).zipWithIndex.flatMap(line_idx => {
-            val (line, idx) = line_idx
-            for {(_, _, value) <- getKeyUnitValue(line)
-                 st <- statusTypeList.find(st => st.addr == idx)} yield
-              (st, value)
-          })
+          val data0: List[(InstrumentStatusType, Double)] = readTillTimeout(in, expectOneLine = true).flatMap(line =>
+            for ((_, _, value) <- getKeyUnitValue(line)) yield
+              (dataInstrumentTypes(0), value)
+          )
           out.write("T NO\r\n".getBytes())
-          val data2: List[(InstrumentStatusType, Double)] = readTillTimeout(in, expectOneLine = true).zipWithIndex.flatMap(line_idx => {
-            val (line, idx) = line_idx
-            for {(_, _, value) <- getKeyUnitValue(line)
-                 st <- statusTypeList.find(st => st.addr == idx)} yield
-              (st, value)
-          })
-          val data3 = List((dataInstrumentTypes(2), data1(0)._2 - data2(0)._2))
+          val data1: List[(InstrumentStatusType, Double)] = readTillTimeout(in, expectOneLine = true).flatMap(line =>
+            for ((_, _, value) <- getKeyUnitValue(line)) yield
+              (dataInstrumentTypes(1), value)
+          )
+          val data3 = List((dataInstrumentTypes(2), data0(0)._2 - data1(0)._2))
           out.write("T LIST\r\n".getBytes)
           val resp = readTillTimeout(in)
           val statusList = resp.flatMap(line => {
-            for {(key, _, value) <- getKeyUnitValue(line)
+            for {(key, _, value) <- getKeyUnitValue(line) if dataInstrumentTypes.forall(ist=>ist.key != key)
                  st <- statusTypeList.find(st => st.key == key)} yield
               (st, value)
           })
 
-          ModelRegValue2(inputRegs = data1 ++ data2 ++ data3 ++ statusList,
+          ModelRegValue2(inputRegs = data0 ++ data1 ++ data3 ++ statusList,
             modeRegs = List.empty[(InstrumentStatusType, Boolean)],
             warnRegs = List.empty[(InstrumentStatusType, Boolean)])
         }

@@ -164,17 +164,6 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     f
   }
 
-  override def getLatestRecordFuture(colName: String)(monitor: String): Future[Seq[RecordList]] = {
-    import org.mongodb.scala.model.Filters._
-    import org.mongodb.scala.model.Sorts._
-
-    val col = getCollection(colName)
-    val f = col.find(equal("_id.monitor", monitor))
-      .sort(descending("_id.time")).limit(1).toFuture()
-    f onFailure errorHandler
-    f
-  }
-
   private def getCollection(colName: String): MongoCollection[RecordList] = mongodb.database.getCollection[RecordList](colName).withCodecRegistry(codecRegistry)
 
   override def getRecordValueSeqFuture(colName: String)
