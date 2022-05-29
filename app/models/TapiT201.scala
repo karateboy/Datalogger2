@@ -3,7 +3,10 @@ package models
 import models.Protocol.{ProtocolParam, tcp}
 import com.google.inject.assistedinject.Assisted
 import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
-object T201Collector extends TapiTxx(ModelConfig("T201", List("TNX", "NH3", "NOx", "NO", "NO2"))) {
+object T201Collector extends
+  TapiTxx(ModelConfig("T201", List("TNX",
+    MonitorType.NH3, MonitorType.NOX,
+    MonitorType.NO, MonitorType.NO2))) {
   lazy val modelReg = readModelSetting
 
   import akka.actor._
@@ -39,11 +42,11 @@ class T201Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
   extends TapiTxxCollector(instrumentOp, monitorStatusOp,
     alarmOp, system, monitorTypeOp,
     calibrationOp, instrumentStatusOp)(instId, modelReg, config, host) {
-  val TNX = ("TNX")
-  val NH3 = ("NH3")
-  val NO = ("NO")
-  val NO2 = ("NO2")
-  val NOx = ("NOx")
+  val TNX = "TNX"
+  val NH3 = MonitorType.NH3
+  val NO = MonitorType.NO
+  val NO2 = MonitorType.NO2
+  val NOX = MonitorType.NOX
 
   def findIdx(regValue: ModelRegValue, addr: Int) = {
     val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
@@ -54,7 +57,7 @@ class T201Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
   }
 
   var regIdxTNX: Option[Int] = None //46
-  var regIdxNH3: Option[Int] = None //50  
+  var regIdxNH3: Option[Int] = None //50
   var regIdxNOx: Option[Int] = None //54
   var regIdxNO: Option[Int] = None //58
   var regIdxNO2: Option[Int] = None //62
@@ -75,7 +78,7 @@ class T201Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
       ReportData(List(
         MonitorTypeData(TNX, vTNX._2.toDouble, collectorState),
         MonitorTypeData(NH3, vNH3._2.toDouble, collectorState),
-        MonitorTypeData(NOx, vNOx._2.toDouble, collectorState),
+        MonitorTypeData(NOX, vNOx._2.toDouble, collectorState),
         MonitorTypeData(NO, vNO._2.toDouble, collectorState),
         MonitorTypeData(NO2, vNO2._2.toDouble, collectorState)))
     }

@@ -2,10 +2,11 @@ package models
 
 import akka.actor.ActorSystem
 import com.google.inject.assistedinject.Assisted
-import models.MonitorType.{NO, NO2, NOx}
+import models.MonitorType.{NO, NO2, NOX}
 import models.Protocol.{ProtocolParam, tcp, tcpCli}
 
-object T200Collector extends TapiTxx(ModelConfig("T200", List("NOx", "NO", "NO2"))) {
+object T200Collector extends TapiTxx(ModelConfig("T200",
+  List(MonitorType.NOX, MonitorType.NO, MonitorType.NO2))) {
   lazy val modelReg = readModelSetting
 
   import akka.actor._
@@ -63,7 +64,7 @@ class T200Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
       vNO2 = regValue.inputRegs(idxNo2)
     } yield {
       ReportData(List(
-        MonitorTypeData(NOx, vNOx._2.toDouble, collectorState),
+        MonitorTypeData(NOX, vNOx._2.toDouble, collectorState),
         MonitorTypeData(NO, vNO._2.toDouble, collectorState),
         MonitorTypeData(NO2, vNO2._2.toDouble, collectorState)))
 

@@ -13,7 +13,7 @@ trait MonitorTypeDB {
   implicit val mtRead = Json.reads[MonitorType]
   val defaultMonitorTypes = List(
     rangeType(SO2, "二氧化硫", "ppb", 2),
-    rangeType(NOx, "氮氧化物", "ppb", 2),
+    rangeType(NOX, "氮氧化物", "ppb", 2),
     rangeType(NO2, "二氧化氮", "ppb", 2),
     rangeType(NO, "一氧化氮", "ppb", 2),
     rangeType(NOY, "NOY", "ppb", 2),

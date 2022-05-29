@@ -34,7 +34,7 @@ class T700CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = Seq.empty[InstrumentStatusType]
 
-  override def readReg(statusTypeList: List[InstrumentStatusType]): Future[Option[ModelRegValue2]] = Future {
+  override def readReg(statusTypeList: List[InstrumentStatusType], full:Boolean): Future[Option[ModelRegValue2]] = Future {
     blocking {
       None
     }

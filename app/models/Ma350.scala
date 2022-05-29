@@ -69,7 +69,7 @@ class Ma350Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = Ma350Drv.predefinedIST
 
-  override def readReg(statusTypeList: List[InstrumentStatusType]): Future[Option[ModelRegValue2]] =
+  override def readReg(statusTypeList: List[InstrumentStatusType], full:Boolean): Future[Option[ModelRegValue2]] =
     Future {
       blocking {
         try{

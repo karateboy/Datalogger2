@@ -64,7 +64,7 @@ import javax.inject._
 
 object MonitorType {
   val SO2 = "SO2"
-  val NOx = "NOx"
+  val NOX = "NOX"
   val NO2 = "NO2"
   val NO = "NO"
   val CO = "CO"

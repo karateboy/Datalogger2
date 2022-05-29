@@ -3,7 +3,6 @@ package models
 import akka.actor._
 import models.ModelHelper._
 import models.Protocol.ProtocolParam
-import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 import play.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -13,6 +12,10 @@ case class ModelRegValue2(inputRegs: List[(InstrumentStatusType, Double)],
                           modeRegs: List[(InstrumentStatusType, Boolean)],
                           warnRegs: List[(InstrumentStatusType, Boolean)])
 
+object AbstractCollector {
+  case object ResetConnection
+}
+
 abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
                                  alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
                                  calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
@@ -21,7 +24,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
   import TapiTxxCollector._
 
   self ! ConnectHost
-  var timerOpt: Option[Cancellable] = None
+  var readRegTimer: Option[Cancellable] = None
   var (collectorState: String, instrumentStatusTypesOpt) = {
     val instList = instrumentOp.getInstrument(instId)
     if (instList.nonEmpty) {
@@ -50,20 +53,23 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   def probeInstrumentStatusType: Seq[InstrumentStatusType]
 
-  def readReg(statusTypeList: List[InstrumentStatusType]): Future[Option[ModelRegValue2]]
+  def readReg(statusTypeList: List[InstrumentStatusType], full:Boolean): Future[Option[ModelRegValue2]]
 
   import scala.concurrent.{Future, blocking}
 
   def receive(): Receive = normalPhase
+  import AbstractCollector._
 
   def readRegHanlder(recordCalibration: Boolean): Unit = {
     try {
       for (instrumentStatusTypes <- instrumentStatusTypesOpt) {
-        val readRegF = readReg(instrumentStatusTypes)
+        import com.github.nscala_time.time.Imports._
+        val logStatus = DateTime.now() > nextLoggingStatusTime
+        val readRegF = readReg(instrumentStatusTypes, logStatus)
         readRegF onFailure errorHandler()
         for (regValueOpt <- readRegF) {
           for (regValues <- regValueOpt) {
-            regValueReporter(regValues)(recordCalibration)
+            regValueReporter(regValues, logStatus)(recordCalibration)
           }
         }
       }
@@ -77,7 +83,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
         connected = false
     } finally {
       import scala.concurrent.duration._
-      timerOpt = if (protocol.protocol == Protocol.tcp)
+      readRegTimer = if (protocol.protocol == Protocol.tcp)
         Some(context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
       else
         Some(context.system.scheduler.scheduleOnce(Duration(5, SECONDS), self, ReadRegister))
@@ -126,7 +132,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
               }
             }
             import scala.concurrent.duration._
-            timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
+            readRegTimer = Some(context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
           } catch {
             case ex: Exception =>
               Logger.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
@@ -136,6 +142,14 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
               context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
           }
         }
+      }
+
+    case ResetConnection =>
+      Logger.info(s"$instId : Reset connection")
+      for(timer<-readRegTimer){
+        timer.cancel()
+        readRegTimer = None
+        self ! ConnectHost
       }
 
     case ReadRegister =>
@@ -195,9 +209,23 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   def calibrationPhase(calibrationType: CalibrationType, startTime: DateTime, recordCalibration: Boolean, calibrationReadingList: List[ReportData],
                        zeroReading: List[(String, Double)],
-                       endState: String, timer: Cancellable): Receive = {
+                       endState: String, calibrationTimer: Cancellable): Receive = {
     case ConnectHost =>
       Logger.error("unexpected ConnectHost msg")
+
+    case ResetConnection =>
+      Logger.info(s"$instId: Reset connection")
+      Logger.info(s"$instId: Cancel calibration.")
+      calibrationTimer.cancel()
+      collectorState = MonitorStatus.NormalStat
+      instrumentOp.setState(instId, MonitorStatus.NormalStat)
+      resetToNormal
+      for(timer<-readRegTimer){
+        timer.cancel()
+        readRegTimer = None
+        self ! ConnectHost
+      }
+      context become normalPhase
 
     case ReadRegister =>
       readRegHanlder(recordCalibration)
@@ -207,7 +235,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
         Logger.info("Already in calibration. Ignore it")
       } else if (targetState == MonitorStatus.NormalStat) {
         Logger.info("Cancel calibration.")
-        timer.cancel()
+        calibrationTimer.cancel()
         collectorState = targetState
         instrumentOp.setState(instId, targetState)
         resetToNormal
@@ -237,7 +265,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           context become calibrationPhase(calibrationType, startTime, recordCalibration,
             calibrationReadingList, zeroReading, endState, calibrationTimer)
         }
-      } onFailure (calibrationErrorHandler(instId, timer, endState))
+      } onFailure (calibrationErrorHandler(instId, calibrationTimer, endState))
 
     case HoldStart => {
       Logger.info(s"${self.path.name} => HoldStart")
@@ -270,11 +298,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           else
             triggerSpanCalibration(false)
         }
-      } onFailure (calibrationErrorHandler(instId, timer, endState))
+      } onFailure (calibrationErrorHandler(instId, calibrationTimer, endState))
 
     case rd: ReportData =>
       context become calibrationPhase(calibrationType, startTime, recordCalibration, rd :: calibrationReadingList,
-        zeroReading, endState, timer)
+        zeroReading, endState, calibrationTimer)
 
     case CalibrateEnd =>
       Future {
@@ -446,7 +474,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   def getLoggingStatusPeriod: Int = 10
 
-  def regValueReporter(regValue: ModelRegValue2)(recordCalibration: Boolean): Unit = {
+  def regValueReporter(regValue: ModelRegValue2, logStatus:Boolean)(recordCalibration: Boolean): Unit = {
     for (report <- reportData(regValue)) {
       context.parent ! report
       if (recordCalibration)
@@ -483,7 +511,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
       }
     }
 
-    if (DateTime.now() > nextLoggingStatusTime) {
+    if (logStatus) {
       try {
         logInstrumentStatus(regValue)
       } catch {
@@ -537,7 +565,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
   }
 
   override def postStop(): Unit = {
-    for (timer <- timerOpt)
+    for (timer <- readRegTimer)
       timer.cancel()
   }
 }

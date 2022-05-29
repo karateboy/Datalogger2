@@ -83,7 +83,7 @@ class PicarroG2131iCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = predefinedIST
 
-  override def readReg(statusTypeList: List[InstrumentStatusType]): Future[Option[ModelRegValue2]] =
+  override def readReg(statusTypeList: List[InstrumentStatusType], full:Boolean): Future[Option[ModelRegValue2]] =
     Future {
       blocking {
         val ret = {

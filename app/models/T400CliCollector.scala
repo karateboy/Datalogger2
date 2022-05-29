@@ -95,7 +95,7 @@ class T400CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     resp
   }
 
-  override def readReg(statusTypeList: List[InstrumentStatusType]): Future[Option[ModelRegValue2]] = Future {
+  override def readReg(statusTypeList: List[InstrumentStatusType], full:Boolean): Future[Option[ModelRegValue2]] = Future {
     blocking {
       val ret = {
         for {

@@ -67,7 +67,7 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = MetOne1020.instrumentStatusKeyList
 
-  override def readReg(statusTypeList: List[InstrumentStatusType]): Future[Option[ModelRegValue2]] =  Future {
+  override def readReg(statusTypeList: List[InstrumentStatusType], full:Boolean): Future[Option[ModelRegValue2]] =  Future {
     blocking {
       try{
         val ret = {

@@ -1,7 +1,9 @@
 package models
 
 import com.google.inject.assistedinject.Assisted
+import models.AbstractCollector.ResetConnection
 import models.Protocol.ProtocolParam
+import models.TapiTxxCollector.ConnectHost
 import play.api.Logger
 
 import java.io.{BufferedReader, InputStreamReader, OutputStream}
@@ -25,7 +27,7 @@ class T200CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
   Logger.info(s"$instId T200CliCollector start")
 
   val dataInstrumentTypes = List(
-    InstrumentStatusType(MonitorType.NOx, 0, "NOx", "ppb"),
+    InstrumentStatusType(MonitorType.NOX, 0, "NOX", "ppb"),
     InstrumentStatusType(MonitorType.NO, 1, "NO", "ppb"),
     InstrumentStatusType(MonitorType.NO2, 2, "NO2", "ppb")
   )
@@ -50,7 +52,7 @@ class T200CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
         val ret =
           for {line <- resp} yield {
             addr = addr + 1
-            for ((key, unit, _) <- getKeyUnitValue(line) if dataInstrumentTypes.forall(ist=>ist.key != key)) yield
+            for ((key, unit, _) <- getKeyUnitValue(line) if dataInstrumentTypes.forall(ist => ist.key != key)) yield
               InstrumentStatusType(key, addr, key, unit)
           }
         ret.flatten
@@ -59,6 +61,56 @@ class T200CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     Logger.info("Finished Probe T200")
     istList = istList ++ statusTypeList.getOrElse(List.empty[InstrumentStatusType])
     istList
+  }
+
+  override def readReg(statusTypeList: List[InstrumentStatusType], full:Boolean): Future[Option[ModelRegValue2]] = Future {
+    blocking {
+      try {
+        for {
+          in <- inOpt
+          out <- outOpt
+        } yield {
+          out.write("T NOX\r\n".getBytes())
+          val data0: List[(InstrumentStatusType, Double)] = readTillTimeout(in, expectOneLine = true).flatMap(line =>{
+            Logger.info(s"NOX: $line")
+            for ((_, _, value) <- getKeyUnitValue(line)) yield
+              (dataInstrumentTypes(0), value)
+          })
+          if(data0.isEmpty)
+            throw new Exception("no data")
+
+          out.write("T NO\r\n".getBytes())
+          val data1: List[(InstrumentStatusType, Double)] = readTillTimeout(in, expectOneLine = true).flatMap(line =>{
+            Logger.info(s"NO: $line")
+            for ((_, _, value) <- getKeyUnitValue(line)) yield
+              (dataInstrumentTypes(1), value)
+          })
+          if(data1.isEmpty)
+            throw new Exception("no data")
+
+          val data3 = List((dataInstrumentTypes(2), data0(0)._2 - data1(0)._2))
+          if(full){
+            out.write("T LIST\r\n".getBytes)
+            val resp = readTillTimeout(in)
+            val statusList = resp.flatMap(line => {
+              for {(key, _, value) <- getKeyUnitValue(line) if dataInstrumentTypes.forall(ist => ist.key != key)
+                   st <- statusTypeList.find(st => st.key == key)} yield
+                (st, value)
+            })
+            ModelRegValue2(inputRegs = data0 ++ data1 ++ data3 ++ statusList,
+              modeRegs = List.empty[(InstrumentStatusType, Boolean)],
+              warnRegs = List.empty[(InstrumentStatusType, Boolean)])
+          }else{
+            ModelRegValue2(inputRegs = data0 ++ data1 ++ data3,
+              modeRegs = List.empty[(InstrumentStatusType, Boolean)],
+              warnRegs = List.empty[(InstrumentStatusType, Boolean)])
+          }
+        }
+      } catch {
+        case _: Throwable =>
+          None
+      }
+    }
   }
 
   def getKeyUnitValue(line: String): Option[(String, String, Double)] = {
@@ -86,6 +138,25 @@ class T200CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     try {
       do {
         line = in.readLine()
+        if(line == null){
+          Logger.error(s"$instId readline null. close socket stream")
+          for (in <- inOpt) {
+            in.close()
+            inOpt = None
+          }
+
+          for (out <- outOpt) {
+            out.close()
+            outOpt = None
+          }
+
+          for(sock<-socketOpt){
+            sock.close()
+            socketOpt = None
+          }
+
+          self ! ResetConnection
+        }
         if (line != null && !line.isEmpty)
           resp = resp :+ line.trim
       } while (line != null && !line.isEmpty && (!expectOneLine || resp.isEmpty))
@@ -97,44 +168,9 @@ class T200CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     resp
   }
 
-  override def readReg(statusTypeList: List[InstrumentStatusType]): Future[Option[ModelRegValue2]] = Future {
-    blocking {
-      val ret = {
-        for {
-          in <- inOpt
-          out <- outOpt
-        } yield {
-          out.write("T NOX\r\n".getBytes())
-          val data0: List[(InstrumentStatusType, Double)] = readTillTimeout(in, expectOneLine = true).flatMap(line =>
-            for ((_, _, value) <- getKeyUnitValue(line)) yield
-              (dataInstrumentTypes(0), value)
-          )
-          out.write("T NO\r\n".getBytes())
-          val data1: List[(InstrumentStatusType, Double)] = readTillTimeout(in, expectOneLine = true).flatMap(line =>
-            for ((_, _, value) <- getKeyUnitValue(line)) yield
-              (dataInstrumentTypes(1), value)
-          )
-          val data3 = List((dataInstrumentTypes(2), data0(0)._2 - data1(0)._2))
-          out.write("T LIST\r\n".getBytes)
-          val resp = readTillTimeout(in)
-          val statusList = resp.flatMap(line => {
-            for {(key, _, value) <- getKeyUnitValue(line) if dataInstrumentTypes.forall(ist=>ist.key != key)
-                 st <- statusTypeList.find(st => st.key == key)} yield
-              (st, value)
-          })
-
-          ModelRegValue2(inputRegs = data0 ++ data1 ++ data3 ++ statusList,
-            modeRegs = List.empty[(InstrumentStatusType, Boolean)],
-            warnRegs = List.empty[(InstrumentStatusType, Boolean)])
-        }
-      }
-      ret
-    }
-  }
-
   override def connectHost: Unit = {
     val socket = new Socket(protocolParam.host.get, 3000)
-    socket.setSoTimeout(500)
+    socket.setSoTimeout(1000)
     socketOpt = Some(socket)
     outOpt = Some(socket.getOutputStream())
     inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream())))
