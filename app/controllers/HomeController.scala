@@ -492,6 +492,19 @@ class HomeController @Inject()(environment: play.api.Environment,
       Ok(Json.toJson(mtList.sortBy(_.order)))
   }
 
+  def activatedMonitorTyopes = Security.Authenticated {
+    implicit request =>
+    val userInfo = Security.getUserinfo(request).get
+    val group = groupOp.getGroupByID(userInfo.group).get
+
+    val mtList = if (userInfo.isAdmin)
+      monitorTypeOp.activeMtvList map monitorTypeOp.map
+    else
+      monitorTypeOp.activeMtvList.filter(group.monitorTypes.contains) map monitorTypeOp.map
+
+    Ok(Json.toJson(mtList.sortBy(_.order)))
+  }
+
   def upsertMonitorType(id: String) = Security.Authenticated.async(BodyParsers.parse.json) {
     implicit request =>
       Logger.info(s"upsert Mt:${id}")
