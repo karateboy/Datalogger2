@@ -28,6 +28,11 @@
             :param-str="moduleConfig.param"
             @param-changed="moduleParamChange(moduleConfig, $event)"
           />
+          <adam-4080-config-page
+            v-if="moduleConfig.module === '4080'"
+            :param-str="moduleConfig.param"
+            @param-changed="moduleParamChange(moduleConfig, $event)"
+          />
         </b-form>
       </b-tab>
     </b-tabs>
@@ -37,6 +42,7 @@
 import Adam4017ConfigPage from './Adam4017ConfigPage.vue';
 import Adam4069ConfigPage from './Adam4069ConfigPage.vue';
 import Vue from 'vue';
+import Adam4080ConfigPage from './Adam4080ConfigPage.vue';
 interface Adam4000Module {
   module: string;
   address: string;
@@ -47,6 +53,7 @@ export default Vue.extend({
   components: {
     Adam4017ConfigPage,
     Adam4069ConfigPage,
+    Adam4080ConfigPage,
   },
   props: {
     paramStr: {
@@ -74,6 +81,7 @@ export default Vue.extend({
       options: [
         { text: 'Adam4017', value: '4017' },
         { text: 'Adam4069', value: '4069' },
+        { text: 'Adam4080', value: '4080' },
       ],
     };
   },

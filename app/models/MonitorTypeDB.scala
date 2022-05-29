@@ -34,7 +34,7 @@ trait MonitorTypeDB {
     rangeType(TEMP, "溫度", "℃", 2),
     rangeType(HUMID, "濕度", "%", 2),
     rangeType(PRESS, "氣壓", "hPa", 2),
-    rangeType(RAIN, "雨量", "mm/h", 2),
+    rangeType(RAIN, "雨量", "mm/h", 2, true),
     rangeType(LAT, "緯度", "度", 4),
     rangeType(LNG, "經度", "度", 4),
     rangeType("RT", "室內溫度", "℃", 1),
@@ -98,9 +98,9 @@ trait MonitorTypeDB {
     }
   }
 
-  def rangeType(_id: String, desp: String, unit: String, prec: Int): MonitorType = {
+  def rangeType(_id: String, desp: String, unit: String, prec: Int, accumulated:Boolean = false): MonitorType = {
     rangeOrder += 1
-    MonitorType(_id, desp, unit, prec, rangeOrder)
+    MonitorType(_id, desp, unit, prec, rangeOrder, accumulated = Some(accumulated))
   }
 
   def ensureMonitorType(mt: MonitorType): Unit = {

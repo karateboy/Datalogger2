@@ -1,7 +1,7 @@
 package models
 
 import akka.actor.{Actor, Cancellable}
-import com.github.nscala_time.time.Imports.LocalTime
+import com.github.nscala_time.time.Imports.{DateTime, LocalTime}
 import com.google.inject.assistedinject.Assisted
 import models.Adam4000.{ADAM4017, ADAM4069, ADAM4080}
 import models.ModelHelper.errorHandler
@@ -171,6 +171,7 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
 
   var comm: SerialComm = _
   var timerOpt: Option[Cancellable] = None
+  var resetTimerOpt: Option[Cancellable] = None
 
   override def receive: Receive = {
     case OpenCom =>
@@ -178,6 +179,13 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
         comm = SerialComm.open(protocolParam.comPort.get, protocolParam.speed.getOrElse(9600))
         addSignalTypeHandler()
         timerOpt = Some(context.system.scheduler.scheduleOnce(FiniteDuration(3, SECONDS), self, ReadInput))
+        for(module4080 <-moduleList.find(module=>module.module == ADAM4080)){
+          import scala.concurrent.duration._
+          //Try to trigger at 30 sec
+          val nextHour = DateTime.now().plusHours(1).withSecondOfMinute(0).withMinuteOfHour(0).withMillis(0)
+          val elapsedSeconds = new org.joda.time.Duration(DateTime.now, nextHour).getStandardSeconds
+          context.system.scheduler.schedule(FiniteDuration(elapsedSeconds, SECONDS), FiniteDuration(1, HOURS), self, ResetCounter)
+        }
       } catch {
         case ex: Exception =>
           Logger.error(ex.getMessage, ex)
@@ -209,9 +217,33 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
                 decode4069(str, adam4069cfg.channelList)
               }
             }
+
+            for (module <- moduleList if module.module == ADAM4080) {
+              val adam4080cfg = module.get4080Cfg
+              for((ch, n) <- adam4080cfg.channelList.zipWithIndex if ch.enable) {
+                val readCmd = s"$$${module.address}$n\r"
+                os.write(readCmd.getBytes)
+                val strList = comm.getLineWithTimeout(2)
+                decode4080(strList(0), ch)
+              }
+            }
           } catch errorHandler
           finally {
             timerOpt = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, ReadInput))
+          }
+        }
+      } onFailure errorHandler
+
+    case ResetCounter =>
+      Future {
+        blocking {
+          for (module <- moduleList if module.module == ADAM4080) {
+            val adam4080cfg = module.get4080Cfg
+            for((ch, n) <- adam4080cfg.channelList.zipWithIndex if ch.enable) {
+              val readCmd = s"$$${module.address}6$n\r"
+              comm.os.write(readCmd.getBytes)
+              comm.getLineWithTimeout(2)
+            }
           }
         }
       } onFailure errorHandler
@@ -272,6 +304,22 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
     context.parent ! ReportSignalData(dataList)
   }
 
+  def decode4080(str: String, cfg:CounterConfig): Unit = {
+    try{
+      for(mt<-cfg.monitorType){
+        val value: Double = Integer.decode("0x"+str.trim).toDouble * cfg.multiplier.getOrElse(1.0)
+        val status = if (cfg.repairMode.getOrElse(false))
+          MonitorStatus.MaintainStat
+        else
+          MonitorStatus.NormalStat
+          context.parent !  List(MonitorTypeData(mt, value, status))
+      }
+    }catch{
+      case ex:Throwable=>
+        Logger.error(s"$instId: 4080 unable to decode $str",ex)
+    }
+  }
+
   def addSignalTypeHandler(): Unit = {
     for (module <- moduleList if module.module == ADAM4069) {
       implicit val reads: Reads[SignalConfig] = Json.reads[SignalConfig]
@@ -289,6 +337,9 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
   override def postStop(): Unit = {
     for (timer <- timerOpt)
       timer.cancel()
+
+    for(resetTimer<- resetTimerOpt)
+      resetTimer.cancel()
 
     if (comm != null)
       comm.close
