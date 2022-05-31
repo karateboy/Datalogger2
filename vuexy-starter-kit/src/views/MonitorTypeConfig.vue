@@ -171,27 +171,22 @@ export default Vue.extend({
       {
         key: 'desp',
         label: '名稱',
-        sortable: true,
       },
       {
         key: 'unit',
         label: '單位',
-        sortable: true,
       },
       {
         key: 'prec',
         label: '小數點位數',
-        sortable: true,
       },
       {
         key: 'order',
         label: '順序',
-        sortable: true,
       },
       {
         key: 'std_law',
         label: '法規值',
-        sortable: true,
       },
       {
         key: 'zd_law',

@@ -42,7 +42,7 @@ class T700CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   override def connectHost: Unit = {
     val socket = new Socket(protocolParam.host.get, 3000)
-    socket.setSoTimeout(700)
+    socket.setSoTimeout(1000)
     socketOpt = Some(socket)
     outOpt = Some(socket.getOutputStream())
     inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream())))
@@ -64,10 +64,10 @@ class T700CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
       lastSeqNo = seq
       for (out <- outOpt) {
         if (on) {
-          val cmd = "C EXECSEQ \"" + seq + "\""
+          val cmd = "C EXECSEQ \"" + seq + "\"\r\n"
           out.write(cmd.getBytes)
         } else
-          out.write("C STANDBY".getBytes)
+          out.write("C STANDBY\r\n".getBytes)
       }
     }
   }

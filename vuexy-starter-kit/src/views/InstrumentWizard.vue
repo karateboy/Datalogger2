@@ -285,6 +285,7 @@ interface Instrument {
   param: string;
   active: boolean;
   state: string;
+  statusType?: Array<any>;
 }
 
 export default Vue.extend({
@@ -477,9 +478,11 @@ export default Vue.extend({
     async getInstrumentTypes(): Promise<void> {
       const res = await axios.get('/InstrumentTypes');
       this.instrumentTypes = res.data;
+      let map = new Map<string, InstrumentTypeInfo>();
       for (const instType of res.data) {
-        this.instTypeMap.set(instType.id, instType as InstrumentTypeInfo);
+        map.set(instType.id, instType as InstrumentTypeInfo);
       }
+      this.instTypeMap = map;
     },
     getInstrumentDesc(): string {
       if (this.instTypeMap.get(this.form.instType)) {
@@ -544,6 +547,7 @@ export default Vue.extend({
       if (nextIndex === 2) this.loadingDetailedConfig = true;
     },
     async formSubmitted(): Promise<void> {
+      this.form.statusType = undefined;
       const res = await axios.post('/Instrument', this.form);
       const ret = res.data;
       if (ret.ok) {

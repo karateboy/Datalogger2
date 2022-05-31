@@ -287,19 +287,6 @@ export default Vue.extend({
             tickPixelInterval: 150,
           },
           yAxis: yAxisList,
-          /*
-          yAxis: {
-            title: {
-              text: 'value',
-            },
-            plotLines: [
-              {
-                value: 0,
-                width: 1,
-                color: '#808080',
-              },
-            ],
-          },*/
           time: {
             timezoneOffset: -480,
           },

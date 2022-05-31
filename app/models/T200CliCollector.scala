@@ -3,7 +3,6 @@ package models
 import com.google.inject.assistedinject.Assisted
 import models.AbstractCollector.ResetConnection
 import models.Protocol.ProtocolParam
-import models.TapiTxxCollector.ConnectHost
 import play.api.Logger
 
 import java.io.{BufferedReader, InputStreamReader, OutputStream}
@@ -63,56 +62,6 @@ class T200CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     istList
   }
 
-  override def readReg(statusTypeList: List[InstrumentStatusType], full:Boolean): Future[Option[ModelRegValue2]] = Future {
-    blocking {
-      try {
-        for {
-          in <- inOpt
-          out <- outOpt
-        } yield {
-          out.write("T NOX\r\n".getBytes())
-          val data0: List[(InstrumentStatusType, Double)] = readTillTimeout(in, expectOneLine = true).flatMap(line =>{
-            Logger.info(s"NOX: $line")
-            for ((_, _, value) <- getKeyUnitValue(line)) yield
-              (dataInstrumentTypes(0), value)
-          })
-          if(data0.isEmpty)
-            throw new Exception("no data")
-
-          out.write("T NO\r\n".getBytes())
-          val data1: List[(InstrumentStatusType, Double)] = readTillTimeout(in, expectOneLine = true).flatMap(line =>{
-            Logger.info(s"NO: $line")
-            for ((_, _, value) <- getKeyUnitValue(line)) yield
-              (dataInstrumentTypes(1), value)
-          })
-          if(data1.isEmpty)
-            throw new Exception("no data")
-
-          val data3 = List((dataInstrumentTypes(2), data0(0)._2 - data1(0)._2))
-          if(full){
-            out.write("T LIST\r\n".getBytes)
-            val resp = readTillTimeout(in)
-            val statusList = resp.flatMap(line => {
-              for {(key, _, value) <- getKeyUnitValue(line) if dataInstrumentTypes.forall(ist => ist.key != key)
-                   st <- statusTypeList.find(st => st.key == key)} yield
-                (st, value)
-            })
-            ModelRegValue2(inputRegs = data0 ++ data1 ++ data3 ++ statusList,
-              modeRegs = List.empty[(InstrumentStatusType, Boolean)],
-              warnRegs = List.empty[(InstrumentStatusType, Boolean)])
-          }else{
-            ModelRegValue2(inputRegs = data0 ++ data1 ++ data3,
-              modeRegs = List.empty[(InstrumentStatusType, Boolean)],
-              warnRegs = List.empty[(InstrumentStatusType, Boolean)])
-          }
-        }
-      } catch {
-        case _: Throwable =>
-          None
-      }
-    }
-  }
-
   def getKeyUnitValue(line: String): Option[(String, String, Double)] = {
     try {
       val part1 = line.split("\\s+").drop(3).mkString(" ")
@@ -129,7 +78,6 @@ class T200CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
       case _: Throwable =>
         None
     }
-
   }
 
   def readTillTimeout(in: BufferedReader, expectOneLine: Boolean = false): List[String] = {
@@ -138,7 +86,7 @@ class T200CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     try {
       do {
         line = in.readLine()
-        if(line == null){
+        if (line == null) {
           Logger.error(s"$instId readline null. close socket stream")
           for (in <- inOpt) {
             in.close()
@@ -150,7 +98,7 @@ class T200CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
             outOpt = None
           }
 
-          for(sock<-socketOpt){
+          for (sock <- socketOpt) {
             sock.close()
             socketOpt = None
           }
@@ -162,10 +110,75 @@ class T200CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
       } while (line != null && !line.isEmpty && (!expectOneLine || resp.isEmpty))
     } catch {
       case _: SocketTimeoutException =>
-        if (resp.isEmpty)
+        if (resp.isEmpty) {
           Logger.error("no response after timeout!")
+          for (in <- inOpt) {
+            in.close()
+            inOpt = None
+          }
+
+          for (out <- outOpt) {
+            out.close()
+            outOpt = None
+          }
+
+          for (sock <- socketOpt) {
+            sock.close()
+            socketOpt = None
+          }
+
+          self ! ResetConnection
+        }
     }
     resp
+  }
+
+  override def readReg(statusTypeList: List[InstrumentStatusType], full: Boolean): Future[Option[ModelRegValue2]] = Future {
+    blocking {
+      try {
+        for {
+          in <- inOpt
+          out <- outOpt
+        } yield {
+          out.write("T NOX\r\n".getBytes())
+          val data0: List[(InstrumentStatusType, Double)] = readTillTimeout(in, expectOneLine = true).flatMap(line => {
+            for ((_, _, value) <- getKeyUnitValue(line)) yield
+              (dataInstrumentTypes(0), value)
+          })
+          if (data0.isEmpty)
+            throw new Exception("no data")
+
+          out.write("T NO\r\n".getBytes())
+          val data1: List[(InstrumentStatusType, Double)] = readTillTimeout(in, expectOneLine = true).flatMap(line => {
+            for ((_, _, value) <- getKeyUnitValue(line)) yield
+              (dataInstrumentTypes(1), value)
+          })
+          if (data1.isEmpty)
+            throw new Exception("no data")
+
+          val data3 = List((dataInstrumentTypes(2), data0(0)._2 - data1(0)._2))
+
+          val statusList =
+            if (full) {
+              out.write("T LIST\r\n".getBytes)
+              val resp = readTillTimeout(in)
+              resp.flatMap(line => {
+                for {(key, _, value) <- getKeyUnitValue(line) if dataInstrumentTypes.forall(ist => ist.key != key)
+                     st <- statusTypeList.find(st => st.key == key)} yield
+                  (st, value)
+              })
+            } else
+              List.empty[(InstrumentStatusType, Double)]
+
+          ModelRegValue2(inputRegs = data0 ++ data1 ++ data3 ++ statusList,
+            modeRegs = List.empty[(InstrumentStatusType, Boolean)],
+            warnRegs = List.empty[(InstrumentStatusType, Boolean)])
+        }
+      } catch {
+        case _: Throwable =>
+          None
+      }
+    }
   }
 
   override def connectHost: Unit = {

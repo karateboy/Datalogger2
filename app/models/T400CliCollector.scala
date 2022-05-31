@@ -1,6 +1,7 @@
 package models
 
 import com.google.inject.assistedinject.Assisted
+import models.AbstractCollector.ResetConnection
 import models.Protocol.ProtocolParam
 import play.api.Logger
 
@@ -84,13 +85,49 @@ class T400CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     try {
       do {
         line = in.readLine()
+        if (line == null) {
+          Logger.error(s"$instId readline null. close socket stream")
+          for (in <- inOpt) {
+            in.close()
+            inOpt = None
+          }
+
+          for (out <- outOpt) {
+            out.close()
+            outOpt = None
+          }
+
+          for (sock <- socketOpt) {
+            sock.close()
+            socketOpt = None
+          }
+
+          self ! ResetConnection
+        }
         if (line != null && !line.isEmpty)
           resp = resp :+ line.trim
       } while (line != null && !line.isEmpty && (!expectOneLine || resp.isEmpty))
     } catch {
       case _: SocketTimeoutException =>
-        if (resp.isEmpty)
-          Logger.warn(s"$instId no response after timeout!")
+        if (resp.isEmpty) {
+          Logger.error("no response after timeout!")
+          for (in <- inOpt) {
+            in.close()
+            inOpt = None
+          }
+
+          for (out <- outOpt) {
+            out.close()
+            outOpt = None
+          }
+
+          for (sock <- socketOpt) {
+            sock.close()
+            socketOpt = None
+          }
+
+          self ! ResetConnection
+        }
     }
     resp
   }
@@ -109,13 +146,16 @@ class T400CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
                  st <- statusTypeList.find(st => st.addr == idx)} yield
               (st, value)
           })
-          out.write("T LIST\r\n".getBytes)
-          val resp = readTillTimeout(in)
-          val statusList = resp.flatMap(line => {
-            for {(key, _, value) <- getKeyUnitValue(line)
-                 st <- statusTypeList.find(st => st.key == key)} yield
-              (st, value)
-          })
+          val statusList = if(full) {
+            out.write("T LIST\r\n".getBytes)
+            val resp = readTillTimeout(in)
+            resp.flatMap(line => {
+              for {(key, _, value) <- getKeyUnitValue(line)
+                   st <- statusTypeList.find(st => st.key == key)} yield
+                (st, value)
+            })
+          }else
+            List.empty[(InstrumentStatusType, Double)]
 
           ModelRegValue2(inputRegs = data ++ statusList,
             modeRegs = List.empty[(InstrumentStatusType, Boolean)],
@@ -128,7 +168,7 @@ class T400CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   override def connectHost: Unit = {
     val socket = new Socket(protocolParam.host.get, 3000)
-    socket.setSoTimeout(700)
+    socket.setSoTimeout(1000)
     socketOpt = Some(socket)
     outOpt = Some(socket.getOutputStream())
     inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream())))

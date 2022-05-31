@@ -1,6 +1,7 @@
 package models
 
 import com.google.inject.assistedinject.Assisted
+import models.AbstractCollector.ResetConnection
 import models.Protocol.ProtocolParam
 import play.api.Logger
 
@@ -59,6 +60,41 @@ class T100CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     istList
   }
 
+  override def readReg(statusTypeList: List[InstrumentStatusType], full: Boolean): Future[Option[ModelRegValue2]] = Future {
+    blocking {
+      val ret = {
+        for {
+          in <- inOpt
+          out <- outOpt
+        } yield {
+          out.write("T SO2\r\n".getBytes())
+          val data: List[(InstrumentStatusType, Double)] = readTillTimeout(in, expectOneLine = true).zipWithIndex.flatMap(line_idx => {
+            val (line, idx) = line_idx
+            for {(_, _, value) <- getKeyUnitValue(line)
+                 st <- statusTypeList.find(st => st.addr == idx)} yield
+              (st, value)
+          })
+          val statusList =
+            if (full) {
+              out.write("T LIST\r\n".getBytes)
+              val resp = readTillTimeout(in, expectOneLine = true)
+              resp.flatMap(line => {
+                for {(key, _, value) <- getKeyUnitValue(line)
+                     st <- statusTypeList.find(st => st.key == key)} yield
+                  (st, value)
+              })
+            } else
+              List.empty[(InstrumentStatusType, Double)]
+
+          ModelRegValue2(inputRegs = data ++ statusList,
+            modeRegs = List.empty[(InstrumentStatusType, Boolean)],
+            warnRegs = List.empty[(InstrumentStatusType, Boolean)])
+        }
+      }
+      ret
+    }
+  }
+
   def getKeyUnitValue(line: String): Option[(String, String, Double)] = {
     try {
       val part1 = line.split("\\s+").drop(3).mkString(" ")
@@ -75,7 +111,6 @@ class T100CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
       case _: Throwable =>
         None
     }
-
   }
 
   def readTillTimeout(in: BufferedReader, expectOneLine: Boolean = false): List[String] = {
@@ -84,51 +119,56 @@ class T100CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     try {
       do {
         line = in.readLine()
+        if (line == null) {
+          Logger.error(s"$instId readline null. close socket stream")
+          for (in <- inOpt) {
+            in.close()
+            inOpt = None
+          }
+
+          for (out <- outOpt) {
+            out.close()
+            outOpt = None
+          }
+
+          for (sock <- socketOpt) {
+            sock.close()
+            socketOpt = None
+          }
+
+          self ! ResetConnection
+        }
         if (line != null && !line.isEmpty)
           resp = resp :+ line.trim
       } while (line != null && !line.isEmpty && (!expectOneLine || resp.isEmpty))
     } catch {
       case _: SocketTimeoutException =>
-        if (resp.isEmpty)
+        if (resp.isEmpty) {
           Logger.error("no response after timeout!")
+          for (in <- inOpt) {
+            in.close()
+            inOpt = None
+          }
+
+          for (out <- outOpt) {
+            out.close()
+            outOpt = None
+          }
+
+          for (sock <- socketOpt) {
+            sock.close()
+            socketOpt = None
+          }
+
+          self ! ResetConnection
+        }
     }
     resp
   }
 
-  override def readReg(statusTypeList: List[InstrumentStatusType], full:Boolean): Future[Option[ModelRegValue2]] = Future {
-    blocking {
-      val ret = {
-        for {
-          in <- inOpt
-          out <- outOpt
-        } yield {
-          out.write("T SO2\r\n".getBytes())
-          val data: List[(InstrumentStatusType, Double)] = readTillTimeout(in, expectOneLine = true).zipWithIndex.flatMap(line_idx => {
-            val (line, idx) = line_idx
-            for {(_, _, value) <- getKeyUnitValue(line)
-                 st <- statusTypeList.find(st => st.addr == idx)} yield
-              (st, value)
-          })
-          out.write("T LIST\r\n".getBytes)
-          val resp = readTillTimeout(in)
-          val statusList = resp.flatMap(line => {
-            for {(key, _, value) <- getKeyUnitValue(line)
-                 st <- statusTypeList.find(st => st.key == key)} yield
-              (st, value)
-          })
-
-          ModelRegValue2(inputRegs = data ++ statusList,
-            modeRegs = List.empty[(InstrumentStatusType, Boolean)],
-            warnRegs = List.empty[(InstrumentStatusType, Boolean)])
-        }
-      }
-      ret
-    }
-  }
-
   override def connectHost: Unit = {
     val socket = new Socket(protocolParam.host.get, 3000)
-    socket.setSoTimeout(500)
+    socket.setSoTimeout(1000)
     socketOpt = Some(socket)
     outOpt = Some(socket.getOutputStream())
     inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream())))
