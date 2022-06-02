@@ -49,7 +49,7 @@ class T100CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
         val ret =
           for {line <- resp} yield {
             addr = addr + 1
-            for ((key, unit, _) <- getKeyUnitValue(line)) yield
+            for ((key, unit, _) <- getKeyUnitValue(line) if dataInstrumentTypes.forall(ist => ist.key != key)) yield
               InstrumentStatusType(key, addr, key, unit)
           }
         ret.flatten
