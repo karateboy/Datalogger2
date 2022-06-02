@@ -79,7 +79,7 @@ class T100CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
               out.write("T LIST\r\n".getBytes)
               val resp = readTillTimeout(in, expectOneLine = true)
               resp.flatMap(line => {
-                for {(key, _, value) <- getKeyUnitValue(line)
+                for {(key, _, value) <- getKeyUnitValue(line) if dataInstrumentTypes.forall(ist => ist.key != key)
                      st <- statusTypeList.find(st => st.key == key)} yield
                   (st, value)
               })

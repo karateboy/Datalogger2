@@ -482,7 +482,7 @@ class DataCollectManager @Inject()
 
           import scala.concurrent.duration._
           context.system.scheduler.schedule(
-            Duration(duration.getStandardSeconds + 1, SECONDS),
+            Duration(duration.getStandardSeconds, SECONDS),
             Duration(1, DAYS), self, AutoCalibration(inst._id))
         }
 

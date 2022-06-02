@@ -385,7 +385,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
           val calibrationTimer =
             if (calibrationType.auto && calibrationType.zero) {
               // Auto zero calibration will jump to end immediately
-              system.scheduler.scheduleOnce(Duration(1, SECONDS), self, CalibrateEnd)
+              system.scheduler.scheduleOnce(Duration(0, SECONDS), self, CalibrateEnd)
             } else {
               collectorState = MonitorStatus.CalibrationResume
               instrumentOp.setState(instId, collectorState)
@@ -524,7 +524,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
     val purgeTime = tapiConfig.calibratorPurgeTime.get
     Logger.info(s"Purge calibrator. Delay start of calibration $purgeTime seconds")
     triggerCalibratorPurge(true)
-    system.scheduler.scheduleOnce(Duration(purgeTime + 1, SECONDS), self, RaiseStart)
+    system.scheduler.scheduleOnce(Duration(purgeTime, SECONDS), self, RaiseStart)
   }
 
   def triggerCalibratorPurge(v: Boolean) {
