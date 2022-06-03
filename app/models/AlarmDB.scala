@@ -35,4 +35,5 @@ trait AlarmDB {
   def getAlarmsFuture(start: Imports.DateTime, end: Imports.DateTime): Future[Seq[Alarm]]
 
   def log(src: String, level: Int, desc: String, coldPeriod: Int = 30): Unit
+
 }

@@ -5,7 +5,6 @@ import com.github.nscala_time.time.Imports._
 import models.ForwardManager.{ForwardHourRecord, ForwardMinRecord}
 import models.ModelHelper.errorHandler
 import models._
-import models.mongodb.{EmailTargetOp, GroupOp, UserOp}
 import play.api._
 import play.api.libs.json._
 import play.api.libs.ws.{WSClient, WSResponse}
@@ -145,7 +144,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.toJson(iTypes))
   }
 
-  def newInstrument = Security.Authenticated(BodyParsers.parse.json) {
+  def newInstrument = Security.Authenticated.async(BodyParsers.parse.json) {
     implicit request =>
       implicit val r1 = Json.reads[InstrumentStatusType]
       implicit val reads = Json.reads[Instrument]
@@ -154,7 +153,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       instrumentResult.fold(
         error => {
           Logger.error(JsError.toJson(error).toString())
-          BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+          Future.successful(BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString())))
         },
         rawInstrument => {
           try {
@@ -164,26 +163,31 @@ class HomeController @Inject()(environment: play.api.Environment,
             if (newInstrument._id.isEmpty())
               throw new Exception("儀器ID不可是空的!")
 
-            instrumentOp.upsertInstrument(newInstrument)
-
             //Stop measuring if any
             dataCollectManagerOp.stopCollect(newInstrument._id)
-            monitorTypeOp.stopMeasuring(newInstrument._id)
-
+            val f = monitorTypeOp.stopMeasuring(newInstrument._id)
+            val f2 = f.map(_ => instrumentOp.upsertInstrument(newInstrument))
             val mtList = instType.driver.getMonitorTypes(instParam)
-
-            for (mt <- mtList) {
-              monitorTypeOp.ensureMonitorType(mt)
-              monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog)
+            val f3 = f2.map {
+              _ =>
+                Future.sequence {
+                  for (mt <- mtList) yield {
+                    monitorTypeOp.ensureMonitorType(mt)
+                    monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog)
+                  }
+                }
             }
-            if (newInstrument.active)
-              dataCollectManagerOp.startCollect(newInstrument)
+            f3.map{
+             _=>
+               if (newInstrument.active)
+                 dataCollectManagerOp.startCollect(newInstrument)
 
-            Ok(Json.obj("ok" -> true))
+               Ok(Json.obj("ok" -> true))
+            }
           } catch {
             case ex: Throwable =>
               ModelHelper.logException(ex)
-              Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
+              Future.successful(Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage)))
           }
         })
   }
@@ -494,15 +498,15 @@ class HomeController @Inject()(environment: play.api.Environment,
 
   def activatedMonitorTyopes = Security.Authenticated {
     implicit request =>
-    val userInfo = Security.getUserinfo(request).get
-    val group = groupOp.getGroupByID(userInfo.group).get
+      val userInfo = Security.getUserinfo(request).get
+      val group = groupOp.getGroupByID(userInfo.group).get
 
-    val mtList = if (userInfo.isAdmin)
-      monitorTypeOp.activeMtvList map monitorTypeOp.map
-    else
-      monitorTypeOp.activeMtvList.filter(group.monitorTypes.contains) map monitorTypeOp.map
+      val mtList = if (userInfo.isAdmin)
+        monitorTypeOp.activeMtvList map monitorTypeOp.map
+      else
+        monitorTypeOp.activeMtvList.filter(group.monitorTypes.contains) map monitorTypeOp.map
 
-    Ok(Json.toJson(mtList.sortBy(_.order)))
+      Ok(Json.toJson(mtList.sortBy(_.order)))
   }
 
   def upsertMonitorType(id: String) = Security.Authenticated.async(BodyParsers.parse.json) {
@@ -517,7 +521,7 @@ class HomeController @Inject()(environment: play.api.Environment,
         },
         mt => {
           Logger.info(mt.toString)
-          for(_<-monitorTypeOp.upsertMonitorTypeFuture(mt)) yield
+          for (_ <- monitorTypeOp.upsertMonitorType(mt)) yield
             Ok(Json.obj("ok" -> true))
         })
   }
@@ -537,11 +541,11 @@ class HomeController @Inject()(environment: play.api.Environment,
 
   def signalValues = Security.Authenticated.async {
     implicit request =>
-      for(ret <- dataCollectManagerOp.getLatestSignal()) yield
+      for (ret <- dataCollectManagerOp.getLatestSignal()) yield
         Ok(Json.toJson(ret))
   }
 
-  def setSignal(mtId:String, bit:Boolean) = Security.Authenticated{
+  def setSignal(mtId: String, bit: Boolean) = Security.Authenticated {
     implicit request =>
       dataCollectManagerOp.writeSignal(mtId, bit)
       Ok("")
@@ -746,12 +750,12 @@ class HomeController @Inject()(environment: play.api.Environment,
       ret.fold(
         error => {
           Logger.error(JsError.toJson(error).toString())
-          Future{
+          Future {
             BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
           }
         },
         emails => {
-          for(_<- emailTargetOp.deleteAll) yield {
+          for (_ <- emailTargetOp.deleteAll) yield {
             emailTargetOp.upsertMany(emails)
             Ok(Json.obj("ok" -> true))
           }
@@ -777,13 +781,14 @@ class HomeController @Inject()(environment: play.api.Environment,
         },
         param => {
           val ratio = param.value.toDouble
-          if(ratio <1 && ratio > 0){
+          if (ratio < 1 && ratio > 0) {
             sysConfig.setEffectiveRation(ratio)
             DataCollectManager.effectiveRatio = ratio
             Ok(Json.obj("ok" -> true))
-          }else
+          } else
             BadRequest("Invalid effective ratio")
         })
   }
+
   case class EditData(id: String, value: String)
 }

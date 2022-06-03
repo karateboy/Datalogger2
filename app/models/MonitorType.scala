@@ -1,11 +1,5 @@
 package models
 
-import models.ModelHelper._
-import models.mongodb.MongoDB
-import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model._
-import org.mongodb.scala.result.{InsertOneResult, UpdateResult}
-
 case class ThresholdConfig(elapseTime: Int)
 
 case class MonitorType(_id: String,
@@ -59,8 +53,6 @@ case class MonitorType(_id: String,
 
 //MeasuredBy => History...
 //MeasuringBy => Current...
-
-import javax.inject._
 
 object MonitorType {
   val SO2 = "SO2"

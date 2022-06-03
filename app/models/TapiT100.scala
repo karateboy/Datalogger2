@@ -57,7 +57,7 @@ class T100Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
   override def reportData(regValue: ModelRegValue) =
     for (idx <- findDataRegIdx(regValue)(22)) yield {
       val v = regValue.inputRegs(idx)
-      ReportData(List(MonitorTypeData(("SO2"), v._2.toDouble, collectorState)))
+      ReportData(List(MonitorTypeData(MonitorType.SO2, v._2.toDouble, collectorState)))
     }
 
   override def triggerZeroCalibration(v: Boolean) {

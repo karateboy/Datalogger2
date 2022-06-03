@@ -14,42 +14,18 @@ import scala.concurrent.Future
 class MonitorTypeOp @Inject()(sqlServer: SqlServer, alarmDB: AlarmDB, recordOp: RecordOp) extends MonitorTypeDB {
   private val tabName = "monitorType"
 
-  override def logDiMonitorType(mt: String, v: Boolean): Unit = {
-    if (!signalMtvList.contains(mt))
-      Logger.warn(s"${mt} is not DI monitor type!")
-
-    val previousValue = diValueMap.getOrElse(mt, !v)
-    diValueMap = diValueMap + (mt -> v)
-    if (previousValue != v) {
-      val mtCase = map(mt)
-      if (v)
-        alarmDB.log(alarmDB.src(), alarmDB.Level.WARN, s"${mtCase.desp}=>觸發", 1)
-      else
-        alarmDB.log(alarmDB.src(), alarmDB.Level.INFO, s"${mtCase.desp}=>解除", 1)
-    }
-  }
-
   init()
 
   override def addMeasuring(mt: String, instrumentId: String, append: Boolean): Future[UpdateResult] = {
-    map(mt).addMeasuring(instrumentId, append)
     recordOp.ensureMonitorType(mt)
-    upsertMonitorTypeFuture(map(mt))
+    super.addMeasuring(mt, instrumentId, append)
   }
 
-  override def upsertMonitorTypeFuture(mt: MonitorType): Future[UpdateResult] = Future {
+  override def upsertItemFuture(mt: MonitorType): Future[UpdateResult] = Future {
     implicit val session: DBSession = AutoSession
     val measuringBy = mt.measuringBy.map(instList => instList.mkString(","))
     val levels = mt.levels.map(levelValues => levelValues.mkString(","))
 
-    map = map + (mt._id -> mt)
-    if (mt.signalType) {
-      if (!signalMtvList.contains(mt._id))
-        signalMtvList = signalMtvList :+ mt._id
-    } else {
-      if (!mtvList.contains(mt._id))
-        mtvList = mtvList :+ mt._id
-    }
     val ret =
       sql"""
           UPDATE [dbo].[monitorType]
@@ -151,21 +127,12 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer, alarmDB: AlarmDB, recordOp: 
       accumulated = rs.booleanOpt("accumulated"))
   }
 
-  override def deleteMonitorType(_id: String): Unit = {
+  override def deleteItemFuture(_id: String): Unit = {
     implicit val session: DBSession = AutoSession
-    if (map.contains(_id)) {
-      val mt = map(_id)
-      map = map - _id
-      if (mt.signalType)
-        signalMtvList = signalMtvList.filter(p => p != _id)
-      else
-        mtvList = mtvList.filter(p => p != _id)
-
       sql"""
         DELETE FROM [dbo].[monitorType]
         WHERE [id] = ${_id}
          """.update().apply()
-    }
   }
 
   private def init()(implicit session: DBSession = AutoSession): Unit = {
@@ -197,8 +164,8 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer, alarmDB: AlarmDB, recordOp: 
         )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
       ) ON [PRIMARY]
            """.execute().apply()
-      defaultMonitorTypes.foreach(mt => waitReadyResult(upsertMonitorTypeFuture(mt)))
+      defaultMonitorTypes.foreach(mt => waitReadyResult(upsertItemFuture(mt)))
     }
-    refreshMtv
+    refreshMtv()
   }
 }

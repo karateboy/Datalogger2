@@ -67,47 +67,16 @@ class MonitorTypeOp @Inject()(mongodb: MongoDB, alarmDB: AlarmDB) extends Monito
     waitReadyResult(f).toList
   }
 
-  override def deleteMonitorType(_id: String): Unit = {
-    if (map.contains(_id)) {
-      val mt = map(_id)
-      map = map - _id
-      if (mt.signalType)
-        signalMtvList = signalMtvList.filter(p => p != _id)
-      else
-        mtvList = mtvList.filter(p => p != _id)
-
+  override def deleteItemFuture(_id: String): Unit = {
       val f = collection.deleteOne(Filters.equal("_id", _id)).toFuture()
       f onFailure errorHandler
-    }
   }
 
-  override def upsertMonitorTypeFuture(mt: MonitorType): Future[UpdateResult] = {
+  override def upsertItemFuture(mt: MonitorType): Future[UpdateResult] = {
     import org.mongodb.scala.model.ReplaceOptions
-    map = map + (mt._id -> mt)
-    if (mt.signalType) {
-      if (!signalMtvList.contains(mt._id))
-        signalMtvList = signalMtvList :+ mt._id
-    } else {
-      if (!mtvList.contains(mt._id))
-        mtvList = mtvList :+ mt._id
-    }
     val f = collection.replaceOne(Filters.equal("_id", mt._id), mt, ReplaceOptions().upsert(true)).toFuture()
     f.onFailure(errorHandler)
     f
   }
 
-  def logDiMonitorType(mt: String, v: Boolean): Unit = {
-    if (!signalMtvList.contains(mt))
-      Logger.warn(s"${mt} is not DI monitor type!")
-
-    val previousValue = diValueMap.getOrElse(mt, !v)
-    diValueMap = diValueMap + (mt -> v)
-    if (previousValue != v) {
-      val mtCase = map(mt)
-      if (v)
-        alarmDB.log(alarmDB.src(), alarmDB.Level.WARN, s"${mtCase.desp}=>觸發", 1)
-      else
-        alarmDB.log(alarmDB.src(), alarmDB.Level.INFO, s"${mtCase.desp}=>解除", 1)
-    }
-  }
 }

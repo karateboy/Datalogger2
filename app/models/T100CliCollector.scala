@@ -68,12 +68,13 @@ class T100CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           out <- outOpt
         } yield {
           out.write("T SO2\r\n".getBytes())
-          val data: List[(InstrumentStatusType, Double)] = readTillTimeout(in, expectOneLine = true).zipWithIndex.flatMap(line_idx => {
-            val (line, idx) = line_idx
-            for {(_, _, value) <- getKeyUnitValue(line)
-                 st <- statusTypeList.find(st => st.addr == idx)} yield
-              (st, value)
+          val data: List[(InstrumentStatusType, Double)] = readTillTimeout(in, expectOneLine = true).flatMap(line => {
+            for ((_, _, value) <- getKeyUnitValue(line)) yield
+              (dataInstrumentTypes(0), value)
           })
+          if (data.isEmpty)
+            throw new Exception("no data")
+
           val statusList =
             if (full) {
               out.write("T LIST\r\n".getBytes)
