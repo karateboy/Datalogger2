@@ -13,7 +13,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
+class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, monitorTypeOp: MonitorTypeOp) extends RecordDB {
   private var mtList = List.empty[String]
 
   init()
@@ -32,119 +32,6 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
     UpdateResult.acknowledged(ret, ret, null)
   }
 
-  override def updateRecordStatus(dt: Long, mt: String, status: String, monitor: String)(colName: String): Future[UpdateResult] = Future {
-    implicit val session: DBSession = AutoSession
-    val tab: SQLSyntax = getTab(colName)
-    val mtStatusCol = SQLSyntax.createUnsafely(s"${mt}_s")
-    val time = new Date(dt)
-    val ret =
-      sql"""
-         Update $tab
-         Set $mtStatusCol = $status
-         Where [time] = $time and [monitor] = $monitor
-         """.update().apply()
-    UpdateResult.acknowledged(ret, ret, null)
-  }
-
-  override def getRecordMapFuture(colName: String)
-                                 (monitor: String, mtList: Seq[String],
-                                  startTime: DateTime, endTime: DateTime): Future[Map[String, Seq[Record]]] =
-    Future {
-      implicit val session: DBSession = ReadOnlyAutoSession
-      val tab: SQLSyntax = getTab(colName)
-      val records =
-        sql"""
-           Select *
-           From $tab
-           Where [time] >= ${startTime} and [time] < ${endTime} and [monitor] = $monitor
-           Order by [time]
-           """.map(mapper).list().apply()
-
-      val pairs =
-        for {
-          mt <- mtList
-        } yield {
-          val list =
-            for {
-              doc <- records
-              time = doc._id.time
-              mtMap = doc.mtMap if mtMap.contains(mt) && mtMap(mt).value.isDefined
-            } yield {
-              Record(new DateTime(time.getTime), mtMap(mt).value, mtMap(mt).status, monitor)
-            }
-
-          mt -> list
-        }
-      Map(pairs: _*)
-    }
-
-  override def getRecordListFuture(colName: String)
-                                  (startTime: DateTime, endTime: DateTime, monitors: Seq[String]): Future[Seq[RecordList]] =
-    Future {
-      implicit val session: DBSession = AutoSession
-      val tab: SQLSyntax = getTab(colName)
-      val monitorIn = SQLSyntax.in(SQLSyntax.createUnsafely("[monitor]"), monitors)
-      sql"""
-           Select *
-           From $tab
-           Where [time] >= ${startTime} and [time] < ${endTime} and $monitorIn
-           Order by [time]
-           """.map(mapper).list().apply()
-    }
-
-  override def getRecordWithLimitFuture(colName: String)
-                                       (startTime: DateTime, endTime: DateTime, limit: Int, monitor: String): Future[Seq[RecordList]] = Future {
-    implicit val session: DBSession = AutoSession
-    val tab: SQLSyntax = getTab(colName)
-    sql"""
-           Select Top $limit *
-           From $tab
-           Where [time] >= ${startTime.toDate} and [time] < ${endTime.toDate} and [monitor] = $monitor
-           Order by [time]
-           """.map(mapper).list().apply()
-  }
-
-  private def getTab(tabName: String) = SQLSyntax.createUnsafely(s"[dbo].[$tabName]")
-
-  private def mapper(rs: WrappedResultSet): RecordList = {
-    val id = RecordListID(rs.jodaDateTime("time").toDate, rs.string("monitor"))
-    val mtDataOptList =
-      for (mt <- mtList) yield {
-        for (status <- rs.stringOpt(s"${mt}_s")) yield
-          MtRecord(mt, rs.doubleOpt(s"$mt"), status)
-      }
-    RecordList(_id = id, mtDataList = mtDataOptList.flatten)
-  }
-
-  override def getRecordValueSeqFuture(colName: String)
-                                      (mtList: Seq[String], startTime: DateTime, endTime: DateTime, monitor: String): Future[Seq[Seq[MtRecord]]] =
-    Future {
-      implicit val session: DBSession = AutoSession
-      val tab: SQLSyntax = getTab(colName)
-      val docs =
-        sql"""
-           Select *
-           From $tab
-           Where [time] >= ${startTime.toDate} and [time] < ${endTime.toDate} and [monitor] = $monitor
-           Order by [time]
-           """.map(mapper).list().apply()
-
-      for {
-        doc <- docs
-        mtMap = doc.mtMap if mtList.forall(doc.mtMap.contains(_))
-      } yield
-        mtList map {
-          mtMap
-        }
-    }
-
-  override def upsertManyRecords(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult] = Future {
-    records.foreach(recordList => {
-      insert(colName, recordList, true)
-    })
-    BulkWriteResult.unacknowledged()
-  }
-
   private def insert(colName: String, doc: RecordList, deleteFirst: Boolean): Int = {
     implicit val session: DBSession = AutoSession
     val tab: SQLSyntax = getTab(colName)
@@ -160,12 +47,14 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
            """.update().apply()
     } else {
       val fields = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"[${record.mtName}],[${record.mtName}_s]").mkString(","))
-      def toStr(v:Option[Double])={
-        if(v.isDefined)
+
+      def toStr(v: Option[Double]) = {
+        if (v.isDefined)
           v.get.toString
         else
           "NULL"
       }
+
       val values = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"${toStr(record.value)}, '${record.status}'").mkString(","))
       sql"""
            INSERT INTO $tab
@@ -183,7 +72,135 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
          """.update().apply()
   }
 
-  def ensureMonitorType(mt: String): Unit = {
+  override def updateRecordStatus(dt: Long, mt: String, status: String, monitor: String)(colName: String): Future[UpdateResult] = Future {
+    implicit val session: DBSession = AutoSession
+    val tab: SQLSyntax = getTab(colName)
+    val mtStatusCol = SQLSyntax.createUnsafely(s"${mt}_s")
+    val time = new Date(dt)
+    val ret =
+      sql"""
+         Update $tab
+         Set $mtStatusCol = $status
+         Where [time] = $time and [monitor] = $monitor
+         """.update().apply()
+    UpdateResult.acknowledged(ret, ret, null)
+  }
+
+  override def getRecordMapFuture(colName: String)
+                                 (monitor: String, mtList: Seq[String],
+                                  startTime: DateTime, endTime: DateTime): Future[Map[String, Seq[Record]]] = {
+    implicit val session: DBSession = ReadOnlyAutoSession
+    val tab: SQLSyntax = getTab(colName)
+    val rawRecords =
+      sql"""
+           Select *
+           From $tab
+           Where [time] >= ${startTime} and [time] < ${endTime} and [monitor] = $monitor
+           Order by [time]
+           """.map(mapper).list().apply()
+
+    val recordF = calibrateHelper(rawRecords, startTime, endTime)
+
+    for (records <- recordF) yield {
+      val pairs =
+        for (mt <- mtList) yield {
+          val list =
+            for {
+              doc <- records
+              time = doc._id.time
+              mtMap = doc.mtMap if mtMap.contains(mt) && mtMap(mt).value.isDefined
+            } yield {
+              Record(new DateTime(time.getTime), mtMap(mt).value, mtMap(mt).status, monitor)
+            }
+          mt -> list
+        }
+      pairs.toMap
+    }
+  }
+
+  override def getRecordListFuture(colName: String)
+                                  (startTime: DateTime, endTime: DateTime, monitors: Seq[String]): Future[Seq[RecordList]] = {
+    implicit val session: DBSession = AutoSession
+    val tab: SQLSyntax = getTab(colName)
+    val monitorIn = SQLSyntax.in(SQLSyntax.createUnsafely("[monitor]"), monitors)
+    val rawRecords =
+      sql"""
+           Select *
+           From $tab
+           Where [time] >= ${startTime} and [time] < ${endTime} and $monitorIn
+           Order by [time]
+           """.map(mapper).list().apply()
+
+    calibrateHelper(rawRecords, startTime, endTime)
+  }
+
+  private def getTab(tabName: String) = SQLSyntax.createUnsafely(s"[dbo].[$tabName]")
+
+  private def mapper(rs: WrappedResultSet): RecordList = {
+    val id = RecordListID(rs.jodaDateTime("time").toDate, rs.string("monitor"))
+    val mtDataOptList =
+      for (mt <- mtList) yield {
+        for (status <- rs.stringOpt(s"${mt}_s")) yield
+          MtRecord(mt, rs.doubleOpt(s"$mt"), status)
+      }
+    RecordList(_id = id, mtDataList = mtDataOptList.flatten)
+  }
+
+  private def calibrateHelper(rawRecords: List[RecordList], startTime: DateTime, endTime: DateTime): Future[List[RecordList]] = {
+    val needCalibration = mtList.map { mt => monitorTypeOp.map(mt).calibrate.getOrElse(false) }.exists(p => p)
+
+    if (needCalibration) {
+      for (calibrationMap <- calibrationOp.getCalibrationMap(startTime, endTime)(monitorTypeOp)) yield {
+        rawRecords.foreach(_.doCalibrate(monitorTypeOp, calibrationMap))
+        rawRecords
+      }
+    } else
+      Future.successful(rawRecords)
+  }
+
+  override def getRecordWithLimitFuture(colName: String)
+                                       (startTime: DateTime, endTime: DateTime, limit: Int, monitor: String): Future[Seq[RecordList]] = {
+    implicit val session: DBSession = AutoSession
+    val tab: SQLSyntax = getTab(colName)
+    val rawRecords =
+      sql"""
+           Select Top $limit *
+           From $tab
+           Where [time] >= ${startTime.toDate} and [time] < ${endTime.toDate} and [monitor] = $monitor
+           Order by [time]
+           """.map(mapper).list().apply()
+    calibrateHelper(rawRecords, startTime, endTime)
+  }
+
+  override def getRecordValueSeqFuture(colName: String)
+                                      (mtList: Seq[String], startTime: DateTime, endTime: DateTime, monitor: String): Future[Seq[Seq[MtRecord]]] = {
+    implicit val session: DBSession = AutoSession
+    val tab: SQLSyntax = getTab(colName)
+    val rawRecords =
+      sql"""
+           Select *
+           From $tab
+           Where [time] >= ${startTime.toDate} and [time] < ${endTime.toDate} and [monitor] = $monitor
+           Order by [time]
+           """.map(mapper).list().apply()
+
+    val recordF = calibrateHelper(rawRecords, startTime, endTime)
+    for (docs <- recordF) yield
+      for {
+        doc <- docs
+        mtMap = doc.mtMap if mtList.forall(doc.mtMap.contains(_))
+      } yield
+        mtList map mtMap
+  }
+
+  override def upsertManyRecords(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult] = Future {
+    records.foreach(recordList => {
+      insert(colName, recordList, true)
+    })
+    BulkWriteResult.unacknowledged()
+  }
+
+  override def ensureMonitorType(mt: String): Unit = {
     if (!mtList.contains(mt)) {
       Logger.info(s"alter record table by adding $mt")
       val tabList =

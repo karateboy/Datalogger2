@@ -20,7 +20,7 @@ class HomeController @Inject()(environment: play.api.Environment,
                                instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusDB,
                                sensorOp: MqttSensorDB, WSClient: WSClient,
                                emailTargetOp: EmailTargetDB,
-                               sysConfig: SysConfigDB,
+                               sysConfig: SysConfigDB, recordDB: RecordDB,
                                @Named("dataCollectManager") manager: ActorRef) extends Controller {
 
   val title = "資料擷取器"
@@ -173,7 +173,7 @@ class HomeController @Inject()(environment: play.api.Environment,
                 Future.sequence {
                   for (mt <- mtList) yield {
                     monitorTypeOp.ensureMonitorType(mt)
-                    monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog)
+                    monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog, recordDB)
                   }
                 }
             }

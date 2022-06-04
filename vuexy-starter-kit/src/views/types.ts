@@ -56,11 +56,12 @@ export interface MonitorType {
   span_dev_internal?: number;
   span_dev_law?: number;
   measuringBy?: Array<string>;
-  thresholdConfig?: ThresholdConfig;
   acoustic?: boolean;
   spectrum?: boolean;
   levels?: Array<number>;
   accumulated?: boolean;
+  fixedM?: number;
+  fixedB?: number;
 }
 
 export interface CellData {

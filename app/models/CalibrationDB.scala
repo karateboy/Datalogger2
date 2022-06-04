@@ -1,12 +1,11 @@
 package models
 
 import com.github.nscala_time.time.Imports._
-import com.google.inject.ImplementedBy
+import models.ModelHelper._
 import play.api.libs.json.Json
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import ModelHelper._
 
 case class CalibrationJSON(monitorType: String, startTime: Long, endTime: Long, zero_val: Option[Double],
                            span_std: Option[Double], span_val: Option[Double])
@@ -64,6 +63,7 @@ case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTi
          value <- valueOpt
          } yield
       (value - zeroVal) * spanStd / (spanValue - zeroVal)
+
 }
 
 trait CalibrationDB {

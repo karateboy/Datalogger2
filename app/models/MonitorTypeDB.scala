@@ -143,7 +143,8 @@ trait MonitorTypeDB {
 
   def activeMtvList: List[String] = mtvList.filter { mt => map(mt).measuringBy.isDefined }
 
-  def addMeasuring(mt: String, instrumentId: String, append: Boolean): Future[UpdateResult] = {
+  def addMeasuring(mt: String, instrumentId: String, append: Boolean, recordDB: RecordDB): Future[UpdateResult] = {
+    recordDB.ensureMonitorType(mt)
     map(mt).addMeasuring(instrumentId, append)
     upsertItemFuture(map(mt))
   }

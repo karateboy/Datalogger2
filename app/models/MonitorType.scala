@@ -20,7 +20,9 @@ case class MonitorType(_id: String,
                        spectrum: Option[Boolean] = None,
                        levels: Option[Seq[Double]] = None,
                        calibrate: Option[Boolean] = None,
-                       accumulated: Option[Boolean] = None) {
+                       accumulated: Option[Boolean] = None,
+                       fixedM: Option[Double] = None,
+                       fixedB: Option[Double] = None) {
 
   def addMeasuring(instrumentId: String, append: Boolean) = {
     if (measuringBy.isEmpty)

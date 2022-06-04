@@ -17,6 +17,8 @@ trait RecordDB {
   val MinCollection = "min_data"
   val SecCollection = "sec_data"
 
+  def ensureMonitorType(mt:String)
+
   def insertManyRecord(docs: Seq[RecordList])(colName: String): Future[InsertManyResult]
 
   def replaceRecord(doc: RecordList)(colName: String): Future[UpdateResult]

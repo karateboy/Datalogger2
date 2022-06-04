@@ -51,17 +51,27 @@ case class RecordList(var mtDataList: Seq[MtRecord], _id: RecordListID) {
 
     var calibratedMtDataList = Seq.empty[MtRecord]
     mtDataList.foreach(rec => {
-      if (monitorTypeOp.map(rec.mtName).calibrate.getOrElse(false)) {
-        val calibratedValue =
-          for (calibrationItem <- getCalibrateItem(rec.mtName)) yield
-            calibrationItem._2.calibrate(rec.value)
+      val mtCase = monitorTypeOp.map(rec.mtName)
+      if (mtCase.calibrate.getOrElse(false)) {
+        if(mtCase.fixedM.nonEmpty && mtCase.fixedB.nonEmpty){
+          val calibratedValue =
+            for (value <- rec.value; m<-mtCase.fixedM; b<-mtCase.fixedB) yield
+              (value + b) * m
 
-        calibratedMtDataList = calibratedMtDataList.:+(MtRecord(rec.mtName, calibratedValue.getOrElse(rec.value), rec.status))
+          calibratedMtDataList = calibratedMtDataList :+ MtRecord(rec.mtName, calibratedValue, rec.status)
+        }else{
+          val calibratedValue =
+            for (calibrationItem <- getCalibrateItem(rec.mtName)) yield
+              calibrationItem._2.calibrate(rec.value)
+
+          calibratedMtDataList = calibratedMtDataList :+ MtRecord(rec.mtName, calibratedValue.getOrElse(rec.value), rec.status)
+        }
       } else
-        calibratedMtDataList = calibratedMtDataList.:+(rec)
+        calibratedMtDataList = calibratedMtDataList :+ rec
     })
     mtDataList = calibratedMtDataList
   }
+
 }
 
 case class RecordListID(time: Date, monitor: String)

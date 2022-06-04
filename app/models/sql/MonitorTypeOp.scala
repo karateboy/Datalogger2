@@ -11,15 +11,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class MonitorTypeOp @Inject()(sqlServer: SqlServer, alarmDB: AlarmDB, recordOp: RecordOp) extends MonitorTypeDB {
+class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
   private val tabName = "monitorType"
 
   init()
-
-  override def addMeasuring(mt: String, instrumentId: String, append: Boolean): Future[UpdateResult] = {
-    recordOp.ensureMonitorType(mt)
-    super.addMeasuring(mt, instrumentId, append)
-  }
 
   override def upsertItemFuture(mt: MonitorType): Future[UpdateResult] = Future {
     implicit val session: DBSession = AutoSession
@@ -47,6 +42,8 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer, alarmDB: AlarmDB, recordOp: 
                 ,[levels] = ${levels}
                 ,[calibrate] = ${mt.calibrate}
                 ,[accumulated] = ${mt.accumulated}
+                ,[fixedM] = ${mt.fixedM}
+                ,[fixedB] = ${mt.fixedB}
             WHERE [id] = ${mt._id}
           IF(@@ROWCOUNT = 0)
             BEGIN
@@ -69,7 +66,9 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer, alarmDB: AlarmDB, recordOp: 
            ,[spectrum]
            ,[levels]
            ,[calibrate]
-           ,[accumulated])
+           ,[accumulated]
+           ,[fixedM]
+           ,[fixedB])
           VALUES
               (${mt._id}
                 ,${mt.desp}
@@ -89,7 +88,9 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer, alarmDB: AlarmDB, recordOp: 
                 ,${mt.spectrum}
                 ,${levels}
                 ,${mt.calibrate}
-                ,${mt.accumulated})
+                ,${mt.accumulated}
+                ,${mt.fixedM}
+                ,${mt.fixedB})
             END
          """.update().apply()
     UpdateResult.acknowledged(ret, ret, null)
@@ -124,7 +125,9 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer, alarmDB: AlarmDB, recordOp: 
       spectrum = rs.booleanOpt("spectrum"),
       levels = levels,
       calibrate = rs.booleanOpt("calibrate"),
-      accumulated = rs.booleanOpt("accumulated"))
+      accumulated = rs.booleanOpt("accumulated"),
+      fixedM = rs.doubleOpt("fixedM"),
+      fixedB = rs.doubleOpt("fixedB"))
   }
 
   override def deleteItemFuture(_id: String): Unit = {
@@ -158,6 +161,8 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer, alarmDB: AlarmDB, recordOp: 
 	          [levels] [nvarchar](50) NULL,
 	          [calibrate] [bit] NULL,
 	          [accumulated] [bit] NULL,
+            [fixedM] [float] NULL,
+            [fixedB] [float] NULL,
         CONSTRAINT [PK_monitorType] PRIMARY KEY CLUSTERED
         (
 	        [id] ASC
@@ -166,6 +171,21 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer, alarmDB: AlarmDB, recordOp: 
            """.execute().apply()
       defaultMonitorTypes.foreach(mt => waitReadyResult(upsertItemFuture(mt)))
     }
+
+    if(!sqlServer.getColumnNames(tabName).contains("fixedM")){
+      sql"""
+          Alter Table monitorType
+          Add [fixedM] float;
+         """.execute().apply()
+    }
+
+    if(!sqlServer.getColumnNames(tabName).contains("fixedB")){
+      sql"""
+          Alter Table monitorType
+          Add [fixedB] float;
+         """.execute().apply()
+    }
+
     refreshMtv()
   }
 }
