@@ -7,6 +7,7 @@ import play.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 case class ModelRegValue2(inputRegs: List[(InstrumentStatusType, Double)],
                           modeRegs: List[(InstrumentStatusType, Boolean)],
@@ -66,11 +67,14 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
         import com.github.nscala_time.time.Imports._
         val logStatus = DateTime.now() > nextLoggingStatusTime
         val readRegF = readReg(instrumentStatusTypes, logStatus)
-        readRegF onFailure errorHandler()
-        for (regValueOpt <- readRegF) {
-          for (regValues <- regValueOpt) {
-            regValueReporter(regValues, logStatus)(recordCalibration)
-          }
+        readRegF.onComplete{
+          case Success(regValueOpt)=>
+            for (regValues <- regValueOpt) {
+              regValueReporter(regValues, logStatus)(recordCalibration)
+            }
+          case Failure(exception)=>
+            errorHandler(exception)
+            throw exception
         }
       }
       connected = true

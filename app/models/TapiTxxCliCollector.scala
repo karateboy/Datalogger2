@@ -1,6 +1,5 @@
 package models
 
-import com.google.inject.assistedinject.Assisted
 import models.AbstractCollector.ResetConnection
 import models.Protocol.ProtocolParam
 import play.api.Logger
@@ -69,8 +68,10 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
           out <- outOpt
         } yield {
           val data = readDataReg(in, out)
-          if (data.isEmpty)
+          if (data.isEmpty) {
+            reset()
             throw new Exception("no data")
+          }
 
           val statusList =
             if (full) {
@@ -113,6 +114,25 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
     }
   }
 
+  private def reset(): Unit ={
+    for (in <- inOpt) {
+      in.close()
+      inOpt = None
+    }
+
+    for (out <- outOpt) {
+      out.close()
+      outOpt = None
+    }
+
+    for (sock <- socketOpt) {
+      sock.close()
+      socketOpt = None
+    }
+
+    self ! ResetConnection
+  }
+
   def readTillTimeout(in: BufferedReader, expectOneLine: Boolean = false): List[String] = {
     var resp = List.empty[String]
     var line = ""
@@ -121,22 +141,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
         line = in.readLine()
         if (line == null) {
           Logger.error(s"$instId readline null. close socket stream")
-          for (in <- inOpt) {
-            in.close()
-            inOpt = None
-          }
-
-          for (out <- outOpt) {
-            out.close()
-            outOpt = None
-          }
-
-          for (sock <- socketOpt) {
-            sock.close()
-            socketOpt = None
-          }
-
-          self ! ResetConnection
+          reset()
         }
         if (line != null && !line.isEmpty)
           resp = resp :+ line.trim
@@ -145,22 +150,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
       case _: SocketTimeoutException =>
         if (resp.isEmpty) {
           Logger.error("no response after timeout!")
-          for (in <- inOpt) {
-            in.close()
-            inOpt = None
-          }
-
-          for (out <- outOpt) {
-            out.close()
-            outOpt = None
-          }
-
-          for (sock <- socketOpt) {
-            sock.close()
-            socketOpt = None
-          }
-
-          self ! ResetConnection
+          reset()
         }
     }
     resp
