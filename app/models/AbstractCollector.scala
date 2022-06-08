@@ -90,7 +90,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
       readRegTimer = if (protocol.protocol == Protocol.tcp)
         Some(context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
       else
-        Some(context.system.scheduler.scheduleOnce(Duration(5, SECONDS), self, ReadRegister))
+        Some(context.system.scheduler.scheduleOnce(Duration(4, SECONDS), self, ReadRegister))
     }
   }
 

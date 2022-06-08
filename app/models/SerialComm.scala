@@ -172,6 +172,11 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
         Array.empty[Byte]
     }
   }
+
+  def purgeBuffer() = {
+    port.purgePort(SerialPort.PURGE_RXCLEAR)
+    readBuffer = Array.empty[Byte]
+  }
 }
 
 object SerialComm {

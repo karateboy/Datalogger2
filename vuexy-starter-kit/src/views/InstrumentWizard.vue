@@ -221,6 +221,11 @@
             :param-str="form.param"
             @param-changed="onParamChange"
           />
+          <met-one1020-config
+            v-else-if="form.instType === 'MetOne1020'"
+            :param-str="form.param"
+            @param-changed="onParamChange"
+          />
           <div v-else>TBD {{ form.instType }}</div>
         </validation-observer>
       </tab-content>
@@ -259,6 +264,7 @@ import Adam4000ConfigPage from './Adam4000ConfigPage.vue';
 import MoxaE1212ConfigPage from './Moxa1212ConfigPage.vue';
 import MoxaE1240ConfigPage from './MoxaE1240ConfigPage.vue';
 import VerewaConfig from './VerewaConfig.vue';
+import MetOne1020Config from './MetOne1020Config.vue';
 
 interface ProtocolParam {
   protocol: 'tcp' | 'serial' | 'tcpCli' | undefined;
@@ -304,6 +310,7 @@ export default Vue.extend({
     MoxaE1212ConfigPage,
     MoxaE1240ConfigPage,
     VerewaConfig,
+    MetOne1020Config,
   },
   props: {
     isNew: {
