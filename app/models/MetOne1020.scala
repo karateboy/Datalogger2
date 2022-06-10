@@ -30,7 +30,7 @@ object MetOne1020 extends AbstractDrv(_id = "MetOne1020", desp = "MetOne 1020",
 
   override def getDataRegList: List[DataReg] = instrumentStatusKeyList.filter(p => dataAddress.contains(p.addr)).map {
     ist =>
-      DataReg(monitorType = ist.key, ist.addr, multiplier = 1)
+      DataReg(monitorType = ist.key, ist.addr, multiplier = 1000)
   }
 
   override def getMonitorTypes(param: String): List[String] =

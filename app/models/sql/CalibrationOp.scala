@@ -81,16 +81,16 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
     if (!sqlServer.getTables().contains(tabName)) {
       sql"""
            CREATE TABLE [dbo].[calibration](
-	          [id] [bigint] IDENTITY(1,1) NOT NULL,
-	          [monitorType] [nvarchar](50) NOT NULL,
-	          [startTime] [datetime2](7) NOT NULL,
-	          [endTime] [datetime2](7) NOT NULL,
-	          [zero_val] [float] NULL,
-	          [span_std] [float] NULL,
-	          [span_val] [float] NULL,
-            CONSTRAINT [PK_calibration] PRIMARY KEY CLUSTERED
+	            [monitorType] [nvarchar](50) NOT NULL,
+	            [startTime] [datetime2](7) NOT NULL,
+	            [endTime] [datetime2](7) NOT NULL,
+	            [zero_val] [float] NULL,
+	            [span_std] [float] NULL,
+	            [span_val] [float] NULL,
+          CONSTRAINT [PK_calibration_1] PRIMARY KEY CLUSTERED
           (
-	          [id] ASC
+	          [monitorType] ASC,
+	          [startTime] ASC
           )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
           ) ON [PRIMARY]
            """.execute().apply()

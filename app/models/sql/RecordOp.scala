@@ -164,7 +164,7 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
     val tab: SQLSyntax = getTab(colName)
     val rawRecords =
       sql"""
-           Select Top $limit *
+           Select Top 60 *
            From $tab
            Where [time] >= ${startTime.toDate} and [time] < ${endTime.toDate} and [monitor] = $monitor
            Order by [time]
