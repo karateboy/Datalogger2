@@ -84,14 +84,14 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
       val ret = {
         for (serial <- serialOpt) yield {
           serial.port.writeBytes("\u000d".getBytes)
-          Thread.sleep(350)
+          Thread.sleep(600)
           serial.port.writeBytes("\u000d".getBytes)
-          Thread.sleep(350)
+          Thread.sleep(600)
           serial.port.writeBytes("6".getBytes)
-          Thread.sleep(950)
+          Thread.sleep(1200)
           serial.purgeBuffer()
           serial.port.writeBytes("4".getBytes)
-          Thread.sleep(950)
+          Thread.sleep(1500)
           val replies = serial.getMessageByLfWithTimeout(timeout = 2)
           if (replies.nonEmpty) {
             if(replies.size != 4)

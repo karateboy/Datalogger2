@@ -24,6 +24,7 @@ class T300CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   override def readDataReg(in: BufferedReader, out: OutputStream): List[(InstrumentStatusType, Double)] = {
     out.write("T CO\r\n".getBytes())
+    Thread.sleep(500)
     readTillTimeout(in, expectOneLine = true).flatMap(line => {
       for ((_, _, value) <- getKeyUnitValue(line)) yield
         (dataInstrumentTypes(0), value)

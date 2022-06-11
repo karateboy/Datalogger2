@@ -16,7 +16,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
                                    protocolParam: ProtocolParam)
   extends AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
     alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
-    calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam){
+    calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
 
   import context.dispatcher
 
@@ -42,6 +42,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
         in <- inOpt
       } yield {
         out.write("T LIST\r\n".getBytes)
+        Thread.sleep(1500)
         val resp = readTillTimeout(in)
 
         val ret =
@@ -58,7 +59,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
     istList
   }
 
-  def readDataReg(in:BufferedReader, out:OutputStream):List[(InstrumentStatusType, Double)]
+  def readDataReg(in: BufferedReader, out: OutputStream): List[(InstrumentStatusType, Double)]
 
   override def readReg(statusTypeList: List[InstrumentStatusType], full: Boolean): Future[Option[ModelRegValue2]] = Future {
     blocking {
@@ -76,6 +77,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
           val statusList =
             if (full) {
               out.write("T LIST\r\n".getBytes)
+              Thread.sleep(1500)
               val resp = readTillTimeout(in)
               resp.flatMap(line => {
                 for {(key, _, value) <- getKeyUnitValue(line) if dataInstrumentTypes.forall(ist => ist.key != key)
@@ -84,6 +86,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
               })
             } else
               List.empty[(InstrumentStatusType, Double)]
+
           ModelRegValue2(inputRegs = data ++ statusList,
             modeRegs = List.empty[(InstrumentStatusType, Boolean)],
             warnRegs = List.empty[(InstrumentStatusType, Boolean)])
@@ -95,7 +98,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
 
   def getKeyUnitValue(line: String): Option[(String, String, Double)] = {
     try {
-      if(!line.startsWith("T"))
+      if (!line.startsWith("T"))
         return None
 
       val part1 = line.split("\\s+").drop(3).mkString(" ")
@@ -112,25 +115,6 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
       case _: Throwable =>
         None
     }
-  }
-
-  private def reset(): Unit ={
-    for (in <- inOpt) {
-      in.close()
-      inOpt = None
-    }
-
-    for (out <- outOpt) {
-      out.close()
-      outOpt = None
-    }
-
-    for (sock <- socketOpt) {
-      sock.close()
-      socketOpt = None
-    }
-
-    self ! ResetConnection
   }
 
   def readTillTimeout(in: BufferedReader, expectOneLine: Boolean = false): List[String] = {
@@ -156,9 +140,28 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
     resp
   }
 
+  private def reset(): Unit = {
+    for (in <- inOpt) {
+      in.close()
+      inOpt = None
+    }
+
+    for (out <- outOpt) {
+      out.close()
+      outOpt = None
+    }
+
+    for (sock <- socketOpt) {
+      sock.close()
+      socketOpt = None
+    }
+
+    self ! ResetConnection
+  }
+
   override def connectHost: Unit = {
     val socket = new Socket(protocolParam.host.get, 3000)
-    socket.setSoTimeout(1200)
+    socket.setSoTimeout(500)
     socketOpt = Some(socket)
     outOpt = Some(socket.getOutputStream())
     inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream())))
