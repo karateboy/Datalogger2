@@ -65,6 +65,14 @@
             >
               重新上傳
             </b-button>
+            <b-button
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              variant="primary"
+              class="mr-1"
+              @click="cdxUpload"
+            >
+              CDX上傳
+            </b-button>
           </b-col>
         </b-row>
       </b-form>
@@ -145,6 +153,18 @@ export default Vue.extend({
         const res = await axios.get(url);
         if (res.data.ok) {
           this.$bvModal.msgBoxOk('重新上傳資料');
+        }
+      } catch (err) {
+        throw new Error('failed to upload data');
+      }
+    },
+    async cdxUpload() {
+      const url = `/CdxUpload/${this.form.range[0]}/${this.form.range[1]}`;
+
+      try {
+        const res = await axios.get(url);
+        if (res.status === 200) {
+          this.$bvModal.msgBoxOk('Cdx重傳資料  上傳結果請查詢警報');
         }
       } catch (err) {
         throw new Error('failed to upload data');

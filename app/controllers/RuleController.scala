@@ -1,7 +1,6 @@
 package controllers
 
 import models._
-import models.mongodb.VariationRuleOp
 import play.api.Logger
 import play.api.libs.json.{JsError, JsValue, Json}
 import play.api.mvc.{Action, AnyContent, BodyParsers, Controller}
@@ -10,7 +9,7 @@ import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 class RuleController @Inject()(spikeRuleOp: SpikeRuleDB, constantRuleOp: ConstantRuleDB,
-                               variationRuleOp: VariationRuleDB)extends Controller {
+                               variationRuleOp: VariationRuleDB) extends Controller {
 
   def getSpikeRules(): Action[AnyContent] = Security.Authenticated.async {
     for(ret <- spikeRuleOp.getRules()) yield

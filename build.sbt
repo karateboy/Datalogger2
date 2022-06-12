@@ -49,7 +49,11 @@ routesGenerator := StaticRoutesGenerator
 mappings in Universal ++=
 (baseDirectory.value / "report_template" * "*" get) map
     (x => x -> ("report_template/" + x.getName))
- 	
+
+mappings in Universal ++=
+  (baseDirectory.value / "cdxUpload" * "*" get) map
+    (x => x -> ("cdxUpload/" + x.getName))
+
 //libraryDependencies += "com.google.guava" % "guava" % "19.0"
 scalacOptions += "-feature"
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"

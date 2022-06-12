@@ -85,7 +85,7 @@ GET      /Excel/MonthlyHourReport/:monitorType/:reportDate                      
 
 #JSON
 GET      /MonitorType                                                             controllers.HomeController.monitorTypeList
-GET      /MonitorType/activated                                                   controllers.HomeController.activatedMonitorTyopes
+GET      /MonitorType/activated                                                   controllers.HomeController.activatedMonitorTypes
 POST     /MonitorType/:id                                                         controllers.HomeController.upsertMonitorType(id)
 PUT      /MonitorType/:id                                                         controllers.HomeController.upsertMonitorType(id)
 DELETE   /MonitorType/:id                                                         controllers.HomeController.deleteMonitorType(id)
@@ -131,3 +131,10 @@ DELETE  /ConstantRule/:monitor/:monitorType     controllers.RuleController.delet
 GET     /VariationRules                         controllers.RuleController.getVariationRules
 POST    /VariationRule                          controllers.RuleController.upsertVariationRule
 DELETE  /VariationRule/:monitor/:monitorType    controllers.RuleController.deleteVariationRule(monitor, monitorType)
+
+#CDX
+GET     /CdxConfig                              controllers.Cdx.getConfig
+PUT     /CdxConfig                              controllers.Cdx.putConfig
+GET     /CdxMonitorTypes                        controllers.Cdx.getMonitorTypes
+PUT     /CdxMonitorTypes                        controllers.Cdx.putMonitorTypes
+GET     /CdxUpload/:start/:end                  controllers.Cdx.CdxUploadData(start:Long, end:Long)

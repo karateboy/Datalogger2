@@ -116,6 +116,10 @@ export default [
         route: 'data-management',
       },
       {
+        title: 'CDX上傳設定',
+        route: 'cdx-upload-config',
+      },
+      {
         title: '參數設定',
         route: 'system-config',
       },

@@ -19,13 +19,15 @@ trait AlarmDB {
     val map = Map(INFO -> "資訊", WARN -> "警告", ERR -> "嚴重")
   }
 
-  def src(mt: String) = s"T:${mt}"
+  def src(mt: String) = s"T:$mt"
 
   def src(inst: Instrument) = s"I:${inst._id}"
 
   def instrumentSrc(id: String) = s"I:$id"
 
   def src() = "S:System"
+
+  def srcCDX() = "S:CDX"
 
   implicit val write = Json.writes[Alarm]
   implicit val jsonWrite = Json.writes[Alarm2JSON]

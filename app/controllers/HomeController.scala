@@ -496,7 +496,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       Ok(Json.toJson(mtList.sortBy(_.order)))
   }
 
-  def activatedMonitorTyopes = Security.Authenticated {
+  def activatedMonitorTypes = Security.Authenticated {
     implicit request =>
       val userInfo = Security.getUserinfo(request).get
       val group = groupOp.getGroupByID(userInfo.group).get

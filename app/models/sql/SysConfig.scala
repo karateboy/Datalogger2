@@ -1,7 +1,9 @@
 package models.sql
 
 import com.mongodb.client.result.UpdateResult
-import models.SysConfigDB
+import models.CdxUploader.{CdxConfig, CdxMonitorType}
+import models.{CdxUploader, SysConfigDB}
+import play.api.libs.json.Json
 import scalikejdbc._
 
 import java.sql.Blob
@@ -42,22 +44,6 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
     UpdateResult.acknowledged(ret, ret, null)
   }
 
-  private def set(key: String, value: String): Int = {
-    implicit val session: DBSession = AutoSession
-    sql"""
-          Update [dbo].[sysConfig]
-          Set [value] = $value
-          Where [id] = $key
-          IF(@@ROWCOUNT = 0)
-            BEGIN
-              INSERT INTO
-            ([id], [value])
-            VALUES
-              ($key, $value)
-            END
-         """.update().apply()
-  }
-
   override def getWeatherSkipLine(): Future[Int] = Future {
     val valueOpt = get(WeatherSkipLine)
     val ret =
@@ -79,18 +65,6 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
     ret.getOrElse(0.75)
   }
 
-  private def get(key: String): Option[Value] = {
-    implicit val session: DBSession = ReadOnlyAutoSession
-    sql"""
-         Select *
-         From [dbo].[sysConfig]
-         Where [id] = $key
-         """.map(mapper).first().apply()
-  }
-
-  def mapper(rs: WrappedResultSet): Value =
-    Value(rs.string("value"), rs.blobOpt("blob"))
-
   override def setEffectiveRation(v: Double): Future[UpdateResult] = Future {
     val ret = set(EffectiveRatio, v.toString)
     UpdateResult.acknowledged(ret, ret, null)
@@ -107,6 +81,61 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
   override def setAlertEmailTarget(emails: Seq[String]): Future[UpdateResult] = Future {
     val ret = set(AlertEmailTaget, emails.mkString(","))
     UpdateResult.acknowledged(ret, ret, null)
+  }
+
+  override def getCdxConfig(): Future[CdxUploader.CdxConfig] = Future {
+    val valueOpt = get(CDX_CONFIG)
+    val ret =
+      for (value <- valueOpt) yield
+        Json.parse(value.v).validate[CdxConfig].asOpt.getOrElse(CdxUploader.defaultConfig)
+    ret.getOrElse(CdxUploader.defaultConfig)
+  }
+
+  private def get(key: String): Option[Value] = {
+    implicit val session: DBSession = ReadOnlyAutoSession
+    sql"""
+         Select *
+         From [dbo].[sysConfig]
+         Where [id] = $key
+         """.map(mapper).first().apply()
+  }
+
+  def mapper(rs: WrappedResultSet): Value =
+    Value(rs.string("value"), rs.blobOpt("blob"))
+
+  override def setCdxConfig(config: CdxConfig): Future[UpdateResult] = Future {
+    val ret = set(CDX_CONFIG, Json.toJson(config).toString())
+    UpdateResult.acknowledged(ret, ret, null)
+  }
+
+  override def getCdxMonitorTypes(): Future[Seq[CdxUploader.CdxMonitorType]] = Future {
+    val valueOpt = get(CDX_MONITOR_TYPES)
+    val ret =
+      for (value <- valueOpt) yield
+        Json.parse(value.v).validate[Seq[CdxMonitorType]].asOpt.getOrElse(CdxUploader.defaultMonitorTypes)
+
+    ret.getOrElse(CdxUploader.defaultMonitorTypes)
+  }
+
+  override def setCdxMonitorTypes(monitorTypes: Seq[CdxMonitorType]): Future[UpdateResult] = Future {
+    val ret = set(CDX_MONITOR_TYPES, Json.toJson(monitorTypes).toString())
+    UpdateResult.acknowledged(ret, ret, null)
+  }
+
+  private def set(key: String, value: String): Int = {
+    implicit val session: DBSession = AutoSession
+    sql"""
+          Update [dbo].[sysConfig]
+          Set [value] = $value
+          Where [id] = $key
+          IF(@@ROWCOUNT = 0)
+            BEGIN
+              INSERT INTO [dbo].[sysConfig]
+            ([id], [value])
+            VALUES
+              ($key, $value)
+            END
+         """.update().apply()
   }
 
   private def init()(implicit session: DBSession = AutoSession): Unit = {

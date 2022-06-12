@@ -26,7 +26,7 @@ trait MonitorTypeDB {
     rangeType(THC, "總碳氫化合物", "ppm", 2),
     rangeType(TS, "總硫", "ppb", 2),
     rangeType(CH4, "甲烷", "ppm", 2),
-    rangeType("NMHC", "非甲烷碳氫化合物", "ppm", 2),
+    rangeType(NMHC, "非甲烷碳氫化合物", "ppm", 2),
     rangeType(NH3, "氨", "ppb", 2),
     rangeType("TSP", "TSP", "μg/m3", 2),
     rangeType(PM10, "PM10懸浮微粒", "μg/m3", 2),

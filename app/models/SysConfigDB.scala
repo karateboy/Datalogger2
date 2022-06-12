@@ -1,5 +1,6 @@
 package models
 
+import models.CdxUploader.{CdxConfig, CdxMonitorType}
 import org.mongodb.scala.result.UpdateResult
 
 import java.time.Instant
@@ -13,6 +14,8 @@ trait SysConfigDB {
   val WeatherSkipLine = "WeatherSkipLine"
   val EffectiveRatio = "EffectiveRatio"
   val AlertEmailTaget = "AlertEmailTarget"
+  val CDX_CONFIG = "CdxConfig"
+  val CDX_MONITOR_TYPES = "CdxMonitorTypes"
 
   // def getLogo: Future[LogoImage]
 
@@ -37,4 +40,12 @@ trait SysConfigDB {
   def getAlertEmailTarget(): Future[Seq[String]]
 
   def setAlertEmailTarget(emails: Seq[String]): Future[UpdateResult]
+
+  def getCdxConfig(): Future[CdxConfig]
+
+  def setCdxConfig(config:CdxConfig): Future[UpdateResult]
+
+  def getCdxMonitorTypes() : Future[Seq[CdxMonitorType]]
+
+  def setCdxMonitorTypes(monitorTypes: Seq[CdxMonitorType]) : Future[UpdateResult]
 }

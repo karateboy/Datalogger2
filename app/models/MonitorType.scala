@@ -68,7 +68,7 @@ object MonitorType {
   val PM25 = "PM25"
   val O3 = "O3"
   val THC = "THC"
-
+  val NMHC = "NMHC"
   val LAT = "LAT"
   val LNG = "LNG"
   val WIN_SPEED = "WD_SPEED"
