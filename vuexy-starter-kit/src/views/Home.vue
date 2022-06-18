@@ -32,6 +32,24 @@
       </b-card>
     </b-col>
     <b-col
+      v-if="cdxConfig.enable"
+      cols="12"
+      md="6"
+      lg="6"
+      xl="6"
+      style="max-height: 400px"
+    >
+      <b-table
+        small
+        striped
+        responsive
+        sticky-header
+        :fields="cdxUploadColumns"
+        :items="cdxUploadLogs"
+        :tbody-tr-class="rowClass"
+      />
+    </b-col>
+    <b-col
       v-for="mt in userInfo.monitorTypeOfInterest"
       :key="mt"
       cols="12"
@@ -67,11 +85,12 @@
 import Vue from 'vue';
 import { mapActions, mapGetters, mapState } from 'vuex';
 import axios from 'axios';
-import { MonitorType, MonitorTypeStatus } from './types';
+import { MonitorType, MonitorTypeStatus, CdxConfig } from './types';
 import highcharts from 'highcharts';
 import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
 import highchartMore from 'highcharts/highcharts-more';
+import moment from 'moment';
 
 export default Vue.extend({
   data() {
@@ -109,6 +128,55 @@ export default Vue.extend({
     ];
     let chart: any;
     chart = null;
+    const cdxUploadColumns = [
+      {
+        key: 'time',
+        label: '時間',
+        sortable: true,
+        formatter: (v: number) => moment(v).format('lll'),
+      },
+      {
+        key: 'level',
+        label: '等級',
+        sortable: true,
+        formatter: (v: number) => {
+          switch (v) {
+            case 1:
+              return '資訊';
+
+            case 2:
+              return '警告';
+
+            case 3:
+              return '錯誤';
+          }
+        },
+        tdClass: (v: number) => {
+          switch (v) {
+            case 1:
+              return 'success';
+
+            case 2:
+              return 'warning';
+
+            case 3:
+              return 'danger';
+          }
+        },
+      },
+      {
+        key: 'info',
+        label: '詳細資訊',
+        sortable: true,
+      },
+    ];
+    let cdxConfig: CdxConfig = {
+      enable: false,
+      user: '',
+      password: '',
+      siteCounty: '',
+      siteID: '',
+    };
     return {
       maxPoints: 30,
       fields,
@@ -117,6 +185,9 @@ export default Vue.extend({
       realTimeStatus: Array<MonitorTypeStatus>(),
       chartSeries: Array<highcharts.SeriesOptionsType>(),
       chart,
+      cdxConfig,
+      cdxUploadColumns,
+      cdxUploadLogs: [],
     };
   },
   computed: {
@@ -150,6 +221,7 @@ export default Vue.extend({
       for (const mt of me.windRoseList) me.queryWindRose(mt);
     }, 60000);
 
+    await this.getCdxConfig();
     await this.initRealtimeChart();
   },
   beforeDestroy() {
@@ -162,6 +234,7 @@ export default Vue.extend({
     ...mapActions('user', ['getUserInfo']),
     async refresh(): Promise<void> {
       this.plotLatestData();
+      this.getCdxUploadEvents();
     },
     async plotLatestData(): Promise<void> {
       await this.getRealtimeStatus();
@@ -447,6 +520,44 @@ export default Vue.extend({
         highcharts.chart(`rose_${mt}`, ret);
       } catch (err) {
       } finally {
+      }
+    },
+    async getCdxUploadEvents() {
+      try {
+        const range = [
+          moment().subtract(7, 'days').valueOf(),
+          moment().valueOf(),
+        ];
+        let src = 'S:CDX';
+        let res = await axios.get(`/Alarms/${src}/1/${range[0]}/${range[1]}`);
+        if (res.status === 200) {
+          this.cdxUploadLogs = res.data;
+        }
+      } catch (err) {
+        throw new Error(`$err`);
+      }
+    },
+    async getCdxConfig() {
+      try {
+        let ret = await axios.get('/CdxConfig');
+        if (ret.status === 200) {
+          this.cdxConfig = ret.data;
+        }
+      } catch (err) {
+        throw new Error(`$err`);
+      }
+    },
+    rowClass(item: any, type: any) {
+      if (!item || type !== 'row') return;
+      switch (item.level) {
+        case 1:
+          return 'table-success';
+
+        case 2:
+          return 'table-warning';
+
+        case 3:
+          return 'table-danger';
       }
     },
   },

@@ -137,7 +137,6 @@ import useAppConfig from '../@core/app-config/useAppConfig';
 import moment from 'moment';
 import axios from 'axios';
 import highcharts from 'highcharts';
-import { MonitorType } from './types';
 
 export default Vue.extend({
   components: {

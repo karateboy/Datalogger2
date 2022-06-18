@@ -71,6 +71,45 @@
           </template>
         </b-table>
       </b-tab>
+      <b-tab title="上傳歷史紀錄">
+        <b-form @submit.prevent>
+          <b-row>
+            <b-col cols="12">
+              <b-form-group
+                label="查詢區間"
+                label-for="dataRange"
+                label-cols-md="3"
+              >
+                <date-picker
+                  id="dataRange"
+                  v-model="range"
+                  :range="true"
+                  type="datetime"
+                  format="YYYY-MM-DD HH:mm"
+                  value-type="timestamp"
+                  :show-second="false"
+                />
+                <b-button
+                  v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                  type="submit"
+                  variant="primary"
+                  class="ml-2"
+                  @click="getCdxUploadEvents"
+                >
+                  查詢
+                </b-button>
+              </b-form-group>
+            </b-col>
+          </b-row>
+        </b-form>
+
+        <b-table
+          striped
+          hover
+          :fields="cdxUploadColumns"
+          :items="cdxUploadLogs"
+        />
+      </b-tab>
     </b-tabs>
   </b-card>
 </template>
@@ -81,7 +120,12 @@
 import Vue from 'vue';
 const Ripple = require('vue-ripple-directive');
 import axios from 'axios';
+import moment from 'moment';
 import { isNumber } from 'highcharts';
+import DatePicker from 'vue2-datepicker';
+import 'vue2-datepicker/index.css';
+import 'vue2-datepicker/locale/zh-tw';
+import { CdxConfig } from './types';
 
 interface CdxMonitorTypes {
   mt: string;
@@ -90,16 +134,10 @@ interface CdxMonitorTypes {
   max?: number;
 }
 
-interface CdxConfig {
-  enable: boolean;
-  user: string;
-  password: string;
-  siteCounty: string;
-  siteID: string;
-}
-
 export default Vue.extend({
-  components: {},
+  components: {
+    DatePicker,
+  },
   directives: {
     Ripple,
   },
@@ -145,7 +183,60 @@ export default Vue.extend({
         label: '最大值',
       },
     ];
+
+    const cdxUploadColumns = [
+      {
+        key: 'time',
+        label: '時間',
+        sortable: true,
+        formatter: (v: number) => moment(v).format('lll'),
+      },
+      {
+        key: 'level',
+        label: '等級',
+        sortable: true,
+        formatter: (v: number) => {
+          switch (v) {
+            case 1:
+              return '資訊';
+
+            case 2:
+              return '警告';
+
+            case 3:
+              return '錯誤';
+          }
+        },
+      },
+      {
+        key: 'src',
+        label: '來源',
+        sortable: true,
+        formatter: (src: string) => {
+          let tokens = src.split(':');
+          switch (tokens[0]) {
+            case 'I':
+              return `設備:${tokens[1]}`;
+
+            case 'T':
+              return `測項:${tokens[1]}`;
+
+            case 'S':
+              if (tokens[1] === 'System') return `系統`;
+              else return `系統:${tokens[1]}`;
+            default:
+              return src;
+          }
+        },
+      },
+      {
+        key: 'info',
+        label: '詳細資訊',
+        sortable: true,
+      },
+    ];
     const monitorTypes = Array<CdxMonitorTypes>();
+    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
 
     let cdxConfig: CdxConfig = {
       enable: false,
@@ -160,11 +251,15 @@ export default Vue.extend({
       columns,
       cdxConfig,
       monitorTypes,
+      range,
+      cdxUploadColumns,
+      cdxUploadLogs: [],
     };
   },
   async mounted() {
     await this.getCdxConfig();
-    this.getMonitorTypes();
+    await this.getMonitorTypes();
+    await this.getCdxUploadEvents();
   },
   methods: {
     async getCdxConfig() {
@@ -208,6 +303,19 @@ export default Vue.extend({
       try {
         let ret = await axios.put('/CdxMonitorTypes', this.monitorTypes);
         if (ret.status === 200) this.$bvModal.msgBoxOk('成功');
+      } catch (err) {
+        throw new Error(`$err`);
+      }
+    },
+    async getCdxUploadEvents() {
+      try {
+        let src = 'S:CDX';
+        let res = await axios.get(
+          `/Alarms/${src}/1/${this.range[0]}/${this.range[1]}`,
+        );
+        if (res.status === 200) {
+          this.cdxUploadLogs = res.data;
+        }
       } catch (err) {
         throw new Error(`$err`);
       }

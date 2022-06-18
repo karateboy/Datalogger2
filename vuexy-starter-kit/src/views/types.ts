@@ -94,3 +94,11 @@ export interface CalibrationConfig {
 export interface ThetaConfig {
   calibrations: Array<CalibrationConfig>;
 }
+
+export interface CdxConfig {
+  enable: boolean;
+  user: string;
+  password: string;
+  siteCounty: string;
+  siteID: string;
+}

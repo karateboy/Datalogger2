@@ -85,6 +85,8 @@ case class AddSignalTypeHandler(mtId: String, handler: Boolean => Unit)
 
 case class WriteSignal(mtId: String, bit: Boolean)
 
+case object CheckInstruments
+
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentDB,
                                      recordOp: RecordDB, alarmOp: AlarmDB, sysConfigDB: SysConfigDB,
@@ -716,6 +718,7 @@ class DataCollectManager @Inject()
                 dataCollectManagerOp.recalculateHourData(monitor = m,
                   current = current)(monitorTypeOp.realtimeMtvList)
               }
+              self ! CheckInstruments
             }
           case Failure(exception)=>
             errorHandler(exception)
@@ -847,6 +850,20 @@ class DataCollectManager @Inject()
       }).toMap
       context become handler(instrumentMap, collectorInstrumentMap, latestDataMap,
         mtDataList, restartList, signalTypeHandlerMap, signalDataMap ++ updateMap)
+
+    case CheckInstruments =>
+      val now = DateTime.now()
+      val f = recordOp.getRecordMapFuture(recordOp.MinCollection)(Monitor.SELF_ID, monitorTypeOp.activeMtvList,
+        now.minusHours(1), now)
+      for(minRecordMap <- f){
+        for(kv<- instrumentMap){
+          val ( instID, instParam) = kv;
+          if(!instParam.mtList.forall(mt=> minRecordMap.contains(mt) && minRecordMap(mt).size >=45)){
+            Logger.error(s"$instID has less then 45 minRecords. Restart $instID")
+            self ! RestartInstrument(instID)
+          }
+        }
+      }
 
   }
 

@@ -145,7 +145,6 @@ import moment from 'moment';
 import axios from 'axios';
 const excel = require('../libs/excel');
 const _ = require('lodash');
-import { MonitorType } from './types';
 
 export default Vue.extend({
   components: {

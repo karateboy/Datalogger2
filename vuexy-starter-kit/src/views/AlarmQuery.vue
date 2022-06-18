@@ -61,7 +61,13 @@
       </b-form>
     </b-card>
     <b-card v-show="display">
-      <b-table striped hover :fields="columns" :items="rows" />
+      <b-table
+        striped
+        hover
+        :fields="columns"
+        :items="rows"
+        :tbody-tr-class="rowClass"
+      />
     </b-card>
   </div>
 </template>
@@ -100,16 +106,45 @@ export default Vue.extend({
           key: 'time',
           label: '時間',
           sortable: true,
+          formatter: (v: number) => moment(v).format('lll'),
         },
         {
           key: 'level',
           label: '等級',
           sortable: true,
+          formatter: (v: number) => {
+            switch (v) {
+              case 1:
+                return '資訊';
+
+              case 2:
+                return '警告';
+
+              case 3:
+                return '錯誤';
+            }
+          },
         },
         {
           key: 'src',
           label: '來源',
           sortable: true,
+          formatter: (src: string) => {
+            let tokens = src.split(':');
+            switch (tokens[0]) {
+              case 'I':
+                return `設備:${tokens[1]}`;
+
+              case 'T':
+                return `測項:${tokens[1]}`;
+
+              case 'S':
+                if (tokens[1] === 'System') return `系統`;
+                else return `系統:${tokens[1]}`;
+              default:
+                return src;
+            }
+          },
         },
         {
           key: 'info',
@@ -130,12 +165,20 @@ export default Vue.extend({
       const url = `/AlarmReport/${this.form.alarmLevel}/${this.form.range[0]}/${this.form.range[1]}`;
       const res = await axios.get(url);
       const ret = res.data;
-      for (const alarm of ret) {
-        alarm.time = moment(alarm.time).format('lll');
-        const src = alarm.src.split(':');
-        alarm.src = src[1];
-      }
       this.rows = ret;
+    },
+    rowClass(item: any, type: any) {
+      if (!item || type !== 'row') return;
+      switch (item.level) {
+        case 1:
+          return 'table-success';
+
+        case 2:
+          return 'table-warning';
+
+        case 3:
+          return 'table-danger';
+      }
     },
   },
 });
