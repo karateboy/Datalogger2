@@ -25,6 +25,9 @@
           :no-border-collapse="true"
           style="max-height: 500px"
         >
+          <template #cell(index)="data">
+            {{ data.index + 1 }}
+          </template>
         </b-table>
       </b-card>
     </b-col>
@@ -69,11 +72,14 @@ import highcharts from 'highcharts';
 import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
 import highchartMore from 'highcharts/highcharts-more';
-import { Monitor } from '@/store/monitors/types';
 
 export default Vue.extend({
   data() {
     const fields = [
+      {
+        key: 'index',
+        label: '序號',
+      },
       {
         key: 'desp',
         label: '測項',

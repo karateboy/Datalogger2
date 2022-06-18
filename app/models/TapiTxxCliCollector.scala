@@ -63,16 +63,14 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
 
   override def readReg(statusTypeList: List[InstrumentStatusType], full: Boolean): Future[Option[ModelRegValue2]] = Future {
     blocking {
-      val ret = {
+      try{
         for {
           in <- inOpt
           out <- outOpt
         } yield {
           val data = readDataReg(in, out)
-          if (data.isEmpty) {
-            reset()
+          if (data.isEmpty)
             throw new Exception("no data")
-          }
 
           val statusList =
             if (full) {
@@ -91,8 +89,11 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
             modeRegs = List.empty[(InstrumentStatusType, Boolean)],
             warnRegs = List.empty[(InstrumentStatusType, Boolean)])
         }
+      }catch{
+        case ex:Exception=>
+          reset()
+          throw ex
       }
-      ret
     }
   }
 

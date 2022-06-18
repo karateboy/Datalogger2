@@ -63,12 +63,11 @@ class Cdx @Inject()(cdxUploader: CdxUploader, sysConfigDB: SysConfigDB, recordDB
     val end = new DateTime(endNum)
     val recordFuture = recordDB.getRecordListFuture(recordDB.HourCollection)(start, end)
     val uploadPath = environment.rootPath.toPath.resolve("cdxUpload")
-    Logger.info(uploadPath.toFile.getAbsolutePath)
     for{records<-recordFuture
         cdxConfig <- sysConfigDB.getCdxConfig()
         } yield {
-      records.foreach(record=>cdxUploader.upload(record, uploadPath, cdxConfig))
-      Ok("")
+      records.foreach(record=>cdxUploader.upload(record, cdxConfig))
+      Ok(Json.obj("ok"->true))
     }
   }
 }

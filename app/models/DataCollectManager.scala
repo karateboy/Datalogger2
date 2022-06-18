@@ -87,7 +87,8 @@ case class WriteSignal(mtId: String, bit: Boolean)
 
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentDB,
-                                     recordOp: RecordDB, alarmOp: AlarmDB)() {
+                                     recordOp: RecordDB, alarmOp: AlarmDB, sysConfigDB: SysConfigDB,
+                                     cdxUploader: CdxUploader)() {
   def startCollect(inst: Instrument) {
     manager ! StartInstrument(inst)
   }
@@ -199,17 +200,22 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         val mtDataList = calculateHourAvgMap(mtMap, alwaysValid)
         val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
         val f = recordOp.replaceRecord(recordList)(recordOp.HourCollection)
-        if (forward)
-          f.andThen({
-            case _ =>
+        if (forward) {
+          f onComplete {
+            case Success(_)=>
               manager ! ForwardHour
-          })
+              for(cdxConfig<-sysConfigDB.getCdxConfig() if cdxConfig.enable)
+                cdxUploader.upload(recordList = recordList, cdxConfig = cdxConfig)
+
+            case Failure(exception) =>
+              Logger.error("failed", exception)
+          }
+        }
 
         f
       }
     ret.flatMap(x => x)
   }
-
 }
 
 object DataCollectManager {

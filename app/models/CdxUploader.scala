@@ -48,7 +48,7 @@ object CdxUploader {
 }
 
 @Singleton
-class CdxUploader @Inject()(alarmDB: AlarmDB){
+class CdxUploader @Inject()(alarmDB: AlarmDB, environment: Environment){
   import CdxUploader._
   val serviceID = "AQX_S_00"
 
@@ -117,8 +117,10 @@ class CdxUploader @Inject()(alarmDB: AlarmDB){
     xml.toString
   }
 
-  def upload(recordList: RecordList, localPath: Path, cdxConfig: CdxConfig) = {
+  def upload(recordList: RecordList, cdxConfig: CdxConfig) = {
+    val localPath = environment.rootPath.toPath.resolve("cdxUpload")
     val dateTime = new DateTime(recordList._id.time)
+    val fmt = DateTimeFormat.fullDateTime()
     val xmlStr = getXml(localPath, recordList, cdxConfig)
     if (cdxConfig.enable) {
       val fileName = s"${serviceID}_${dateTime.toString("MMdd")}${dateTime.getHourOfDay}_${cdxConfig.user}.xml"
@@ -130,11 +132,13 @@ class CdxUploader @Inject()(alarmDB: AlarmDB){
         Logger.error(s"errMsg:${errMsgHolder.value}")
         Logger.error(s"ret:${resultHolder.value.toString}")
         Logger.error(s"unknown:${unknownHolder.value.toString}")
-        alarmDB.log(alarmDB.srcCDX(), alarmDB.Level.ERR, s"CDX錯誤訊息 ${errMsgHolder.value}")
+        alarmDB.log(alarmDB.srcCDX(), alarmDB.Level.ERR, s"CDX上傳${dateTime.toString(fmt)}小時值失敗 錯誤訊息 ${errMsgHolder.value}")
       } else {
         Logger.info(s"Success upload ${dateTime.date.toString}")
-        alarmDB.log(alarmDB.srcCDX(), alarmDB.Level.INFO, s"CDX 成功上傳 ${dateTime.toString}")
+        alarmDB.log(alarmDB.srcCDX(), alarmDB.Level.INFO, s"CDX 上傳${dateTime.toString(fmt)}小時值成功")
       }
+    }else{
+      alarmDB.log(alarmDB.srcCDX(), alarmDB.Level.INFO, s"CDX 模擬上傳${dateTime.toString(fmt)}小時值成功")
     }
   }
 }

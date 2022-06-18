@@ -1,5 +1,6 @@
 package models.mongodb
 
+import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import models.{Alarm, AlarmDB}
@@ -47,16 +48,29 @@ class AlarmOp @Inject()(mongodb: MongoDB) extends AlarmDB {
   import org.mongodb.scala.model.Filters._
   import org.mongodb.scala.model.Sorts._
 
-  override def getAlarms(level: Int, start: DateTime, end: DateTime): Seq[Alarm] = {
+  override def getAlarmsFuture(level: Int, start: DateTime, end: DateTime): Future[Seq[Alarm]] = {
     import org.mongodb.scala.bson.BsonDateTime
     val startB: BsonDateTime = start
     val endB: BsonDateTime = end
     val f = collection.find(and(gte("time", startB), lt("time", endB), gte("level", level))).sort(ascending("time")).toFuture()
-
-    val docs = waitReadyResult(f)
-    docs.map { toAlarm }
+    f onFailure errorHandler()
+    for(docs<-f) yield
+      docs.map { toAlarm }
   }
 
+  override def getAlarmsFuture(src: String, level: Int, start: Imports.DateTime, end: Imports.DateTime): Future[Seq[Alarm]] = {
+    import org.mongodb.scala.bson.BsonDateTime
+    val startB: BsonDateTime = start
+    val endB: BsonDateTime = end
+    val f = collection.find(and(equal("src", src),
+      gte("time", startB),
+      lt("time", endB),
+      gte("level", level))).sort(ascending("time")).toFuture()
+
+    f onFailure errorHandler()
+    for(docs<-f) yield
+      docs.map { toAlarm }
+  }
   override def getAlarmsFuture(start: DateTime, end: DateTime): Future[Seq[Alarm]] = {
     import org.mongodb.scala.bson.BsonDateTime
     val startB: BsonDateTime = start

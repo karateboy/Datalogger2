@@ -4,7 +4,6 @@ import com.github.nscala_time.time.Imports._
 import controllers.Highchart._
 import models.ModelHelper.windAvg
 import models._
-import models.mongodb.{CalibrationOp, InstrumentStatusOp, RecordOp}
 import play.api._
 import play.api.libs.json._
 import play.api.mvc._
@@ -145,19 +144,6 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
   }
 
   import models.ModelHelper._
-
-  def getPeriods(start: DateTime, endTime: DateTime, d: Period): List[DateTime] = {
-    import scala.collection.mutable.ListBuffer
-
-    val buf = ListBuffer[DateTime]()
-    var current = start
-    while (current < endTime) {
-      buf.append(current)
-      current += d
-    }
-
-    buf.toList
-  }
 
   def historyTrendChart(monitorStr: String, monitorTypeStr: String, reportUnitStr: String, statusFilterStr: String,
                         startNum: Long, endNum: Long, outputTypeStr: String) = Security.Authenticated {
@@ -527,6 +513,19 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
         Ok(Json.toJson(recordList))
   }
 
+  def getPeriods(start: DateTime, endTime: DateTime, d: Period): List[DateTime] = {
+    import scala.collection.mutable.ListBuffer
+
+    val buf = ListBuffer[DateTime]()
+    var current = start
+    while (current < endTime) {
+      buf.append(current)
+      current += d
+    }
+
+    buf.toList
+  }
+
   def calibrationReport(startNum: Long, endNum: Long) = Security.Authenticated {
     import calibrationOp.jsonWrites
     val (start, end) = (new DateTime(startNum), new DateTime(endNum))
@@ -537,16 +536,26 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     Ok(Json.toJson(jsonReport))
   }
 
-  def alarmReport(level: Int, startNum: Long, endNum: Long) = Security.Authenticated {
+  def alarmReport(level: Int, startNum: Long, endNum: Long) = Security.Authenticated.async {
     implicit val write = Json.writes[Alarm2JSON]
-    val (start, end) =
-      (new DateTime(startNum),
-        new DateTime(endNum))
-    val report: Seq[Alarm] = alarmOp.getAlarms(level, start, end + 1.day)
-    val jsonReport = report map {
-      _.toJson
+    val (start, end) = (new DateTime(startNum), new DateTime(endNum))
+    for (report <- alarmOp.getAlarmsFuture(level, start, end + 1.day)) yield {
+      val jsonReport = report map {
+        _.toJson
+      }
+      Ok(Json.toJson(jsonReport))
     }
-    Ok(Json.toJson(jsonReport))
+  }
+
+  def getAlarms(src: String, level: Int, startNum: Long, endNum: Long) = Security.Authenticated.async {
+    implicit val write = Json.writes[Alarm2JSON]
+    val (start, end) = (new DateTime(startNum), new DateTime(endNum))
+    for (report <- alarmOp.getAlarmsFuture(src, level, start, end + 1.day)) yield {
+      val jsonReport = report map {
+        _.toJson
+      }
+      Ok(Json.toJson(jsonReport))
+    }
   }
 
   def instrumentStatusReport(id: String, startNum: Long, endNum: Long) = Security.Authenticated {
@@ -686,16 +695,6 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
       }
 
 
-  }
-
-  def alertRecordList(start: Long, end: Long) = Action.async {
-    implicit request =>
-      val startTime = new DateTime(start)
-      val endTime = new DateTime(end)
-      for (recordList <- alarmOp.getAlarmsFuture(startTime, endTime)) yield {
-        implicit val w = Json.writes[Alarm]
-        Ok(Json.toJson(recordList))
-      }
   }
 
   def windRoseReport(monitor: String, monitorType: String, tabTypeStr: String, nWay: Int, start: Long, end: Long) = Security.Authenticated.async {

@@ -1,5 +1,6 @@
 package models.sql
 
+import com.github.nscala_time.time
 import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports.DateTime
 import models.{Alarm, AlarmDB}
@@ -13,7 +14,19 @@ import scala.concurrent.Future
 class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
   private val tabName = "alarms"
 
-  override def getAlarms(level: Int, start: Imports.DateTime, end: Imports.DateTime): List[Alarm] = {
+  override def getAlarmsFuture(src: String, level: Int,
+                               start: time.Imports.DateTime, end: time.Imports.DateTime): Future[Seq[Alarm]] =
+  Future {
+    implicit val session: DBSession = AutoSession
+    sql"""
+          SELECT *
+          FROM [dbo].[alarms]
+          Where src = $src and time >= ${start.toDate} and time < ${end.toDate} and [level] >= $level
+         """.map(mapper).list().apply()
+  }
+
+  override def getAlarmsFuture(level: Int, start: Imports.DateTime, end: Imports.DateTime): Future[List[Alarm]] =
+  Future {
     implicit val session: DBSession = AutoSession
     sql"""
           SELECT *

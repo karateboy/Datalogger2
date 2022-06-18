@@ -77,6 +77,9 @@
         </b-row>
       </b-form>
     </b-card>
+    <b-card v-show="displayCdx">
+      <b-table striped hover :fields="columns" :items="rows" />
+    </b-card>
   </div>
 </template>
 <style lang="scss">
@@ -107,18 +110,70 @@ export default Vue.extend({
       moment().subtract(1, 'days').hour(0).minute(0).millisecond(0).valueOf(),
       moment().hour(23).minute(59).minute(0).millisecond(0).valueOf(),
     ];
+    let displayCdx = false;
+    let cdxStartTime = 0;
     return {
-      dataTypes: [
-        { txt: '小時資料', id: 'hour' },
-        // { txt: '分鐘資料', id: 'min' },
-        // { txt: '秒資料', id: 'second' },
-      ],
+      dataTypes: [{ txt: '小時資料', id: 'hour' }],
       form: {
         monitors: Array<any>(),
         monitorTypes: [],
         dataType: 'hour',
         range,
+        cdxStartTime,
       },
+      displayCdx,
+      columns: [
+        {
+          key: 'time',
+          label: '時間',
+          sortable: true,
+          formatter: (v: number) => moment(v).format('lll'),
+        },
+        {
+          key: 'level',
+          label: '等級',
+          sortable: true,
+          formatter: (v: number) => {
+            switch (v) {
+              case 1:
+                return '資訊';
+
+              case 2:
+                return '警告';
+
+              case 3:
+                return '錯誤';
+            }
+          },
+        },
+        {
+          key: 'src',
+          label: '來源',
+          sortable: true,
+          formatter: (src: string) => {
+            let tokens = src.split(':');
+            switch (tokens[0]) {
+              case 'I':
+                return `設備:${tokens[1]}`;
+
+              case 'T':
+                return `測項:${tokens[1]}`;
+
+              case 'S':
+                if (tokens[1] === 'System') return `系統`;
+                else return `系統:${tokens[1]}`;
+              default:
+                return src;
+            }
+          },
+        },
+        {
+          key: 'info',
+          label: '詳細資訊',
+          sortable: true,
+        },
+      ],
+      rows: [],
     };
   },
   computed: {
@@ -162,12 +217,30 @@ export default Vue.extend({
       const url = `/CdxUpload/${this.form.range[0]}/${this.form.range[1]}`;
 
       try {
+        this.form.cdxStartTime = new Date().getTime();
         const res = await axios.get(url);
         if (res.status === 200) {
-          this.$bvModal.msgBoxOk('Cdx重傳資料  上傳結果請查詢警報');
+          this.$bvModal.msgBoxOk('Cdx重傳資料中');
+          this.displayCdx = true;
+          this.getCdxUploadEvents();
         }
       } catch (err) {
         throw new Error('failed to upload data');
+      }
+    },
+    async getCdxUploadEvents() {
+      try {
+        let src = 'S:CDX';
+        let res = await axios.get(
+          `/Alarms/${src}/1/${this.form.cdxStartTime}/${
+            this.form.cdxStartTime + 1000 * 60 * 15
+          }`,
+        );
+        if (res.status === 200) {
+          this.rows = res.data;
+        }
+      } catch (err) {
+        throw new Error(`$err`);
       }
     },
   },
