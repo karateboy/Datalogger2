@@ -489,12 +489,12 @@ class DataCollectManager @Inject()
             new Duration(DateTime.now(), calibrationTime + 1.day)
 
           import scala.concurrent.duration._
-          context.system.scheduler.schedule(
-            Duration(duration.getStandardSeconds, SECONDS),
-            Duration(1, DAYS), self, AutoCalibration(inst._id))
+          context.system.scheduler.scheduleOnce(
+            FiniteDuration(duration.getStandardSeconds, SECONDS),
+            self, AutoCalibration(inst._id))
         }
 
-        val instrumentParam = InstrumentParam(collector, monitorTypes, timerOpt, instType.driver.timeAdjustment)
+        val instrumentParam = InstrumentParam(collector, monitorTypes, timerOpt, calibrateTimeOpt)
         if (instType.driver.isCalibrator) {
           calibratorOpt = Some(collector)
         } else if (instType.driver.isDoInstrument) {
@@ -735,6 +735,25 @@ class DataCollectManager @Inject()
     case AutoCalibration(instId) =>
       instrumentMap.get(instId).map { param =>
         param.actor ! AutoCalibration(instId)
+
+        param.calibrationTimerOpt =
+          for(localTime: LocalTime <- param.calibrationTimeOpt) yield {
+            val calibrationTime = DateTime.now().toLocalDate().toDateTime(localTime)
+            val duration = if (DateTime.now() < calibrationTime)
+              new Duration(DateTime.now(), calibrationTime)
+            else
+              new Duration(DateTime.now(), calibrationTime + 1.day)
+
+            import scala.concurrent.duration._
+            context.system.scheduler.scheduleOnce(
+              FiniteDuration(duration.getStandardSeconds, SECONDS),
+              self, AutoCalibration(instId))
+          }
+
+        context become handler(
+          instrumentMap + (instId -> param),
+          collectorInstrumentMap,
+          latestDataMap, mtDataList, restartList, signalTypeHandlerMap, signalDataMap)
       }
 
     case ManualZeroCalibration(instId) =>
@@ -876,7 +895,7 @@ class DataCollectManager @Inject()
   }
 
   case class InstrumentParam(actor: ActorRef, mtList: List[String],
-                             calibrationTimerOpt: Option[Cancellable],
-                             timeAdjust: Period = Period.seconds(0))
+                             var calibrationTimerOpt: Option[Cancellable],
+                             calibrationTimeOpt: Option[LocalTime])
 
 }

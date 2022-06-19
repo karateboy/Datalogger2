@@ -189,9 +189,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     Logger.info(s"start calibrating ${monitorTypes.mkString(",")}")
     val timer = if (!calibrationType.zero &&
       deviceConfig.calibratorPurgeTime.getOrElse(0) != 0)
-      purgeCalibrator()
-    else
-      context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart)
+      Some(purgeCalibrator())
+    else {
+      self ! RaiseStart
+      None
+    }
 
     import com.github.nscala_time.time.Imports._
     val endState = collectorState
@@ -201,9 +203,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   import com.github.nscala_time.time.Imports._
 
-  def calibrationErrorHandler(id: String, timer: Cancellable, endState: String): PartialFunction[Throwable, Unit] = {
+  def calibrationErrorHandler(id: String, timerOpt: Option[Cancellable], endState: String): PartialFunction[Throwable, Unit] = {
     case ex: Exception =>
-      timer.cancel()
+      for(timer<-timerOpt)
+        timer.cancel()
+
       logInstrumentError(id, s"${self.path.name}: ${ex.getMessage}. ", ex)
       resetToNormal
       instrumentOp.setState(id, endState)
@@ -213,14 +217,16 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   def calibrationPhase(calibrationType: CalibrationType, startTime: DateTime, recordCalibration: Boolean, calibrationReadingList: List[ReportData],
                        zeroReading: List[(String, Double)],
-                       endState: String, calibrationTimer: Cancellable): Receive = {
+                       endState: String, calibrationTimerOpt: Option[Cancellable]): Receive = {
     case ConnectHost =>
       Logger.error("unexpected ConnectHost msg")
 
     case ResetConnection =>
       Logger.info(s"$instId: Reset connection")
       Logger.info(s"$instId: Cancel calibration.")
-      calibrationTimer.cancel()
+      for(calibrationTimer <- calibrationTimerOpt)
+        calibrationTimer.cancel()
+
       collectorState = MonitorStatus.NormalStat
       instrumentOp.setState(instId, MonitorStatus.NormalStat)
       resetToNormal
@@ -239,7 +245,9 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
         Logger.info("Already in calibration. Ignore it")
       } else if (targetState == MonitorStatus.NormalStat) {
         Logger.info("Cancel calibration.")
-        calibrationTimer.cancel()
+        for(calibrationTimer<- calibrationTimerOpt)
+          calibrationTimer.cancel()
+
         collectorState = targetState
         instrumentOp.setState(instId, targetState)
         resetToNormal
@@ -265,18 +273,24 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           } else {
             triggerSpanCalibration(true)
           }
-          val calibrationTimer = context.system.scheduler.scheduleOnce(Duration(deviceConfig.raiseTime.getOrElse(60), SECONDS), self, HoldStart)
+          val calibrationTimer =
+            for(raiseTime<-deviceConfig.raiseTime) yield
+              context.system.scheduler.scheduleOnce(Duration(raiseTime, SECONDS), self, HoldStart)
+
           context become calibrationPhase(calibrationType, startTime, recordCalibration,
             calibrationReadingList, zeroReading, endState, calibrationTimer)
         }
-      } onFailure (calibrationErrorHandler(instId, calibrationTimer, endState))
+      } onFailure calibrationErrorHandler(instId, calibrationTimerOpt, endState)
 
     case HoldStart => {
       Logger.info(s"${self.path.name} => HoldStart")
       import scala.concurrent.duration._
-      val calibrationTimer = context.system.scheduler.scheduleOnce(Duration(deviceConfig.holdTime.getOrElse(60), SECONDS), self, DownStart)
+      val calibrationTimer = {
+        for(holdTime <- deviceConfig.holdTime) yield
+          context.system.scheduler.scheduleOnce(Duration(holdTime, SECONDS), self, DownStart)
+      }
       context become calibrationPhase(calibrationType, startTime, true, calibrationReadingList,
-        zeroReading, endState, calibrationTimer)
+        zeroReading, endState, calibrationTimerOpt)
     }
 
     case DownStart =>
@@ -285,28 +299,30 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           Logger.info(s"${self.path.name} => DownStart (${calibrationReadingList.length})")
           import scala.concurrent.duration._
 
-          val calibrationTimer =
+          val calibrationTimerOpt =
             if (calibrationType.auto && calibrationType.zero) {
               // Auto zero calibration will jump to end immediately
-              context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, CalibrateEnd)
+              self ! CalibrateEnd
+              None
             } else {
               collectorState = MonitorStatus.CalibrationResume
               instrumentOp.setState(instId, collectorState)
-              context.system.scheduler.scheduleOnce(Duration(deviceConfig.downTime.getOrElse(60), SECONDS), self, CalibrateEnd)
+              for(downTime <- deviceConfig.downTime) yield
+                context.system.scheduler.scheduleOnce(Duration(downTime, SECONDS), self, CalibrateEnd)
             }
           context become calibrationPhase(calibrationType, startTime, false, calibrationReadingList,
-            zeroReading, endState, calibrationTimer)
+            zeroReading, endState, calibrationTimerOpt)
 
           if (calibrationType.zero)
             triggerZeroCalibration(false)
           else
             triggerSpanCalibration(false)
         }
-      } onFailure (calibrationErrorHandler(instId, calibrationTimer, endState))
+      } onFailure (calibrationErrorHandler(instId, calibrationTimerOpt, endState))
 
     case rd: ReportData =>
       context become calibrationPhase(calibrationType, startTime, recordCalibration, rd :: calibrationReadingList,
-        zeroReading, endState, calibrationTimer)
+        zeroReading, endState, calibrationTimerOpt)
 
     case CalibrateEnd =>
       Future {
@@ -336,10 +352,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
             val raiseStartTimer = if (deviceConfig.calibratorPurgeTime.isDefined) {
               collectorState = MonitorStatus.NormalStat
               instrumentOp.setState(instId, collectorState)
-              purgeCalibrator
+              Some(purgeCalibrator)
             } else {
               import scala.concurrent.duration._
-              context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart)
+              self ! RaiseStart
+              None
             }
 
             context become calibrationPhase(AutoSpan, startTime, false, List.empty[ReportData],

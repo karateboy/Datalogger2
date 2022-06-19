@@ -44,12 +44,12 @@ import akka.actor.ActorSystem
 import javax.inject._
 
 class T100Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
-                              alarmOp: AlarmDB, system: ActorSystem, monitorTypeOp: MonitorTypeDB,
+                              alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
                               calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                              (@Assisted("instId") instId: String, @Assisted modelReg: ModelReg,
                               @Assisted config: TapiConfig, @Assisted("host") host:String)
   extends TapiTxxCollector(instrumentOp, monitorStatusOp,
-    alarmOp, system, monitorTypeOp,
+    alarmOp, monitorTypeOp,
     calibrationOp, instrumentStatusOp)(instId, modelReg, config, host) {
 
   import com.serotonin.modbus4j.locator.BaseLocator

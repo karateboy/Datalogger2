@@ -44,7 +44,6 @@ object Tca08Drv extends AbstractDrv(_id = "tca08", desp = "Total Carbon Analyzer
     f2(id, desc = super.description, config, protocol)
   }
 
-  override def timeAdjustment = Period.minutes(-50)
 }
 
 class Tca08Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,

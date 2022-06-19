@@ -1,7 +1,6 @@
 package models
 import akka.actor._
 import models.ModelHelper._
-import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
 
@@ -20,7 +19,7 @@ import models.TapiTxx._
 
 import javax.inject._
 abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
-                                          alarmOp: AlarmDB, system: ActorSystem, monitorTypeOp: MonitorTypeDB,
+                                          alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
                                           calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                                          (instId: String, modelReg: ModelReg, tapiConfig: TapiConfig, host:String) extends Actor {
   var timerOpt: Option[Cancellable] = None
@@ -204,7 +203,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
             connected = false
         } finally {
           import scala.concurrent.duration._
-          timerOpt = Some(system.scheduler.scheduleOnce(Duration(2, SECONDS), self, ReadRegister))
+          timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(2, SECONDS), self, ReadRegister))
         }
       }
     }
@@ -250,14 +249,14 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
               instrumentOp.updateStatusType(instId, instrumentStatusTypesOpt.get)
             }
             import scala.concurrent.duration._
-            timerOpt = Some(system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadRegister))
+            timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadRegister))
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)
               alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
-              system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
+              context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
           }
         }
       }
@@ -291,14 +290,15 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
   def executeSeq(seq: String, on: Boolean) {}
 
   def startCalibration(calibrationType: CalibrationType, monitorTypes: List[String]) {
-    import scala.concurrent.duration._
 
     Logger.info(s"start calibrating ${monitorTypes.mkString(",")}")
     val timer = if (!calibrationType.zero &&
       tapiConfig.calibratorPurgeTime.isDefined && tapiConfig.calibratorPurgeTime.get != 0)
-      purgeCalibrator
-    else
-      system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart)
+      Some(purgeCalibrator)
+    else {
+      self ! RaiseStart
+      None
+    }
 
     import com.github.nscala_time.time.Imports._
     val endState = collectorState
@@ -306,9 +306,11 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
       List.empty[(String, Double)], endState, timer)
   }
 
-  def calibrationErrorHandler(id: String, timer: Cancellable, endState: String): PartialFunction[Throwable, Unit] = {
+  def calibrationErrorHandler(id: String, timerOpt: Option[Cancellable], endState: String): PartialFunction[Throwable, Unit] = {
     case ex: Exception =>
-      timer.cancel()
+      for(timer<-timerOpt)
+        timer.cancel()
+
       logInstrumentError(id, s"${self.path.name}: ${ex.getMessage}. ", ex)
       resetToNormal
       instrumentOp.setState(id, endState)
@@ -319,7 +321,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
   import com.github.nscala_time.time.Imports._
   def calibration(calibrationType: CalibrationType, startTime: DateTime, recordCalibration: Boolean, calibrationReadingList: List[ReportData],
                   zeroReading: List[(String, Double)],
-                  endState: String, timer: Cancellable): Receive = {
+                  endState: String, timerOpt: Option[Cancellable]): Receive = {
     case ConnectHost =>
       Logger.error("unexpected ConnectHost msg")
 
@@ -331,7 +333,8 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
         Logger.info("Already in calibration. Ignore it")
       } else if (targetState == MonitorStatus.NormalStat) {
         Logger.info("Cancel calibration.")
-        timer.cancel()
+        for(timer<-timerOpt)
+          timer.cancel()
         collectorState = targetState
         instrumentOp.setState(instId, targetState)
         resetToNormal
@@ -357,49 +360,55 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
           } else {
             triggerSpanCalibration(true)
           }
-          val calibrationTimer = system.scheduler.scheduleOnce(Duration(tapiConfig.raiseTime.get, SECONDS), self, HoldStart)
-          context become calibration(calibrationType, startTime, recordCalibration,
-            calibrationReadingList, zeroReading, endState, calibrationTimer)
-        }
-      } onFailure (calibrationErrorHandler(instId, timer, endState))
+          val calibrationTimerOpt =
+            for(raiseTime <- tapiConfig.raiseTime) yield
+              context.system.scheduler.scheduleOnce(Duration(raiseTime, SECONDS), self, HoldStart)
 
-    case HoldStart => {
+          context become calibration(calibrationType, startTime, recordCalibration,
+            calibrationReadingList, zeroReading, endState, calibrationTimerOpt)
+        }
+      } onFailure calibrationErrorHandler(instId, timerOpt, endState)
+
+    case HoldStart =>
       Logger.info(s"${self.path.name} => HoldStart")
       import scala.concurrent.duration._
-      val calibrationTimer = system.scheduler.scheduleOnce(Duration(tapiConfig.holdTime.get, SECONDS), self, DownStart)
+      val calibrationTimerOpt =
+        for(holdTime<-tapiConfig.holdTime) yield
+          context.system.scheduler.scheduleOnce(Duration(holdTime, SECONDS), self, DownStart)
+
       context become calibration(calibrationType, startTime, true, calibrationReadingList,
-        zeroReading, endState, calibrationTimer)
-    }
+        zeroReading, endState, calibrationTimerOpt)
+
 
     case DownStart =>
       Future {
         blocking {
           Logger.info(s"${self.path.name} => DownStart (${calibrationReadingList.length})")
           import scala.concurrent.duration._
-          if (calibrationType.zero) {
-            triggerZeroCalibration(false)
-          } else {
-            triggerSpanCalibration(false)
-          }
 
-          val calibrationTimer =
+          val calibrationTimerOpt =
             if (calibrationType.auto && calibrationType.zero) {
-              // Auto zero calibration will jump to end immediately
-              system.scheduler.scheduleOnce(Duration(0, SECONDS), self, CalibrateEnd)
+              self ! CalibrateEnd
+              None
             } else {
               collectorState = MonitorStatus.CalibrationResume
               instrumentOp.setState(instId, collectorState)
-              system.scheduler.scheduleOnce(Duration(tapiConfig.downTime.get, SECONDS), self, CalibrateEnd)
+              Some(context.system.scheduler.scheduleOnce(Duration(tapiConfig.downTime.get, SECONDS), self, CalibrateEnd))
             }
           context become calibration(calibrationType, startTime, false, calibrationReadingList,
-            zeroReading, endState, calibrationTimer)
+            zeroReading, endState, calibrationTimerOpt)
+
+          if (calibrationType.zero)
+            triggerZeroCalibration(false)
+          else
+            triggerSpanCalibration(false)
         }
-      } onFailure (calibrationErrorHandler(instId, timer, endState))
+      } onFailure calibrationErrorHandler(instId, timerOpt, endState)
 
     case rd: ReportData =>
       //Logger.debug(s"calibrationReadingList #=${calibrationReadingList.length}")
       context become calibration(calibrationType, startTime, recordCalibration, rd :: calibrationReadingList,
-        zeroReading, endState, timer)
+        zeroReading, endState, timerOpt)
 
     case CalibrateEnd =>
       Future {
@@ -424,20 +433,20 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
             for (v <- values)
               Logger.info(s"${v._1} zero calibration end. (${v._2})")
 
-            val raiseStartTimer = if (tapiConfig.calibratorPurgeTime.isDefined) {
+            val raiseStartTimerOpt = if (tapiConfig.calibratorPurgeTime.isDefined) {
               collectorState = MonitorStatus.NormalStat
               instrumentOp.setState(instId, collectorState)
-              purgeCalibrator
+              Some(purgeCalibrator)
             } else {
               import scala.concurrent.duration._
-              system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart)
+              self ! RaiseStart
+              None
             }
 
             context become calibration(AutoSpan, startTime, false, List.empty[ReportData],
-              values, endState, raiseStartTimer)
+              values, endState, raiseStartTimerOpt)
           } else {
             val endTime = DateTime.now()
-            val duration = new Duration(startTime, endTime)
 
             if (calibrationType.auto) {
               val zeroMap = zeroReading.toMap
@@ -518,13 +527,13 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
     }
   }
 
-  def purgeCalibrator() = {
+  def purgeCalibrator(): Cancellable = {
     import scala.concurrent.duration._
 
     val purgeTime = tapiConfig.calibratorPurgeTime.get
     Logger.info(s"Purge calibrator. Delay start of calibration $purgeTime seconds")
     triggerCalibratorPurge(true)
-    system.scheduler.scheduleOnce(Duration(purgeTime, SECONDS), self, RaiseStart)
+    context.system.scheduler.scheduleOnce(Duration(purgeTime, SECONDS), self, RaiseStart)
   }
 
   def triggerCalibratorPurge(v: Boolean) {
