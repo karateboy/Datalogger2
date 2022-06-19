@@ -67,7 +67,7 @@ class AkDrv(_id:String, desp:String, protocols:List[String], tcpModelReg: AkMode
     config.calibrationTime
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[AkDrv.Factory])
     val f2 = f.asInstanceOf[AkDrv.Factory]
     val config = validateParam(param)
@@ -83,7 +83,7 @@ class AkDrv(_id:String, desp:String, protocols:List[String], tcpModelReg: AkMode
 
 object AkDrv {
   val deviceTypeHead = "AkProtocol."
-  def getInstrumentTypeList(environment: play.api.Environment, factory: AkDrv.Factory, monitorTypeOp: MonitorTypeOp) = {
+  def getInstrumentTypeList(environment: play.api.Environment, factory: AkDrv.Factory, monitorTypeOp: MonitorTypeDB): Array[InstrumentType] = {
     val docRoot = environment.rootPath + "/conf/AkProtocol/"
     val files = new File(docRoot).listFiles()
     for (file <- files) yield {

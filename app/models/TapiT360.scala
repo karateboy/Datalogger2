@@ -3,13 +3,14 @@ package models
 import akka.actor.ActorSystem
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.{ProtocolParam, tcp}
+import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 
 object T360Collector extends TapiTxx(ModelConfig("T360", List("CO2"))) {
   lazy val modelReg = readModelSetting
 
   import akka.actor._
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Factory])
     val f2 = f.asInstanceOf[Factory]
     val driverParam = validateParam(param)
@@ -29,13 +30,13 @@ object T360Collector extends TapiTxx(ModelConfig("T360", List("CO2"))) {
 
 import javax.inject._
 
-class T360Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-                              alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
-                              calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
+class T360Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
+                              alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
+                              calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                              (@Assisted("instId") instId: String, @Assisted modelReg: ModelReg,
                               @Assisted config: TapiConfig, @Assisted host:String)
   extends TapiTxxCollector(instrumentOp, monitorStatusOp,
-    alarmOp, system, monitorTypeOp,
+    alarmOp, monitorTypeOp,
     calibrationOp, instrumentStatusOp)(instId, modelReg, config, host) {
 
   import com.serotonin.modbus4j.locator.BaseLocator

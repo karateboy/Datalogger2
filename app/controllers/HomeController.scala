@@ -15,12 +15,12 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class HomeController @Inject()(environment: play.api.Environment,
-                               userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
-                               monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorOp, groupOp: GroupOp,
-                               instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp,
-                               sensorOp: MqttSensorOp, adam6066: Adam6066, WSClient: WSClient,
-                               emailTargetOp: EmailTargetOp,
-                               sysConfig: SysConfig,
+                               userOp: UserDB, instrumentOp: InstrumentDB, dataCollectManagerOp: DataCollectManagerOp,
+                               monitorTypeOp: MonitorTypeDB, query: Query, monitorOp: MonitorDB, groupOp: GroupDB,
+                               instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusDB,
+                               sensorOp: MqttSensorDB, WSClient: WSClient,
+                               emailTargetOp: EmailTargetDB,
+                               sysConfig: SysConfigDB, recordDB: RecordDB,
                                @Named("dataCollectManager") manager: ActorRef) extends Controller {
 
   val title = "資料擷取器"
@@ -144,7 +144,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.toJson(iTypes))
   }
 
-  def newInstrument = Security.Authenticated(BodyParsers.parse.json) {
+  def newInstrument = Security.Authenticated.async(BodyParsers.parse.json) {
     implicit request =>
       implicit val r1 = Json.reads[InstrumentStatusType]
       implicit val reads = Json.reads[Instrument]
@@ -153,7 +153,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       instrumentResult.fold(
         error => {
           Logger.error(JsError.toJson(error).toString())
-          BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+          Future.successful(BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString())))
         },
         rawInstrument => {
           try {
@@ -163,26 +163,31 @@ class HomeController @Inject()(environment: play.api.Environment,
             if (newInstrument._id.isEmpty())
               throw new Exception("儀器ID不可是空的!")
 
-            instrumentOp.upsertInstrument(newInstrument)
-
             //Stop measuring if any
             dataCollectManagerOp.stopCollect(newInstrument._id)
-            monitorTypeOp.stopMeasuring(newInstrument._id)
-
+            val f = monitorTypeOp.stopMeasuring(newInstrument._id)
+            val f2 = f.map(_ => instrumentOp.upsertInstrument(newInstrument))
             val mtList = instType.driver.getMonitorTypes(instParam)
-
-            for (mt <- mtList) {
-              monitorTypeOp.ensureMonitorType(mt)
-              monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog)
+            val f3 = f2.map {
+              _ =>
+                Future.sequence {
+                  for (mt <- mtList) yield {
+                    monitorTypeOp.ensureMonitorType(mt)
+                    monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog, recordDB)
+                  }
+                }
             }
-            if (newInstrument.active)
-              dataCollectManagerOp.startCollect(newInstrument)
+            f3.map{
+             _=>
+               if (newInstrument.active)
+                 dataCollectManagerOp.startCollect(newInstrument)
 
-            Ok(Json.obj("ok" -> true))
+               Ok(Json.obj("ok" -> true))
+            }
           } catch {
             case ex: Throwable =>
               ModelHelper.logException(ex)
-              Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
+              Future.successful(Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage)))
           }
         })
   }
@@ -222,6 +227,8 @@ class HomeController @Inject()(environment: play.api.Environment,
               inst.protocol.host.get
             case Protocol.serial =>
               s"COM${inst.protocol.comPort.get}"
+            case Protocol.tcpCli =>
+              inst.protocol.host.getOrElse("")
           }
         val calibrationTime = getCalibrationTime.map { t => t.toString("HH:mm") }
 
@@ -489,7 +496,20 @@ class HomeController @Inject()(environment: play.api.Environment,
       Ok(Json.toJson(mtList.sortBy(_.order)))
   }
 
-  def upsertMonitorType(id: String) = Security.Authenticated(BodyParsers.parse.json) {
+  def activatedMonitorTypes = Security.Authenticated {
+    implicit request =>
+      val userInfo = Security.getUserinfo(request).get
+      val group = groupOp.getGroupByID(userInfo.group).get
+
+      val mtList = if (userInfo.isAdmin)
+        monitorTypeOp.activeMtvList map monitorTypeOp.map
+      else
+        monitorTypeOp.activeMtvList.filter(group.monitorTypes.contains) map monitorTypeOp.map
+
+      Ok(Json.toJson(mtList.sortBy(_.order)))
+  }
+
+  def upsertMonitorType(id: String) = Security.Authenticated.async(BodyParsers.parse.json) {
     implicit request =>
       Logger.info(s"upsert Mt:${id}")
       val mtResult = request.body.validate[MonitorType]
@@ -497,12 +517,12 @@ class HomeController @Inject()(environment: play.api.Environment,
       mtResult.fold(
         error => {
           Logger.error(JsError.toJson(error).toString())
-          BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+          Future.successful(BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString())))
         },
         mt => {
           Logger.info(mt.toString)
-          monitorTypeOp.upsertMonitorType(mt)
-          Ok(Json.obj("ok" -> true))
+          for (_ <- monitorTypeOp.upsertMonitorType(mt)) yield
+            Ok(Json.obj("ok" -> true))
         })
   }
 
@@ -521,11 +541,11 @@ class HomeController @Inject()(environment: play.api.Environment,
 
   def signalValues = Security.Authenticated.async {
     implicit request =>
-      for(ret <- dataCollectManagerOp.getLatestSignal()) yield
+      for (ret <- dataCollectManagerOp.getLatestSignal()) yield
         Ok(Json.toJson(ret))
   }
 
-  def setSignal(mtId:String, bit:Boolean) = Security.Authenticated{
+  def setSignal(mtId: String, bit: Boolean) = Security.Authenticated {
     implicit request =>
       dataCollectManagerOp.writeSignal(mtId, bit)
       Ok("")
@@ -730,12 +750,12 @@ class HomeController @Inject()(environment: play.api.Environment,
       ret.fold(
         error => {
           Logger.error(JsError.toJson(error).toString())
-          Future{
+          Future {
             BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
           }
         },
         emails => {
-          for(_<- emailTargetOp.deleteAll) yield {
+          for (_ <- emailTargetOp.deleteAll) yield {
             emailTargetOp.upsertMany(emails)
             Ok(Json.obj("ok" -> true))
           }
@@ -761,13 +781,14 @@ class HomeController @Inject()(environment: play.api.Environment,
         },
         param => {
           val ratio = param.value.toDouble
-          if(ratio <1 && ratio > 0){
+          if (ratio < 1 && ratio > 0) {
             sysConfig.setEffectiveRation(ratio)
             DataCollectManager.effectiveRatio = ratio
             Ok(Json.obj("ok" -> true))
-          }else
+          } else
             BadRequest("Invalid effective ratio")
         })
   }
+
   case class EditData(id: String, value: String)
 }

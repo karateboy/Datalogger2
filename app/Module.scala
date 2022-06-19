@@ -12,11 +12,50 @@ import play.api.libs.concurrent.AkkaGuiceSupport
  * adding `play.modules.enabled` settings to the `application.conf`
  * configuration file.
  */
-class Module extends AbstractModule with AkkaGuiceSupport {
-  Logger.info("Module...")
+class Module(environment: Environment,
+             configuration: Configuration) extends AbstractModule with AkkaGuiceSupport {
   override def configure() = {
-    bind(classOf[MongoDB])
-    bind(classOf[MonitorTypeOp])
+    val db = configuration.getString("logger.db").getOrElse("nosql")
+    if(db == "sql"){
+      import models.sql._
+      //scalikejdbc.config.DBs.setupAll()
+      bind(classOf[AlarmDB]).to(classOf[AlarmOp])
+      bind(classOf[CalibrationDB]).to(classOf[CalibrationOp])
+      bind(classOf[ConstantRuleDB]).to(classOf[ConstantRuleOp])
+      bind(classOf[EmailTargetDB]).to(classOf[EmailTargetOp])
+      bind(classOf[GroupDB]).to(classOf[GroupOp])
+      bind(classOf[InstrumentDB]).to(classOf[InstrumentOp])
+      bind(classOf[InstrumentStatusDB]).to(classOf[InstrumentStatusOp])
+      bind(classOf[ManualAuditLogDB]).to(classOf[ManualAuditLogOp])
+      bind(classOf[MonitorDB]).to(classOf[MonitorOp])
+      bind(classOf[MonitorStatusDB]).to(classOf[MonitorStatusOp])
+      bind(classOf[MonitorTypeDB]).to(classOf[MonitorTypeOp])
+      bind(classOf[MqttSensorDB]).to(classOf[MqttSensorOp])
+      bind(classOf[RecordDB]).to(classOf[RecordOp])
+      bind(classOf[SpikeRuleDB]).to(classOf[SpikeRuleOp])
+      bind(classOf[SysConfigDB]).to(classOf[SysConfig])
+      bind(classOf[UserDB]).to(classOf[UserOp])
+      bind(classOf[VariationRuleDB]).to(classOf[VariationRuleOp])
+    }else{
+      import models.mongodb._
+      bind(classOf[AlarmDB]).to(classOf[AlarmOp])
+      bind(classOf[CalibrationDB]).to(classOf[CalibrationOp])
+      bind(classOf[ConstantRuleDB]).to(classOf[ConstantRuleOp])
+      bind(classOf[EmailTargetDB]).to(classOf[EmailTargetOp])
+      bind(classOf[GroupDB]).to(classOf[GroupOp])
+      bind(classOf[InstrumentDB]).to(classOf[InstrumentOp])
+      bind(classOf[InstrumentStatusDB]).to(classOf[InstrumentStatusOp])
+      bind(classOf[ManualAuditLogDB]).to(classOf[ManualAuditLogOp])
+      bind(classOf[MonitorDB]).to(classOf[MonitorOp])
+      bind(classOf[MonitorStatusDB]).to(classOf[MonitorStatusOp])
+      bind(classOf[MonitorTypeDB]).to(classOf[MonitorTypeOp])
+      bind(classOf[MqttSensorDB]).to(classOf[MqttSensorOp])
+      bind(classOf[RecordDB]).to(classOf[RecordOp])
+      bind(classOf[SpikeRuleDB]).to(classOf[SpikeRuleOp])
+      bind(classOf[SysConfigDB]).to(classOf[SysConfig])
+      bind(classOf[UserDB]).to(classOf[UserOp])
+      bind(classOf[VariationRuleDB]).to(classOf[VariationRuleOp])
+    }
 
     bindActor[DataCollectManager]("dataCollectManager")
     bindActorFactory[Adam6017Collector, Adam6017Collector.Factory]
@@ -27,7 +66,6 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bindActorFactory[Horiba370Collector, Horiba370Collector.Factory]
     bindActorFactory[MoxaE1212Collector, MoxaE1212Collector.Factory]
     bindActorFactory[MoxaE1240Collector, MoxaE1240Collector.Factory]
-    bindActorFactory[MqttCollector, MqttCollector.Factory]
     bindActorFactory[MqttCollector2, MqttCollector2.Factory]
     bindActorFactory[T100Collector, T100Collector.Factory]
     bindActorFactory[T200Collector, T200Collector.Factory]
@@ -36,6 +74,11 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bindActorFactory[T360Collector, T360Collector.Factory]
     bindActorFactory[T400Collector, T400Collector.Factory]
     bindActorFactory[T700Collector, T700Collector.Factory]
+    bindActorFactory[T100CliCollector, T100Collector.CliFactory]
+    bindActorFactory[T200CliCollector, T200Collector.CliFactory]
+    bindActorFactory[T300CliCollector, T300Collector.CliFactory]
+    bindActorFactory[T400CliCollector, T400Collector.CliFactory]
+    bindActorFactory[T700CliCollector, T700Collector.CliFactory]
     bindActorFactory[VerewaF701Collector, VerewaF701Collector.Factory]
     bindActorFactory[ThetaCollector, ThetaCollector.Factory]
     bindActorFactory[TcpModbusCollector, TcpModbusDrv2.Factory]
@@ -44,6 +87,7 @@ class Module extends AbstractModule with AkkaGuiceSupport {
     bindActorFactory[PicarroG2401Collector, PicarroG2401.Factory]
     bindActorFactory[PicarroG2131iCollector, PicarroG2131i.Factory]
     bindActorFactory[Ma350Collector, Ma350Drv.Factory]
+    bindActorFactory[MetOne1020Collector, MetOne1020.Factory]
   	bindActorFactory[AkDrvCollector, AkDrv.Factory]
 	  bindActorFactory[DuoCollector, Duo.Factory]
 

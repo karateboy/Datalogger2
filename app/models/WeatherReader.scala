@@ -3,6 +3,7 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports.{DateTime, Period}
 import models.ModelHelper.{getHourBetween, getPeriods, waitReadyResult}
+import models.mongodb.RecordOp
 import play.api._
 
 import java.io.File
@@ -18,8 +19,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object WeatherReader {
   def start(configuration: Configuration, actorSystem: ActorSystem,
-            sysConfig: SysConfig, monitorTypeOp: MonitorTypeOp,
-            recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp) = {
+            sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
+            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) = {
     def getConfig: Option[WeatherReaderConfig] = {
       for {config <- configuration.getConfig("weatherReader")
            enable <- config.getBoolean("enable")
@@ -33,15 +34,15 @@ object WeatherReader {
       actorSystem.actorOf(props(config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp), "weatherReader")
   }
 
-  def props(config: WeatherReaderConfig, sysConfig: SysConfig, monitorTypeOp: MonitorTypeOp,
-            recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp) =
+  def props(config: WeatherReaderConfig, sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
+            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) =
     Props(classOf[WeatherReader], config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
 
   case object ParseReport
 }
 
-class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfig,
-                    monitorTypeOp: MonitorTypeOp, recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp) extends Actor {
+class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
+                    monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) extends Actor {
   Logger.info(s"WeatherReader start reading: ${config.dir}")
 
   import WeatherReader._
@@ -118,7 +119,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfig,
       if (docList.nonEmpty) {
         Logger.debug(s"update ${docList.head}")
         sysConfig.setWeatherSkipLine(skipLines + processedLine)
-        recordOp.upsertManyRecords2(recordOp.MinCollection)(docList)
+        recordOp.upsertManyRecords(recordOp.MinCollection)(docList)
 
         val start = new DateTime(Date.from(dataBegin.atZone(ZoneId.systemDefault()).toInstant))
         val end = new DateTime(Date.from(dataEnd.atZone(ZoneId.systemDefault()).toInstant))

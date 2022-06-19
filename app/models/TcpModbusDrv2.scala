@@ -46,7 +46,7 @@ case class TcpModbusDeviceModel(id: String, description: String, tcpModelReg: Tc
 object TcpModbusDrv2 {
   val deviceTypeHead = "TcpModbus."
 
-  def getInstrumentTypeList(environment: play.api.Environment, factory: TcpModbusDrv2.Factory, monitorTypeOp: MonitorTypeOp): Array[InstrumentType] = {
+  def getInstrumentTypeList(environment: play.api.Environment, factory: TcpModbusDrv2.Factory, monitorTypeOp: MonitorTypeDB): Array[InstrumentType] = {
     val docRoot = environment.rootPath + "/conf/TcpModbus/"
     val files = new File(docRoot).listFiles()
     for (file <- files) yield {
@@ -282,7 +282,7 @@ class TcpModbusDrv2(_id: String, desp: String, protocols: List[String], tcpModel
     config.calibrationTime
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[TcpModbusDrv2.Factory])
     val f2 = f.asInstanceOf[TcpModbusDrv2.Factory]
     val config = validateParam(param)

@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorSystem}
 import com.github.nscala_time.time.Imports
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
+import models.mongodb.AlarmOp
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
@@ -112,14 +113,14 @@ object Duo extends DriverOps {
 
   override def getCalibrationTime(param: String): Option[Imports.LocalTime] = None
 
-  override def factory(id: String, protocolParam: Protocol.ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocolParam: Protocol.ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Duo.Factory])
     val f2 = f.asInstanceOf[Duo.Factory]
     val config: DuoConfig = Json.parse(param).validate[DuoConfig].get
     f2(id, protocolParam, config)
   }
 
-  def ensureSpectrumTypes(duoMT: DuoMonitorType)(monitorTypeOp: MonitorTypeOp) =
+  def ensureSpectrumTypes(duoMT: DuoMonitorType)(monitorTypeOp: MonitorTypeDB) =
     for (mt <- getSpectrumMonitorTypes(duoMT))
       monitorTypeOp.ensureMonitorType(mt)
 
@@ -142,7 +143,7 @@ import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class DuoCollector @Inject()
-(alarmOp: AlarmOp, monitorStatusOp: MonitorStatusOp, instrumentOp: InstrumentOp, wsClient: WSClient, system: ActorSystem)
+(wsClient: WSClient, system: ActorSystem)
 (@Assisted instId: String, @Assisted protocolParam: ProtocolParam, @Assisted config: DuoConfig) extends Actor {
 
   import Duo._

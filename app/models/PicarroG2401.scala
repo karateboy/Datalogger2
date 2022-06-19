@@ -3,6 +3,7 @@ package models
 import akka.actor.Actor
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
+import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 import play.api.Logger
 
 import java.io.{BufferedReader, InputStreamReader, OutputStream}
@@ -51,7 +52,7 @@ object PicarroG2401 extends AbstractDrv(_id = "picarroG2401", desp = "Picarro G2
         DataReg(monitorType = ist.key, ist.addr, multiplier = 1)
     }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     val f2 = f.asInstanceOf[PicarroG2401.Factory]
     val config = validateParam(param)
     f2(id, desc = super.description, config, protocol)
@@ -63,15 +64,15 @@ object PicarroG2401 extends AbstractDrv(_id = "picarroG2401", desp = "Picarro G2
   }
 }
 
-class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-                                      alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
-                                      calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
+class PicarroG2401Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
+                                      alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
+                                      calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                                      (@Assisted("instId") instId: String, @Assisted("desc") desc: String,
                                       @Assisted("config") deviceConfig: DeviceConfig,
                                       @Assisted("protocolParam") protocolParam: ProtocolParam)
-  extends AbstractCollector(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-    alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
-    calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)(instId, desc, deviceConfig, protocolParam) {
+  extends AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
+    alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
+    calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
 
   import PicarroG2401._
 
@@ -81,7 +82,7 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusO
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = predefinedIST
 
-  override def readReg(statusTypeList: List[InstrumentStatusType]): Future[Option[ModelRegValue2]] =
+  override def readReg(statusTypeList: List[InstrumentStatusType], full:Boolean): Future[Option[ModelRegValue2]] =
     Future {
       blocking {
         val ret = {

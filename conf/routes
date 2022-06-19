@@ -30,12 +30,11 @@ GET      /HistoryTrend/:monitor/:monitorType/:reportUnit/:statusFilter/:start/:e
 GET      /HistoryTrend/excel/:monitor/:monitorType/:reportUnit/:statusFilter/:start/:end   controllers.Query.historyTrendChart(monitor, monitorType, reportUnit, statusFilter, start:Long, end:Long, outputTypeStr="excel")
 
 GET      /HistoryReport/:monitor/:monitorType/:tabType/:start/:end                controllers.Query.historyData(monitor, monitorType, tabType, start: Long, end: Long)
-GET      /LatestData/:monitor/:monitorType/:tabType                               controllers.Query.latestData(monitor, monitorType, tabType)
-GET      /RealtimeStatus                                                          controllers.Query.realtimeStatus()
 
 GET      /CalibrationReport/:start/:end                                           controllers.Query.calibrationReport(start:Long, end:Long)
 
 GET      /AlarmReport/:level/:start/:end                                          controllers.Query.alarmReport(level:Int, start:Long, end:Long)
+GET      /Alarms/:src/:level/:start/:end                                          controllers.Query.getAlarms(src, level:Int, start:Long, end:Long)
 
 GET      /InstrumentTypes                                                         controllers.HomeController.getInstrumentTypes
 GET      /InstrumentType/:id                                                      controllers.HomeController.getInstrumentType(id)
@@ -87,6 +86,7 @@ GET      /Excel/MonthlyHourReport/:monitorType/:reportDate                      
 
 #JSON
 GET      /MonitorType                                                             controllers.HomeController.monitorTypeList
+GET      /MonitorType/activated                                                   controllers.HomeController.activatedMonitorTypes
 POST     /MonitorType/:id                                                         controllers.HomeController.upsertMonitorType(id)
 PUT      /MonitorType/:id                                                         controllers.HomeController.upsertMonitorType(id)
 DELETE   /MonitorType/:id                                                         controllers.HomeController.deleteMonitorType(id)
@@ -108,7 +108,6 @@ GET      /HourRecord/:start/:end                controllers.Query.hourRecordList
 GET      /MinRecord/:start/:end                 controllers.Query.minRecordList(start:Long, end:Long)
 GET      /CalibrationRecord/:start/:end         controllers.Query.calibrationRecordList(start:Long, end:Long, outputTypeStr="html")
 GET      /Excel/CalibrationRecord/:start/:end   controllers.Query.calibrationRecordList(start:Long, end:Long, outputTypeStr="excel")
-GET      /AlertRecord/:start/end                controllers.Query.alertRecordList(start:Long, end:Long)
 
 GET      /ProbeDuoMonitorTypes                      controllers.HomeController.probeDuoMonitorTypes(host)
 POST     /ConfigDuoMonitorTypes/:host               controllers.HomeController.configureDuoMonitorTypes(host)
@@ -132,3 +131,10 @@ DELETE  /ConstantRule/:monitor/:monitorType     controllers.RuleController.delet
 GET     /VariationRules                         controllers.RuleController.getVariationRules
 POST    /VariationRule                          controllers.RuleController.upsertVariationRule
 DELETE  /VariationRule/:monitor/:monitorType    controllers.RuleController.deleteVariationRule(monitor, monitorType)
+
+#CDX
+GET     /CdxConfig                              controllers.Cdx.getConfig
+PUT     /CdxConfig                              controllers.Cdx.putConfig
+GET     /CdxMonitorTypes                        controllers.Cdx.getMonitorTypes
+PUT     /CdxMonitorTypes                        controllers.Cdx.putMonitorTypes
+GET     /CdxUpload/:start/:end                  controllers.Cdx.CdxUploadData(start:Long, end:Long)

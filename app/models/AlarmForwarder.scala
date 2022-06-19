@@ -3,6 +3,7 @@ package models
 import akka.actor.Actor
 import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
+import models.mongodb.AlarmOp
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
@@ -16,7 +17,7 @@ object AlarmForwarder {
   }
 }
 
-class AlarmForwarder @Inject()(alarmOp: AlarmOp, ws: WSClient)
+class AlarmForwarder @Inject()(alarmOp: AlarmDB, ws: WSClient)
   (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
 
   import ForwardManager._

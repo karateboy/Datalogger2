@@ -83,7 +83,13 @@
                 </validation-provider>
               </b-form-group>
             </b-col>
-            <b-col v-if="form.protocol.protocol === 'tcp'" cols="12">
+            <b-col
+              v-if="
+                form.protocol.protocol === 'tcp' ||
+                form.protocol.protocol === 'tcpCli'
+              "
+              cols="12"
+            >
               <b-form-group label="網址" label-for="host" label-cols-md="3">
                 <validation-provider
                   v-slot="{ errors }"
@@ -215,6 +221,11 @@
             :param-str="form.param"
             @param-changed="onParamChange"
           />
+          <met-one1020-config
+            v-else-if="form.instType === 'MetOne1020'"
+            :param-str="form.param"
+            @param-changed="onParamChange"
+          />
           <div v-else>TBD {{ form.instType }}</div>
         </validation-observer>
       </tab-content>
@@ -253,9 +264,10 @@ import Adam4000ConfigPage from './Adam4000ConfigPage.vue';
 import MoxaE1212ConfigPage from './Moxa1212ConfigPage.vue';
 import MoxaE1240ConfigPage from './MoxaE1240ConfigPage.vue';
 import VerewaConfig from './VerewaConfig.vue';
+import MetOne1020Config from './MetOne1020Config.vue';
 
 interface ProtocolParam {
-  protocol: 'tcp' | 'serial' | undefined;
+  protocol: 'tcp' | 'serial' | 'tcpCli' | undefined;
   host?: string;
   comPort?: number;
   speed?: number;
@@ -279,6 +291,7 @@ interface Instrument {
   param: string;
   active: boolean;
   state: string;
+  statusType?: Array<any>;
 }
 
 export default Vue.extend({
@@ -297,6 +310,7 @@ export default Vue.extend({
     MoxaE1212ConfigPage,
     MoxaE1240ConfigPage,
     VerewaConfig,
+    MetOne1020Config,
   },
   props: {
     isNew: {
@@ -471,9 +485,11 @@ export default Vue.extend({
     async getInstrumentTypes(): Promise<void> {
       const res = await axios.get('/InstrumentTypes');
       this.instrumentTypes = res.data;
+      let map = new Map<string, InstrumentTypeInfo>();
       for (const instType of res.data) {
-        this.instTypeMap.set(instType.id, instType as InstrumentTypeInfo);
+        map.set(instType.id, instType as InstrumentTypeInfo);
       }
+      this.instTypeMap = map;
     },
     getInstrumentDesc(): string {
       if (this.instTypeMap.get(this.form.instType)) {
@@ -538,6 +554,7 @@ export default Vue.extend({
       if (nextIndex === 2) this.loadingDetailedConfig = true;
     },
     async formSubmitted(): Promise<void> {
+      this.form.statusType = undefined;
       const res = await axios.post('/Instrument', this.form);
       const ret = res.data;
       if (ret.ok) {

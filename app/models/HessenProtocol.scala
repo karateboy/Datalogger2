@@ -24,7 +24,7 @@ object HessenProtocol {
     buildCommand("DA".getBytes)
   }
 
-  def dataQuery(addr: Array[Byte]) = {
+  def dataQuery(addr: Array[Byte]): Array[Byte] = {
     buildCommand(s"DA${addr.toString()}".getBytes)
   }
 

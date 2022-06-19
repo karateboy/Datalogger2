@@ -25,7 +25,7 @@
                 v-model="form.monitorType"
                 label="desp"
                 :reduce="mt => mt._id"
-                :options="levelMt"
+                :options="activatedMonitorTypes"
               />
             </b-form-group>
             <small class="text-danger">{{ errorMsg }}</small>
@@ -136,6 +136,7 @@ export default Vue.extend({
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapState('monitors', ['monitors']),
+    ...mapGetters('monitorTypes', ['mtMap', 'activatedMonitorTypes']),
     canQuery(): boolean {
       if (this.form.monitorType == undefined) return false;
 
@@ -156,8 +157,8 @@ export default Vue.extend({
     await this.fetchMonitorTypes();
     await this.fetchMonitors();
 
-    if (this.monitorTypes.length !== 0) {
-      this.form.monitorType = 'PM25';
+    if (this.activatedMonitorTypes.length !== 0) {
+      this.form.monitorType = this.activatedMonitorTypes[0]._id;
     }
 
     if (this.monitors.length !== 0) {

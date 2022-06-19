@@ -2,9 +2,11 @@ package models
 
 import akka.actor.ActorSystem
 import com.google.inject.assistedinject.Assisted
-import models.Protocol.{ProtocolParam, tcp}
+import models.MonitorType.{NO, NO2, NOX}
+import models.Protocol.{ProtocolParam, tcp, tcpCli}
 
-object T200Collector extends TapiTxx(ModelConfig("T200", List("NOx", "NO", "NO2"))) {
+object T200Collector extends TapiTxx(ModelConfig("T200",
+  List(MonitorType.NOX, MonitorType.NO, MonitorType.NO2))) {
   lazy val modelReg = readModelSetting
 
   import akka.actor._
@@ -13,34 +15,44 @@ object T200Collector extends TapiTxx(ModelConfig("T200", List("NOx", "NO", "NO2"
     def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, host:String): Actor
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor ={
+  trait CliFactory {
+    def apply(@Assisted("instId") instId: String,
+              @Assisted("desc") desc: String,
+              @Assisted("config") config: DeviceConfig,
+              @Assisted("protocolParam") protocol: ProtocolParam): Actor
+  }
+
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor ={
     assert(f.isInstanceOf[Factory])
     val f2 = f.asInstanceOf[Factory]
     val driverParam = validateParam(param)
-    f2(id, modelReg, driverParam, protocol.host.get)
+    if(protocol.protocol == Protocol.tcp)
+      f2(id, modelReg, driverParam, protocol.host.get)
+    else {
+      assert(fOpt.get.isInstanceOf[CliFactory])
+      val cliFactory = fOpt.get.asInstanceOf[CliFactory]
+      cliFactory(id, s"$id CLI", driverParam.toDeviceConfig, protocol)
+    }
   }
 
   override def id: String = "t200"
 
   override def description: String = "TAPI T200"
 
-  override def protocol: List[String] = List(tcp)
+  override def protocol: List[String] = List(tcp, tcpCli)
 }
 
 import javax.inject._
 
-class T200Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-                              alarmOp: AlarmOp, system: ActorSystem, monitorTypeOp: MonitorTypeOp,
-                              calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
+class T200Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
+                              alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
+                              calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                              (@Assisted("instId") instId: String, @Assisted modelReg: ModelReg,
                               @Assisted config: TapiConfig, @Assisted host:String)
   extends TapiTxxCollector(instrumentOp, monitorStatusOp,
-    alarmOp, system, monitorTypeOp,
+    alarmOp, monitorTypeOp,
     calibrationOp, instrumentStatusOp)(instId, modelReg, config, host) {
 
-  val NO = ("NO")
-  val NO2 = ("NO2")
-  val NOx = ("NOx")
 
   override def reportData(regValue: ModelRegValue) =
     for {
@@ -52,7 +64,7 @@ class T200Collector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Monit
       vNO2 = regValue.inputRegs(idxNo2)
     } yield {
       ReportData(List(
-        MonitorTypeData(NOx, vNOx._2.toDouble, collectorState),
+        MonitorTypeData(NOX, vNOx._2.toDouble, collectorState),
         MonitorTypeData(NO, vNO._2.toDouble, collectorState),
         MonitorTypeData(NO2, vNO2._2.toDouble, collectorState)))
 

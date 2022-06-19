@@ -9,8 +9,8 @@ import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class Realtime @Inject()
-(monitorTypeOp: MonitorTypeOp, dataCollectManagerOp: DataCollectManagerOp, instrumentOp: InstrumentOp,
- monitorStatusOp: MonitorStatusOp) extends Controller {
+(monitorTypeOp: MonitorTypeDB, dataCollectManagerOp: DataCollectManagerOp, instrumentOp: InstrumentDB,
+ monitorStatusOp: MonitorStatusDB) extends Controller {
   val overTimeLimit = 6
 
   case class MonitorTypeStatus(_id: String, desp: String, value: String, unit: String, instrument: String, status: String, classStr: Seq[String], order: Int)

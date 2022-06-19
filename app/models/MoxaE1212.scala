@@ -13,7 +13,7 @@ case class MoxaE1212Param(addr: Int, chs: Seq[E1212ChannelCfg])
 
 @Singleton
 class MoxaE1212 @Inject()
-(monitorTypeOp: MonitorTypeOp)
+(monitorTypeOp: MonitorTypeDB)
   extends DriverOps {
 
   implicit val cfgReads = Json.reads[E1212ChannelCfg]
@@ -63,7 +63,7 @@ class MoxaE1212 @Inject()
       })
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[MoxaE1212Collector.Factory])
     val f2 = f.asInstanceOf[MoxaE1212Collector.Factory]
     val driverParam = validateParam(param)

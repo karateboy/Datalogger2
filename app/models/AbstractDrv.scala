@@ -48,7 +48,7 @@ abstract class AbstractDrv(_id: String, desp: String, protocols: List[String]) e
     config.calibrationTime
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor
 
   def validateParam(json: String): DeviceConfig = {
     val ret = Json.parse(json).validate[DeviceConfig]
