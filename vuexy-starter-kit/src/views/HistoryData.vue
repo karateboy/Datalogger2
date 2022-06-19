@@ -26,7 +26,7 @@
                 v-model="form.monitorTypes"
                 label="desp"
                 :reduce="mt => mt._id"
-                :options="monitorTypes"
+                :options="activatedMonitorTypes"
                 multiple
               />
             </b-form-group>
@@ -176,7 +176,7 @@ export default Vue.extend({
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapState('monitors', ['monitors']),
-    ...mapGetters('monitorTypes', ['mtMap']),
+    ...mapGetters('monitorTypes', ['mtMap', 'activatedMonitorTypes']),
     ...mapGetters('monitors', ['mMap']),
     resultTitle(): string {
       return `總共${this.rows.length}筆`;
@@ -191,8 +191,8 @@ export default Vue.extend({
       this.form.monitors.push(this.monitors[0]._id);
     }
 
-    if (this.monitorTypes.length !== 0)
-      this.form.monitorTypes.push(this.monitorTypes[0]._id);
+    if (this.activatedMonitorTypes.length !== 0)
+      this.form.monitorTypes.push(this.activatedMonitorTypes[0]._id);
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),

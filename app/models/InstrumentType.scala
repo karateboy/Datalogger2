@@ -11,11 +11,11 @@ case class ProtocolInfo(id: String, desp: String)
 case class InstrumentTypeInfo(id: String, desp: String, protocolInfo: List[ProtocolInfo])
 
 case class InstrumentType(id: String, desp: String, protocol: List[String],
-                          driver: DriverOps, diFactory: AnyRef, analog: Boolean)
+                          driver: DriverOps, diFactory: AnyRef, analog: Boolean, diFactory2: Option[AnyRef])
 
 object InstrumentType {
-  def apply(driver: DriverOps, diFactory: AnyRef, analog: Boolean = false): InstrumentType =
-    InstrumentType(driver.id, driver.description, driver.protocol, driver, diFactory, analog)
+  def apply(driver: DriverOps, diFactory: AnyRef, analog: Boolean = false, diFactory2: Option[AnyRef] = None): InstrumentType =
+    InstrumentType(driver.id, driver.description, driver.protocol, driver, diFactory, analog, diFactory2)
 }
 
 trait DriverOps {
@@ -33,13 +33,12 @@ trait DriverOps {
 
   def getCalibrationTime(param: String): Option[LocalTime]
 
-  def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor
+  def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, f2:Option[AnyRef]): Actor
 
   def isDoInstrument: Boolean = false
 
   def isCalibrator:Boolean = false
 
-  def timeAdjustment : Period = Period.seconds(0)
 }
 
 import javax.inject._
@@ -60,6 +59,11 @@ class InstrumentTypeOp @Inject()
  t100Factory: T100Collector.Factory, t200Factory: T200Collector.Factory, t201Factory: T201Collector.Factory,
  t300Factory: T300Collector.Factory, t360Factory: T360Collector.Factory, t400Factory: T400Collector.Factory,
  t700Factory: T700Collector.Factory, environment: play.api.Environment,
+ t100CliFactory: T100Collector.CliFactory,
+ t200CliFactory: T200Collector.CliFactory,
+ t300CliFactory: T300Collector.CliFactory,
+ t400CliFactory: T400Collector.CliFactory,
+ t700CliFactory: T700Collector.CliFactory,
  akDrvFactory: AkDrv.Factory, duoFactory: Duo.Factory,
  tcpModbusFactory: TcpModbusDrv2.Factory,
  sabio4010Factory: Sabio4010.Factory,
@@ -67,7 +71,8 @@ class InstrumentTypeOp @Inject()
  picarroG2401Factory: PicarroG2401.Factory,
  picarroG2131iFactory: PicarroG2131i.Factory,
  ma350Factory: Ma350Drv.Factory,
- monitorTypeOp: MonitorTypeOp) extends InjectedActorSupport {
+ metOne1020Factory: MetOne1020.Factory,
+ monitorTypeOp: MonitorTypeDB) extends InjectedActorSupport {
 
   import Protocol._
 
@@ -92,13 +97,13 @@ class InstrumentTypeOp @Inject()
     InstrumentType(moxaE1240Drv, moxaE1240Factory),
     InstrumentType(moxaE1212Drv, moxaE1212Factory),
     InstrumentType(MqttCollector2, mqtt2Factory),
-    InstrumentType(T100Collector, t100Factory),
-    InstrumentType(T200Collector, t200Factory),
+    InstrumentType(T100Collector, t100Factory, false, Some(t100CliFactory)),
+    InstrumentType(T200Collector, t200Factory, false, Some(t200CliFactory)),
     InstrumentType(T201Collector, t201Factory),
-    InstrumentType(T300Collector, t300Factory),
+    InstrumentType(T300Collector, t300Factory, false, Some(t300CliFactory)),
     InstrumentType(T360Collector, t360Factory),
-    InstrumentType(T400Collector, t400Factory),
-    InstrumentType(T700Collector, t700Factory),
+    InstrumentType(T400Collector, t400Factory, false, Some(t400CliFactory)),
+    InstrumentType(T700Collector, t700Factory, false, Some(t700CliFactory)),
     InstrumentType(VerewaF701Collector, verewaF701Factory),
     InstrumentType(ThetaCollector, thetaFactory),
     InstrumentType(Sabio4010, sabio4010Factory),
@@ -106,7 +111,8 @@ class InstrumentTypeOp @Inject()
     InstrumentType(Tca08Drv, tca08Factory),
     InstrumentType(PicarroG2401, picarroG2401Factory),
     InstrumentType(PicarroG2131i, picarroG2131iFactory),
-    InstrumentType(Ma350Drv, ma350Factory)
+    InstrumentType(Ma350Drv, ma350Factory),
+    InstrumentType(MetOne1020, metOne1020Factory)
   )
 
   val otherMap = otherDeviceList.map(dt=> dt.id->dt).toMap
@@ -115,7 +121,7 @@ class InstrumentTypeOp @Inject()
   val DoInstruments = otherDeviceList.filter(_.driver.isDoInstrument)
   var count = 0
 
-  def getInstInfoPair(instType: InstrumentType) = {
+  def getInstInfoPair(instType: InstrumentType): (String, InstrumentType) = {
     instType.id -> instType
   }
 
@@ -125,7 +131,7 @@ class InstrumentTypeOp @Inject()
     count += 1
 
     val instrumentType = map(instType)
-    injectedChild(instrumentType.driver.factory(id, protocol, param)(instrumentType.diFactory), actorName)
+    injectedChild(instrumentType.driver.factory(id, protocol, param)(instrumentType.diFactory, instrumentType.diFactory2), actorName)
   }
 }
 

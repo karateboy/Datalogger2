@@ -4,6 +4,7 @@ import play.api.libs.ws.WSClient
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import akka.actor.{Actor, actorRef2Scala}
+import models.mongodb.RecordOp
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 
@@ -15,7 +16,7 @@ object HourRecordForwarder {
   }
 }
 
-class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordOp)
+class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordDB)
                                    (@Assisted("server")server: String, @Assisted("monitor")monitor: String) extends Actor {
   Logger.info(s"HourRecordForwarder created with server=$server monitor=$monitor")
   import ForwardManager._
@@ -55,7 +56,7 @@ class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordOp)
     val recordFuture =
       recordOp.getRecordWithLimitFuture(recordOp.HourCollection)(new DateTime(latestRecordTime + 1), DateTime.now, 60)
 
-    import recordOp.recordListWrite
+
     for (record <- recordFuture) {
       if (!record.isEmpty) {
         val url = s"http://$server/HourRecord/$monitor"
@@ -101,7 +102,7 @@ class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordOp)
     Logger.info(s"upload hour ${start.toString()} => ${end.toString}")
 
     val recordFuture = recordOp.getRecordListFuture(recordOp.HourCollection)(start, end)
-    import recordOp.recordListWrite
+
     for (record <- recordFuture) {
       if (!record.isEmpty) {
         for (chunk <- record.grouped(24)) {

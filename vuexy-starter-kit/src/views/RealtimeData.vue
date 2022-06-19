@@ -1,6 +1,10 @@
 <template>
   <b-card title="即時資訊">
-    <b-table striped hover :fields="fields" :items="items" />
+    <b-table striped hover :fields="fields" :items="items">
+      <template #cell(index)="data">
+        {{ data.index + 1 }}
+      </template>
+    </b-table>
   </b-card>
 </template>
 
@@ -11,6 +15,10 @@ export default {
   data() {
     return {
       fields: [
+        {
+          key: 'index',
+          label: '序號',
+        },
         {
           key: 'desp',
           label: '測項',

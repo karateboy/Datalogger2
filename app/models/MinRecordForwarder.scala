@@ -3,6 +3,7 @@ import akka.actor.Actor
 import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
 import models.ModelHelper.errorHandler
+import models.mongodb.RecordOp
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
@@ -18,7 +19,7 @@ object MinRecordForwarder {
   }
 }
 
-class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordOp)
+class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
                                   (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
   Logger.info(s"MinRecordForwarder created with server=$server monitor=$monitor")
 
@@ -64,7 +65,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordOp)
       recordOp.getRecordWithLimitFuture(recordOp.MinCollection)(serverRecordStart, DateTime.now, 60)
 
     for (records <- recordFuture) {
-      import recordOp.recordListWrite
+
       if (records.nonEmpty) {
         val f = ws.url(postUrl).withRequestTimeout(FiniteDuration(10, SECONDS)).post(Json.toJson(records))
 
@@ -93,7 +94,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordOp)
     for (record <- recordFuture) {
       if (!record.isEmpty) {
         Logger.info(s"Total ${record.length} records")
-        import recordOp.recordListWrite
+
         for (chunk <- record.grouped(60)) {
           val f = ws.url(postUrl).post(Json.toJson(chunk))
 

@@ -1,22 +1,23 @@
 package models
 
 import akka.actor._
-import com.github.nscala_time.time.Imports.{DateTime, DateTimeFormat, richDateTime}
+import com.github.nscala_time.time.Imports.{DateTime, DateTimeFormat}
 import com.google.inject.assistedinject.Assisted
 import models.ModelHelper.waitReadyResult
-import models.MqttCollector.{ConnectBroker, CreateClient, SubscribeTopic}
-import models.MqttCollector2.{CheckTimeout, timeout}
 import models.Protocol.{ProtocolParam, tcp}
 import org.eclipse.paho.client.mqttv3._
 import play.api._
-import play.api.libs.json.{JsError, Json, _}
+import play.api.libs.json._
 
 import java.nio.file.Files
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{DAYS, Duration, MINUTES, SECONDS}
+import scala.concurrent.duration.{Duration, MINUTES}
 import scala.concurrent.{Future, blocking}
+import scala.util.Success
 
 case class MqttConfig2(topic: String, group:String, eventConfig: EventConfig)
+case class EventConfig(instId: String, bit: Int, seconds: Option[Int])
+case class MqttConfig(topic: String, monitor: String, eventConfig: EventConfig)
 
 object MqttCollector2 extends DriverOps {
 
@@ -28,7 +29,7 @@ object MqttCollector2 extends DriverOps {
   implicit val read: Reads[MqttConfig2] = Json.reads[MqttConfig2]
 
   override def getMonitorTypes(param: String): List[String] = {
-    List("LAT", "LAT", "PM25")
+    List(MonitorType.LAT, MonitorType.LNG, MonitorType.PM25, MonitorType.PM10, MonitorType.HUMID)
   }
 
   override def verifyParam(json: String): String = {
@@ -45,7 +46,7 @@ object MqttCollector2 extends DriverOps {
 
   override def getCalibrationTime(param: String) = None
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Factory])
     val config = validateParam(param)
     val f2 = f.asInstanceOf[Factory]
@@ -85,13 +86,14 @@ object MqttCollector2 extends DriverOps {
 
 import javax.inject._
 
-class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, system: ActorSystem,
-                              recordOp: RecordOp, monitorOp: MonitorOp, dataCollectManager: DataCollectManager,
-                               mqttSensorOp: MqttSensorOp)
+class MqttCollector2 @Inject()(monitorDB: MonitorDB,alarmOp: AlarmDB,
+                               recordOp: RecordDB, dataCollectManager: DataCollectManager,
+                               mqttSensorOp: MqttSensorDB)
                              (@Assisted id: String,
                               @Assisted protocolParam: ProtocolParam,
                               @Assisted config: MqttConfig2) extends Actor with MqttCallback {
 
+  import MqttCollector2._
   val payload =
     """{"id":"861108035994663",
       |"desc":"柏昇SAQ-200",
@@ -145,8 +147,8 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
         case e: MqttException =>
           Logger.error("Unable to set up client: " + e.toString)
           import scala.concurrent.duration._
-          alarmOp.log(alarmOp.instStr(id), alarmOp.Level.ERR, s"無法連接:${e.getMessage}")
-          system.scheduler.scheduleOnce(Duration(1, MINUTES), self, CreateClient)
+          alarmOp.log(alarmOp.instrumentSrc(id), alarmOp.Level.ERR, s"無法連接:${e.getMessage}")
+          context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, CreateClient)
       }
     case ConnectBroker =>
       Future {
@@ -164,7 +166,7 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
               } catch {
                 case ex: Exception =>
                   Logger.error("connect broker failed.", ex)
-                  system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectBroker)
+                  context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectBroker)
               }
           }
         }
@@ -182,7 +184,7 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
               } catch {
                 case ex: Exception =>
                   Logger.error("Subscribe failed", ex)
-                  system.scheduler.scheduleOnce(Duration(1, MINUTES), self, SubscribeTopic)
+                  context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, SubscribeTopic)
               }
           }
         }
@@ -217,7 +219,7 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
   override def messageArrived(topic: String, message: MqttMessage): Unit = {
     try {
       lastDataArrival = DateTime.now
-      messageHandler(new String(message.getPayload))
+      messageHandler(topic, new String(message.getPayload))
     } catch {
       case ex: Exception =>
         Logger.error("failed to handleMessage", ex)
@@ -225,11 +227,11 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
 
   }
 
-  def messageHandler(payload: String): Unit = {
+  def messageHandler(topic:String, payload: String): Unit = {
     val mtMap = Map[String, String](
       "pm2_5" -> MonitorType.PM25,
       "pm10" -> MonitorType.PM10,
-      "humidity" -> "HUMID"
+      "humidity" -> MonitorType.HUMID
     )
     val ret = Json.parse(payload).validate[Message]
     ret.fold(err => {
@@ -249,12 +251,13 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
                  v <- value
                  } yield
               MtRecord(mt, Some(v), MonitorStatus.NormalStat)
-
           }
         val latlon = Seq(MtRecord(MonitorType.LAT, Some(message.lat), MonitorStatus.NormalStat),
           MtRecord(MonitorType.LNG, Some(message.lon), MonitorStatus.NormalStat))
         val mtDataList: Seq[MtRecord] = mtData.flatten ++ latlon
         val time = DateTime.parse(message.time, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss"))
+          .withSecondOfMinute(0)
+
         if(sensorMap.contains(message.id)){
           val sensor = sensorMap(message.id)
           val recordList = RecordList(time.toDate, mtDataList, sensor.monitor)
@@ -262,10 +265,21 @@ class MqttCollector2 @Inject()(monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, s
           f.onFailure(ModelHelper.errorHandler)
 
           if (dataCollectManager.checkMinDataAlarm(recordList.mtDataList)) {
-            val mtCase = monitorTypeOp.map("PM25")
-            val thresholdConfig = mtCase.thresholdConfig.getOrElse(ThresholdConfig(30))
-            context.parent ! ToggleTargetDO(config.eventConfig.instId, config.eventConfig.bit, thresholdConfig.elapseTime)
+            // FIXME
+            // val mtCase = monitorTypeOp.map("PM25")
+            // val thresholdConfig = mtCase.thresholdConfig.getOrElse(ThresholdConfig(30))
+            // context.parent ! ToggleTargetDO(config.eventConfig.instId, config.eventConfig.bit, thresholdConfig.elapseTime)
           }
+        }else{
+          monitorDB.upsert(Monitor(message.id, message.id, Some(message.lat), Some(message.lon)))
+          val sensor = Sensor(id = message.id, topic = topic, monitor = message.id, group = config.group)
+          mqttSensorOp.upsert(sensor).andThen({
+            case Success(_) =>
+              sensorMap = sensorMap + (message.id -> sensor)
+          })
+          val recordList = RecordList(time.toDate, mtDataList, sensor.monitor)
+          val f = recordOp.upsertRecord(recordList)(recordOp.MinCollection)
+          f.onFailure(ModelHelper.errorHandler)
         }
       })
   }

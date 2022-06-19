@@ -13,7 +13,7 @@ case class Adam6017Param(chs: Seq[AiChannelCfg])
 
 @Singleton
 class Adam6017 @Inject()
-(monitorTypeOp: MonitorTypeOp)
+(monitorTypeOp: MonitorTypeDB)
   extends DriverOps {
 
   implicit val cfgReads = Json.reads[AiChannelCfg]
@@ -64,7 +64,7 @@ class Adam6017 @Inject()
       })
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Adam6017Collector.Factory])
     val f2 = f.asInstanceOf[Adam6017Collector.Factory]
     val driverParam = validateParam(param)

@@ -6,6 +6,7 @@ import com.google.inject.assistedinject.Assisted
 import models.ModelHelper._
 import models.MonitorType._
 import models.Protocol.{ProtocolParam, serial}
+import models.mongodb.AlarmOp
 import play.api._
 import play.api.libs.json.{JsError, Json}
 import play.libs.Scala.None
@@ -49,7 +50,7 @@ object ThetaCollector extends DriverOps {
       NO, H2S, H2, NH3).toList
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Factory])
     val f2 = f.asInstanceOf[Factory]
     val driverParam = validateParam(param)
@@ -86,7 +87,7 @@ object ThetaCollector extends DriverOps {
 import javax.inject._
 
 class ThetaCollector @Inject()
-(alarmOp: AlarmOp, monitorStatusOp: MonitorStatusOp, instrumentOp: InstrumentOp, system: ActorSystem)
+(alarmOp: AlarmDB, instrumentOp: InstrumentDB)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: ThetaConfig) extends Actor {
 
   import ThetaCollector._
@@ -110,13 +111,13 @@ class ThetaCollector @Inject()
         blocking {
           try {
             context become connected(MonitorStatus.NormalStat, serial)
-            timer = system.scheduler.scheduleOnce(Duration(1, SECONDS), self, Collect)
+            timer = context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, Collect)
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)
-              alarmOp.log(alarmOp.instStr(id), alarmOp.Level.ERR, s"Unable to open:${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(id), alarmOp.Level.ERR, s"Unable to open:${ex.getMessage}")
               import scala.concurrent.duration._
-              system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
+              context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
           }
         }
       }
@@ -165,7 +166,7 @@ class ThetaCollector @Inject()
             }
 
             import scala.concurrent.duration._
-            timer = system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
+            timer = context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Throwable =>
               Logger.error("Read serial failed", ex)

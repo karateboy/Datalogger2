@@ -5,6 +5,7 @@ import akka.util.ByteString
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.{ProtocolParam, tcp}
+import models.mongodb.{CalibrationOp, InstrumentStatusOp}
 import play.api._
 import play.api.libs.json.{JsError, Json}
 
@@ -82,7 +83,7 @@ object Horiba370Collector extends DriverOps{
   import Protocol.ProtocolParam
   import akka.actor._
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor ={
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor ={
     assert(f.isInstanceOf[Horiba370Collector.Factory])
     val f2 = f.asInstanceOf[Horiba370Collector.Factory]
     val driverParam = validateParam(param)
@@ -130,8 +131,8 @@ object Horiba370Collector extends DriverOps{
 import javax.inject._
 
 class Horiba370Collector @Inject()
-(instrumentOp: InstrumentOp, instrumentStatusOp: InstrumentStatusOp,
- calibrationOp: CalibrationOp, monitorTypeOp: MonitorTypeOp, actorSystem: ActorSystem)
+(instrumentOp: InstrumentDB, instrumentStatusOp: InstrumentStatusDB,
+ calibrationOp: CalibrationDB, monitorTypeOp: MonitorTypeDB)
 (@Assisted id: String, @Assisted protocol: ProtocolParam, @Assisted config: Horiba370Config) extends Actor {
 
   import Horiba370Collector._
@@ -519,7 +520,7 @@ class Horiba370Collector @Inject()
               reqSpanCalibration(connection)
             }
           for(raiseTime<-config.raiseTime)
-            calibrateTimerOpt = Some(actorSystem.scheduler.scheduleOnce(Duration(raiseTime, SECONDS), self, HoldStart))
+            calibrateTimerOpt = Some(context.system.scheduler.scheduleOnce(Duration(raiseTime, SECONDS), self, HoldStart))
         }
       }
 

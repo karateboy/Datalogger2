@@ -1,10 +1,5 @@
 package models
 
-import models.ModelHelper._
-import play.api.libs.json._
-
-import scala.concurrent.ExecutionContext.Implicits.global
-
 object StatusType extends Enumeration {
   val Internal = Value("0")
   val Auto = Value("A")
@@ -138,103 +133,5 @@ object MonitorStatus {
   def isError(s: String) = {
     !(isValid(s) || isCalbration(s) || isMaintenance(s))
   }
-
 }
-import javax.inject._
-@Singleton
-class MonitorStatusOp @Inject()(mongoDB: MongoDB){
-  implicit val reads = Json.reads[MonitorStatus]
-  implicit val writes = Json.writes[MonitorStatus]
-  val collectionName = "status"
-  val collection = mongoDB.database.getCollection(collectionName)
 
-  import MonitorStatus._
-
-  val defaultStatus = List(
-    MonitorStatus(NormalStat, "正常"),
-    MonitorStatus(OverNormalStat, "超過預設高值"),
-    MonitorStatus(BelowNormalStat, "低於預設低值"),
-    MonitorStatus(ZeroCalibrationStat, "零點偏移校正"),
-    MonitorStatus(SpanCalibrationStat, "全幅偏移校正"),
-    MonitorStatus(CalibrationDeviation, "校正偏移"),
-    MonitorStatus(CalibrationResume, "校正恢復"),
-    MonitorStatus(InvalidDataStat, "無效數據"),
-    MonitorStatus(MaintainStat, "維修、保養"),
-    MonitorStatus(ExceedRangeStat, "超過量測範圍"))
-
-  import org.mongodb.scala._
-  def toDocument(ms: MonitorStatus) = {
-    Document(Json.toJson(ms).toString())
-  }
-  def toMonitorStatus(doc: Document) = {
-    Json.parse(doc.toJson()).validate[MonitorStatus].asOpt.get
-  }
-
-  def init() {
-    def insertDefaultStatus {
-      val f = collection.insertMany(defaultStatus.map { toDocument }).toFuture()
-      f.onFailure(errorHandler)
-      f.onSuccess({
-        case _=>
-          refreshMap
-      })
-    }
-
-    for(colNames <- mongoDB.database.listCollectionNames().toFuture()) {
-      if (!colNames.contains(collectionName)) {
-        val f = mongoDB.database.createCollection(collectionName).toFuture()
-        f.onFailure(errorHandler)
-        f.onSuccess({
-          case _ =>
-            insertDefaultStatus
-        })
-      }
-    }
-  }
-  init
-
-  def msList = {
-    val f = collection.find().toFuture()
-    f.onFailure(errorHandler)
-    waitReadyResult(f).map { toMonitorStatus }
-  }
-
-  def update(tag: String, desp: String) = {
-    refreshMap
-  }
-
-  private def refreshMap() = {
-    _map = Map(msList.map { s => s.info.toString() -> s }: _*)
-    _map
-  }
-  private var _map: Map[String, MonitorStatus] = refreshMap
-
-  def map(key: String) = {
-    _map.getOrElse(key, {
-      val tagInfo = getTagInfo(key)
-      tagInfo.statusType match {
-        case StatusType.Auto =>
-          val ruleId = tagInfo.auditRule.get.toLower
-          MonitorStatus(key, s"自動註記:${ruleId}")
-        case StatusType.ManualInvalid =>
-          MonitorStatus(key, StatusType.map(StatusType.ManualInvalid))
-        case StatusType.ManualValid =>
-          MonitorStatus(key, StatusType.map(StatusType.ManualValid))
-        case StatusType.Internal =>
-          MonitorStatus(key, "未知:" + key)
-      }
-    })
-  }
-
-  def getExplainStr(tag: String) = {
-    val tagInfo = getTagInfo(tag)
-    if (tagInfo.statusType == StatusType.Auto) {
-      val t = tagInfo.auditRule.get
-      "自動註記"
-    } else {
-      val ms = map(tag)
-      ms.desp
-    }
-  }
-
-}

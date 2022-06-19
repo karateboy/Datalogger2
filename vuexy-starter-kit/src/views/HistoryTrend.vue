@@ -26,7 +26,7 @@
                 v-model="form.monitorTypes"
                 label="desp"
                 :reduce="mt => mt._id"
-                :options="monitorTypes"
+                :options="activatedMonitorTypes"
                 multiple
               />
             </b-form-group>
@@ -131,7 +131,7 @@ import DatePicker from 'vue2-datepicker';
 import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
 const Ripple = require('vue-ripple-directive');
-import { mapState, mapActions, mapMutations } from 'vuex';
+import { mapState, mapActions, mapMutations, mapGetters } from 'vuex';
 import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
 import moment from 'moment';
@@ -209,6 +209,7 @@ export default Vue.extend({
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
+    ...mapGetters('monitorTypes', ['activatedMonitorTypes']),
     ...mapState('monitors', ['monitors']),
   },
   watch: {},
@@ -221,8 +222,8 @@ export default Vue.extend({
     await this.fetchMonitorTypes();
     await this.fetchMonitors();
 
-    if (this.monitorTypes.length !== 0)
-      this.form.monitorTypes.push(this.monitorTypes[0]._id);
+    if (this.activatedMonitorTypes.length !== 0)
+      this.form.monitorTypes.push(this.activatedMonitorTypes[0]._id);
 
     if (this.monitors.length !== 0) {
       this.form.monitors.push(this.monitors[0]._id);

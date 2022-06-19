@@ -4,6 +4,7 @@ import akka.actor.{Actor, Props, _}
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.{ProtocolParam, serial}
+import models.mongodb.CalibrationOp
 import play.api._
 import play.api.libs.json.{JsError, Json}
 
@@ -49,7 +50,7 @@ object Baseline9000Collector extends DriverOps {
       param => param)
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Baseline9000Collector.Factory])
     val f2 = f.asInstanceOf[Baseline9000Collector.Factory]
     val driverParam = validateParam(param)
@@ -73,8 +74,10 @@ object Baseline9000Collector extends DriverOps {
 
 import javax.inject._
 
-class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp: CalibrationOp,
-                                      monitorTypeOp: MonitorTypeOp, system: ActorSystem)(@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: Baseline9000Config) extends Actor {
+class Baseline9000Collector @Inject()
+(instrumentOp: InstrumentDB, calibrationOp: CalibrationDB,
+ monitorTypeOp: MonitorTypeDB)
+(@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: Baseline9000Config) extends Actor {
 
   import Baseline9000Collector._
   import ModelHelper._
@@ -104,7 +107,7 @@ class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp:
   var calibrateTimerOpt: Option[Cancellable] = None
 
   override def preStart() = {
-    timerOpt = Some(system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort))
+    timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort))
   }
 
   // override postRestart so we don't call preStart and schedule a new message
@@ -123,9 +126,9 @@ class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp:
             for (serial <- serialCommOpt) {
               serial.port.writeByte(StartShippingDataByte)
             }
-            Some(system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadData))
+            Some(context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadData))
           } else {
-            Some(system.scheduler.scheduleOnce(Duration(3, SECONDS), self, SetState(id, MonitorStatus.NormalStat)))
+            Some(context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, SetState(id, MonitorStatus.NormalStat)))
           }
         }
       } onFailure serialErrorHandler
@@ -139,7 +142,7 @@ class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp:
         serialCommOpt = None
       }
       context become openComPort
-      timerOpt = Some(system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort))
+      timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort))
   }
 
   def readData = {
@@ -163,7 +166,7 @@ class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp:
             }
           }
         }
-        timerOpt = Some(system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
+        timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
       }
     } onFailure serialErrorHandler
   }
@@ -182,7 +185,7 @@ class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp:
               serial.port.writeByte(BackToNormalByte)
               serial.port.writeByte(StartShippingDataByte)
             }
-            timerOpt = Some(system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
+            timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
           }
         }
       } onFailure serialErrorHandler
@@ -243,7 +246,7 @@ class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp:
 
           for (serial <- serialCommOpt)
             serial.port.writeByte(cmd)
-          calibrateTimerOpt = Some(system.scheduler.scheduleOnce(Duration(config.raiseTime, SECONDS), self, HoldStart))
+          calibrateTimerOpt = Some(context.system.scheduler.scheduleOnce(Duration(config.raiseTime, SECONDS), self, HoldStart))
         }
       } onFailure serialErrorHandler
 
@@ -254,7 +257,7 @@ class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp:
     case HoldStart =>
       Logger.debug(s"${calibrationType} HoldStart: $mt")
       calibrateRecordStart = true
-      calibrateTimerOpt = Some(system.scheduler.scheduleOnce(Duration(config.holdTime, SECONDS), self, DownStart))
+      calibrateTimerOpt = Some(context.system.scheduler.scheduleOnce(Duration(config.holdTime, SECONDS), self, DownStart))
 
     case DownStart =>
       Logger.debug(s"${calibrationType} DownStart: $mt")
@@ -278,12 +281,12 @@ class Baseline9000Collector @Inject()(instrumentOp: InstrumentOp, calibrationOp:
             serial.port.writeByte(BackToNormalByte)
 
           calibrateTimerOpt = if (calibrationType.auto && calibrationType.zero)
-            Some(system.scheduler.scheduleOnce(Duration(1, SECONDS), self, CalibrateEnd))
+            Some(context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, CalibrateEnd))
           else {
             collectorState = MonitorStatus.CalibrationResume
             instrumentOp.setState(id, collectorState)
 
-            Some(system.scheduler.scheduleOnce(Duration(config.downTime, SECONDS), self, CalibrateEnd))
+            Some(context.system.scheduler.scheduleOnce(Duration(config.downTime, SECONDS), self, CalibrateEnd))
           }
         }
       } onFailure serialErrorHandler

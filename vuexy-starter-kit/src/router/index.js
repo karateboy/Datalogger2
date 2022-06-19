@@ -363,6 +363,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/cdx-upload-config',
+      name: 'cdx-upload-config',
+      component: () => import('@/views/CdxUploadConfig.vue'),
+      meta: {
+        pageTitle: 'CDX上傳設定',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: 'CDX上傳設定',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/system-config',
       name: 'system-config',
       component: () => import('@/views/SystemConfig.vue'),

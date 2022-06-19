@@ -1,6 +1,7 @@
 package controllers
 
-import models.{Ability, GroupOp, User, UserOp}
+import models.mongodb.{GroupOp, UserOp}
+import models.{Ability, GroupDB, User, UserDB}
 import play.api.libs.json._
 import play.api.mvc._
 case class Credential(user: String, password: String)
@@ -11,7 +12,7 @@ case class UserData(user:User, group:Group)
  * @author user
  */
 class Login @Inject()
-(userOp: UserOp, groupOp:GroupOp)
+(userOp: UserDB, groupOp:GroupDB)
   extends Controller {
   implicit val credentialReads = Json.reads[Credential]
 

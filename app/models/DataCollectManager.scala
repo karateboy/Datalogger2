@@ -5,6 +5,7 @@ import com.github.nscala_time.time.Imports._
 import models.DataCollectManager.{calculateHourAvgMap, calculateMinAvgMap}
 import models.ForwardManager.{ForwardHour, ForwardHourRecord, ForwardMin, ForwardMinRecord}
 import models.ModelHelper._
+import models.mongodb.{AlarmOp, InstrumentOp, RecordOp}
 import org.mongodb.scala.result.UpdateResult
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
@@ -13,7 +14,7 @@ import javax.inject._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.duration.SECONDS
+import scala.concurrent.duration.{FiniteDuration, MILLISECONDS, SECONDS}
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
@@ -84,9 +85,12 @@ case class AddSignalTypeHandler(mtId: String, handler: Boolean => Unit)
 
 case class WriteSignal(mtId: String, bit: Boolean)
 
+case object CheckInstruments
+
 @Singleton
-class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentOp,
-                                     recordOp: RecordOp, alarmOp: AlarmOp)() {
+class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentDB,
+                                     recordOp: RecordDB, alarmOp: AlarmDB, sysConfigDB: SysConfigDB,
+                                     cdxUploader: CdxUploader)() {
   def startCollect(inst: Instrument) {
     manager ! StartInstrument(inst)
   }
@@ -155,7 +159,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
   }
 
   def evtOperationHighThreshold {
-    alarmOp.log(alarmOp.Src(), alarmOp.Level.INFO, "進行高值觸發事件行動..")
+    alarmOp.log(alarmOp.src(), alarmOp.Level.INFO, "進行高值觸發事件行動..")
     manager ! EvtOperationOverThreshold
   }
 
@@ -198,23 +202,28 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         val mtDataList = calculateHourAvgMap(mtMap, alwaysValid)
         val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
         val f = recordOp.replaceRecord(recordList)(recordOp.HourCollection)
-        if (forward)
-          f.andThen({
-            case _ =>
+        if (forward) {
+          f onComplete {
+            case Success(_)=>
               manager ! ForwardHour
-          })
+              for(cdxConfig<-sysConfigDB.getCdxConfig() if cdxConfig.enable)
+                cdxUploader.upload(recordList = recordList, cdxConfig = cdxConfig)
+
+            case Failure(exception) =>
+              Logger.error("failed", exception)
+          }
+        }
 
         f
       }
     ret.flatMap(x => x)
   }
-
 }
 
 object DataCollectManager {
   var effectiveRatio = 0.75
 
-  def updateEffectiveRatio(sysConfig: SysConfig): Unit ={
+  def updateEffectiveRatio(sysConfig: SysConfigDB): Unit ={
     for(ratio <-sysConfig.getEffectiveRatio())
       effectiveRatio = ratio
   }
@@ -349,11 +358,11 @@ object DataCollectManager {
 
 @Singleton
 class DataCollectManager @Inject()
-(config: Configuration, system: ActorSystem, recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp,
+(config: Configuration, recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
  dataCollectManagerOp: DataCollectManagerOp,
- instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmOp, instrumentOp: InstrumentOp,
- sysConfig: SysConfig, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
-  val storeSecondData = config.getBoolean("storeSecondData").getOrElse(false)
+ instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentDB,
+ sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
+  val storeSecondData = config.getBoolean("logger.storeSecondData").getOrElse(false)
   Logger.info(s"store second data = $storeSecondData")
   DataCollectManager.updateEffectiveRatio(sysConfig)
 
@@ -386,8 +395,9 @@ class DataCollectManager @Inject()
   var signalTypeHandlerMap = Map.empty[String, Map[ActorRef, Boolean => Unit]]
 
   def startReaders(): Unit = {
-    SpectrumReader.start(config, system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
-    WeatherReader.start(config, system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
+    SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
+    WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
+    VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp)
   }
 
 
@@ -414,7 +424,7 @@ class DataCollectManager @Inject()
         for (std_law <- mtCase.std_law; v <- value) {
           if (v > std_law) {
             val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, value)}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
-            alarmOp.log(alarmOp.Src(mt), alarmOp.Level.INFO, msg)
+            alarmOp.log(alarmOp.src(mt), alarmOp.Level.INFO, msg)
             overThreshold = true
           }
         }
@@ -472,19 +482,20 @@ class DataCollectManager @Inject()
         val monitorTypes = instType.driver.getMonitorTypes(inst.param)
         val calibrateTimeOpt = instType.driver.getCalibrationTime(inst.param)
         val timerOpt = calibrateTimeOpt.map { localtime =>
-          val calibrationTime = DateTime.now().toLocalDate().toDateTime(localtime)
-          val duration = if (DateTime.now() < calibrationTime)
-            new Duration(DateTime.now(), calibrationTime)
+          val now = DateTime.now()
+          val calibrationTime = now.toLocalDate().toDateTime(localtime)
+          val period = if (now < calibrationTime)
+            new Period(now, calibrationTime)
           else
-            new Duration(DateTime.now(), calibrationTime + 1.day)
+            new Period(now, calibrationTime + 1.day)
 
-          import scala.concurrent.duration._
-          system.scheduler.schedule(
-            Duration(duration.getStandardSeconds + 1, SECONDS),
-            Duration(1, DAYS), self, AutoCalibration(inst._id))
+          val totalMillis = period.toDurationFrom(now).getMillis
+          context.system.scheduler.scheduleOnce(
+            FiniteDuration(totalMillis, MILLISECONDS),
+            self, AutoCalibration(inst._id))
         }
 
-        val instrumentParam = InstrumentParam(collector, monitorTypes, timerOpt, instType.driver.timeAdjustment)
+        val instrumentParam = InstrumentParam(collector, monitorTypes, timerOpt, calibrateTimeOpt)
         if (instType.driver.isCalibrator) {
           calibratorOpt = Some(collector)
         } else if (instType.driver.isDoInstrument) {
@@ -618,7 +629,7 @@ class DataCollectManager @Inject()
             }
           }
 
-          val docs = secRecordMap map { r => r._1 -> recordOp.toRecordList(r._1, r._2.toList) }
+          val docs = secRecordMap map { r => r._1 -> RecordList(r._1, r._2.toList) }
 
           val sortedDocs = docs.toSeq.sortBy { x => x._1 } map (_._2)
           if (sortedDocs.nonEmpty)
@@ -626,11 +637,11 @@ class DataCollectManager @Inject()
         }
       }
 
-      def calculateMinData(currentMintues: DateTime) = {
+      def calculateMinData(current: DateTime): Future[UpdateResult] = {
         import scala.collection.mutable.Map
         val mtMap = Map.empty[String, Map[String, ListBuffer[(String, DateTime, Double)]]]
 
-        val currentData = mtDataList.takeWhile(d => d._1 >= currentMintues)
+        val currentData = mtDataList.takeWhile(d => d._1 >= current)
         val minDataList = mtDataList.drop(currentData.length)
 
         for {
@@ -688,7 +699,7 @@ class DataCollectManager @Inject()
 
         context become handler(instrumentMap, collectorInstrumentMap,
           latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap)
-        val f = recordOp.upsertRecord(RecordList(currentMintues.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeID))(recordOp.MinCollection)
+        val f = recordOp.upsertRecord(RecordList(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeID))(recordOp.MinCollection)
         f onComplete {
           case Success(_) =>
             self ! ForwardMin
@@ -708,6 +719,7 @@ class DataCollectManager @Inject()
                 dataCollectManagerOp.recalculateHourData(monitor = m,
                   current = current)(monitorTypeOp.realtimeMtvList)
               }
+              self ! CheckInstruments
             }
           case Failure(exception)=>
             errorHandler(exception)
@@ -724,6 +736,28 @@ class DataCollectManager @Inject()
     case AutoCalibration(instId) =>
       instrumentMap.get(instId).map { param =>
         param.actor ! AutoCalibration(instId)
+
+        param.calibrationTimerOpt =
+          for(localTime: LocalTime <- param.calibrationTimeOpt) yield {
+            val now = DateTime.now()
+            val calibrationTime = now.toLocalDate().toDateTime(localTime)
+
+            val period = if (now < calibrationTime)
+              new Period(now, calibrationTime)
+            else
+              new Period(now, calibrationTime + 1.day)
+
+            val totalMilli = period.toDurationFrom(now).getMillis
+            import scala.concurrent.duration._
+            context.system.scheduler.scheduleOnce(
+              FiniteDuration(totalMilli, MILLISECONDS),
+              self, AutoCalibration(instId))
+          }
+
+        context become handler(
+          instrumentMap + (instId -> param),
+          collectorInstrumentMap,
+          latestDataMap, mtDataList, restartList, signalTypeHandlerMap, signalDataMap)
       }
 
     case ManualZeroCalibration(instId) =>
@@ -746,7 +780,7 @@ class DataCollectManager @Inject()
       onceTimer map { t => t.cancel() }
       Logger.debug(s"ToggleTargetDO($instId, $bit)")
       self ! WriteTargetDO(instId, bit, true)
-      onceTimer = Some(system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
+      onceTimer = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
         self, WriteTargetDO(instId, bit, false)))
 
     case IsTargetConnected(instId) =>
@@ -833,12 +867,26 @@ class DataCollectManager @Inject()
         handler(bit)
 
     case ReportSignalData(dataList) =>
-      dataList.foreach(signalData=>monitorTypeOp.logDiMonitorType(signalData.mt, signalData.value))
+      dataList.foreach(signalData=>monitorTypeOp.logDiMonitorType(alarmOp, signalData.mt, signalData.value))
       val updateMap: Map[String, (DateTime, Boolean)] = dataList.map(signal => {
         signal.mt -> (DateTime.now(), signal.value)
       }).toMap
       context become handler(instrumentMap, collectorInstrumentMap, latestDataMap,
         mtDataList, restartList, signalTypeHandlerMap, signalDataMap ++ updateMap)
+
+    case CheckInstruments =>
+      val now = DateTime.now()
+      val f = recordOp.getRecordMapFuture(recordOp.MinCollection)(Monitor.SELF_ID, monitorTypeOp.activeMtvList,
+        now.minusHours(1), now)
+      for(minRecordMap <- f){
+        for(kv<- instrumentMap){
+          val ( instID, instParam) = kv;
+          if(!instParam.mtList.forall(mt=> minRecordMap.contains(mt) && minRecordMap(mt).size >=45)){
+            Logger.error(s"$instID has less then 45 minRecords. Restart $instID")
+            self ! RestartInstrument(instID)
+          }
+        }
+      }
 
   }
 
@@ -851,7 +899,7 @@ class DataCollectManager @Inject()
   }
 
   case class InstrumentParam(actor: ActorRef, mtList: List[String],
-                             calibrationTimerOpt: Option[Cancellable],
-                             timeAdjust: Period = Period.seconds(0))
+                             var calibrationTimerOpt: Option[Cancellable],
+                             calibrationTimeOpt: Option[LocalTime])
 
 }

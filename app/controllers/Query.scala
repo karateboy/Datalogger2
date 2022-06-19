@@ -13,13 +13,12 @@ import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-case class Stat(
-                 avg: Option[Double],
-                 min: Option[Double],
-                 max: Option[Double],
-                 count: Int,
-                 total: Int,
-                 overCount: Int) {
+case class Stat(avg: Option[Double],
+                min: Option[Double],
+                max: Option[Double],
+                count: Int,
+                total: Int,
+                overCount: Int) {
   val effectPercent = {
     if (total > 0)
       Some(count.toDouble * 100 / total)
@@ -49,15 +48,15 @@ case class ManualAuditParam(reason: String, updateList: Seq[UpdateRecordParam])
 case class UpdateRecordParam(time: Long, mt: String, status: String)
 
 @Singleton
-class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp,
-                      instrumentStatusOp: InstrumentStatusOp, instrumentOp: InstrumentOp,
-                      alarmOp: AlarmOp, calibrationOp: CalibrationOp,
-                      manualAuditLogOp: ManualAuditLogOp, excelUtility: ExcelUtility, configuration: Configuration) extends Controller {
+class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
+                      instrumentStatusOp: InstrumentStatusDB, instrumentOp: InstrumentDB,
+                      alarmOp: AlarmDB, calibrationOp: CalibrationDB,
+                      manualAuditLogOp: ManualAuditLogDB, excelUtility: ExcelUtility, configuration: Configuration) extends Controller {
 
   implicit val cdWrite = Json.writes[CellData]
   implicit val rdWrite = Json.writes[RowData]
   implicit val dtWrite = Json.writes[DataTab]
-  val trendShowActual = configuration.getBoolean("trendShowActual").getOrElse(false)
+  val trendShowActual = configuration.getBoolean("logger.trendShowActual").getOrElse(true)
 
   def getPeriodCount(start: DateTime, endTime: DateTime, p: Period) = {
     var count = 0
@@ -410,19 +409,6 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
     mtRecordPairs.toMap
   }
 
-  def getPeriods(start: DateTime, endTime: DateTime, d: Period): List[DateTime] = {
-    import scala.collection.mutable.ListBuffer
-
-    val buf = ListBuffer[DateTime]()
-    var current = start
-    while (current < endTime) {
-      buf.append(current)
-      current += d
-    }
-
-    buf.toList
-  }
-
   def historyData(monitorStr: String, monitorTypeStr: String, tabTypeStr: String,
                   startNum: Long, endNum: Long) = Security.Authenticated.async {
     implicit request =>
@@ -483,84 +469,6 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       }
   }
 
-  def latestData(monitorStr: String, monitorTypeStr: String, tabTypeStr: String) = Security.Authenticated.async {
-    implicit request =>
-      val monitors = monitorStr.split(":")
-      val monitorTypes = monitorTypeStr.split(':')
-      val tabType = TableType.withName(tabTypeStr)
-
-      val futures = for (m <- monitors.toSeq) yield
-        recordOp.getLatestRecordFuture(TableType.mapCollection(tabType))(m)
-
-      val allFutures = Future.sequence(futures)
-
-      val emtpyCell = CellData("-", Seq.empty[String])
-      for (allRecordlist <- allFutures) yield {
-        val recordList = allRecordlist.fold(Seq.empty[RecordList])((a, b) => {
-          a ++ b
-        })
-        import scala.collection.mutable.Map
-        val timeMtMonitorMap = Map.empty[DateTime, Map[String, Map[String, CellData]]]
-        recordList map {
-          r =>
-            val stripedTime = new DateTime(r._id.time).withSecondOfMinute(0).withMillisOfSecond(0)
-            val mtMonitorMap = timeMtMonitorMap.getOrElseUpdate(stripedTime, Map.empty[String, Map[String, CellData]])
-            for (mt <- monitorTypes.toSeq) {
-              val monitorMap = mtMonitorMap.getOrElseUpdate(mt, Map.empty[String, CellData])
-              val cellData = if (r.mtMap.contains(mt)) {
-                val mtRecord = r.mtMap(mt)
-                CellData(monitorTypeOp.format(mt, mtRecord.value),
-                  monitorTypeOp.getCssClassStr(mtRecord), Some(mtRecord.status))
-              } else
-                emtpyCell
-
-              monitorMap.update(r._id.monitor, cellData)
-            }
-        }
-        val timeList = timeMtMonitorMap.keys.toList.sorted
-        val timeRows: Seq[RowData] = for (time <- timeList) yield {
-          val mtMonitorMap = timeMtMonitorMap(time)
-          var cellDataList = Seq.empty[CellData]
-          for {
-            mt <- monitorTypes
-            m <- monitors
-          } {
-            val monitorMap = mtMonitorMap(mt)
-            if (monitorMap.contains(m))
-              cellDataList = cellDataList :+ (mtMonitorMap(mt)(m))
-            else
-              cellDataList = cellDataList :+ (emtpyCell)
-          }
-          RowData(time.getMillis, cellDataList)
-        }
-
-        val columnNames = monitorTypes.toSeq map {
-          monitorTypeOp.map(_).desp
-        }
-        Ok(Json.toJson(DataTab(columnNames, timeRows)))
-      }
-  }
-
-  def realtimeStatus() = Security.Authenticated.async {
-    implicit request =>
-      import recordOp.recordListWrite
-      val monitors = monitorOp.mvList
-      val tabType = TableType.min
-
-      val futures = for (m <- monitors.toSeq) yield
-        recordOp.getLatestRecordFuture(TableType.mapCollection(tabType))(m)
-
-      val allFutures = Future.sequence(futures)
-
-      for (allRecordlist <- allFutures) yield {
-        val recordList = allRecordlist.fold(Seq.empty[RecordList])((a, b) => {
-          a ++ b
-        })
-
-        Ok(Json.toJson(recordList))
-      }
-  }
-
   def historyReport(monitorTypeStr: String, tabTypeStr: String,
                     startNum: Long, endNum: Long) = Security.Authenticated.async {
     implicit request =>
@@ -600,9 +508,22 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       }
 
       val f = recordOp.getRecordListFuture(TableType.mapCollection(tabType))(start, end)
-      import recordOp.recordListWrite
+
       for (recordList <- f) yield
         Ok(Json.toJson(recordList))
+  }
+
+  def getPeriods(start: DateTime, endTime: DateTime, d: Period): List[DateTime] = {
+    import scala.collection.mutable.ListBuffer
+
+    val buf = ListBuffer[DateTime]()
+    var current = start
+    while (current < endTime) {
+      buf.append(current)
+      current += d
+    }
+
+    buf.toList
   }
 
   def calibrationReport(startNum: Long, endNum: Long) = Security.Authenticated {
@@ -615,16 +536,26 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
     Ok(Json.toJson(jsonReport))
   }
 
-  def alarmReport(level: Int, startNum: Long, endNum: Long) = Security.Authenticated {
+  def alarmReport(level: Int, startNum: Long, endNum: Long) = Security.Authenticated.async {
     implicit val write = Json.writes[Alarm2JSON]
-    val (start, end) =
-      (new DateTime(startNum),
-        new DateTime(endNum))
-    val report: Seq[Alarm] = alarmOp.getAlarms(level, start, end + 1.day)
-    val jsonReport = report map {
-      _.toJson
+    val (start, end) = (new DateTime(startNum), new DateTime(endNum))
+    for (report <- alarmOp.getAlarmsFuture(level, start, end + 1.day)) yield {
+      val jsonReport = report map {
+        _.toJson
+      }
+      Ok(Json.toJson(jsonReport))
     }
-    Ok(Json.toJson(jsonReport))
+  }
+
+  def getAlarms(src: String, level: Int, startNum: Long, endNum: Long) = Security.Authenticated.async {
+    implicit val write = Json.writes[Alarm2JSON]
+    val (start, end) = (new DateTime(startNum), new DateTime(endNum))
+    for (report <- alarmOp.getAlarmsFuture(src, level, start, end + 1.day)) yield {
+      val jsonReport = report map {
+        _.toJson
+      }
+      Ok(Json.toJson(jsonReport))
+    }
   }
 
   def instrumentStatusReport(id: String, startNum: Long, endNum: Long) = Security.Authenticated {
@@ -720,7 +651,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
   // FIXME Bypass security check
   def hourRecordList(start: Long, end: Long) = Action.async {
     implicit request =>
-      import recordOp.recordListWrite
+
       val startTime = new DateTime(start)
       val endTime = new DateTime(end)
       val recordListF = recordOp.getRecordListFuture(recordOp.HourCollection)(startTime, endTime)
@@ -735,7 +666,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       val startTime = new DateTime(start)
       val endTime = new DateTime(end)
       val recordListF = recordOp.getRecordListFuture(recordOp.MinCollection)(startTime, endTime)
-      import recordOp.recordListWrite
+
       for (recordList <- recordListF) yield {
         Ok(Json.toJson(recordList))
       }
@@ -764,16 +695,6 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       }
 
 
-  }
-
-  def alertRecordList(start: Long, end: Long) = Action.async {
-    implicit request =>
-      val startTime = new DateTime(start)
-      val endTime = new DateTime(end)
-      for (recordList <- alarmOp.getAlarmsFuture(startTime, endTime)) yield {
-        implicit val w = Json.writes[Alarm]
-        Ok(Json.toJson(recordList))
-      }
   }
 
   def windRoseReport(monitor: String, monitorType: String, tabTypeStr: String, nWay: Int, start: Long, end: Long) = Security.Authenticated.async {

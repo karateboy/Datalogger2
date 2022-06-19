@@ -28,7 +28,7 @@ object GpsCollector extends DriverOps {
     def apply(id: String, protocolParam: ProtocolParam): Actor
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor ={
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor ={
     assert(f.isInstanceOf[Factory])
     val f2 = f.asInstanceOf[Factory]
     f2(id, protocol)
@@ -53,7 +53,7 @@ import net.sf.marineapi.nmea.sentence.SentenceValidator;
 
 import javax.inject._
 
-class GpsCollector @Inject()(monitorTypeOp: MonitorTypeOp)(@Assisted id: String, @Assisted protocolParam: ProtocolParam) extends Actor
+class GpsCollector @Inject()()(@Assisted id: String, @Assisted protocolParam: ProtocolParam) extends Actor
     with ActorLogging with SentenceListener with ExceptionListener with PositionListener {
   val comm: SerialComm = SerialComm.open(protocolParam.comPort.get)
   var reader: SentenceReader = _

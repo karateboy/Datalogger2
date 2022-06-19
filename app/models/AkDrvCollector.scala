@@ -5,6 +5,7 @@ import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
 import models.AkDrv.{OpenCom, ReadRegister}
 import models.Protocol.ProtocolParam
+import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 import play.api._
 
 import javax.inject._
@@ -14,9 +15,8 @@ case class AkModelRegValue(inputRegs: Seq[(InstrumentStatusType, Float)],
                            modeRegs:Seq[(InstrumentStatusType, Boolean)],
                            warningRegs:Seq[(InstrumentStatusType, Boolean)])
 
-class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: MonitorStatusOp,
-                               alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
-                               calibrationOp: CalibrationOp, instrumentStatusOp: InstrumentStatusOp)
+class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
+                               alarmOp: AlarmDB, instrumentStatusOp: InstrumentStatusDB)
                               (@Assisted instId: String, @Assisted protocol: ProtocolParam, @Assisted modelReg: AkModelReg,
                                @Assisted deviceConfig: AkDeviceConfig) extends Actor {
   var timerOpt: Option[Cancellable] = None
@@ -123,7 +123,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
             comm.clearBuffer = true;
             Logger.error(ex.getMessage, ex)
             if (connected) {
-              alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
             }
 
         } finally {
@@ -158,7 +158,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)
-              alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
               context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenCom)
@@ -218,7 +218,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
       if (enable) {
         for(oldReg<-oldModelReg)
           if (oldReg.modeRegs(idx)._2 != enable)
-            alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.INFO, statusType.desc)
+            alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, statusType.desc)
 
       }
     }
@@ -232,12 +232,12 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
       if (enable) {
         for(regValues <- oldModelReg){
           if (regValues.warningRegs(idx)._2 != enable)
-            alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.WARN, statusType.desc)
+            alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.WARN, statusType.desc)
         }
       } else {
         for(regValues <- oldModelReg){
           if (regValues.warningRegs(idx)._2 != enable)
-            alarmOp.log(alarmOp.instStr(instId), alarmOp.Level.INFO, s"${statusType.desc} 解除")
+            alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, s"${statusType.desc} 解除")
         }
       }
     }
@@ -270,7 +270,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentOp, monitorStatusOp: Moni
   def findDataRegIdx(regValue: AkModelRegValue)(addr: Int) = {
     val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
     if (dataReg.isEmpty) {
-      Logger.warn("Cannot found Data register!")
+      Logger.warn(s"$instId Cannot found Data register!")
       None
     } else
       Some(dataReg.get._2)

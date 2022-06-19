@@ -1,6 +1,6 @@
 name := """DataLogger2"""
 
-version := "1.3.44-yt"
+version := "1.4.5-yt"
 
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala, LauncherJarPlugin, JavaAppPackaging, WindowsPlugin)
@@ -17,7 +17,6 @@ libraryDependencies ++= Seq(
 // https://mvnrepository.com/artifact/org.mongodb.scala/mongo-scala-driver
 libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "4.2.0"
 
-
 // https://mvnrepository.com/artifact/com.github.nscala-time/nscala-time
 libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "2.28.0"
 
@@ -27,8 +26,23 @@ libraryDependencies += "org.eclipse.paho" % "org.eclipse.paho.client.mqttv3" % "
 // https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml
 libraryDependencies += "org.apache.poi" % "poi-ooxml" % "5.0.0"
 
+// https://mvnrepository.com/artifact/com.microsoft.sqlserver/mssql-jdbc
+libraryDependencies += "com.microsoft.sqlserver" % "mssql-jdbc" % "9.4.1.jre8"
+// https://mvnrepository.com/artifact/com.microsoft.sqlserver/mssql-jdbc_auth
+libraryDependencies += "com.microsoft.sqlserver" % "mssql-jdbc_auth" % "9.4.1.x64"
+// https://mvnrepository.com/artifact/com.microsoft.sqlserver/mssql-jdbc_auth
+libraryDependencies += "com.microsoft.sqlserver" % "mssql-jdbc_auth" % "9.4.1.x86"
+
 // https://mvnrepository.com/artifact/io.github.java-native/jssc
 libraryDependencies += "io.github.java-native" % "jssc" % "2.9.4"
+
+// https://mvnrepository.com/artifact/org.scalikejdbc/scalikejdbc
+libraryDependencies += "org.scalikejdbc" %% "scalikejdbc" % "2.5.2"
+// https://mvnrepository.com/artifact/org.scalikejdbc/scalikejdbc-config
+libraryDependencies += "org.scalikejdbc" %% "scalikejdbc-config" % "2.5.2"
+// https://mvnrepository.com/artifact/org.scalikejdbc/scalikejdbc-play-initializer
+libraryDependencies += "org.scalikejdbc" %% "scalikejdbc-play-initializer" % "2.5.3"
+
 
 routesGenerator := StaticRoutesGenerator
 
@@ -36,6 +50,10 @@ mappings in Universal ++=
 (baseDirectory.value / "report_template" * "*" get) map
     (x => x -> ("report_template/" + x.getName))
  	
+mappings in Universal ++=
+  (baseDirectory.value / "cdxUpload" * "*" get) map
+    (x => x -> ("cdxUpload/" + x.getName))
+
 //libraryDependencies += "com.google.guava" % "guava" % "19.0"
 scalacOptions += "-feature"
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"

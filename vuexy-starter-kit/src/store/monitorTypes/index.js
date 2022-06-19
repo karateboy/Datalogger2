@@ -13,6 +13,9 @@ export default {
       }
       return map;
     },
+    activatedMonitorTypes(state) {
+      return state.monitorTypes.filter(mt => mt.measuringBy);
+    },
   },
   mutations: {
     updateMonitorTypes(state, val) {

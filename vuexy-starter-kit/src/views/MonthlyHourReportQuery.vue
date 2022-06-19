@@ -14,7 +14,7 @@
                 v-model="form.monitorType"
                 label="desp"
                 :reduce="mt => mt._id"
-                :options="monitorTypes"
+                :options="activatedMonitorTypes"
               />
             </b-form-group>
           </b-col>
@@ -95,7 +95,7 @@ import vSelect from 'vue-select';
 import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
 const Ripple = require('vue-ripple-directive');
-import { mapState, mapActions } from 'vuex';
+import { mapState, mapActions, mapGetters } from 'vuex';
 import moment from 'moment';
 import axios from 'axios';
 const excel = require('../libs/excel');
@@ -124,6 +124,7 @@ export default Vue.extend({
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
+    ...mapGetters('monitorTypes', ['activatedMonitorTypes']),
   },
   mounted() {
     this.fetchMonitorTypes().then(() => {

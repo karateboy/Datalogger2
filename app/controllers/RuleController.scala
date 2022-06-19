@@ -1,6 +1,6 @@
 package controllers
 
-import models.{ConstantRule, ConstantRuleID, ConstantRuleOp, SpikeRule, SpikeRuleID, SpikeRuleOp, VariationRule, VariationRuleID, VariationRuleOp}
+import models._
 import play.api.Logger
 import play.api.libs.json.{JsError, JsValue, Json}
 import play.api.mvc.{Action, AnyContent, BodyParsers, Controller}
@@ -8,8 +8,8 @@ import play.api.mvc.{Action, AnyContent, BodyParsers, Controller}
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-class RuleController @Inject()(spikeRuleOp: SpikeRuleOp, constantRuleOp: ConstantRuleOp,
-                               variationRuleOp: VariationRuleOp)extends Controller {
+class RuleController @Inject()(spikeRuleOp: SpikeRuleDB, constantRuleOp: ConstantRuleDB,
+                               variationRuleOp: VariationRuleDB) extends Controller {
 
   def getSpikeRules(): Action[AnyContent] = Security.Authenticated.async {
     for(ret <- spikeRuleOp.getRules()) yield

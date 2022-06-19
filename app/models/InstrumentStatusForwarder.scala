@@ -2,6 +2,7 @@ package models
 import akka.actor.Actor
 import com.github.nscala_time.time.Imports.DateTime
 import com.google.inject.assistedinject.Assisted
+import models.mongodb.InstrumentStatusOp
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
@@ -15,7 +16,7 @@ object InstrumentStatusForwarder{
   }
 }
 
-class InstrumentStatusForwarder @Inject()(ws:WSClient, instrumentStatusOp: InstrumentStatusOp)
+class InstrumentStatusForwarder @Inject()(ws:WSClient, instrumentStatusOp: InstrumentStatusDB)
                                          (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
   import ForwardManager._
   Logger.info(s"InstrumentStatusForwarder started $server/$monitor")

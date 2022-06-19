@@ -26,7 +26,7 @@ object MoxaE1240Collector {
 import javax.inject._
 
 class MoxaE1240Collector @Inject()
-(monitorTypeOp: MonitorTypeOp, instrumentOp: InstrumentOp, system: ActorSystem)
+(instrumentOp: InstrumentDB)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: MoxaE1240Param) extends Actor with ActorLogging {
   import MoxaE1240Collector._
 
@@ -87,13 +87,13 @@ class MoxaE1240Collector @Inject()
             master.setConnected(true)
             master.init();
             context become handler(collectorState, Some(master))
-            cancelable = system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
+            cancelable = context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)
               Logger.info("Try again 1 min later...")
               //Try again
-              cancelable = system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
+              cancelable = context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
           }
 
         }
@@ -121,7 +121,7 @@ class MoxaE1240Collector @Inject()
               for (idx <- 0 to 7) yield rawResult.getFloatValue(idx).toFloat
 
             decode(result.toSeq, collectorState)
-            cancelable = system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
+            cancelable = context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Throwable =>
               Logger.error("Read reg failed", ex)

@@ -1,30 +1,28 @@
-package models
+package models.mongodb
 
-import models.ModelHelper._
+import models.ModelHelper.{errorHandler, waitReadyResult}
+import models.{AlarmConfig, Group, User, UserDB}
 import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
-import org.mongodb.scala.bson.codecs.Macros._
-import org.mongodb.scala.model.{Filters, Updates}
-import play.api._
+import org.mongodb.scala.model.Updates
+import play.api.Logger
 
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.language.implicitConversions
-
-
-case class User(_id: String, password: String, name: String, isAdmin: Boolean, group: Option[String], monitorTypeOfInterest: Seq[String])
-
-import javax.inject._
 
 @Singleton
-class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp, monitorTypeOp: MonitorTypeOp) {
+class UserOp @Inject()(mongoDB: MongoDB) extends UserDB {
 
   import org.mongodb.scala._
+  import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
+  import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
+  import org.mongodb.scala.bson.codecs.Macros._
 
-  val ColName = "users"
-  val codecRegistry = fromRegistries(fromProviders(classOf[User], classOf[AlarmConfig]), DEFAULT_CODEC_REGISTRY)
-  val collection: MongoCollection[User] = mongoDB.database.withCodecRegistry(codecRegistry).getCollection(ColName)
+  lazy private val ColName = "users"
+  lazy private val codecRegistry = fromRegistries(fromProviders(classOf[User], classOf[AlarmConfig]), DEFAULT_CODEC_REGISTRY)
+  lazy private val collection: MongoCollection[User] = mongoDB.database.withCodecRegistry(codecRegistry).getCollection(ColName)
 
-  def init() {
+  private def init() {
     for (colNames <- mongoDB.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(ColName)) {
         val f = mongoDB.database.createCollection(ColName).toFuture()
@@ -36,8 +34,6 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp, monitorTypeOp: Monito
     f.onSuccess({
       case count: Long =>
         if (count == 0) {
-          val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn", true, Some(Group.PLATFORM_ADMIN),
-            Seq.empty[String])
           Logger.info("Create default user:" + defaultUser.toString())
           newUser(defaultUser)
         }
@@ -47,19 +43,19 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp, monitorTypeOp: Monito
 
   init
 
-  def newUser(user: User) = {
+  override def newUser(user: User) = {
     val f = collection.insertOne(user).toFuture()
     waitReadyResult(f)
   }
 
   import org.mongodb.scala.model.Filters._
 
-  def deleteUser(email: String) = {
+  override def deleteUser(email: String) = {
     val f = collection.deleteOne(equal("_id", email)).toFuture()
     waitReadyResult(f)
   }
 
-  def updateUser(user: User) = {
+  override def updateUser(user: User): Unit = {
     if (user.password != "") {
       val f = collection.replaceOne(equal("_id", user._id), user).toFuture()
       waitReadyResult(f)
@@ -83,10 +79,9 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp, monitorTypeOp: Monito
       val f = collection.findOneAndUpdate(equal("_id", user._id), updates).toFuture()
       waitReadyResult(f)
     }
-
   }
 
-  def getUserByEmail(email: String) = {
+  override def getUserByEmail(email: String): Option[User] = {
     val f = collection.find(equal("_id", email)).first().toFuture()
     f.onFailure {
       errorHandler
@@ -98,7 +93,7 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp, monitorTypeOp: Monito
       None
   }
 
-  def getAllUsers() = {
+  override def getAllUsers(): Seq[User] = {
     val f = collection.find().toFuture()
     f.onFailure {
       errorHandler
@@ -106,7 +101,7 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp, monitorTypeOp: Monito
     waitReadyResult(f)
   }
 
-  def getAdminUsers() = {
+  override def getAdminUsers(): Seq[User] = {
     val f = collection.find(equal("isAdmin", true)).toFuture()
     f.onFailure {
       errorHandler

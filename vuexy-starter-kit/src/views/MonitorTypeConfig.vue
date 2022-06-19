@@ -91,6 +91,22 @@
             @change="markDirty(row.item)"
           />
         </template>
+        <template #cell(fixedM)="row">
+          <b-form-input
+            v-model.number="row.item.fixedM"
+            type="number"
+            size="sm"
+            @change="markDirty(row.item)"
+          />
+        </template>
+        <template #cell(fixedB)="row">
+          <b-form-input
+            v-model.number="row.item.fixedB"
+            type="number"
+            size="sm"
+            @change="markDirty(row.item)"
+          />
+        </template>
         <template #cell(accumulated)="row">
           <b-form-checkbox
             v-model="row.item.accumulated"
@@ -147,6 +163,7 @@ import Vue from 'vue';
 const Ripple = require('vue-ripple-directive');
 import axios from 'axios';
 import { MonitorType, ThresholdConfig } from './types';
+import { isNumber } from 'highcharts';
 
 interface EditMonitorType extends MonitorType {
   dirty?: boolean;
@@ -171,27 +188,22 @@ export default Vue.extend({
       {
         key: 'desp',
         label: '名稱',
-        sortable: true,
       },
       {
         key: 'unit',
         label: '單位',
-        sortable: true,
       },
       {
         key: 'prec',
         label: '小數點位數',
-        sortable: true,
       },
       {
         key: 'order',
         label: '順序',
-        sortable: true,
       },
       {
         key: 'std_law',
         label: '法規值',
-        sortable: true,
       },
       {
         key: 'zd_law',
@@ -212,6 +224,16 @@ export default Vue.extend({
       {
         key: 'calbrate',
         label: '校正回歸',
+        tdClass: { 'text-center': true },
+      },
+      {
+        key: 'fixedM',
+        label: 'M',
+        tdClass: { 'text-center': true },
+      },
+      {
+        key: 'fixedB',
+        label: 'B',
         tdClass: { 'text-center': true },
       },
       {
@@ -260,24 +282,11 @@ export default Vue.extend({
       axios.get('/MonitorType').then(res => {
         this.monitorTypes = res.data;
         for (const mt of this.monitorTypes) {
-          if (mt.thresholdConfig === undefined)
-            mt.thresholdConfig = { elapseTime: 30 };
-
           if (mt.levels !== undefined) {
             mt.levelSeq = mt.levels.join(',');
           }
         }
       });
-    },
-    configThreshold(item: any) {
-      this.editingMt = item;
-      this.$bvModal.show('thresholdConfig');
-    },
-    showThresholdConfig(config: any) {
-      if (!config) return '-';
-      else {
-        return `持續時間 ${config.elapseTime}`;
-      }
     },
     justify(mt: any) {
       if (mt.span === '') mt.span = null;
@@ -294,6 +303,9 @@ export default Vue.extend({
           mt.levels = levels;
         } catch (err) {}
       }
+
+      if (!isNumber(mt.fixedB)) mt.fixedB = undefined;
+      if (!isNumber(mt.fixedM)) mt.fixedM = undefined;
     },
     checkLevel(levelSeq: string | undefined): boolean {
       try {

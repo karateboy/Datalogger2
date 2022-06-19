@@ -10,7 +10,7 @@ import javax.inject._
 case class MoxaE1240Param(addr: Int, chs: Seq[AiChannelCfg])
 
 @Singleton
-class MoxaE1240 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
+class MoxaE1240 @Inject()() extends DriverOps {
   override def getMonitorTypes(param: String) = {
     val e1240Param = validateParam(param)
     val mtList = e1240Param.chs.filter {
@@ -49,7 +49,7 @@ class MoxaE1240 @Inject()(monitorTypeOp: MonitorTypeOp) extends DriverOps {
 
   import Protocol.ProtocolParam
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[MoxaE1240Collector.Factory])
     val f2 = f.asInstanceOf[MoxaE1240Collector.Factory]
     val driverParam = validateParam(param)
