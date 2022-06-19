@@ -14,7 +14,7 @@ import javax.inject._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.duration.SECONDS
+import scala.concurrent.duration.{FiniteDuration, MILLISECONDS, SECONDS}
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
@@ -482,15 +482,16 @@ class DataCollectManager @Inject()
         val monitorTypes = instType.driver.getMonitorTypes(inst.param)
         val calibrateTimeOpt = instType.driver.getCalibrationTime(inst.param)
         val timerOpt = calibrateTimeOpt.map { localtime =>
-          val calibrationTime = DateTime.now().toLocalDate().toDateTime(localtime)
-          val duration = if (DateTime.now() < calibrationTime)
-            new Duration(DateTime.now(), calibrationTime)
+          val now = DateTime.now()
+          val calibrationTime = now.toLocalDate().toDateTime(localtime)
+          val period = if (now < calibrationTime)
+            new Period(now, calibrationTime)
           else
-            new Duration(DateTime.now(), calibrationTime + 1.day)
+            new Period(now, calibrationTime + 1.day)
 
-          import scala.concurrent.duration._
+          val totalMillis = period.toDurationFrom(now).getMillis
           context.system.scheduler.scheduleOnce(
-            FiniteDuration(duration.getStandardSeconds, SECONDS),
+            FiniteDuration(totalMillis, MILLISECONDS),
             self, AutoCalibration(inst._id))
         }
 
@@ -738,15 +739,18 @@ class DataCollectManager @Inject()
 
         param.calibrationTimerOpt =
           for(localTime: LocalTime <- param.calibrationTimeOpt) yield {
-            val calibrationTime = DateTime.now().toLocalDate().toDateTime(localTime)
-            val duration = if (DateTime.now() < calibrationTime)
-              new Duration(DateTime.now(), calibrationTime)
-            else
-              new Duration(DateTime.now(), calibrationTime + 1.day)
+            val now = DateTime.now()
+            val calibrationTime = now.toLocalDate().toDateTime(localTime)
 
+            val period = if (now < calibrationTime)
+              new Period(now, calibrationTime)
+            else
+              new Period(now, calibrationTime + 1.day)
+
+            val totalMilli = period.toDurationFrom(now).getMillis
             import scala.concurrent.duration._
             context.system.scheduler.scheduleOnce(
-              FiniteDuration(duration.getStandardSeconds, SECONDS),
+              FiniteDuration(totalMilli, MILLISECONDS),
               self, AutoCalibration(instId))
           }
 
