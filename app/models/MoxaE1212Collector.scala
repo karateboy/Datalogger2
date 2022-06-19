@@ -150,7 +150,7 @@ class MoxaE1212Collector @Inject()
                 for {
                   cfg <- param.chs.zipWithIndex
                   chCfg = cfg._1 if chCfg.enable && chCfg.mt.isDefined
-                  mt = chCfg.mt.get
+                  mt = chCfg.mt.get if mt != MonitorType.RAIN
                   idx = cfg._2
                   v = result(idx)
                 } yield
