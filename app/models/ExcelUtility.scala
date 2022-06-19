@@ -60,7 +60,6 @@ class ExcelUtility @Inject()
       style
     }
 
-    Logger.info(s"${chart.xAxis.categories}")
     // Categories data
     if (chart.xAxis.categories.isDefined) {
       val timeList = chart.xAxis.categories.get
