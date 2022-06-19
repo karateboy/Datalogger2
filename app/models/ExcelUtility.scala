@@ -7,6 +7,7 @@ import org.apache.poi.openxml4j.opc._
 import org.apache.poi.ss.usermodel._
 import org.apache.poi.ss.util.CellRangeAddress
 import org.apache.poi.xssf.usermodel._
+import play.api.Logger
 
 import java.io._
 import java.math.MathContext
@@ -41,17 +42,11 @@ class ExcelUtility @Inject()
     val maintanceStyle = wb.createCellStyle()
     maintanceStyle.setFillForegroundColor(IndexedColors.LAVENDER.getIndex)
     maintanceStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND)
-    var pos = 0
-    for {
-      col <- 1 to chart.series.length
-      series = chart.series(col - 1)
-    } {
-      headerRow.createCell(pos + 1).setCellValue(series.name)
-      pos += 1
-      if (series.statusList.nonEmpty) {
-        headerRow.createCell(pos + 1).setCellValue("狀態碼")
-        pos += 1
-      }
+
+    for ((series, colIdx) <- chart.series.zipWithIndex) {
+      headerRow.createCell(1 + 2 * colIdx).setCellValue(series.name)
+      if (series.statusList.nonEmpty)
+        headerRow.createCell(1 + 2 * colIdx + 1).setCellValue("狀態碼")
     }
 
     val styles = precArray.map { prec =>
@@ -68,23 +63,22 @@ class ExcelUtility @Inject()
     // Categories data
     if (chart.xAxis.categories.isDefined) {
       val timeList = chart.xAxis.categories.get
-      for (row <- timeList.zipWithIndex) {
-        val rowNo = row._2 + 1
-        val thisRow = sheet.createRow(rowNo)
-        thisRow.createCell(0).setCellValue(row._1)
+      for ((timeStr, rowIdx) <- timeList.zipWithIndex) {
+        val thisRow = sheet.createRow(rowIdx + 1)
+        thisRow.createCell(0).setCellValue(timeStr)
 
-        for {
-          col <- 1 to chart.series.length
-          series = chart.series(col - 1)
-        } {
-          val cell = thisRow.createCell(col)
-          cell.setCellStyle(styles(col - 1))
-
-          val pair = series.data(rowNo - 1)
-          val statusOpt = series.statusList(rowNo - 1)
+        for ((series, colIdx) <- chart.series.zipWithIndex) {
+          val cell = thisRow.createCell(1 + colIdx * 2)
+          cell.setCellStyle(styles(colIdx))
+          val pair = series.data(rowIdx)
+          val statusOpt = series.statusList(rowIdx)
           for (v <- pair._2 if !v.isNaN) {
-            val d = BigDecimal(v).setScale(precArray(col - 1), RoundingMode.HALF_EVEN)
+            val d = BigDecimal(v).setScale(precArray(colIdx), RoundingMode.HALF_EVEN)
             cell.setCellValue(d.doubleValue())
+          }
+          for (status <- statusOpt) {
+            val statusCell = thisRow.createCell(1 + colIdx * 2 + 1)
+            statusCell.setCellValue(status)
           }
         }
       }
@@ -92,54 +86,49 @@ class ExcelUtility @Inject()
       val rowMax = chart.series.map(s => s.data.length).max
       for (row <- 1 to rowMax) {
         val thisRow = sheet.createRow(row)
-        val timeCell = thisRow.createCell(0)
-        pos = 0
         for {
-          col <- 1 to chart.series.length
-          series = chart.series(col - 1)
+          (series, colIdx) <- chart.series.zipWithIndex
         } {
-          val cell = thisRow.createCell(pos + 1)
-          pos += 1
-          cell.setCellStyle(styles(col - 1))
-
           val pair = series.data(row - 1)
-          if (col == 1) {
+          if (colIdx == 0) {
+            val timeCell = thisRow.createCell(0)
             val dt = new DateTime(pair._1)
             if (!showSec)
               timeCell.setCellValue(dt.toString("YYYY/MM/dd HH:mm"))
             else
               timeCell.setCellValue(dt.toString("YYYY/MM/dd HH:mm:ss"))
           }
-          for (v <- pair._2 if !v.isNaN) {
-            val d = BigDecimal(v).setScale(precArray(col - 1), RoundingMode.HALF_EVEN)
-            cell.setCellValue(d.doubleValue())
-            for (status <- series.statusList(row - 1)) {
-              val tagInfo = MonitorStatus.getTagInfo(status)
-              val statusCell = thisRow.createCell(pos + 1)
-              pos += 1
-              val monitorStatus = monitorStatusOp.map(status)
-              statusCell.setCellValue(monitorStatus.desp)
-              if (MonitorStatus.isCalbration(status)) {
-                cell.setCellStyle(calibrationStyle)
-                statusCell.setCellStyle(calibrationStyle)
-              } else if (tagInfo.statusType == StatusType.ManualValid ||
-                tagInfo.statusType == StatusType.ManualInvalid) {
-                cell.setCellStyle(manualStyle)
-                statusCell.setCellStyle(manualStyle)
-              } else if (MonitorStatus.isMaintenance(status)) {
-                cell.setCellStyle(maintanceStyle)
-                statusCell.setCellStyle(maintanceStyle)
+
+            val cell = thisRow.createCell(colIdx * 2 + 1)
+            cell.setCellStyle(styles(colIdx))
+            for (v <- pair._2 if !v.isNaN) {
+              val d = BigDecimal(v).setScale(precArray(colIdx), RoundingMode.HALF_EVEN)
+              cell.setCellValue(d.doubleValue())
+              for (status <- series.statusList(row - 1)) {
+                val tagInfo = MonitorStatus.getTagInfo(status)
+                val statusCell = thisRow.createCell(2 * colIdx + 2)
+                val monitorStatus = monitorStatusOp.map(status)
+                statusCell.setCellValue(monitorStatus.desp)
+                if (MonitorStatus.isCalbration(status)) {
+                  cell.setCellStyle(calibrationStyle)
+                  statusCell.setCellStyle(calibrationStyle)
+                } else if (tagInfo.statusType == StatusType.ManualValid ||
+                  tagInfo.statusType == StatusType.ManualInvalid) {
+                  cell.setCellStyle(manualStyle)
+                  statusCell.setCellStyle(manualStyle)
+                } else if (MonitorStatus.isMaintenance(status)) {
+                  cell.setCellStyle(maintanceStyle)
+                  statusCell.setCellStyle(maintanceStyle)
+                }
               }
             }
-          }
+
         }
       }
     }
 
     finishExcel(reportFilePath, pkg, wb)
   }
-
-  import controllers.Highchart._
 
   def createStyle(prec: Int)(implicit wb: XSSFWorkbook) = {
     val format_str = if (prec != 0)
@@ -233,10 +222,10 @@ class ExcelUtility @Inject()
               hasStyle = true
               cell.setCellStyle(statusStyle(4))
             case "normal" =>
-              if(!hasStyle)
+              if (!hasStyle)
                 cell.setCellStyle(statusStyle(0))
             case _ =>
-              if(!hasStyle)
+              if (!hasStyle)
                 cell.setCellStyle(statusStyle(0))
           }
         })
@@ -315,12 +304,12 @@ class ExcelUtility @Inject()
               hasStyle = true
               cell.setCellStyle(statusStyle(4))
             case "normal" =>
-              if(!hasStyle)
+              if (!hasStyle)
                 cell.setCellStyle(statusStyle(0))
             case _ =>
           }
         })
-        if(!hasStyle)
+        if (!hasStyle)
           cell.setCellStyle(statusStyle(0))
       }
     }
@@ -331,7 +320,7 @@ class ExcelUtility @Inject()
       titleCell.setCellValue(statusRowData.name)
       titleCell.setCellStyle(statusStyle(0))
       for (mtIdx <- 0 to displayReport.columnNames.size - 1) {
-        if(mtIdx < statusRowData.cellData.length){
+        if (mtIdx < statusRowData.cellData.length) {
           val valueCell = row.createCell(mtIdx + 1)
           setValue(valueCell, statusRowData.cellData(mtIdx).v)
           valueCell.setCellStyle(statusStyle(0))
@@ -363,7 +352,7 @@ class ExcelUtility @Inject()
     new File(reportFilePath.toAbsolutePath().toString())
   }
 
-  def calibrationReport(start:DateTime, end:DateTime, calibrationList: Seq[Calibration]): File ={
+  def calibrationReport(start: DateTime, end: DateTime, calibrationList: Seq[Calibration]): File = {
     val (reportFilePath, pkg, wb) = prepareTemplate("calibrationReport.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
 
@@ -372,8 +361,8 @@ class ExcelUtility @Inject()
 
     val normalStyle = sheet.getRow(1).getCell(10).getCellStyle
     val failedStyle = sheet.getRow(1).getCell(11).getCellStyle
-    for((calibration, idx) <- calibrationList.zipWithIndex){
-      val row = sheet.createRow(3+idx)
+    for ((calibration, idx) <- calibrationList.zipWithIndex) {
+      val row = sheet.createRow(3 + idx)
       val mt = calibration.monitorType
       val mtCase = monitorTypeOp.map(mt)
       row.createCell(0).setCellValue(monitorTypeOp.map(calibration.monitorType).desp)
@@ -386,28 +375,28 @@ class ExcelUtility @Inject()
       row.createCell(7).setCellValue(monitorTypeOp.format(mt, calibration.span_dev))
       row.createCell(8).setCellValue(monitorTypeOp.format(mt, mtCase.span_dev_law))
       val mOpt =
-        for{span_val <- calibration.span_val; zero_val<-calibration.zero_val;
-            span_std<-mtCase.span if span_val - zero_val != 0} yield
-          span_std/(span_val - zero_val)
+        for {span_val <- calibration.span_val; zero_val <- calibration.zero_val;
+             span_std <- mtCase.span if span_val - zero_val != 0} yield
+          span_std / (span_val - zero_val)
 
       val mStr = mOpt.map(s"%.2f".format(_)).getOrElse("-")
       row.createCell(9).setCellValue(mStr)
       val bOpt =
-        for{span_val <- calibration.span_val; zero_val<-calibration.zero_val;
-            span_std<-mtCase.span if span_val - zero_val != 0} yield
-          (-zero_val * span_std)/(span_val - zero_val)
+        for {span_val <- calibration.span_val; zero_val <- calibration.zero_val;
+             span_std <- mtCase.span if span_val - zero_val != 0} yield
+          (-zero_val * span_std) / (span_val - zero_val)
 
       val bStr = bOpt.map(s"%.2f".format(_)).getOrElse("-")
       row.createCell(10).setCellValue(bStr)
       val statusCell = row.createCell(11)
-      if(calibration.success(monitorTypeOp)) {
+      if (calibration.success(monitorTypeOp)) {
         statusCell.setCellValue("成功")
         statusCell.setCellStyle(normalStyle)
-      } else{
+      } else {
         statusCell.setCellValue("失敗")
         statusCell.setCellStyle(failedStyle)
       }
-      for(i <- 0 to 10)
+      for (i <- 0 to 10)
         row.getCell(i).setCellStyle(normalStyle)
 
     }
