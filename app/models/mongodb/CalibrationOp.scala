@@ -82,7 +82,7 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
     }
   }
 
-  override def insert(cal: Calibration) = {
+  override def insertFuture(cal: Calibration) = {
     import ModelHelper._
     val f = collection.insertOne(toDocument(cal)).toFuture()
     f onFailure ({

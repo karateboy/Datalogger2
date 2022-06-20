@@ -616,7 +616,7 @@ class Horiba370Collector @Inject()
             }
           }
         for (cal <- calibrationList)
-          calibrationOp.insert(cal)
+          calibrationOp.insertFuture(cal)
 
         self ! SetState(id, MonitorStatus.NormalStat)
       }

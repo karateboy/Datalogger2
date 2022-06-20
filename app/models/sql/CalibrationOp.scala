@@ -57,7 +57,7 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
          """.map(mapper).list().apply()
   }
 
-  override def insert(cal: Calibration): Unit = {
+  override def insertFuture(cal: Calibration): Unit = {
     implicit val session: DBSession = AutoSession
     sql"""
       INSERT INTO [dbo].[calibration]

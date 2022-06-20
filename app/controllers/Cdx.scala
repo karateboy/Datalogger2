@@ -66,7 +66,7 @@ class Cdx @Inject()(cdxUploader: CdxUploader, sysConfigDB: SysConfigDB, recordDB
     for{records<-recordFuture
         cdxConfig <- sysConfigDB.getCdxConfig()
         } yield {
-      records.foreach(record=>cdxUploader.upload(record, cdxConfig))
+      records.filter(record=>record.mtDataList.nonEmpty).foreach(record=>cdxUploader.upload(record, cdxConfig))
       Ok(Json.obj("ok"->true))
     }
   }

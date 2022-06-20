@@ -21,6 +21,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
   import TapiTxxCollector._
   import com.serotonin.modbus4j._
   import com.serotonin.modbus4j.ip.IpParameters
+
   val HoldingKey = "Holding"
   val ModeKey = "Mode"
 
@@ -237,14 +238,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
     else if (!connected)
       Logger.error("Cannot calibration before connected.")
     else {
-      Future {
-        blocking {
-          startCalibration(calibrationType, deviceConfig.monitorTypes.get)
-        }
-      } onFailure ({
-        case ex: Throwable =>
-          ModelHelper.logInstrumentError(instId, s"${self.path.name}: ${ex.getMessage}. ", ex)
-      })
+      startCalibration(calibrationType, deviceConfig.monitorTypes.get)
     }
   }
 
@@ -333,25 +327,26 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
   def startCalibration(calibrationType: CalibrationType, monitorTypes: List[String]) {
 
     Logger.info(s"start calibrating ${monitorTypes.mkString(",")}")
-    val timerOpt = if (!calibrationType.zero &&
-      deviceConfig.calibratorPurgeTime.isDefined && deviceConfig.calibratorPurgeTime.get != 0)
-      Some(purgeCalibrator)
-    else {
-      self ! RaiseStart
-      None
-    }
-
     import com.github.nscala_time.time.Imports._
     val endState = collectorState
-    context become calibration(calibrationType, DateTime.now, false, List.empty[ReportData],
-      List.empty[(String, Double)], endState, timerOpt)
+
+    if (!calibrationType.zero &&
+      deviceConfig.calibratorPurgeTime.isDefined && deviceConfig.calibratorPurgeTime.get != 0) {
+      context become calibration(calibrationType, DateTime.now, false, List.empty[ReportData],
+        List.empty[(String, Double)], endState, Some(purgeCalibrator))
+    } else {
+      context become calibration(calibrationType, DateTime.now, false, List.empty[ReportData],
+        List.empty[(String, Double)], endState, None)
+      self ! RaiseStart
+    }
+
   }
 
   import com.github.nscala_time.time.Imports._
 
   def calibrationErrorHandler(id: String, timer: Option[Cancellable], endState: String): PartialFunction[Throwable, Unit] = {
     case ex: Exception =>
-      for(timer<-timerOpt)
+      for (timer <- timerOpt)
         timer.cancel()
 
       logInstrumentError(id, s"${self.path.name}: ${ex.getMessage}. ", ex)
@@ -375,7 +370,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
         Logger.info("Already in calibration. Ignore it")
       } else if (targetState == MonitorStatus.NormalStat) {
         Logger.info("Cancel calibration.")
-        for(timer<-timerOpt)
+        for (timer <- timerOpt)
           timer.cancel()
 
         collectorState = targetState
@@ -404,7 +399,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
             triggerSpanCalibration(true)
           }
           val calibrationTimer =
-            for(raiseTime <-deviceConfig.raiseTime) yield
+            for (raiseTime <- deviceConfig.raiseTime) yield
               context.system.scheduler.scheduleOnce(Duration(raiseTime, SECONDS), self, HoldStart)
 
           context become calibration(calibrationType, startTime, recordCalibration,
@@ -416,7 +411,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
       Logger.info(s"${self.path.name} => HoldStart")
       import scala.concurrent.duration._
       val calibrationTimer = {
-        for(holdTime<-deviceConfig.holdTime) yield
+        for (holdTime <- deviceConfig.holdTime) yield
           context.system.scheduler.scheduleOnce(Duration(holdTime, SECONDS), self, DownStart)
       }
       context become calibration(calibrationType, startTime, true, calibrationReadingList,
@@ -434,18 +429,20 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
             triggerSpanCalibration(false)
           }
 
-          val calibrationTimerOpt =
-            if (calibrationType.auto && calibrationType.zero) {
-              self ! CalibrateEnd
-              None
-            } else {
-              collectorState = MonitorStatus.CalibrationResume
-              instrumentOp.setState(instId, collectorState)
-              for(downTime<-deviceConfig.downTime) yield
+
+          if (calibrationType.auto && calibrationType.zero) {
+            context become calibration(calibrationType, startTime, false, calibrationReadingList,
+              zeroReading, endState, None)
+            self ! CalibrateEnd
+          } else {
+            collectorState = MonitorStatus.CalibrationResume
+            instrumentOp.setState(instId, collectorState)
+            val calibrationTimerOpt =
+              for (downTime <- deviceConfig.downTime) yield
                 context.system.scheduler.scheduleOnce(Duration(downTime, SECONDS), self, CalibrateEnd)
-            }
-          context become calibration(calibrationType, startTime, false, calibrationReadingList,
-            zeroReading, endState, calibrationTimerOpt)
+            context become calibration(calibrationType, startTime, false, calibrationReadingList,
+              zeroReading, endState, calibrationTimerOpt)
+          }
         }
       } onFailure calibrationErrorHandler(instId, timerOpt, endState)
 
@@ -479,17 +476,16 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
             for (v <- values)
               Logger.info(s"${v._1} zero calibration end. (${v._2})")
 
-            val raiseStartTimer = if (deviceConfig.calibratorPurgeTime.isDefined) {
+            if (deviceConfig.calibratorPurgeTime.isDefined) {
               collectorState = MonitorStatus.NormalStat
               instrumentOp.setState(instId, collectorState)
-              Some(purgeCalibrator)
+              context become calibration(AutoSpan, startTime, false, List.empty[ReportData],
+                values, endState, Some(purgeCalibrator))
             } else {
+              context become calibration(AutoSpan, startTime, false, List.empty[ReportData],
+                values, endState, None)
               self ! RaiseStart
-              None
             }
-
-            context become calibration(AutoSpan, startTime, false, List.empty[ReportData],
-              values.toList, endState, raiseStartTimer)
           } else {
             val endTime = DateTime.now()
 
@@ -502,7 +498,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
                 val span = spanMap.get(mt)
                 val spanStd = monitorTypeOp.map(mt).span
                 val cal = Calibration(mt, startTime, endTime, zero, spanStd, span)
-                calibrationOp.insert(cal)
+                calibrationOp.insertFuture(cal)
               }
             } else {
               val valueMap = values.toMap
@@ -515,7 +511,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
                     val spanStd = monitorTypeOp.map(mt).span
                     Calibration(mt, startTime, endTime, None, spanStd, values)
                   }
-                calibrationOp.insert(cal)
+                calibrationOp.insertFuture(cal)
               }
             }
 

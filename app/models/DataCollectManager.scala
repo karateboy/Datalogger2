@@ -5,7 +5,6 @@ import com.github.nscala_time.time.Imports._
 import models.DataCollectManager.{calculateHourAvgMap, calculateMinAvgMap}
 import models.ForwardManager.{ForwardHour, ForwardHourRecord, ForwardMin, ForwardMinRecord}
 import models.ModelHelper._
-import models.mongodb.{AlarmOp, InstrumentOp, RecordOp}
 import org.mongodb.scala.result.UpdateResult
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
@@ -397,7 +396,7 @@ class DataCollectManager @Inject()
   def startReaders(): Unit = {
     SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
     WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
-    VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp)
+    VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self)
   }
 
 
@@ -876,13 +875,13 @@ class DataCollectManager @Inject()
 
     case CheckInstruments =>
       val now = DateTime.now()
-      val f = recordOp.getRecordMapFuture(recordOp.MinCollection)(Monitor.SELF_ID, monitorTypeOp.activeMtvList,
+      val f = recordOp.getRecordMapFuture(recordOp.MinCollection)(Monitor.SELF_ID, monitorTypeOp.realtimeMtvList,
         now.minusHours(1), now)
       for(minRecordMap <- f){
         for(kv<- instrumentMap){
           val ( instID, instParam) = kv;
-          if(!instParam.mtList.forall(mt=> minRecordMap.contains(mt) && minRecordMap(mt).size >=45)){
-            Logger.error(s"$instID has less then 45 minRecords. Restart $instID")
+          if(instParam.mtList.exists(mt=> minRecordMap.contains(mt) && minRecordMap(mt).size < 45)){
+            Logger.error(s"$instID has less than 45 minRecords. Restart $instID")
             self ! RestartInstrument(instID)
           }
         }
