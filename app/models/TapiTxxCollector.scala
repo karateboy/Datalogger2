@@ -1,7 +1,6 @@
 package models
 
 import akka.actor._
-import com.github.nscala_time.time.Imports.DateTime
 import models.ModelHelper._
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
@@ -239,14 +238,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
     else if (!connected)
       Logger.error("Cannot calibration before connected.")
     else {
-      Future {
-        blocking {
-          startCalibration(calibrationType, tapiConfig.monitorTypes.get)
-        }
-      } onFailure ({
-        case ex: Throwable =>
-          ModelHelper.logInstrumentError(instId, s"${self.path.name}: ${ex.getMessage}. ", ex)
-      })
+      startCalibration(calibrationType, tapiConfig.monitorTypes.get)
     }
   }
 
@@ -438,78 +430,75 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
         zeroReading, endState, timerOpt)
 
     case CalibrateEnd =>
-      Future {
-        blocking {
-          Logger.info(s"$self =>$calibrationType CalibrateEnd")
+      Logger.info(s"$self =>$calibrationType CalibrateEnd")
 
-          val values = for {mt <- tapiConfig.monitorTypes.get} yield {
-            val calibrations = calibrationReadingList.flatMap {
-              reading =>
-                reading.dataList.filter {
-                  _.mt == mt
-                }.map { r => r.value }
-            }
+      val values = for {mt <- tapiConfig.monitorTypes.get} yield {
+        val calibrations = calibrationReadingList.flatMap {
+          reading =>
+            reading.dataList.filter {
+              _.mt == mt
+            }.map { r => r.value }
+        }
 
-            if (calibrations.length == 0) {
-              Logger.warn(s"No calibration data for $mt")
-              (mt, 0d)
-            } else
-              (mt, calibrations.sum / calibrations.length)
+        if (calibrations.length == 0) {
+          Logger.warn(s"No calibration data for $mt")
+          (mt, 0d)
+        } else
+          (mt, calibrations.sum / calibrations.length)
+      }
+
+      //For auto calibration, span will be executed after zero
+      if (calibrationType.auto && calibrationType.zero) {
+        for (v <- values)
+          Logger.info(s"${v._1} zero calibration end. (${v._2})")
+
+        if (tapiConfig.calibratorPurgeTime.isDefined) {
+          collectorState = MonitorStatus.NormalStat
+          instrumentOp.setState(instId, collectorState)
+          val raiseStartTimerOpt = Some(purgeCalibrator)
+          context become calibration(AutoSpan, startTime, false, List.empty[ReportData],
+            values, endState, raiseStartTimerOpt)
+        } else {
+          context become calibration(AutoSpan, startTime, false, List.empty[ReportData],
+            values, endState, None)
+          self ! RaiseStart
+        }
+      } else {
+        val endTime = DateTime.now()
+
+        if (calibrationType.auto) {
+          val zeroMap = zeroReading.toMap
+          val spanMap = values.toMap
+
+          for {monitorTypes <- tapiConfig.monitorTypes
+               mt <- monitorTypes} {
+            val zero = zeroMap.get(mt)
+            val span = spanMap.get(mt)
+            val spanStd = monitorTypeOp.map(mt).span
+            val cal = Calibration(mt, startTime, endTime, zero, spanStd, span)
+            calibrationOp.insertFuture(cal)
           }
-
-          //For auto calibration, span will be executed after zero
-          if (calibrationType.auto && calibrationType.zero) {
-            for (v <- values)
-              Logger.info(s"${v._1} zero calibration end. (${v._2})")
-
-            if (tapiConfig.calibratorPurgeTime.isDefined) {
-              collectorState = MonitorStatus.NormalStat
-              instrumentOp.setState(instId, collectorState)
-              val raiseStartTimerOpt = Some(purgeCalibrator)
-              context become calibration(AutoSpan, startTime, false, List.empty[ReportData],
-                values, endState, raiseStartTimerOpt)
-            } else {
-              context become calibration(AutoSpan, startTime, false, List.empty[ReportData],
-                values, endState, None)
-              self ! RaiseStart
-            }
-          } else {
-            val endTime = DateTime.now()
-
-            if (calibrationType.auto) {
-              val zeroMap = zeroReading.toMap
-              val spanMap = values.toMap
-
-              for (mt <- tapiConfig.monitorTypes.get) {
-                val zero = zeroMap.get(mt)
-                val span = spanMap.get(mt)
+        } else {
+          val valueMap = values.toMap
+          for (mt <- tapiConfig.monitorTypes.get) {
+            val values = valueMap.get(mt)
+            val cal =
+              if (calibrationType.zero)
+                Calibration(mt, startTime, endTime, values, None, None)
+              else {
                 val spanStd = monitorTypeOp.map(mt).span
-                val cal = Calibration(mt, startTime, endTime, zero, spanStd, span)
-                calibrationOp.insert(cal)
+                Calibration(mt, startTime, endTime, None, spanStd, values)
               }
-            } else {
-              val valueMap = values.toMap
-              for (mt <- tapiConfig.monitorTypes.get) {
-                val values = valueMap.get(mt)
-                val cal =
-                  if (calibrationType.zero)
-                    Calibration(mt, startTime, endTime, values, None, None)
-                  else {
-                    val spanStd = monitorTypeOp.map(mt).span
-                    Calibration(mt, startTime, endTime, None, spanStd, values)
-                  }
-                calibrationOp.insert(cal)
-              }
-            }
-
-            Logger.info("All monitorTypes are calibrated.")
-            collectorState = endState
-            instrumentOp.setState(instId, collectorState)
-            resetToNormal
-            context become normalReceive
-            Logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
+            calibrationOp.insertFuture(cal)
           }
         }
+
+        Logger.info("All monitorTypes are calibrated.")
+        collectorState = endState
+        instrumentOp.setState(instId, collectorState)
+        resetToNormal
+        context become normalReceive
+        Logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
       }
   }
 

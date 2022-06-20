@@ -100,14 +100,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     else if (!connected)
       Logger.error("Cannot calibration before connected.")
     else {
-      Future {
-        blocking {
-          startCalibration(calibrationType, deviceConfig.monitorTypes.get)
-        }
-      } onFailure ({
-        case ex: Throwable =>
-          ModelHelper.logInstrumentError(instId, s"${self.path.name}: ${ex.getMessage}. ", ex)
-      })
+      startCalibration(calibrationType, deviceConfig.monitorTypes.get)
     }
   }
 
@@ -373,7 +366,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
                 val span = spanMap.get(mt)
                 val spanStd = monitorTypeOp.map(mt).span
                 val cal = Calibration(mt, startTime, endTime, zero, spanStd, span)
-                calibrationOp.insert(cal)
+                calibrationOp.insertFuture(cal)
               }
             } else {
               val valueMap = values.toMap
@@ -386,7 +379,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
                     val spanStd = monitorTypeOp.map(mt).span
                     Calibration(mt, startTime, endTime, None, spanStd, values)
                   }
-                calibrationOp.insert(cal)
+                calibrationOp.insertFuture(cal)
               }
             }
 

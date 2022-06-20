@@ -99,5 +99,5 @@ trait CalibrationDB {
       }
   }
 
-  def insert(cal: Calibration)
+  def insertFuture(cal: Calibration): Unit
 }

@@ -318,7 +318,7 @@ class Baseline9000Collector @Inject()
               Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, None, monitorTypeOp.map(mt).span, avg)
             }
           }
-        calibrationOp.insert(cal)
+        calibrationOp.insertFuture(cal)
 
         if (mt == mtCH4) {
           if (calibrationType.auto) {

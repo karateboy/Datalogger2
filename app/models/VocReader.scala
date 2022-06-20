@@ -121,7 +121,7 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
   Logger.info("VocReader start")
   import VocReader._
 
-  var timer = context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadFile)
+  val timer = context.system.scheduler.schedule(FiniteDuration(1, SECONDS), FiniteDuration(5, MINUTES), self, ReadFile)
 
   def receive = {
     case ReadFile =>
@@ -130,7 +130,6 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
           for (monitorConfig <- config.monitors)
             parseMonitor(monitorConfig)
             //parseAllTx0(monitorConfig, today.getYear, today.getMonthOfYear)
-          timer = resetTimer
         }
       }
 
@@ -173,7 +172,6 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
       allFiles.filter(p =>
         p != null && (ignoreParsed || !parsedFileList.contains(p.getAbsolutePath)))
     }
-    Logger.info(s"listTx0Files #=${listTx0Files.length}")
 
     val files: Array[File] = listTx0Files
     for (f <- files) {
