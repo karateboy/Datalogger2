@@ -56,8 +56,9 @@ class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordDB)
     val recordFuture =
       recordOp.getRecordWithLimitFuture(recordOp.HourCollection)(new DateTime(latestRecordTime + 1), DateTime.now, 60)
 
-
+    Logger.info(s"uploadRecord from ${new DateTime(latestRecordTime + 1)} to ${DateTime.now}")
     for (record <- recordFuture) {
+      Logger.info(s"total ${record.size} hour records")
       if (!record.isEmpty) {
         val url = s"http://$server/HourRecord/$monitor"
         val f = ws.url(url).put(Json.toJson(record))
