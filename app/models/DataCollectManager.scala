@@ -396,7 +396,7 @@ class DataCollectManager @Inject()
   def startReaders(): Unit = {
     SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
     WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
-    VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp)
+    VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self)
   }
 
 
@@ -880,7 +880,7 @@ class DataCollectManager @Inject()
       for(minRecordMap <- f){
         for(kv<- instrumentMap){
           val ( instID, instParam) = kv;
-          if(!instParam.mtList.forall(mt=> minRecordMap.contains(mt) && minRecordMap(mt).size < 45)){
+          if(instParam.mtList.exists(mt=> minRecordMap.contains(mt) && minRecordMap(mt).size < 45)){
             Logger.error(s"$instID has less than 45 minRecords. Restart $instID")
             self ! RestartInstrument(instID)
           }

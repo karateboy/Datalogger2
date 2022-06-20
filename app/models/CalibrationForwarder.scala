@@ -58,6 +58,7 @@ class CalibrationForwarder @Inject()
     import calibrationOp.jsonWrites
     val recordFuture = calibrationOp.calibrationReportFuture(new DateTime(latestCalibration + 1))
     for (records <- recordFuture) {
+      Logger.info(s"uploadCalibration ${new DateTime(latestCalibration + 1)} #=${records.size}")
       if (!records.isEmpty) {
         val recordJSON = records.map { _.toJSON }
         val url = s"http://$server/CalibrationRecord/$monitor"

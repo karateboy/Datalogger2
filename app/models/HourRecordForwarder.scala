@@ -57,15 +57,16 @@ class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordDB)
       recordOp.getRecordWithLimitFuture(recordOp.HourCollection)(new DateTime(latestRecordTime + 1), DateTime.now, 60)
 
     Logger.info(s"uploadRecord from ${new DateTime(latestRecordTime + 1)} to ${DateTime.now}")
-    for (record <- recordFuture) {
-      Logger.info(s"total ${record.size} hour records")
-      if (!record.isEmpty) {
+    for (records <- recordFuture) {
+      Logger.info(s"total ${records.size} hour records")
+      val nonEmptyRecords = records.filter(_.mtDataList.nonEmpty)
+      if (nonEmptyRecords.nonEmpty) {
         val url = s"http://$server/HourRecord/$monitor"
-        val f = ws.url(url).put(Json.toJson(record))
+        val f = ws.url(url).put(Json.toJson(nonEmptyRecords))
         f onSuccess {
           case response =>
             if (response.status == 200) {
-              context become handler(Some(record.last._id.time.getTime))
+              context become handler(Some(nonEmptyRecords.last._id.time.getTime))
 
               // This shall stop when there is no more records...
               self ! ForwardHour
@@ -105,10 +106,10 @@ class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordDB)
     val recordFuture = recordOp.getRecordListFuture(recordOp.HourCollection)(start, end)
 
     for (record <- recordFuture) {
-      if (!record.isEmpty) {
+      if (record.nonEmpty) {
         for (chunk <- record.grouped(24)) {
           val url = s"http://$server/HourRecord/$monitor"
-          val f = ws.url(url).put(Json.toJson(chunk))
+          val f = ws.url(url).put(Json.toJson(chunk.filter(_.mtDataList.nonEmpty)))
           f onSuccess {
             case response =>
               if (response.status == 200)
