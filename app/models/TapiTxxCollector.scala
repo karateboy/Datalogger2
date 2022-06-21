@@ -362,29 +362,30 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
       Logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
 
     case RaiseStart =>
+      collectorState =
+        if (calibrationType.zero)
+          MonitorStatus.ZeroCalibrationStat
+        else
+          MonitorStatus.SpanCalibrationStat
+
+      instrumentOp.setState(instId, collectorState)
+
+      Logger.info(s"${self.path.name} => RaiseStart")
+      import scala.concurrent.duration._
+
+      val calibrationTimerOpt =
+        for (raiseTime <- tapiConfig.raiseTime) yield
+          context.system.scheduler.scheduleOnce(FiniteDuration(raiseTime, SECONDS), self, HoldStart)
+
+      context become calibration(calibrationType, startTime, recordCalibration,
+        calibrationReadingList, zeroReading, endState, calibrationTimerOpt)
+
       Future {
         blocking {
-          collectorState =
-            if (calibrationType.zero)
-              MonitorStatus.ZeroCalibrationStat
-            else
-              MonitorStatus.SpanCalibrationStat
-
-          instrumentOp.setState(instId, collectorState)
-
-          Logger.info(s"${self.path.name} => RaiseStart")
-          import scala.concurrent.duration._
-          if (calibrationType.zero) {
+          if (calibrationType.zero)
             triggerZeroCalibration(true)
-          } else {
+          else
             triggerSpanCalibration(true)
-          }
-          val calibrationTimerOpt =
-            for (raiseTime <- tapiConfig.raiseTime) yield
-              context.system.scheduler.scheduleOnce(Duration(raiseTime, SECONDS), self, HoldStart)
-
-          context become calibration(calibrationType, startTime, recordCalibration,
-            calibrationReadingList, zeroReading, endState, calibrationTimerOpt)
         }
       } onFailure calibrationErrorHandler(instId, timerOpt, endState)
 
@@ -400,23 +401,25 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
 
 
     case DownStart =>
+      Logger.info(s"${self.path.name} => DownStart (${calibrationReadingList.length})")
+      import scala.concurrent.duration._
+
+      if (calibrationType.auto && calibrationType.zero) {
+        context become calibration(calibrationType, startTime, false, calibrationReadingList,
+          zeroReading, endState, None)
+        self ! CalibrateEnd
+      } else {
+        collectorState = MonitorStatus.CalibrationResume
+        instrumentOp.setState(instId, collectorState)
+        val calibrationTimerOpt =
+          for (downTime <- tapiConfig.downTime) yield
+            context.system.scheduler.scheduleOnce(FiniteDuration(downTime, SECONDS), self, CalibrateEnd)
+        context become calibration(calibrationType, startTime, false, calibrationReadingList,
+          zeroReading, endState, calibrationTimerOpt)
+      }
+
       Future {
         blocking {
-          Logger.info(s"${self.path.name} => DownStart (${calibrationReadingList.length})")
-          import scala.concurrent.duration._
-
-          if (calibrationType.auto && calibrationType.zero) {
-            context become calibration(calibrationType, startTime, false, calibrationReadingList,
-              zeroReading, endState, None)
-            self ! CalibrateEnd
-          } else {
-            collectorState = MonitorStatus.CalibrationResume
-            instrumentOp.setState(instId, collectorState)
-            val calibrationTimerOpt = Some(context.system.scheduler.scheduleOnce(Duration(tapiConfig.downTime.get, SECONDS), self, CalibrateEnd))
-            context become calibration(calibrationType, startTime, false, calibrationReadingList,
-              zeroReading, endState, calibrationTimerOpt)
-          }
-
           if (calibrationType.zero)
             triggerZeroCalibration(false)
           else

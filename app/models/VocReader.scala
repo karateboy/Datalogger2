@@ -161,7 +161,6 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
     val dir = monitorConfig.path
     val monthFolder = dir + File.separator + s"${year - 1911}${"%02d".format(month)}"
 
-    Logger.info(s"parsing ${monitorConfig.name} $monthFolder")
     val parsedFileList = VocReader.getParsedFileList(dir)
     def listTx0Files = {
       val BP1Files = Option(new java.io.File(monthFolder + File.separator + "BP1").listFiles())
