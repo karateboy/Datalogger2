@@ -102,7 +102,6 @@ export default Vue.extend({
       {
         key: 'desp',
         label: '測項',
-        sortable: true,
       },
       {
         key: 'value',
@@ -112,7 +111,6 @@ export default Vue.extend({
           if (isNaN(v)) return `-`;
           else return `${item.value}`;
         },
-        sortable: true,
       },
       {
         key: 'unit',
