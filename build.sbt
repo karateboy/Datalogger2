@@ -1,6 +1,6 @@
 name := """MqttManager"""
 
-version := "1.2.12"
+version := "1.2.13"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala, LauncherJarPlugin)
 
@@ -21,6 +21,9 @@ libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "2.26.0"
 
 // https://mvnrepository.com/artifact/org.eclipse.paho/org.eclipse.paho.client.mqttv3
 libraryDependencies += "org.eclipse.paho" % "org.eclipse.paho.client.mqttv3" % "1.2.5"
+
+// https://mvnrepository.com/artifact/com.typesafe.play/play-mailer
+libraryDependencies += "com.typesafe.play" %% "play-mailer" % "5.0.0"
 
 routesGenerator := StaticRoutesGenerator
 

@@ -4,19 +4,23 @@ import models.ModelHelper._
 import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import org.mongodb.scala.bson.codecs.Macros._
-import org.mongodb.scala.model.{Filters, Updates}
+import org.mongodb.scala.model.Updates
 import play.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.language.implicitConversions
 
 
-case class User(_id: String, password: String, name: String, isAdmin: Boolean, group: Option[String], monitorTypeOfInterest: Seq[String])
+case class User(_id: String, password: String, name: String,
+                isAdmin: Boolean, group: Option[String],
+                monitorTypeOfInterest: Seq[String],
+                alertEmail: Option[String])
 
 import javax.inject._
 
 @Singleton
-class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp, monitorTypeOp: MonitorTypeOp) {
+class UserOp @Inject()(mongoDB: MongoDB) {
 
   import org.mongodb.scala._
 
@@ -37,7 +41,7 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp, monitorTypeOp: Monito
       case count: Long =>
         if (count == 0) {
           val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn", true, Some(Group.PLATFORM_ADMIN),
-            Seq(MonitorType.PM25))
+            Seq(MonitorType.PM25), None)
           Logger.info("Create default user:" + defaultUser.toString())
           newUser(defaultUser)
         }
@@ -65,22 +69,20 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp, monitorTypeOp: Monito
       val f = collection.replaceOne(equal("_id", user._id), user).toFuture()
       waitReadyResult(f)
     } else {
-      val updates = {
-        if (user.group.isEmpty)
-          Updates.combine(
+      val commonUpdates =
+          Seq(
             Updates.set("name", user.name),
             Updates.set("isAdmin", user.isAdmin),
             Updates.set("monitorTypeOfInterest", user.monitorTypeOfInterest)
           )
-        else
-          Updates.combine(
-            Updates.set("name", user.name),
-            Updates.set("isAdmin", user.isAdmin),
-            Updates.set("group", user.group.get),
-            Updates.set("monitorTypeOfInterest", user.monitorTypeOfInterest)
-          )
-      }
 
+      val updateGroupOpt = for(group<-user.group) yield
+          Updates.set("group", group)
+
+      val updateAlertEmailOpt = for(alertEmail<-user.alertEmail) yield
+          Updates.set("alertEmail", alertEmail)
+
+      val updates = Updates.combine(commonUpdates ++ Seq(updateGroupOpt, updateAlertEmailOpt).flatten :_*)
       val f = collection.findOneAndUpdate(equal("_id", user._id), updates).toFuture()
       waitReadyResult(f)
     }
@@ -99,7 +101,7 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp, monitorTypeOp: Monito
       None
   }
 
-  def getAllUsers() = {
+  def getAllUsers(): Seq[User] = {
     val f = collection.find().toFuture()
     f.onFailure {
       errorHandler
@@ -107,12 +109,24 @@ class UserOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp, monitorTypeOp: Monito
     waitReadyResult(f)
   }
 
-  def getAdminUsers() = {
+  def getAllUserFuture(): Future[Seq[User]] = {
+    val f = collection.find().toFuture()
+    f onFailure errorHandler
+    f
+  }
+
+  def getAdminUsers(): Seq[User] = {
     val f = collection.find(equal("isAdmin", true)).toFuture()
     f.onFailure {
       errorHandler
     }
     waitReadyResult(f)
+  }
+
+  def getAlertEmailUsers(): Future[Seq[User]] = {
+    val f = collection.find(exists("alertEmail", true)).toFuture()
+    f onFailure errorHandler()
+    f
   }
 
 }

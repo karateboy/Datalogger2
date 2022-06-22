@@ -1,0 +1,21 @@
+@(groupName:String, monitors: Seq[Monitor])
+<p style="margin:0px"><span style="font-family:微軟正黑體,sans-serif">@groupName：@{monitors.length}台</span><br></p>
+<table cellpadding="2" cellspacing="2" border="1"
+       style="font-size:10pt;font-family:Verdana,Arial,Helvetica,sans-serif;width:100%;border-collapse:collapse;border:1px solid black">
+    <tbody>
+    <tr>
+        <td style="width:70px">設備序號</td>
+        <td style="width:70px">名稱</td>
+    </tr>
+    @for(m <- monitors){
+    <tr>
+        <td style="width:70px">
+            @{m._id}
+        </td>
+        <td style="width:70px">
+            @{m.desc}
+        </td>
+    </tr>
+    }
+    </tbody>
+</table>

@@ -3,13 +3,16 @@ package models
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import org.mongodb.scala._
-import org.mongodb.scala.bson.BsonDateTime
+import org.mongodb.scala.bson.{BsonArray, BsonDateTime, BsonInt32}
+import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.Filters.equal
 import org.mongodb.scala.model.Sorts.descending
+import org.mongodb.scala.result.DeleteResult
 import play.api._
 
 import java.util.Date
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 case class MtRecord(mtName: String, value: Double, status: String)
 
@@ -17,6 +20,10 @@ object RecordList {
   def apply(time: Date, mtDataList: Seq[MtRecord], monitor: String): RecordList =
     RecordList(mtDataList, RecordListID(time, monitor))
 }
+case class MonitorRecord(time: Date, mtDataList: Seq[MtRecord], _id: String, var location: Option[Seq[Double]],
+                         count: Option[Int], pm25Max: Option[Double], pm25Min: Option[Double],
+                         var shortCode: Option[String], var code: Option[String], var tags: Option[Seq[String]],
+                         var locationDesc: Option[String])
 
 case class RecordList(mtDataList: Seq[MtRecord], _id: RecordListID) {
   def mtMap = {
@@ -217,6 +224,81 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     val twoMonthBefore = DateTime.now().minusMonths(2).toDate
     val f  = col.deleteMany(Filters.lt("_id.time", twoMonthBefore)).toFuture()
     f onFailure(errorHandler())
+    f
+  }
+
+  val addPm25DataStage: Bson = {
+    val filterDoc = Document("$filter" -> Document(
+      "input" -> "$mtDataList",
+      "as" -> "mtData",
+      "cond" -> Document(
+        "$eq" -> Seq("$$mtData.mtName", "PM25")
+      )))
+    val bsonArray = BsonArray(filterDoc.toBsonDocument, new BsonInt32(0))
+    Aggregates.addFields(Field("pm25Data",
+      Document("$arrayElemAt" -> bsonArray)))
+  }
+  def getSensorCount(colName: String)
+                    (start: DateTime = DateTime.now()): Future[Seq[MonitorRecord]] = {
+    import org.mongodb.scala.model.Projections._
+    import org.mongodb.scala.model.Sorts._
+
+    val targetMonitors = monitorOp.mvList
+    val monitorFilter =
+      Aggregates.filter(Filters.in("monitor", targetMonitors: _*))
+
+    val sortFilter = Aggregates.sort(orderBy(descending("time"), descending("monitor")))
+    val begin = start.minusDays(1)
+    val end = start
+    val timeFrameFilter = Aggregates.filter(Filters.and(
+      Filters.gte("time", begin.toDate),
+      Filters.lt("time", end.toDate)))
+
+    val latestFilter = Aggregates.group(id = "$monitor", Accumulators.first("time", "$time"),
+      Accumulators.first("mtDataList", "$mtDataList"), Accumulators.first("location", "$location"),
+      Accumulators.sum("count", 1))
+
+    val projectStage = Aggregates.project(fields(
+      Projections.include("time", "monitor", "id", "mtDataList", "location", "count")))
+    val codecRegistry = fromRegistries(fromProviders(classOf[MonitorRecord], classOf[MtRecord], classOf[RecordListID]), DEFAULT_CODEC_REGISTRY)
+    val col = mongoDB.database.getCollection[MonitorRecord](colName).withCodecRegistry(codecRegistry)
+    col.aggregate(Seq(sortFilter, timeFrameFilter, monitorFilter, addPm25DataStage, latestFilter, projectStage))
+      .allowDiskUse(true).toFuture()
+  }
+
+  def getLast30MinConstantSensor(colName: String): Future[Seq[MonitorRecord]] = {
+    import org.mongodb.scala.model.Projections._
+    import org.mongodb.scala.model.Sorts._
+
+    val targetMonitors = monitorOp.mvList
+    val monitorFilter =
+      Aggregates.filter(Filters.in("monitor", targetMonitors: _*))
+
+    val sortFilter = Aggregates.sort(orderBy(descending("time"), descending("monitor")))
+    val timeFrameFilter = Aggregates.filter(Filters.and(Filters.gt("time", DateTime.now.minusMinutes(30).toDate)))
+
+    val addPm25ValueStage = Aggregates.addFields(Field("pm25", "$pm25Data.value"))
+    val latestFilter = Aggregates.group(id = "$monitor", Accumulators.first("time", "$time"),
+      Accumulators.first("mtDataList", "$mtDataList"), Accumulators.first("location", "$location"),
+      Accumulators.sum("count", 1),
+      Accumulators.max("pm25Max", "$pm25"),
+      Accumulators.min("pm25Min", "$pm25"))
+    val constantFilter = Aggregates.filter(Filters.and(Filters.gte("count", 8),
+      Filters.expr(Document("$eq" -> Seq("$pm25Max", "$pm25Min")))
+    ))
+    val projectStage = Aggregates.project(fields(
+      Projections.include("time", "monitor", "id", "mtDataList", "location", "count", "pm25Max", "pm25Min")))
+    val codecRegistry = fromRegistries(fromProviders(classOf[MonitorRecord], classOf[MtRecord], classOf[RecordListID]), DEFAULT_CODEC_REGISTRY)
+    val col = mongoDB.database.getCollection[MonitorRecord](colName).withCodecRegistry(codecRegistry)
+    col.aggregate(Seq(sortFilter, timeFrameFilter, monitorFilter, addPm25DataStage,
+      addPm25ValueStage, latestFilter, constantFilter, projectStage))
+      .allowDiskUse(true).toFuture()
+  }
+
+  def delete45dayAgoRecord(colName: String): Future[DeleteResult] = {
+    val date = DateTime.now().withMillisOfDay(0).minusDays(45).toDate()
+    val f = getCollection(colName).deleteMany(Filters.lt("time", date)).toFuture()
+    f onFailure (errorHandler)
     f
   }
 }

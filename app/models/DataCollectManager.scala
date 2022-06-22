@@ -72,6 +72,21 @@ case class IsTargetConnected(instId: String)
 case object IsConnected
 
 case object CleanOldData
+
+object DataCollectManager {
+  val effectivRatio = 0.75
+
+  case class SetCheckConstantTime(localTime: LocalTime)
+
+  case object CheckSensorStstus
+
+  case object CheckConstantSensor
+
+  case object CleanupOldRecord
+
+  case object SendErrorReport
+
+}
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentOp, recordOp: RecordOp,
                                      alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp, groupOp: GroupOp)() {
@@ -264,18 +279,56 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 
 @Singleton
 class DataCollectManager @Inject()
-(config: Configuration, system: ActorSystem, recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp,
+(config: Configuration, recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp,
  dataCollectManagerOp: DataCollectManagerOp,
- instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmOp, instrumentOp: InstrumentOp) extends Actor with InjectedActorSupport {
+ instrumentTypeOp: InstrumentTypeOp,
+ alarmOp: AlarmOp,
+ instrumentOp: InstrumentOp,
+ errorReportOp: ErrorReportOp,
+ groupOp: GroupOp,
+ userOp: UserOp) extends Actor with InjectedActorSupport {
   val effectivRatio = 0.75
   val storeSecondData = config.getBoolean("storeSecondData").getOrElse(false)
   Logger.info(s"store second data = $storeSecondData")
+
+  import DataCollectManager._
 
   val timer = {
     import scala.concurrent.duration._
     val next30 = DateTime.now().withSecondOfMinute(30).plusMinutes(1)
     val postSeconds = new org.joda.time.Duration(DateTime.now, next30).getStandardSeconds
     context.system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
+  }
+
+  val updateErrorReportTimer: Cancellable = {
+    val localtime = LocalTime.now().withMillisOfDay(0)
+      .withHourOfDay(7).withMinuteOfHour(30).withSecondOfMinute(0) // 07:00
+    val emailTime = DateTime.now().toLocalDate().toDateTime(localtime)
+    val duration = if (DateTime.now() < emailTime)
+      new Duration(DateTime.now(), emailTime)
+    else
+      new Duration(DateTime.now(), emailTime + 1.day)
+
+    import scala.concurrent.duration._
+    context.system.scheduler.schedule(
+      Duration(duration.getStandardSeconds + 1, SECONDS),
+      Duration(1, DAYS), self, CheckSensorStstus)
+  }
+
+  val alertEmailTimer: Cancellable = {
+    val localtime = LocalTime.now().withMillisOfDay(0)
+      .withHourOfDay(8).withMinuteOfHour(0) // 20:00
+    val emailTime = DateTime.now().toLocalDate().toDateTime(localtime)
+    val duration = if (DateTime.now() < emailTime)
+      new Duration(DateTime.now(), emailTime)
+    else
+      new Duration(DateTime.now(), emailTime + 1.day)
+
+    Logger.info(s"setup to fire SendErrorReport ${duration.getStandardHours}:${duration.getStandardMinutes} latter")
+    import scala.concurrent.duration._
+    context.system.scheduler.schedule(
+      Duration(duration.getStandardSeconds + 1, SECONDS),
+      Duration(1, DAYS), self, SendErrorReport)
   }
 
   val cleanupTimer = {
@@ -375,7 +428,7 @@ class DataCollectManager @Inject()
           new Duration(DateTime.now(), calibrationTime + 1.day)
 
         import scala.concurrent.duration._
-        system.scheduler.schedule(
+        context.system.scheduler.schedule(
           Duration(duration.getStandardSeconds + 1, SECONDS),
           Duration(1, DAYS), self, AutoCalibration(inst._id))
       }
@@ -643,7 +696,7 @@ class DataCollectManager @Inject()
       onceTimer map { t => t.cancel() }
       Logger.debug(s"ToggleTargetDO($instId, $bit)")
       self ! WriteTargetDO(instId, bit, true)
-      onceTimer = Some(system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
+      onceTimer = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
         self, WriteTargetDO(instId, bit, false)))
 
     case ToggleMonitorTypeDO(instId, mtID, seconds)=>
@@ -651,7 +704,7 @@ class DataCollectManager @Inject()
       Logger.debug(s"ToggleMonitorTypeDO($instId, $mtID)")
       instrumentMap.get(instId).map { param =>
         param.actor ! WriteMonitorTypeDO(mtID, true)
-        onceTimer = Some(system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
+        onceTimer = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
           param.actor, WriteMonitorTypeDO(mtID, false)))
       }
 
@@ -687,6 +740,58 @@ class DataCollectManager @Inject()
         digitalOutputOpt.get ! EvtOperationOverThreshold
       else {
         Logger.warn(s"DO is not online! Ignore EvtOperationOverThreshold.")
+      }
+
+    case CheckSensorStstus =>
+      val today = DateTime.now().withMillisOfDay(0)
+      Logger.info(s"update daily error report ${today}")
+
+      // It is tricky less than 90% is calculated based on beginnning of today.
+      val sensorCountFuture = recordOp
+        .getSensorCount(recordOp.MinCollection)()
+      sensorCountFuture onFailure errorHandler("sensorCountFuture failed")
+
+      for (ret: Seq[MonitorRecord] <- sensorCountFuture) {
+        val targetMonitorIDSet = monitorOp.mvList.toSet
+        Logger.info(s"targetMonitor #=${targetMonitorIDSet.size}")
+        val connectedSet = ret.map(_._id).toSet
+        Logger.info(s"connectedSet=${connectedSet.size}")
+        val disconnectedSet = targetMonitorIDSet -- connectedSet
+        Logger.info(s"disconnectedSet=${disconnectedSet.size}")
+        errorReportOp.setDisconnectRecordTime(today, DateTime.now().getTime)
+        for(m<-disconnectedSet)
+          errorReportOp.addDisconnectedSensor(today, m)
+
+        val disconnectEffectRateList = disconnectedSet.map(id => EffectiveRate(id, 0)).toList
+
+        val effectRateList: Seq[EffectiveRate] = ret.filter(
+          m => m.count.getOrElse(0) < 24 * 60 * 90 / 100
+        ).map { m => EffectiveRate(m._id, m.count.getOrElse(0).toDouble / (24 * 60)) }
+        val overall = effectRateList ++ disconnectEffectRateList
+        errorReportOp.addLessThan90Sensor(today, overall)
+      }
+
+    case CheckConstantSensor =>
+      val today = DateTime.now().withMillisOfDay(0)
+      val f: Future[Seq[MonitorRecord]] = recordOp.getLast30MinConstantSensor(recordOp.MinCollection)
+      errorReportOp.setConstantRecordTime(today, DateTime.now().getTime)
+      for (ret <- f) {
+        for (m <- ret) {
+          errorReportOp.addConstantSensor(today, m._id);
+        }
+      }
+
+    case SendErrorReport =>
+      Logger.info("send daily error report")
+      //val groups = groupOp.map
+      for(emailUsers <- userOp.getAlertEmailUsers()){
+        val alertEmails = emailUsers.flatMap{
+          user=>
+            for(email<-user.alertEmail; groupName <- user.group; myGroup <- groupOp.map.get(groupName)) yield
+              EmailTarget(email, groupName, myGroup.monitors)
+        }
+        val f = errorReportOp.sendEmail(alertEmails)
+        f onFailure errorHandler
       }
 
     case GetLatestData =>

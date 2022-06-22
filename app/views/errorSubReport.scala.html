@@ -1,0 +1,6 @@
+@(dateStr: String, groupName:String, errorType:String, monitors:Seq[Monitor])
+<div style="font-family:Verdana,Arial,Helvetica,sans-serif;font-size:10pt"><p style="margin:0px"><span
+        style="font-family:微軟正黑體,sans-serif"><span
+        style="color:red">@{errorType}</span></span><br></p>
+    @errorStatus(groupName, monitors)
+</div>

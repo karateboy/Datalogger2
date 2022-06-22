@@ -9,6 +9,7 @@ export default {
       isAdmin: false,
       group: '',
       monitorTypeOfInterest: [],
+      alertEmail: undefined
     },
   },
   getters: {},
@@ -19,6 +20,7 @@ export default {
       state.userInfo.isAdmin = val.isAdmin;
       state.userInfo.group = val.group;
       state.userInfo.monitorTypeOfInterest = val.monitorTypeOfInterest;
+      state.userInfo.alertEmail = val.alertEmail;
     },
     setLogin(state, val) {
       state.login = val;

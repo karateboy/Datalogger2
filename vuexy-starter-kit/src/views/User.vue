@@ -71,6 +71,13 @@
         >
         </b-form-checkbox-group>
       </b-form-group>
+      <b-form-group label="通報電子信箱:" label-cols="3">
+        <b-input
+          v-model="user.alertEmail"
+          aria-describedby="displayName-feedback"
+          placeholder="輸入電子信箱"
+        ></b-input>
+      </b-form-group>
       <b-row>
         <b-col offset-md="3">
           <b-button
@@ -123,8 +130,9 @@ export default Vue.extend({
       confirmPassword: '',
       isAdmin: false,
     };
-
+    console.info(user);
     this.copyUser(user);
+    console.info('after copyUser', user);
     const groupList = [];
     return {
       user,
@@ -199,6 +207,7 @@ export default Vue.extend({
         user.isAdmin = self.isAdmin;
         user.group = self.group;
         user.monitorTypeOfInterest = self.monitorTypeOfInterest;
+        user.alertEmail = self.alertEmail;
       }
     },
     reset() {
@@ -220,7 +229,7 @@ export default Vue.extend({
           this.user.Password = '';
           this.user.ConfirmPassword = '';
         }
-
+        console.info(this.user);
         axios.put(`/User/${this.currentUser.Id}`, this.user).then(res => {
           if (res.status === 200) {
             this.$toast({
