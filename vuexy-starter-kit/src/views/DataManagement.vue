@@ -41,7 +41,7 @@
                 v-model="form.range"
                 :range="true"
                 type="datetime"
-                format="YYYY-MM-DD"
+                format="YYYY-MM-DD HH:mm"
                 value-type="timestamp"
                 :show-second="false"
               />
