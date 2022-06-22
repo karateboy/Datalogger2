@@ -444,9 +444,9 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
       } onFailure calibrationErrorHandler(instId, timerOpt, endState)
 
     case rd: ReportData =>
-      //Logger.debug(s"calibrationReadingList #=${calibrationReadingList.length}")
-      context become calibration(calibrationType, startTime, recordCalibration, rd :: calibrationReadingList,
-        zeroReading, endState, timerOpt)
+      if (recordCalibration)
+        context become calibration(calibrationType, startTime, recordCalibration, rd :: calibrationReadingList,
+          zeroReading, endState, timerOpt)
 
     case CalibrateEnd =>
       Future {

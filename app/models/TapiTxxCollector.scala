@@ -428,9 +428,9 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
       } onFailure calibrationErrorHandler(instId, timerOpt, endState)
 
     case rd: ReportData =>
-      //Logger.debug(s"calibrationReadingList #=${calibrationReadingList.length}")
-      context become calibration(calibrationType, startTime, recordCalibration, rd :: calibrationReadingList,
-        zeroReading, endState, timerOpt)
+      if(recordCalibration)
+        context become calibration(calibrationType, startTime, recordCalibration, rd :: calibrationReadingList,
+          zeroReading, endState, timerOpt)
 
     case CalibrateEnd =>
       Logger.info(s"$self =>$calibrationType CalibrateEnd")

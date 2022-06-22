@@ -316,8 +316,9 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
       } onFailure (calibrationErrorHandler(instId, calibrationTimerOpt, endState))
 
     case rd: ReportData =>
-      context become calibrationPhase(calibrationType, startTime, recordCalibration, rd :: calibrationReadingList,
-        zeroReading, endState, calibrationTimerOpt)
+      if(recordCalibration)
+        context become calibrationPhase(calibrationType, startTime, recordCalibration, rd :: calibrationReadingList,
+          zeroReading, endState, calibrationTimerOpt)
 
     case CalibrateEnd =>
       Future {
