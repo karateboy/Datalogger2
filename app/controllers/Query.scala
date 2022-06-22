@@ -516,7 +516,6 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       import recordOp.recordListWrite
       val monitors = group.monitors
       val tabType = TableType.min
-      Logger.info(s"group=$groupID monitors=${monitors}")
       val futures = for (m <- monitors) yield
         recordOp.getLatestRecordFuture(TableType.mapCollection(tabType))(m)
 

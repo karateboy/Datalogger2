@@ -35,7 +35,7 @@ object Adam6017Collector {
 
 
 class Adam6017Collector @Inject()
-(instrumentOp: InstrumentOp, monitorTypeOp: MonitorTypeOp, system: ActorSystem)
+(instrumentOp: InstrumentOp, alarmOp: AlarmOp, groupOp: GroupOp)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: Adam6017Param) extends Actor with ActorLogging {
 
   import MoxaE1212Collector._
@@ -76,6 +76,7 @@ class Adam6017Collector @Inject()
     context.parent ! ReportData(dataList.toList)
   }
 
+  val me = instrumentOp.getInstrument(id)(0)
 
   import com.serotonin.modbus4j._
   import com.serotonin.modbus4j.ip.IpParameters
@@ -101,17 +102,18 @@ class Adam6017Collector @Inject()
             master.init();
             context become handler(collectorState, Some(master))
             import scala.concurrent.duration._
-            cancelable = system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
+            cancelable = context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
             self ! WriteDO(bit = 16, on = false)
           } catch {
             case ex: Exception =>
               Logger.error(ex.getMessage, ex)
               Logger.info("Try again 1 min later...")
+              for(groupID <- me.group)
+                alarmOp.log(alarmOp.Src(groupID), alarmOp.Level.WARN, s"${groupOp.map(groupID).name}> 灑水設備斷線", 10)
               //Try again
               import scala.concurrent.duration._
-              cancelable = system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
+              cancelable = context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
           }
-
         }
       } onFailure errorHandler
 
@@ -142,7 +144,7 @@ class Adam6017Collector @Inject()
             }
 
             import scala.concurrent.duration._
-            cancelable = system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
+            cancelable = context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Throwable =>
               Logger.error("Read reg failed", ex)

@@ -3,8 +3,6 @@ package controllers
 import com.github.nscala_time.time.Imports._
 import models._
 import play.api._
-import play.api.data.Forms._
-import play.api.data._
 import play.api.libs.json._
 import play.api.mvc._
 
@@ -16,7 +14,7 @@ class HomeController @Inject()(environment: play.api.Environment,
                                userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
                                monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorOp, groupOp: GroupOp,
                                instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp,
-                               sensorOp: MqttSensorOp) extends Controller {
+                               sensorOp: MqttSensorOp, errorReportOp: ErrorReportOp) extends Controller {
 
   val title = "資料擷取器"
 
@@ -481,15 +479,15 @@ class HomeController @Inject()(environment: play.api.Environment,
       val group = groupOp.getGroupByID(userInfo.group).get
 
       val mtListFuture = if (userInfo.isAdmin)
-        Future{
+        Future {
           monitorTypeOp.mtvList map monitorTypeOp.map
         }
       else {
-        for(groupMap<-monitorTypeOp.getGroupMapAsync(group._id)) yield
+        for (groupMap <- monitorTypeOp.getGroupMapAsync(group._id)) yield
           group.monitorTypes map groupMap
       }
 
-      for(mtList<-mtListFuture) yield
+      for (mtList <- mtListFuture) yield
         Ok(Json.toJson(mtList))
   }
 
@@ -507,7 +505,7 @@ class HomeController @Inject()(environment: play.api.Environment,
           BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
         },
         mt => {
-          if(!mt._id.contains(group._id)) {
+          if (!mt._id.contains(group._id)) {
             val mtID = mt._id
             mt._id = s"${mtID}_${group._id}"
           }
@@ -600,9 +598,9 @@ class HomeController @Inject()(environment: play.api.Environment,
     implicit request =>
       val userInfo = request.user
       val groupID = userInfo.group
-      for(groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(groupID)){
+      for (groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(groupID)) {
         groupDoInstruments.foreach(inst =>
-            dataCollectManagerOp.toggleMonitorTypeDO(inst._id, MonitorType.SPRAY, 10))
+          dataCollectManagerOp.toggleMonitorTypeDO(inst._id, MonitorType.SPRAY, 10))
       }
       Ok("ok")
   }
@@ -637,6 +635,19 @@ class HomeController @Inject()(environment: play.api.Environment,
   def deleteSensor(id: String) = Security.Authenticated.async {
     for (ret <- sensorOp.delete(id)) yield
       Ok(Json.obj("ok" -> ret.getDeletedCount))
+  }
+
+  def testAlertEmail(id: String) = Security.Authenticated {
+    val userOpt = userOp.getUserByEmail(id)
+    for {
+      user <- userOpt
+      groupID <- user.group
+      email <- user.alertEmail
+    } yield {
+      val group = groupOp.map(groupID)
+      errorReportOp.sendEmail(Seq(EmailTarget(email, group.name, group.monitors)))
+    }
+    Ok(Json.obj("ok" -> true))
   }
 
   case class EditData(id: String, data: String)

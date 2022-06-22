@@ -82,10 +82,6 @@
               @closeclick="infoWinOpen = false"
             />
           </GmapMap>
-
-          <div id="legend" class="legend shadow border border-dark m-2">
-            <b-img src="../assets/images/legend.png" width="130" />
-          </div>
         </div>
       </b-card>
     </b-col>
@@ -230,9 +226,9 @@ export default {
         const iconUrl = getIconUrl(mtEntry.value, mt);
         const monitor = this.mMap.get(stat._id.monitor);
         if (!monitor) continue;
-
+        let pm25desc = this.getPM25Explain(mtEntry.value);
         ret.push({
-          title: monitor.desc,
+          title: `${monitor.desc}-${pm25desc}`,
           position: { lat, lng },
           pm25,
           infoText: `<strong>${monitor.desc}</strong>`,
@@ -284,6 +280,13 @@ export default {
         this.infoWinOpen = true;
         this.currentMidx = idx;
       }
+    },
+    getPM25Explain(v) {
+      if (v < 50) return '良好';
+      else if (v <= 100) return '普通';
+      else if (v <= 150) return '對敏感族群不健康';
+      else if (v <= 200) return '對所有族群不健康';
+      else return '危害';
     },
     getPM25Class(v) {
       if (v < 12) return { FPMI1: true };

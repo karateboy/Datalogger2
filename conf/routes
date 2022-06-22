@@ -107,6 +107,7 @@ GET      /AlertRecord/:start/end                                                
 	
 
 GET      /TestSpray                                                               controllers.HomeController.testSpray
+GET      /TestAlertEmail/:userID                                                  controllers.HomeController.testAlertEmail(userID)
 #GET		/WindRose				controllers.Query.windRose
 #GET		/MonitorTypeRose		controllers.Query.monitorTypeRose
 #GET		/WindRoseReport/:monitor/:monitorType/:nWays/:start/:end	controllers.Query.windRoseReport(monitor, monitorType, nWays:Int, start, end)

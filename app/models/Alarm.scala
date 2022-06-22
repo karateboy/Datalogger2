@@ -1,19 +1,15 @@
 package models
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.language.implicitConversions
-import org.mongodb.scala._
 import com.github.nscala_time.time.Imports._
-import ModelHelper._
-import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
-import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
+import models.ModelHelper._
+import org.mongodb.scala._
 import play.api._
-import play.api.libs.functional.syntax._
 import play.api.libs.json._
-import play.api.libs.json.Reads._
 
 import java.util.Date
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.language.implicitConversions
 
 //alarm src format: 'T':"MonitorType"
 //                  'I':"Instrument"
@@ -65,7 +61,6 @@ class AlarmOp @Inject()(mongoDB: MongoDB) {
   init
 
   import org.mongodb.scala.model.Filters._
-  import org.mongodb.scala.model.Projections._
   import org.mongodb.scala.model.Sorts._
 
   def getAlarms(level: Int, src:String, start: DateTime, end: DateTime): Future[Seq[Alarm]] = {
