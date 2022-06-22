@@ -2,6 +2,7 @@ package models
 
 import akka.actor._
 import com.github.nscala_time.time.Imports._
+import models.ForwardManager.ForwardHourRecord
 import models.ModelHelper.errorHandler
 import models.mongodb.RecordOp
 import org.mongodb.scala.result.UpdateResult
@@ -14,6 +15,7 @@ import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration, MINUTES, SECONDS}
 import scala.concurrent.{Future, blocking}
+import scala.util.{Failure, Success}
 
 case class VocMonitorConfig(id: String, name: String, lat: Double, lng: Double, path: String)
 
@@ -23,7 +25,7 @@ object VocReader {
   var count = 0
 
   def start(configuration: Configuration, actorSystem: ActorSystem, monitorOp: MonitorDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB) = {
+            recordOp: RecordDB, dataCollectManager:ActorRef) = {
     def getConfig: Option[VocReaderConfig] = {
       def getMonitorConfig(config: Configuration) = {
         val id = config.getString("id").get
@@ -50,13 +52,13 @@ object VocReader {
         monitorOp.upsert(m)
       })
       count = count + 1
-      actorSystem.actorOf(props(config, monitorTypeOp, recordOp), s"vocReader${count}")
+      actorSystem.actorOf(props(config, monitorTypeOp, recordOp, dataCollectManager), s"vocReader${count}")
     }
   }
 
   def props(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB) =
-    Props(classOf[VocReader], config, monitorTypeOp, recordOp)
+            recordOp: RecordDB, dataCollectManager: ActorRef) =
+    Props(classOf[VocReader], config, monitorTypeOp, recordOp, dataCollectManager)
 
 
   def getFileDateTime(fileName: String, year: Int, month: Int): Option[DateTime] = {
@@ -114,12 +116,12 @@ object VocReader {
   }
 }
 
-class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp: RecordDB)
+class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, dataCollectManager: ActorRef)
   extends Actor with ActorLogging {
   Logger.info("VocReader start")
   import VocReader._
 
-  var timer = context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadFile)
+  val timer = context.system.scheduler.schedule(FiniteDuration(1, SECONDS), FiniteDuration(5, MINUTES), self, ReadFile)
 
   def receive = {
     case ReadFile =>
@@ -128,7 +130,6 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
           for (monitorConfig <- config.monitors)
             parseMonitor(monitorConfig)
             //parseAllTx0(monitorConfig, today.getYear, today.getMonthOfYear)
-          timer = resetTimer
         }
       }
 
@@ -160,7 +161,6 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
     val dir = monitorConfig.path
     val monthFolder = dir + File.separator + s"${year - 1911}${"%02d".format(month)}"
 
-    Logger.info(s"parsing ${monitorConfig.name} $monthFolder")
     val parsedFileList = VocReader.getParsedFileList(dir)
     def listTx0Files = {
       val BP1Files = Option(new java.io.File(monthFolder + File.separator + "BP1").listFiles())
@@ -171,7 +171,6 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
       allFiles.filter(p =>
         p != null && (ignoreParsed || !parsedFileList.contains(p.getAbsolutePath)))
     }
-    Logger.info(s"listTx0Files #=${listTx0Files.length}")
 
     val files: Array[File] = listTx0Files
     for (f <- files) {
@@ -190,7 +189,7 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
     }
   }
 
-  def parser(monitorId:String, file: File, dateTime: DateTime): Future[UpdateResult] = {
+  def parser(monitorId:String, file: File, dateTime: DateTime) = {
     import com.github.tototoshi.csv._
 
     val reader = CSVReader.open(file)
@@ -216,8 +215,13 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
     val mtDataList = dataList.flatten.map(d=>MtRecord(d._1, Some(d._2._1), d._2._2))
     val rl = RecordList(dateTime.toDate, mtDataList, monitorId)
     val f = recordOp.upsertRecord(rl)(recordOp.HourCollection)
-    f onFailure(errorHandler)
-    f
+    f onComplete {
+      case Success(_)=>
+        dataCollectManager ! ForwardHourRecord(dateTime, dateTime.plusHours(1))
+
+      case Failure(exception)=>
+        Logger.error("failed", exception)
+    }
   }
 
   override def postStop(): Unit = {

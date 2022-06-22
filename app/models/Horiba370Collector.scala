@@ -525,9 +525,11 @@ class Horiba370Collector @Inject()
       }
 
     case ReportData(mtDataList) =>
-      val data = mtDataList
-      context become calibrationHandler(connection, calibrationType, startTime, recording,
-        data ::: calibrationDataList, zeroMap)
+      if(recording){
+        val data = mtDataList
+        context become calibrationHandler(connection, calibrationType, startTime, recording,
+          data ::: calibrationDataList, zeroMap)
+      }
 
     case HoldStart =>
       Logger.debug(s"${calibrationType} HoldStart")
@@ -616,7 +618,7 @@ class Horiba370Collector @Inject()
             }
           }
         for (cal <- calibrationList)
-          calibrationOp.insert(cal)
+          calibrationOp.insertFuture(cal)
 
         self ! SetState(id, MonitorStatus.NormalStat)
       }

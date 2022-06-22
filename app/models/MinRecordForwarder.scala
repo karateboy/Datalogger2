@@ -67,7 +67,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
     for (records <- recordFuture) {
 
       if (records.nonEmpty) {
-        val f = ws.url(postUrl).withRequestTimeout(FiniteDuration(10, SECONDS)).post(Json.toJson(records))
+        val f = ws.url(postUrl).withRequestTimeout(FiniteDuration(10, SECONDS)).post(Json.toJson(records.filter(_.mtDataList.nonEmpty)))
 
         f onComplete {
           case Success(response) =>
@@ -96,7 +96,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
         Logger.info(s"Total ${record.length} records")
 
         for (chunk <- record.grouped(60)) {
-          val f = ws.url(postUrl).post(Json.toJson(chunk))
+          val f = ws.url(postUrl).post(Json.toJson(chunk.filter(_.mtDataList.nonEmpty)))
 
           f onSuccess {
             case response =>

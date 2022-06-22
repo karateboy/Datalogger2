@@ -73,7 +73,7 @@ class CdxUploader @Inject()(alarmDB: AlarmDB, environment: Environment){
         <aqs:SampleCollectionStartDate>{ dateStr }</aqs:SampleCollectionStartDate>
         <aqs:SampleCollectionStartTime>{ timeStr }</aqs:SampleCollectionStartTime>
         {
-        val valueElem = <aqs:ReportedSampleValue>{ mtRecord.value }</aqs:ReportedSampleValue>
+        val valueElem = <aqs:ReportedSampleValue>{ mtRecord.value.getOrElse("") }</aqs:ReportedSampleValue>
         if(MonitorStatus.isValid(mtRecord.status)){
           valueElem
         }else{
