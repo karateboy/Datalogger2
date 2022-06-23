@@ -1,7 +1,46 @@
 <template>
   <b-card no-body>
     <b-tabs card>
-      <b-tab title="CDX上傳設定" active>
+      <b-tab title="上傳歷史紀錄" active>
+        <b-form @submit.prevent>
+          <b-row>
+            <b-col cols="12">
+              <b-form-group
+                label="查詢區間"
+                label-for="dataRange"
+                label-cols-md="3"
+              >
+                <date-picker
+                  id="dataRange"
+                  v-model="range"
+                  :range="true"
+                  type="datetime"
+                  format="YYYY-MM-DD HH:mm"
+                  value-type="timestamp"
+                  :show-second="false"
+                />
+                <b-button
+                  v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                  type="submit"
+                  variant="primary"
+                  class="ml-2"
+                  @click="getCdxUploadEvents"
+                >
+                  查詢
+                </b-button>
+              </b-form-group>
+            </b-col>
+          </b-row>
+        </b-form>
+
+        <b-table
+          striped
+          hover
+          :fields="cdxUploadColumns"
+          :items="cdxUploadLogs"
+        />
+      </b-tab>
+      <b-tab title="CDX上傳設定">
         <b-table :fields="configColumns" :items="[cdxConfig]">
           <template #cell(enable)="row">
             <b-form-checkbox v-model="row.item.enable" />
@@ -70,45 +109,6 @@
             <b-form-input v-model.number="row.item.min" />
           </template>
         </b-table>
-      </b-tab>
-      <b-tab title="上傳歷史紀錄">
-        <b-form @submit.prevent>
-          <b-row>
-            <b-col cols="12">
-              <b-form-group
-                label="查詢區間"
-                label-for="dataRange"
-                label-cols-md="3"
-              >
-                <date-picker
-                  id="dataRange"
-                  v-model="range"
-                  :range="true"
-                  type="datetime"
-                  format="YYYY-MM-DD HH:mm"
-                  value-type="timestamp"
-                  :show-second="false"
-                />
-                <b-button
-                  v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-                  type="submit"
-                  variant="primary"
-                  class="ml-2"
-                  @click="getCdxUploadEvents"
-                >
-                  查詢
-                </b-button>
-              </b-form-group>
-            </b-col>
-          </b-row>
-        </b-form>
-
-        <b-table
-          striped
-          hover
-          :fields="cdxUploadColumns"
-          :items="cdxUploadLogs"
-        />
       </b-tab>
     </b-tabs>
   </b-card>

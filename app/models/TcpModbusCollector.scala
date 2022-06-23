@@ -237,9 +237,8 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
       Logger.error("There is no monitor type for calibration.")
     else if (!connected)
       Logger.error("Cannot calibration before connected.")
-    else {
+    else
       startCalibration(calibrationType, deviceConfig.monitorTypes.get)
-    }
   }
 
   def normalReceive(): Receive = {
@@ -381,29 +380,29 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
       Logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
 
     case RaiseStart =>
+      collectorState =
+        if (calibrationType.zero)
+          MonitorStatus.ZeroCalibrationStat
+        else
+          MonitorStatus.SpanCalibrationStat
+
+      instrumentOp.setState(instId, collectorState)
+      Logger.info(s"${self.path.name} => RaiseStart")
+      import scala.concurrent.duration._
+
+      val calibrationTimer =
+        for (raiseTime <- deviceConfig.raiseTime) yield
+          context.system.scheduler.scheduleOnce(FiniteDuration(raiseTime, SECONDS), self, HoldStart)
+
+      context become calibration(calibrationType, startTime, recordCalibration,
+        calibrationReadingList, zeroReading, endState, calibrationTimer)
+
       Future {
         blocking {
-          collectorState =
-            if (calibrationType.zero)
-              MonitorStatus.ZeroCalibrationStat
-            else
-              MonitorStatus.SpanCalibrationStat
-
-          instrumentOp.setState(instId, collectorState)
-
-          Logger.info(s"${self.path.name} => RaiseStart")
-          import scala.concurrent.duration._
-          if (calibrationType.zero) {
+          if (calibrationType.zero)
             triggerZeroCalibration(true)
-          } else {
+          else
             triggerSpanCalibration(true)
-          }
-          val calibrationTimer =
-            for (raiseTime <- deviceConfig.raiseTime) yield
-              context.system.scheduler.scheduleOnce(Duration(raiseTime, SECONDS), self, HoldStart)
-
-          context become calibration(calibrationType, startTime, recordCalibration,
-            calibrationReadingList, zeroReading, endState, calibrationTimer)
         }
       } onFailure calibrationErrorHandler(instId, timerOpt, endState)
 
@@ -419,37 +418,35 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
     }
 
     case DownStart =>
+      Logger.info(s"${self.path.name} => DownStart (${calibrationReadingList.length})")
+      import scala.concurrent.duration._
+
+      if (calibrationType.auto && calibrationType.zero) {
+        context become calibration(calibrationType, startTime, false, calibrationReadingList,
+          zeroReading, endState, None)
+        self ! CalibrateEnd
+      } else {
+        collectorState = MonitorStatus.CalibrationResume
+        instrumentOp.setState(instId, collectorState)
+        val calibrationTimerOpt =
+          for (downTime <- deviceConfig.downTime) yield
+            context.system.scheduler.scheduleOnce(FiniteDuration(downTime, SECONDS), self, CalibrateEnd)
+        context become calibration(calibrationType, startTime, false, calibrationReadingList,
+          zeroReading, endState, calibrationTimerOpt)
+      }
       Future {
         blocking {
-          Logger.info(s"${self.path.name} => DownStart (${calibrationReadingList.length})")
-          import scala.concurrent.duration._
-          if (calibrationType.zero) {
+          if (calibrationType.zero)
             triggerZeroCalibration(false)
-          } else {
+          else
             triggerSpanCalibration(false)
-          }
-
-
-          if (calibrationType.auto && calibrationType.zero) {
-            context become calibration(calibrationType, startTime, false, calibrationReadingList,
-              zeroReading, endState, None)
-            self ! CalibrateEnd
-          } else {
-            collectorState = MonitorStatus.CalibrationResume
-            instrumentOp.setState(instId, collectorState)
-            val calibrationTimerOpt =
-              for (downTime <- deviceConfig.downTime) yield
-                context.system.scheduler.scheduleOnce(Duration(downTime, SECONDS), self, CalibrateEnd)
-            context become calibration(calibrationType, startTime, false, calibrationReadingList,
-              zeroReading, endState, calibrationTimerOpt)
-          }
         }
       } onFailure calibrationErrorHandler(instId, timerOpt, endState)
 
     case rd: ReportData =>
-      //Logger.debug(s"calibrationReadingList #=${calibrationReadingList.length}")
-      context become calibration(calibrationType, startTime, recordCalibration, rd :: calibrationReadingList,
-        zeroReading, endState, timerOpt)
+      if (recordCalibration)
+        context become calibration(calibrationType, startTime, recordCalibration, rd :: calibrationReadingList,
+          zeroReading, endState, timerOpt)
 
     case CalibrateEnd =>
       Future {

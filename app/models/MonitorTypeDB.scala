@@ -112,6 +112,20 @@ trait MonitorTypeDB {
     }
   }
 
+  def ensureMeasuring(id: String) = {
+    if (!map.contains(id)) {
+      val mt = rangeType(id, id, "??", 2)
+      mt.measuringBy = Some(List.empty[String])
+      upsertMonitorType(mt)
+    }else{
+      val mtCase = map(id)
+      if(mtCase.measuringBy.isEmpty){
+        mtCase.measuringBy = Some(List.empty[String])
+        upsertMonitorType(mtCase)
+      }
+    }
+  }
+
   def rangeType(_id: String, desp: String, unit: String, prec: Int, accumulated:Boolean = false): MonitorType = {
     rangeOrder += 1
     MonitorType(_id, desp, unit, prec, rangeOrder, accumulated = Some(accumulated))

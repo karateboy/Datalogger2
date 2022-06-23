@@ -73,7 +73,7 @@ class CdxUploader @Inject()(alarmDB: AlarmDB, environment: Environment){
         <aqs:SampleCollectionStartDate>{ dateStr }</aqs:SampleCollectionStartDate>
         <aqs:SampleCollectionStartTime>{ timeStr }</aqs:SampleCollectionStartTime>
         {
-        val valueElem = <aqs:ReportedSampleValue>{ mtRecord.value }</aqs:ReportedSampleValue>
+        val valueElem = <aqs:ReportedSampleValue>{ mtRecord.value.getOrElse("") }</aqs:ReportedSampleValue>
         if(MonitorStatus.isValid(mtRecord.status)){
           valueElem
         }else{
@@ -89,7 +89,7 @@ class CdxUploader @Inject()(alarmDB: AlarmDB, environment: Environment){
   }
 
   def getXml(path: Path, recordList: RecordList, cdxConfig: CdxConfig): String = {
-    val xmlList = recordList.mtDataList.map { mtRecord =>
+    val xmlList = recordList.mtDataList.flatMap { mtRecord =>
       try {
         val mt = mtRecord.mtName
         if (itemIdMap.contains(mt))
@@ -101,7 +101,7 @@ class CdxUploader @Inject()(alarmDB: AlarmDB, environment: Environment){
           None
       }
     }
-    val nowStr = DateTime.now().toString("YYYY-MM-dd_hh:mm:ss")
+    val nowStr = DateTime.now().toString("YYYY-MM-dd_HH:mm:ss")
 
     val xml =
       <aqs:AirQualitySubmission xmlns:aqs="http://taqm.epa.gov.tw/taqm/aqs/schema/" Version="1.0" n1:schemaLocation="http://taqm.epa.gov.tw/taqm/aqs/schema/" xmlns:n1="http://www.w3.org/2001/XMLSchema-instance">
