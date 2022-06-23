@@ -106,7 +106,7 @@ class Adam6017Collector @Inject()
             self ! WriteDO(bit = 16, on = false)
           } catch {
             case ex: Exception =>
-              Logger.error(ex.getMessage, ex)
+              Logger.error(ex.getMessage)
               Logger.info("Try again 1 min later...")
               for(groupID <- me.group)
                 alarmOp.log(alarmOp.Src(groupID), alarmOp.Level.WARN, s"${groupOp.map(groupID).name}> 灑水設備斷線", 10)

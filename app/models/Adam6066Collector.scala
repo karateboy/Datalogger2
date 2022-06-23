@@ -38,14 +38,14 @@ object Adam6066Collector {
 }
 
 class Adam6066Collector @Inject()
-(instrumentOp: InstrumentOp, monitorTypeOp: MonitorTypeOp, system: ActorSystem)
+(instrumentOp: InstrumentOp, monitorTypeOp: MonitorTypeOp, alarmOp: AlarmOp, groupOp: GroupOp)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: Adam6066Param) extends Actor with ActorLogging {
 
   import MoxaE1212Collector._
 
   self ! ConnectHost
 
-  val myInstrument = instrumentOp.getInstrument(id)(0)
+  val me = instrumentOp.getInstrument(id)(0)
 
   import com.serotonin.modbus4j._
   import com.serotonin.modbus4j.ip.IpParameters
@@ -72,13 +72,15 @@ class Adam6066Collector @Inject()
             master.init();
             context become handler(collectorState, Some(master), diValueMap)
             import scala.concurrent.duration._
-            cancelable = system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
+            cancelable = context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Exception =>
-              Logger.error(ex.getMessage,ex)
+              Logger.error(s"$id ${ex.getMessage}")
+              for(groupID <- me.group)
+                alarmOp.log(alarmOp.Src(groupID), alarmOp.Level.WARN, s"${groupOp.map(groupID).name}> 灑水設備斷線", 10)
               //Try again
               import scala.concurrent.duration._
-              cancelable = system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
+              cancelable = context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
           }
 
         }
@@ -115,7 +117,7 @@ class Adam6066Collector @Inject()
                 v = result(idx)
               } yield {
                 newDiValueMap = newDiValueMap + (idx -> v)
-                val groupID = myInstrument.group.getOrElse(Group.PLATFORM_ADMIN)
+                val groupID = me.group.getOrElse(Group.PLATFORM_ADMIN)
                 monitorTypeOp.updateSignalValueMap(groupID, mt, v)
                 // Log on difference
                 if (!diValueMap.contains(idx) || diValueMap(idx) != v) {
@@ -125,7 +127,7 @@ class Adam6066Collector @Inject()
               }
               context become handler(collectorState, masterOpt, newDiValueMap)
               import scala.concurrent.duration._
-              cancelable = system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
+              cancelable = context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
             }
           } catch {
             case ex: Throwable =>

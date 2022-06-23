@@ -317,7 +317,7 @@ class DataCollectManager @Inject()
 
   val alertEmailTimer: Cancellable = {
     val localtime = LocalTime.now().withMillisOfDay(0)
-      .withHourOfDay(8).withMinuteOfHour(0) // 20:00
+      .withHourOfDay(12).withMinuteOfHour(0) // 20:00
     val emailTime = DateTime.now().toLocalDate().toDateTime(localtime)
     val duration = if (DateTime.now() < emailTime)
       new Duration(DateTime.now(), emailTime)
