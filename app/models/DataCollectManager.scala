@@ -317,7 +317,7 @@ class DataCollectManager @Inject()
 
   val alertEmailTimer: Cancellable = {
     val localtime = LocalTime.now().withMillisOfDay(0)
-      .withHourOfDay(12).withMinuteOfHour(0) // 20:00
+      .withHourOfDay(8).withMinuteOfHour(0) // 20:00
     val emailTime = DateTime.now().toLocalDate().toDateTime(localtime)
     val duration = if (DateTime.now() < emailTime)
       new Duration(DateTime.now(), emailTime)
@@ -787,8 +787,8 @@ class DataCollectManager @Inject()
       for(emailUsers <- userOp.getAlertEmailUsers()){
         val alertEmails = emailUsers.flatMap{
           user=>
-            for(email<-user.alertEmail; groupName <- user.group; myGroup <- groupOp.map.get(groupName)) yield
-              EmailTarget(email, groupName, myGroup.monitors)
+            for(email<-user.alertEmail; groupID <- user.group; myGroup <- groupOp.map.get(groupID)) yield
+              EmailTarget(email, myGroup.name, myGroup.monitors)
         }
         val f = errorReportOp.sendEmail(alertEmails)
         f onFailure errorHandler

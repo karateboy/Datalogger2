@@ -34,7 +34,7 @@ import org.mongodb.scala.model.Filters
 
 import javax.inject._
 
-case class EmailTarget(email:String, group:String, monitorIDs:Seq[String])
+case class EmailTarget(email:String, groupName:String, monitorIDs:Seq[String])
 @Singleton
 class ErrorReportOp @Inject()(mongoDB: MongoDB, mailerClient: MailerClient, monitorOp: MonitorOp) {
 
@@ -185,25 +185,25 @@ class ErrorReportOp @Inject()(mongoDB: MongoDB, mailerClient: MailerClient, moni
     val f = get(today.toDate)
     f onFailure errorHandler()
     for (reports <- f) yield {
-      val subReportList =
-        if (reports.isEmpty) {
-          Logger.info("Emtpy report!")
-          Seq.empty[SensorErrorReport]
-        } else {
-          val report = reports(0)
-          def getSensorErrorReport(title:String, monitorIDs:Seq[String])={
-            val monitors = monitorIDs.map(monitorOp.map.get).flatten
-            SensorErrorReport(title, monitors = monitors)
-          }
-          Seq(getSensorErrorReport("充電異常", report.powerError),
-            getSensorErrorReport("定值", report.constant),
-            getSensorErrorReport("斷線", report.disconnect))
-        }
       for (emailTarget <- emailTargetList) {
         Logger.info(s"send report to ${emailTarget.toString}")
-        val htmlBody = views.html.errorReport(today.toString("yyyy/MM/dd"), emailTarget.group, subReportList).body
+        val subReportList =
+          if (reports.isEmpty) {
+            Logger.info("Emtpy report!")
+            Seq.empty[SensorErrorReport]
+          } else {
+            val report = reports(0)
+            def getSensorErrorReport(title:String, monitorIDs:Seq[String])={
+              val monitors = monitorIDs.map(monitorOp.map.get).flatten
+              SensorErrorReport(title, monitors = monitors)
+            }
+            Seq(getSensorErrorReport("電力不足", report.powerError.filter(emailTarget.monitorIDs.contains)),
+              getSensorErrorReport("定值", report.constant.filter(emailTarget.monitorIDs.contains)),
+              getSensorErrorReport("斷線", report.disconnect.filter(emailTarget.monitorIDs.contains)))
+          }
+        val htmlBody = views.html.errorReport(today.toString("yyyy/MM/dd"), emailTarget.groupName, subReportList).body
         val mail = Email(
-          subject = s"${today.toString("yyyy/MM/dd")} PM2.5灑水系統異常設備報表",
+          subject = s"${today.toString("yyyy/MM/dd")} 空氣品質感測器異常報表",
           from = "AirIot <airiot@wecc.com.tw>",
           to = Seq(emailTarget.email),
           bodyHtml = Some(htmlBody)
