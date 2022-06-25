@@ -206,8 +206,8 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
           f onComplete {
             case Success(_)=>
               manager ! ForwardHour
-              for(cdxConfig<-sysConfigDB.getCdxConfig() if cdxConfig.enable)
-                cdxUploader.upload(recordList = recordList, cdxConfig = cdxConfig)
+              for(cdxConfig<-sysConfigDB.getCdxConfig() if cdxConfig.enable;cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes())
+                cdxUploader.upload(recordList = recordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
 
             case Failure(exception) =>
               Logger.error("failed", exception)
