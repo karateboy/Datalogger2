@@ -3,10 +3,8 @@ package models
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import org.mongodb.scala._
-import org.mongodb.scala.bson.{BsonArray, BsonDateTime, BsonInt32}
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.Filters.equal
-import org.mongodb.scala.model.Sorts.descending
+import org.mongodb.scala.bson.{BsonArray, BsonInt32}
 import org.mongodb.scala.result.DeleteResult
 import play.api._
 
@@ -245,21 +243,21 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
 
     val targetMonitors = monitorOp.mvList
     val monitorFilter =
-      Aggregates.filter(Filters.in("monitor", targetMonitors: _*))
+      Aggregates.filter(Filters.in("_id.monitor", targetMonitors: _*))
 
-    val sortFilter = Aggregates.sort(orderBy(descending("time"), descending("monitor")))
+    val sortFilter = Aggregates.sort(orderBy(descending("_id.time"), descending("_id.monitor")))
     val begin = start.minusDays(1)
     val end = start
     val timeFrameFilter = Aggregates.filter(Filters.and(
-      Filters.gte("time", begin.toDate),
-      Filters.lt("time", end.toDate)))
+      Filters.gte("_id.time", begin.toDate),
+      Filters.lt("_id.time", end.toDate)))
 
-    val latestFilter = Aggregates.group(id = "$monitor", Accumulators.first("time", "$time"),
-      Accumulators.first("mtDataList", "$mtDataList"), Accumulators.first("location", "$location"),
+    val latestFilter = Aggregates.group(id = "$_id.monitor", Accumulators.first("time", "$_id.time"),
+      Accumulators.first("mtDataList", "$mtDataList"),
       Accumulators.sum("count", 1))
 
     val projectStage = Aggregates.project(fields(
-      Projections.include("time", "monitor", "id", "mtDataList", "location", "count")))
+      Projections.include("time", "id", "mtDataList", "count")))
     val codecRegistry = fromRegistries(fromProviders(classOf[MonitorRecord], classOf[MtRecord], classOf[RecordListID]), DEFAULT_CODEC_REGISTRY)
     val col = mongoDB.database.getCollection[MonitorRecord](colName).withCodecRegistry(codecRegistry)
     col.aggregate(Seq(sortFilter, timeFrameFilter, monitorFilter, addPm25DataStage, latestFilter, projectStage))
@@ -272,14 +270,14 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
 
     val targetMonitors = monitorOp.mvList
     val monitorFilter =
-      Aggregates.filter(Filters.in("monitor", targetMonitors: _*))
+      Aggregates.filter(Filters.in("_id.monitor", targetMonitors: _*))
 
-    val sortFilter = Aggregates.sort(orderBy(descending("time"), descending("monitor")))
-    val timeFrameFilter = Aggregates.filter(Filters.and(Filters.gt("time", DateTime.now.minusMinutes(30).toDate)))
+    val sortFilter = Aggregates.sort(orderBy(descending("_id.time"), descending("_id.monitor")))
+    val timeFrameFilter = Aggregates.filter(Filters.and(Filters.gt("_id.time", DateTime.now.minusMinutes(30).toDate)))
 
     val addPm25ValueStage = Aggregates.addFields(Field("pm25", "$pm25Data.value"))
-    val latestFilter = Aggregates.group(id = "$monitor", Accumulators.first("time", "$time"),
-      Accumulators.first("mtDataList", "$mtDataList"), Accumulators.first("location", "$location"),
+    val latestFilter = Aggregates.group(id = "$_id.monitor", Accumulators.first("time", "$_id.time"),
+      Accumulators.first("mtDataList", "$mtDataList"),
       Accumulators.sum("count", 1),
       Accumulators.max("pm25Max", "$pm25"),
       Accumulators.min("pm25Min", "$pm25"))
@@ -287,7 +285,7 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
       Filters.expr(Document("$eq" -> Seq("$pm25Max", "$pm25Min")))
     ))
     val projectStage = Aggregates.project(fields(
-      Projections.include("time", "monitor", "id", "mtDataList", "location", "count", "pm25Max", "pm25Min")))
+      Projections.include("time", "id", "mtDataList", "count", "pm25Max", "pm25Min")))
     val codecRegistry = fromRegistries(fromProviders(classOf[MonitorRecord], classOf[MtRecord], classOf[RecordListID]), DEFAULT_CODEC_REGISTRY)
     val col = mongoDB.database.getCollection[MonitorRecord](colName).withCodecRegistry(codecRegistry)
     col.aggregate(Seq(sortFilter, timeFrameFilter, monitorFilter, addPm25DataStage,
