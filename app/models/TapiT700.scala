@@ -1,9 +1,9 @@
 package models
-import akka.actor.ActorSystem
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.{ProtocolParam, tcp, tcpCli}
-import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 import play.api._
+
+import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
 object T700Collector extends TapiTxx(ModelConfig("T700", List.empty[String])) {
   lazy val modelReg = readModelSetting
@@ -59,6 +59,9 @@ class T700Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
   var lastSeqNo = 0
   var lastSeqOp = true
   var lastSeqTime = DateTime.now
+
+  import context.dispatcher
+  context.system.scheduler.scheduleOnce(FiniteDuration(30, SECONDS), self, ExecuteSeq(T700_STANDBY_SEQ, true))
 
   override def reportData(regValue: ModelRegValue) = None
 
