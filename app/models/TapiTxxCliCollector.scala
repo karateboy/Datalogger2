@@ -24,6 +24,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
 
   assert(protocolParam.protocol == Protocol.tcpCli)
   Logger.info(s"$instId : ${this.getClass.toString} start")
+  var calibrating = false
 
   val dataInstrumentTypes: List[InstrumentStatusType]
 
@@ -91,12 +92,21 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
         }
       }catch{
         case ex:Exception=>
-          reset()
+          if(!calibrating)
+            reset()
+
           throw ex
       }
     }
   }
 
+  override def onCalibrationStart(): Unit = {
+    calibrating =true
+  }
+
+  override def onCalibrationEnd(): Unit = {
+    calibrating = false
+  }
   def getKeyUnitValue(line: String): Option[(String, String, Double)] = {
     try {
       if (!line.startsWith("T"))
@@ -133,7 +143,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
       } while (line != null && !line.isEmpty && (!expectOneLine || resp.isEmpty))
     } catch {
       case _: SocketTimeoutException =>
-        if (resp.isEmpty) {
+        if (resp.isEmpty && !calibrating) {
           Logger.error("no response after timeout!")
           reset()
         }
