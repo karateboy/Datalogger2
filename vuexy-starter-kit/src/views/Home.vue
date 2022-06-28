@@ -102,7 +102,6 @@ export default Vue.extend({
       {
         key: 'desp',
         label: '測項',
-        sortable: true,
       },
       {
         key: 'value',
@@ -112,7 +111,6 @@ export default Vue.extend({
           if (isNaN(v)) return `-`;
           else return `${item.value}`;
         },
-        sortable: true,
       },
       {
         key: 'unit',
@@ -531,7 +529,7 @@ export default Vue.extend({
         let src = 'S:CDX';
         let res = await axios.get(`/Alarms/${src}/1/${range[0]}/${range[1]}`);
         if (res.status === 200) {
-          this.cdxUploadLogs = res.data;
+          this.cdxUploadLogs = res.data.slice(0, 5);
         }
       } catch (err) {
         throw new Error(`$err`);

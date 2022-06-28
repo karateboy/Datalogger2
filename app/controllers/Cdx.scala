@@ -65,8 +65,9 @@ class Cdx @Inject()(cdxUploader: CdxUploader, sysConfigDB: SysConfigDB, recordDB
     val uploadPath = environment.rootPath.toPath.resolve("cdxUpload")
     for{records<-recordFuture
         cdxConfig <- sysConfigDB.getCdxConfig()
+        cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes()
         } yield {
-      records.filter(record=>record.mtDataList.nonEmpty).foreach(record=>cdxUploader.upload(record, cdxConfig))
+      records.filter(record=>record.mtDataList.nonEmpty).foreach(record=>cdxUploader.upload(record, cdxConfig, cdxMtConfigs))
       Ok(Json.obj("ok"->true))
     }
   }

@@ -41,7 +41,7 @@
                 v-model="form.range"
                 :range="true"
                 type="datetime"
-                format="YYYY-MM-DD"
+                format="YYYY-MM-DD HH:mm"
                 value-type="timestamp"
                 :show-second="false"
               />
@@ -107,8 +107,8 @@ export default Vue.extend({
 
   data() {
     const range = [
-      moment().subtract(1, 'days').hour(0).minute(0).millisecond(0).valueOf(),
-      moment().hour(23).minute(59).minute(0).millisecond(0).valueOf(),
+      moment().subtract(1, 'hour').minute(0).second(0).millisecond(0).valueOf(),
+      moment().minute(0).second(0).millisecond(0).valueOf(),
     ];
     let displayCdx = false;
     let cdxStartTime = 0;

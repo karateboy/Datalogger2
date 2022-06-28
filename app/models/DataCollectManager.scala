@@ -15,6 +15,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS, SECONDS}
 import scala.language.postfixOps
+import scala.math.BigDecimal.RoundingMode
 import scala.util.{Failure, Success}
 
 
@@ -205,8 +206,8 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
           f onComplete {
             case Success(_)=>
               manager ! ForwardHour
-              for(cdxConfig<-sysConfigDB.getCdxConfig() if cdxConfig.enable)
-                cdxUploader.upload(recordList = recordList, cdxConfig = cdxConfig)
+              for(cdxConfig<-sysConfigDB.getCdxConfig() if cdxConfig.enable;cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes())
+                cdxUploader.upload(recordList = recordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
 
             case Failure(exception) =>
               Logger.error("failed", exception)
@@ -250,7 +251,7 @@ object DataCollectManager {
             kv
         }
         val values = statusKV._2.map(_._2)
-        val avg = if (values.length == 0)
+        val avgOpt = if (values.length == 0)
           None
         else {
           mt match {
@@ -281,7 +282,10 @@ object DataCollectManager {
                 Some(values.sum / values.length)
           }
         }
-        (avg, statusKV._1)
+        val roundedAvg =
+          for(avg<-avgOpt) yield
+            BigDecimal(avg).setScale(3, RoundingMode.HALF_EVEN).doubleValue()
+        (roundedAvg, statusKV._1)
       }
 
       MtRecord(mt, minuteAvg._1, minuteAvg._2)
@@ -315,7 +319,7 @@ object DataCollectManager {
         else
           List.empty[Double]
 
-        val avg = if (values.length == 0)
+        val avgOpt = if (values.length == 0)
           None
         else {
           mt match {
@@ -346,7 +350,11 @@ object DataCollectManager {
                 Some(values.sum / values.length)
           }
         }
-        (avg, statusKV._1)
+
+        val roundedAvg =
+          for(avg<-avgOpt) yield
+            BigDecimal(avg).setScale(3, RoundingMode.HALF_EVEN).doubleValue()
+        (roundedAvg, statusKV._1)
       }
 
       MtRecord(mt, hourAvg._1, hourAvg._2)

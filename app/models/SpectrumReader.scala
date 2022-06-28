@@ -133,7 +133,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
     val tokens = file.getName.split("\\.")
 
     val mtName = s"${tokens(0)}${config.postfix}"
-    monitorTypeOp.ensureMonitorType(mtName)
+    monitorTypeOp.ensureMeasuring(mtName)
 
     val reader = CSVReader.open(file)
     var dataBegin = Instant.MAX

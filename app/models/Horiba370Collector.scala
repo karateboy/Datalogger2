@@ -1,100 +1,26 @@
 package models
 
-import akka.actor.{Actor, ActorRef, Props, _}
+import akka.actor.{Actor, ActorRef, _}
 import akka.util.ByteString
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.{ProtocolParam, tcp}
-import models.mongodb.{CalibrationOp, InstrumentStatusOp}
 import play.api._
 import play.api.libs.json.{JsError, Json}
-
+import akka.io._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 case class Horiba370Config(calibrationTime: Option[LocalTime],
                            raiseTime: Option[Int], downTime: Option[Int], holdTime: Option[Int],
                            calibrateZeoSeq: Option[String], calibrateSpanSeq: Option[String],
-                           calibratorPurgeSeq: Option[String], calibratorPurgeTime: Option[Int])
+                           calibratorPurgeSeq: Option[String], calibratorPurgeTime: Option[Int],
+                           calibrateZeoDO: Option[Int], calibrateSpanDO: Option[Int], skipInternalVault: Option[Boolean])
 
-object Horiba370Collector extends DriverOps{
-
-  case object ReadData
-  case object CheckStatus
-
-  var count = 0
-
-  trait Factory {
-    def apply(id: String, protocol: ProtocolParam, param: Horiba370Config): Actor
-  }
-
-  def getNextLoggingStatusTime = {
-    import com.github.nscala_time.time.Imports._
-    def getNextTime(period: Int) = {
-      val now = DateTime.now()
-      val nextMin = (now.getMinuteOfHour / period + 1) * period
-      val hour = (now.getHourOfDay + (nextMin / 60)) % 24
-      val nextDay = (now.getHourOfDay + (nextMin / 60)) / 24
-
-      now.withHourOfDay(hour).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0) + nextDay.day
-    }
-
-    // suppose every 10 min
-    val period = 30
-    val nextTime = getNextTime(period)
-    //Logger.debug(s"$instId next logging time= $nextTime")
-    nextTime
-  }
-
-  implicit val cfgRead = Json.reads[Horiba370Config]
-  implicit val cfgWrite = Json.writes[Horiba370Config]
-
-  override def verifyParam(json: String) = {
-    val ret = Json.parse(json).validate[Horiba370Config]
-    ret.fold(
-      error => {
-        Logger.error(JsError.toJson(error).toString())
-        throw new Exception(JsError.toJson(error).toString())
-      },
-      param => {
-        Json.toJson(param).toString()
-      })
-  }
-
-  override def getMonitorTypes(param: String): List[String] = {
-    List("CH4", "NMHC", "THC")
-  }
-
-  def validateParam(json: String) = {
-    val ret = Json.parse(json).validate[Horiba370Config]
-    ret.fold(
-      error => {
-        Logger.error(JsError.toJson(error).toString())
-        throw new Exception(JsError.toJson(error).toString())
-      },
-      param => param)
-  }
-
-  override def getCalibrationTime(param: String) = {
-    val config = validateParam(param)
-    config.calibrationTime
-  }
-
-
-  import Protocol.ProtocolParam
-  import akka.actor._
-
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor ={
-    assert(f.isInstanceOf[Horiba370Collector.Factory])
-    val f2 = f.asInstanceOf[Horiba370Collector.Factory]
-    val driverParam = validateParam(param)
-    f2(id, protocol, driverParam)
-  }
-
+object Horiba370Collector extends DriverOps {
   val FlameStatus = "FlameStatus"
   val Press = "Press"
   val Flow = "Flow"
   val Temp = "Temp"
-
   val InstrumentStatusTypeList = List(
     InstrumentStatusType(FlameStatus, 10, "Flame Status", "0:Extinguishing/1:Ignition sequence/2:Ignition"),
     InstrumentStatusType(Press + 0, 37, "Presssure 0", "kPa"),
@@ -121,11 +47,83 @@ object Horiba370Collector extends DriverOps{
     InstrumentStatusType(Temp + 8, 39, "Temperature 8", "C"),
     InstrumentStatusType(Temp + 9, 39, "Temperature 9", "C"))
 
+  implicit val cfgRead = Json.reads[Horiba370Config]
+  implicit val cfgWrite = Json.writes[Horiba370Config]
+  var count = 0
+
+  def getNextLoggingStatusTime = {
+    import com.github.nscala_time.time.Imports._
+    def getNextTime(period: Int) = {
+      val now = DateTime.now()
+      val nextMin = (now.getMinuteOfHour / period + 1) * period
+      val hour = (now.getHourOfDay + (nextMin / 60)) % 24
+      val nextDay = (now.getHourOfDay + (nextMin / 60)) / 24
+
+      now.withHourOfDay(hour).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0) + nextDay.day
+    }
+
+    // suppose every 10 min
+    val period = 30
+    val nextTime = getNextTime(period)
+    //Logger.debug(s"$instId next logging time= $nextTime")
+    nextTime
+  }
+
+  override def verifyParam(json: String) = {
+    val ret = Json.parse(json).validate[Horiba370Config]
+    ret.fold(
+      error => {
+        Logger.error(JsError.toJson(error).toString())
+        throw new Exception(JsError.toJson(error).toString())
+      },
+      param => {
+        Json.toJson(param).toString()
+      })
+  }
+
+  override def getMonitorTypes(param: String): List[String] = {
+    List("CH4", "NMHC", "THC")
+  }
+
+
+  import Protocol.ProtocolParam
+  import akka.actor._
+
+  override def getCalibrationTime(param: String) = {
+    val config = validateParam(param)
+    config.calibrationTime
+  }
+
+  def validateParam(json: String) = {
+    val ret = Json.parse(json).validate[Horiba370Config]
+    ret.fold(
+      error => {
+        Logger.error(JsError.toJson(error).toString())
+        throw new Exception(JsError.toJson(error).toString())
+      },
+      param => param)
+  }
+
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt: Option[AnyRef]): Actor = {
+    assert(f.isInstanceOf[Horiba370Collector.Factory])
+    val f2 = f.asInstanceOf[Horiba370Collector.Factory]
+    val driverParam = validateParam(param)
+    f2(id, protocol, driverParam)
+  }
+
   override def id: String = "horiba370"
 
   override def description: String = "Horiba APXX-370"
 
   override def protocol: List[String] = List(tcp)
+
+  trait Factory {
+    def apply(id: String, protocol: ProtocolParam, param: Horiba370Config): Actor
+  }
+
+  case object ReadData
+
+  case object CheckStatus
 }
 
 import javax.inject._
@@ -138,18 +136,35 @@ class Horiba370Collector @Inject()
   import Horiba370Collector._
   import TapiTxx._
 
-  import scala.concurrent.{Future, blocking}
   import scala.concurrent.duration._
+  import scala.concurrent.{Future, blocking}
 
   Logger.info(s"Horiba370Collector created $id:${protocol} ${config}")
+  val timer = context.system.scheduler.schedule(Duration(1, SECONDS), Duration(2, SECONDS), self, ReadData)
+  val statisTimer = context.system.scheduler.schedule(Duration(30, SECONDS), Duration(1, MINUTES), self, CheckStatus)
+  val mtCH4 = "CH4"
+  val mtNMHC = "NMHC"
+  val mtTHC = "THC"
+
   var (collectorState, instrumentStatusTypesOpt) = {
     val instrument = instrumentOp.getInstrument(id)
     val inst = instrument(0)
     (inst.state, inst.statusType)
   }
+  if (instrumentStatusTypesOpt.isEmpty) {
+    instrumentStatusTypesOpt = Some(InstrumentStatusTypeList)
+    instrumentOp.updateStatusType(id, InstrumentStatusTypeList)
+  } else {
+    val instrumentStatusTypes = instrumentStatusTypesOpt.get
+    if (instrumentStatusTypes.length != InstrumentStatusTypeList.length) {
+      instrumentOp.updateStatusType(id, InstrumentStatusTypeList)
+    }
+  }
 
   var nextLoggingStatusTime = getNextLoggingStatusTime
   var statusMap = Map.empty[String, Double]
+  var raiseStartTimerOpt: Option[Cancellable] = None
+  var calibrateTimerOpt: Option[Cancellable] = None
 
   def logStatus() = {
     import com.github.nscala_time.time.Imports._
@@ -167,26 +182,8 @@ class Horiba370Collector @Inject()
     }
   }
 
-  if (instrumentStatusTypesOpt.isEmpty) {
-    instrumentStatusTypesOpt = Some(InstrumentStatusTypeList)
-    instrumentOp.updateStatusType(id, InstrumentStatusTypeList)
-  } else {
-    val instrumentStatusTypes = instrumentStatusTypesOpt.get
-    if (instrumentStatusTypes.length != InstrumentStatusTypeList.length) {
-      instrumentOp.updateStatusType(id, InstrumentStatusTypeList)
-    }
-  }
-
-  val timer = context.system.scheduler.schedule(Duration(1, SECONDS), Duration(2, SECONDS), self, ReadData)
-
-  val statisTimer = context.system.scheduler.schedule(Duration(30, SECONDS), Duration(1, MINUTES), self, CheckStatus)
-
   // override postRestart so we don't call preStart and schedule a new message
   override def postRestart(reason: Throwable) = {}
-
-  val mtCH4 = ("CH4")
-  val mtNMHC = ("NMHC")
-  val mtTHC = ("THC")
 
   def processResponse(data: ByteString)(implicit calibrateRecordStart: Boolean) = {
     def getResponse = {
@@ -252,21 +249,6 @@ class Horiba370Collector @Inject()
     }
   }
 
-  case object RaiseStart
-
-  case object HoldStart
-
-  case object DownStart
-
-  case object CalibrateEnd
-
-  import akka.io._
-  import context.system
-
-  import java.net._
-
-  IO(UdpConnected) ! UdpConnected.Connect(self, new InetSocketAddress(protocol.host.get, 53700))
-
   def receive = {
     case UdpConnected.Connected =>
       Logger.info("UDP connected...")
@@ -276,11 +258,17 @@ class Horiba370Collector @Inject()
   def reqData(connection: ActorRef) = {
     val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
       'R', '0', '0', '1', 0x2)
-    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
+    val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b)
     val fcsStr = "%x".format(FCS.toByte)
     val reqFrame = reqCmd ++ (fcsStr.getBytes("UTF-8")).:+(0x3.toByte)
     connection ! UdpConnected.Send(ByteString(reqFrame))
   }
+
+  import context.system
+
+  import java.net._
+
+  IO(UdpConnected) ! UdpConnected.Connect(self, new InetSocketAddress(protocol.host.get, 53700))
 
   def reqFlameStatus(connection: ActorRef) = {
     val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
@@ -374,12 +362,6 @@ class Horiba370Collector @Inject()
     connection ! UdpConnected.Send(ByteString(reqFrame))
   }
 
-  object CommCmd extends Enumeration {
-    val ValueAcquisition = Value
-  }
-
-  var raiseStartTimerOpt: Option[Cancellable] = None
-
   def setupSpanRaiseStartTimer(connection: ActorRef) {
     raiseStartTimerOpt =
       if (config.calibratorPurgeTime.isDefined && config.calibratorPurgeTime.get != 0) {
@@ -472,8 +454,6 @@ class Horiba370Collector @Inject()
       setupSpanRaiseStartTimer(connection)
   }
 
-  var calibrateTimerOpt: Option[Cancellable] = None
-
   def calibrationHandler(connection: ActorRef, calibrationType: CalibrationType,
                          startTime: com.github.nscala_time.time.Imports.DateTime,
                          recording: Boolean,
@@ -502,30 +482,28 @@ class Horiba370Collector @Inject()
 
           instrumentOp.setState(id, collectorState)
 
-          Logger.info(s"${calibrationType} RasieStart")
-          val cmd =
-            if (calibrationType.zero) {
-              config.calibrateZeoSeq map {
-                seqNo =>
-                  context.parent ! ExecuteSeq(seqNo, true)
-              }
+          Logger.info(s"${calibrationType} RaiseStart")
 
+          if (calibrationType.zero) {
+            for (seqNo <- config.calibrateZeoSeq)
+              context.parent ! ExecuteSeq(seqNo, true)
+
+            if (!config.skipInternalVault.getOrElse(false))
               reqZeroCalibration(connection)
-            } else {
-              config.calibrateSpanSeq map {
-                seqNo =>
-                  context.parent ! ExecuteSeq(seqNo, true)
-              }
+          } else {
+            for (seqNo <- config.calibrateSpanSeq)
+              context.parent ! ExecuteSeq(seqNo, true)
 
+            if (!config.skipInternalVault.getOrElse(false))
               reqSpanCalibration(connection)
-            }
-          for(raiseTime<-config.raiseTime)
+          }
+          for (raiseTime <- config.raiseTime)
             calibrateTimerOpt = Some(context.system.scheduler.scheduleOnce(Duration(raiseTime, SECONDS), self, HoldStart))
         }
       }
 
     case ReportData(mtDataList) =>
-      if(recording){
+      if (recording) {
         val data = mtDataList
         context become calibrationHandler(connection, calibrationType, startTime, recording,
           data ::: calibrationDataList, zeroMap)
@@ -535,7 +513,7 @@ class Horiba370Collector @Inject()
       Logger.debug(s"${calibrationType} HoldStart")
       context become calibrationHandler(connection, calibrationType, startTime, true,
         calibrationDataList, zeroMap)
-      for(holdTime<-config.holdTime)
+      for (holdTime <- config.holdTime)
         calibrateTimerOpt = Some(system.scheduler.scheduleOnce(Duration(holdTime, SECONDS), self, DownStart))
 
     case DownStart =>
@@ -543,30 +521,16 @@ class Horiba370Collector @Inject()
       context become calibrationHandler(connection, calibrationType, startTime, false,
         calibrationDataList, zeroMap)
 
-      if (calibrationType.zero) {
-        config.calibrateZeoSeq map {
-          seqNo =>
-            context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
-        }
+      context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+
+      calibrateTimerOpt = if (calibrationType.auto && calibrationType.zero) {
+        self ! CalibrateEnd
+        None
       } else {
-        config.calibrateSpanSeq map {
-          seqNo =>
-            context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
-        }
-      }
-
-      Future {
-        blocking {
-
-          calibrateTimerOpt = if (calibrationType.auto && calibrationType.zero)
-            Some(system.scheduler.scheduleOnce(Duration(1, SECONDS), self, CalibrateEnd))
-          else {
-            collectorState = MonitorStatus.CalibrationResume
-            instrumentOp.setState(id, collectorState)
-            for(downTime<-config.downTime) yield
-              system.scheduler.scheduleOnce(Duration(downTime, SECONDS), self, CalibrateEnd)
-          }
-        }
+        collectorState = MonitorStatus.CalibrationResume
+        instrumentOp.setState(id, collectorState)
+        for (downTime <- config.downTime) yield
+          system.scheduler.scheduleOnce(Duration(downTime, SECONDS), self, CalibrateEnd)
       }
 
     case CalibrateEnd =>
@@ -649,7 +613,19 @@ class Horiba370Collector @Inject()
   }
 
   override def postStop() = {
-      timer.cancel()
-      statisTimer.cancel()
+    timer.cancel()
+    statisTimer.cancel()
+  }
+
+  case object RaiseStart
+
+  case object HoldStart
+
+  case object DownStart
+
+  case object CalibrateEnd
+
+  object CommCmd extends Enumeration {
+    val ValueAcquisition = Value
   }
 }
