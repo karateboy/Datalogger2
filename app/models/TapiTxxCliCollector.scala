@@ -162,7 +162,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
 
   override def connectHost: Unit = {
     val socket = new Socket(protocolParam.host.get, 3000)
-    socket.setSoTimeout(500)
+    socket.setSoTimeout(1000)
     socketOpt = Some(socket)
     outOpt = Some(socket.getOutputStream())
     inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream())))

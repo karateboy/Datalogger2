@@ -52,7 +52,7 @@ class AlarmOp @Inject()(mongodb: MongoDB) extends AlarmDB {
     import org.mongodb.scala.bson.BsonDateTime
     val startB: BsonDateTime = start
     val endB: BsonDateTime = end
-    val f = collection.find(and(gte("time", startB), lt("time", endB), gte("level", level))).sort(ascending("time")).toFuture()
+    val f = collection.find(and(gte("time", startB), lt("time", endB), gte("level", level))).sort(descending("time")).toFuture()
     f onFailure errorHandler()
     for(docs<-f) yield
       docs.map { toAlarm }
@@ -65,7 +65,7 @@ class AlarmOp @Inject()(mongodb: MongoDB) extends AlarmDB {
     val f = collection.find(and(equal("src", src),
       gte("time", startB),
       lt("time", endB),
-      gte("level", level))).sort(ascending("time")).toFuture()
+      gte("level", level))).sort(descending("time")).toFuture()
 
     f onFailure errorHandler()
     for(docs<-f) yield
@@ -75,7 +75,7 @@ class AlarmOp @Inject()(mongodb: MongoDB) extends AlarmDB {
     import org.mongodb.scala.bson.BsonDateTime
     val startB: BsonDateTime = start
     val endB: BsonDateTime = end
-    val f = collection.find(and(gte("time", startB), lt("time", endB))).sort(ascending("time")).toFuture()
+    val f = collection.find(and(gte("time", startB), lt("time", endB))).sort(descending("time")).toFuture()
 
     for (docs <- f)
       yield docs.map { toAlarm }

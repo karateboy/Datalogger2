@@ -144,6 +144,7 @@
   </b-form>
 </template>
 <script>
+import { isNumber } from 'highcharts';
 import Vue from 'vue';
 export default Vue.extend({
   props: {
@@ -186,17 +187,19 @@ export default Vue.extend({
   methods: {
     justify() {
       const paramObj = this.paramObj;
-      if (paramObj.calibrationTime === '') paramObj.calibrationTime = null;
-      if (paramObj.raiseTime === '') paramObj.raiseTime = null;
-      if (paramObj.holdTime === '') paramObj.holdTime = null;
-      if (paramObj.downTime === '') paramObj.downTime = null;
-      if (paramObj.calibrateZeoSeq === '') paramObj.calibrateZeoSeq = null;
-      if (paramObj.calibrateSpanSeq === '') paramObj.calibrateSpanSeq = null;
-      if (paramObj.calibratePurgeSeq === '') paramObj.calibratePurgeSeq = null;
-      if (paramObj.calibratePurgeTime === '')
-        paramObj.calibratePurgeTime = null;
-      if (paramObj.calibrateZeoDO === '') paramObj.calibrateZeoDO = null;
-      if (paramObj.calibrateSpanDO === '') paramObj.calibrateSpanDO = null;
+      if (paramObj.calibrationTime === '') paramObj.calibrationTime = undefined;
+      if (paramObj.raiseTime === '') paramObj.raiseTime = undefined;
+      if (paramObj.holdTime === '') paramObj.holdTime = undefined;
+      if (paramObj.downTime === '') paramObj.downTime = undefined;
+      if (paramObj.calibrateZeoSeq === '') paramObj.calibrateZeoSeq = undefined;
+      if (paramObj.calibrateSpanSeq === '')
+        paramObj.calibrateSpanSeq = undefined;
+      if (paramObj.calibratorPurgeSeq === '')
+        paramObj.calibratorPurgeSeq = undefined;
+      if (!isNumber(paramObj.calibratorPurgeTime))
+        paramObj.calibratorPurgeTime = undefined;
+      if (paramObj.calibrateZeoDO === '') paramObj.calibrateZeoDO = undefined;
+      if (paramObj.calibrateSpanDO === '') paramObj.calibrateSpanDO = undefined;
     },
     onChange(evt) {
       this.justify();
