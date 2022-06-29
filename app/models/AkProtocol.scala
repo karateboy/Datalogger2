@@ -1,7 +1,5 @@
 package models
 
-import play.api.Logger
-
 object AkProtocol {
   case class AskRegCmd(station:String, channel:String, code:String){
     def getCmd = {

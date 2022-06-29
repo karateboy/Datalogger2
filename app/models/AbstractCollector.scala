@@ -3,6 +3,7 @@ package models
 import akka.actor._
 import models.ModelHelper._
 import models.Protocol.ProtocolParam
+import models.TapiTxx.T700_STANDBY_SEQ
 import play.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -177,8 +178,8 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
   def executeSeq(str: String, bool: Boolean): Unit = {}
 
   def startCalibration(calibrationType: CalibrationType, monitorTypes: List[String]): Unit = {
-
     Logger.info(s"start calibrating ${monitorTypes.mkString(",")}")
+    onCalibrationStart()
     import com.github.nscala_time.time.Imports._
     val endState = collectorState
     if (!calibrationType.zero &&
@@ -384,7 +385,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
                 calibrationOp.insertFuture(cal)
               }
             }
-
+            onCalibrationEnd()
             Logger.info("All monitorTypes are calibrated.")
             collectorState = endState
             instrumentOp.setState(instId, collectorState)
@@ -400,6 +401,14 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   def setCalibrationReg(address: Int, on: Boolean): Unit
 
+  def onCalibrationStart(): Unit = {
+
+  }
+
+  def onCalibrationEnd() = {
+
+  }
+
   def resetToNormal() {
     try {
       deviceConfig.calibrateZeoDO map {
@@ -412,7 +421,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           context.parent ! ExecuteSeq(seq, false)
       }
 
-      if (deviceConfig.skipInternalVault != Some(true)) {
+      if (!deviceConfig.skipInternalVault.contains(true)) {
         for (reg <- getCalibrationReg) {
           setCalibrationReg(reg.zeroAddress, false)
           setCalibrationReg(reg.spanAddress, false)
@@ -431,10 +440,14 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           context.parent ! WriteDO(doBit, v)
       }
 
-      deviceConfig.calibrateZeoSeq.foreach {
-        seq =>
-          context.parent ! ExecuteSeq(seq, v)
-      }
+      if(v){
+        deviceConfig.calibrateZeoSeq.foreach {
+          seq =>
+            context.parent ! ExecuteSeq(seq, v)
+        }
+      }else
+        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+
 
       if (deviceConfig.skipInternalVault != Some(true)) {
         for (reg <- getCalibrationReg)
@@ -453,10 +466,13 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           context.parent ! WriteDO(doBit, v)
       }
 
-      deviceConfig.calibrateSpanSeq map {
-        seq =>
-          context.parent ! ExecuteSeq(seq, v)
-      }
+      if(v){
+        deviceConfig.calibrateSpanSeq map {
+          seq =>
+            context.parent ! ExecuteSeq(seq, v)
+        }
+      }else
+        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
 
       if (deviceConfig.skipInternalVault != Some(true)) {
         for (reg <- getCalibrationReg)
