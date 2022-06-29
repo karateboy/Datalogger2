@@ -69,7 +69,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
   def fileParser(file: File): Unit = {
     import scala.collection.mutable.ListBuffer
     for (mt <- mtList)
-      monitorTypeOp.ensureMonitorType(mt)
+      monitorTypeOp.ensureMeasuring(mt)
 
     Logger.debug(s"parsing ${file.getAbsolutePath}")
     val skipLines = waitReadyResult(sysConfig.getWeatherSkipLine())

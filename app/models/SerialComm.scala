@@ -72,23 +72,6 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
 
   def getMessageByCrWithTimeout(timeout: Int): List[String] = handleWithTimeout(getMessageUntilCR)(timeout)
 
-  private def getMessageUntilCR() = {
-    def splitMessage(buf: Array[Byte]): List[String] = {
-      val idx = buf.indexOf('\r')
-      if (idx == -1) {
-        Nil
-      } else {
-        val (a, rest) = buf.splitAt(idx + 1)
-        readBuffer = rest
-        new String(a) :: splitMessage(rest)
-      }
-    }
-
-    readBuffer = readBuffer ++ readPort
-
-    splitMessage(readBuffer)
-  }
-
   def getMessageByLfWithTimeout(timeout: Int): List[String] = handleWithTimeout(getMessageUntilLF)(timeout)
 
   private def getMessageUntilLF() = {
@@ -133,11 +116,33 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
 
   def getMessageUntilCrWithTimeout(timeout: Int): List[String] = handleWithTimeout(getMessageUntilCR)(timeout)
 
+  private def getMessageUntilCR() = {
+    def splitMessage(buf: Array[Byte]): List[String] = {
+      val idx = buf.indexOf('\r')
+      if (idx == -1) {
+        Nil
+      } else {
+        val (a, rest) = buf.splitAt(idx + 1)
+        readBuffer = rest
+        new String(a) :: splitMessage(rest)
+      }
+    }
+
+    readBuffer = readBuffer ++ readPort
+
+    splitMessage(readBuffer)
+  }
+
   def close = {
     Logger.info(s"port is closed")
     is.close
     os.close
     port.closePort()
+    readBuffer = Array.empty[Byte]
+  }
+
+  def purgeBuffer() = {
+    port.purgePort(SerialPort.PURGE_RXCLEAR)
     readBuffer = Array.empty[Byte]
   }
 
@@ -172,11 +177,6 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
         Array.empty[Byte]
     }
   }
-
-  def purgeBuffer() = {
-    port.purgePort(SerialPort.PURGE_RXCLEAR)
-    readBuffer = Array.empty[Byte]
-  }
 }
 
 object SerialComm {
@@ -205,6 +205,40 @@ object SerialComm {
       SerialPort.DATABITS_8,
       SerialPort.STOPBITS_1,
       SerialPort.PARITY_NONE); //Set params. Also you can set params by this string: serialPort.setParams(9600, 8, 1, 0);
+
+    port.setFlowControlMode(SerialPort.FLOWCONTROL_NONE)
+
+    val is = new SerialInputStream(port)
+    val os = new SerialOutputStream(port)
+    SerialComm(port, is, os)
+  }
+
+  def open(n: Int, baudRate: Int,
+           dataBit: Int = SerialPort.DATABITS_8,
+           stopBits: Int = SerialPort.STOPBITS_1,
+           parity: Int = SerialPort.PARITY_NONE): SerialComm = {
+    val port = new SerialPort(s"COM${n}")
+    var success = false
+    var errorCount = 0
+    do {
+      try {
+        if (!port.openPort())
+          throw new Exception(s"Failed to open COM$n")
+        success = true
+      } catch {
+        case ex: Throwable =>
+          errorCount = errorCount + 1
+          Thread.sleep(100)
+          if (errorCount >= 5)
+            throw ex
+      }
+    } while (!success && errorCount < 5)
+
+
+    port.setParams(baudRate,
+      dataBit,
+      stopBits,
+      parity); //Set params. Also you can set params by this string: serialPort.setParams(9600, 8, 1, 0);
 
     port.setFlowControlMode(SerialPort.FLOWCONTROL_NONE)
 

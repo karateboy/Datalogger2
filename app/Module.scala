@@ -90,6 +90,7 @@ class Module(environment: Environment,
     bindActorFactory[MetOne1020Collector, MetOne1020.Factory]
   	bindActorFactory[AkDrvCollector, AkDrv.Factory]
 	  bindActorFactory[DuoCollector, Duo.Factory]
+    bindActorFactory[EcoPhysics88PCollector, EcoPhysics88P.Factory]
 
     bindActorFactory[ForwardManager, ForwardManager.Factory]
     bindActorFactory[HourRecordForwarder, HourRecordForwarder.Factory]
