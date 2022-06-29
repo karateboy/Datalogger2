@@ -4,7 +4,6 @@ import akka.actor.Actor
 import com.github.nscala_time.time.Imports
 import com.google.inject.assistedinject.Assisted
 import jssc.SerialPort
-import models.MetOne1020.instrumentStatusKeyList
 import models.Protocol.ProtocolParam
 import play.api.Logger
 import play.api.libs.json.Json
@@ -17,7 +16,33 @@ object EcoPhysics88P extends AbstractDrv(_id = "EcoPhysics88P", desp = "Eco Phys
   val instrumentStatusKeyList = List(
     InstrumentStatusType(key = MonitorType.NO, addr = 1, desc = "NO", "ppm"),
     InstrumentStatusType(key = MonitorType.NO2, addr = 2, desc = "NO2", "ppm"),
-    InstrumentStatusType(key = MonitorType.NOX, addr = 3, desc = "NOX", "ppm")
+    InstrumentStatusType(key = MonitorType.NOX, addr = 3, desc = "NOX", "ppm"),
+
+    InstrumentStatusType(key = "Instrument internal temp", addr = 4,
+      desc = "Instrument internal temperature", "C"),
+    InstrumentStatusType(key = "Peltier cooling temp", addr = 5,
+      desc = "Peltier cooling temperature", "C"),
+    InstrumentStatusType(key = "reaction chamber temp", addr = 6,
+      desc = "reaction chamber temperature", "C"),
+    InstrumentStatusType(key = "converter temp", addr = 7,
+      desc = "converter temperature", "C"),
+    InstrumentStatusType(key = "hot tubing temp", addr = 8,
+      desc = "hot tubing temperature", "C"),
+    InstrumentStatusType(key = "ozone destroyer temp", addr = 9,
+      desc = "ozone destroyer temperature", "C"),
+    InstrumentStatusType(key = "ozone generator temp", addr = 10,
+      desc = "ozone generator temperature", "C"),
+    InstrumentStatusType(key = "vacumm pump temp", addr = 11,
+      desc = "vacumm pump temperature", "C"),
+
+    InstrumentStatusType(key = "bypass regulation pressure.", addr = 12,
+      desc = "bypass regulation pressure.", "mbar"),
+    InstrumentStatusType(key = "reaction chamber pressure.", addr = 13,
+      desc = "reaction chamber pressure.", "mbar"),
+    InstrumentStatusType(key = "zero calbration gas pressure.", addr = 14,
+      desc = "zero calbration gas pressure.", "mbar"),
+    InstrumentStatusType(key = "span calbration gas pressure.", addr = 15,
+      desc = "span calbration gas pressure.", "mbar")
   )
 
   val map: Map[Int, InstrumentStatusType] = instrumentStatusKeyList.map(p => p.addr -> p).toMap
@@ -75,24 +100,51 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] =
     EcoPhysics88P.instrumentStatusKeyList
 
+  def getDataPart(reply: String): Array[String] = {
+    val dataStr = reply.dropWhile(_ != '\u0002').drop(1).takeWhile(_ != '\u0003')
+    dataStr.split(",")
+  }
+
+  def handleReply(reply:String, statusTypeList: List[InstrumentStatusType]): List[(InstrumentStatusType, Double)] = {
+    val tokens = getDataPart(reply)
+    statusTypeList.zip(tokens).flatMap(pair=>
+      try{
+        Some((pair._1, pair._2.trim.toDouble))
+      }catch {
+        case _:Throwable=>
+          None
+      })
+  }
+
   override def readReg(statusTypeList: List[InstrumentStatusType], full: Boolean): Future[Option[ModelRegValue2]] = Future {
     blocking {
       try {
         val ret =
           for (serial <- serialOpt) yield {
             serial.port.writeBytes(makeCmd("RD0"))
-            Thread.sleep(1000)
-            val replies = serial.port.readString()
-            Logger.info(s"#=${replies.length} ${replies}")
-            if (replies != null) {
-              val dataStr = replies.dropWhile(_ != '\u0002').drop(1).takeWhile(_ != '\u0003')
-              val tokens = dataStr.split(",")
+            Thread.sleep(500)
+            val reply = serial.port.readString()
+            if (reply != null) {
+              val tokens = getDataPart(reply)
               val regs = List((EcoPhysics88P.instrumentStatusKeyList(0), tokens(0).toDouble),
                 (EcoPhysics88P.instrumentStatusKeyList(2), tokens(1).toDouble),
                 (EcoPhysics88P.instrumentStatusKeyList(1), tokens(4).toDouble))
-              Some(ModelRegValue2(inputRegs = regs,
-                modeRegs = List.empty[(InstrumentStatusType, Boolean)],
-                warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
+
+              if(full){
+                serial.port.writeBytes(makeCmd("RP"))
+                Thread.sleep(500)
+                val presureRegs = handleReply(serial.port.readString(), statusTypeList.filter(st=>st.addr>=12 && st.addr <=15))
+                serial.port.writeBytes(makeCmd("RT"))
+                Thread.sleep(500)
+                val tempRegs = handleReply(serial.port.readString(), statusTypeList.filter(st=>st.addr>=4 && st.addr <=11))
+                Some(ModelRegValue2(inputRegs = regs ++ presureRegs ++ tempRegs,
+                  modeRegs = List.empty[(InstrumentStatusType, Boolean)],
+                  warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
+              }else{
+                Some(ModelRegValue2(inputRegs = regs,
+                  modeRegs = List.empty[(InstrumentStatusType, Boolean)],
+                  warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
+              }
             } else {
               Logger.error("no reply")
               None
@@ -110,7 +162,7 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
     val cmdTxt = s"${STX}0${deviceConfig.slaveID}$cmd$ETX"
     val buffer: Array[Byte] = cmdTxt.getBytes
     val BCC = buffer.foldLeft(0: Byte)((a, b) => (a ^ b).toByte)
-    buffer:+ BCC
+    buffer :+ BCC
   }
 
 
@@ -123,22 +175,33 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
         SerialPort.STOPBITS_1,
         SerialPort.PARITY_NONE))
     val cmd = makeCmd("HR1")
-    for(serial<-serialOpt){
+    for (serial <- serialOpt) {
       serial.port.writeBytes(cmd)
       Thread.sleep(1500)
-      val replies = serial.port.readHexString()
-      Logger.info(s"${instId}> #=${replies.length} ${replies}")
+      serial.port.readHexString()
     }
-
-
-
   }
 
   override def getDataRegList: Seq[DataReg] = EcoPhysics88P.getDataRegList
 
-  override def getCalibrationReg: Option[CalibrationReg] = None
+  override def getCalibrationReg: Option[CalibrationReg] = Some(CalibrationReg(0, 2))
 
-  override def setCalibrationReg(address: Int, on: Boolean): Unit = {}
+  override def setCalibrationReg(address: Int, on: Boolean): Unit = {
+    for (serial <- serialOpt) {
+      val m = if(address == 0)
+        "00"
+      else
+        "02"
+      val n = if(on)
+        "1"
+      else
+        "0"
+      val cmd = s"TV$m,$n"
+      serial.port.writeBytes(makeCmd(cmd))
+      Thread.sleep(1000)
+      serial.port.readHexString()
+    }
+  }
 
   override def postStop(): Unit = {
     for (serial <- serialOpt)
