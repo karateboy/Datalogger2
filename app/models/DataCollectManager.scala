@@ -745,7 +745,7 @@ class DataCollectManager @Inject()
     case CheckSensorStstus =>
       val today = DateTime.now().withMillisOfDay(0)
       Logger.info(s"update daily error report ${today}")
-
+      self ! CheckConstantSensor
       // It is tricky less than 90% is calculated based on beginnning of today.
       val sensorCountFuture = recordOp
         .getSensorCount(recordOp.MinCollection)()
