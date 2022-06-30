@@ -67,11 +67,6 @@ object EcoPhysics88P extends AbstractDrv(_id = "EcoPhysics88P", desp = "Eco Phys
     f2(id, desc = super.description, config, protocol)
   }
 
-  override def verifyParam(json: String) = {
-    Logger.info(json)
-    json
-  }
-
   trait Factory {
     def apply(@Assisted("instId") instId: String, @Assisted("desc") desc: String, @Assisted("config") config: DeviceConfig,
               @Assisted("protocolParam") protocol: ProtocolParam): Actor
@@ -94,6 +89,7 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
   val STX = "\u0002"
 
   Logger.info(s"EcoPhysics88P collector start")
+  Logger.info(deviceConfig.toString)
   val ETX = "\u0003"
   var serialOpt: Option[SerialComm] = None
 
@@ -109,7 +105,7 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
     val tokens = getDataPart(reply)
     statusTypeList.zip(tokens).flatMap(pair=>
       try{
-        Some((pair._1, pair._2.trim.toDouble))
+        Some((pair._1, pair._2.replace(" ","").trim.toDouble))
       }catch {
         case _:Throwable=>
           None
@@ -188,10 +184,7 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
 
   override def setCalibrationReg(address: Int, on: Boolean): Unit = {
     for (serial <- serialOpt) {
-      val m = if(address == 0)
-        "00"
-      else
-        "02"
+      val m = "00"
       val n = if(on)
         "1"
       else
