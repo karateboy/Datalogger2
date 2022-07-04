@@ -6,6 +6,9 @@
     <tr>
         <td style="width:70px">設備序號</td>
         <td style="width:70px">名稱</td>
+        <td style="width:138.429px">
+            <div>超連結</div>
+        </td>
     </tr>
     @for(m <- monitors){
     <tr>
@@ -14,6 +17,11 @@
         </td>
         <td style="width:70px">
             @{m.desc}
+        </td>
+        <td style="width:138.429px">
+            @if(m.location.isDefined){
+            <a href="https://maps.google.com?q=@{m.location.get(1)},@{m.location.get(0)}" target="_blank">google map連結</a>
+            }
         </td>
     </tr>
     }

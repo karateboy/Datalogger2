@@ -7,7 +7,9 @@ import play.api.libs.json._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-case class Monitor(_id: String, desc: String, var monitorTypes: Seq[String] = Seq.empty[String])
+case class Monitor(_id: String, desc: String,
+                   var monitorTypes: Seq[String] = Seq.empty[String],
+                   var location: Option[Seq[Double]] = None)
 
 import javax.inject._
 object Monitor{

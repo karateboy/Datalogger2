@@ -236,6 +236,19 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     Aggregates.addFields(Field("pm25Data",
       Document("$arrayElemAt" -> bsonArray)))
   }
+
+  def addMtDataStage(mt:String): Bson = {
+    val filterDoc = Document("$filter" -> Document(
+      "input" -> "$mtDataList",
+      "as" -> "mtData",
+      "cond" -> Document(
+        "$eq" -> Seq("$$mtData.mtName", mt)
+      )))
+    val bsonArray = BsonArray(filterDoc.toBsonDocument, new BsonInt32(0))
+    Aggregates.addFields(Field(s"${mt}Data",
+      Document("$arrayElemAt" -> bsonArray)))
+  }
+
   def getSensorCount(colName: String)
                     (start: DateTime = DateTime.now()): Future[Seq[MonitorRecord]] = {
     import org.mongodb.scala.model.Projections._
@@ -290,6 +303,35 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     val col = mongoDB.database.getCollection[MonitorRecord](colName).withCodecRegistry(codecRegistry)
     col.aggregate(Seq(sortFilter, timeFrameFilter, monitorFilter, addPm25DataStage,
       addPm25ValueStage, latestFilter, constantFilter, projectStage))
+      .allowDiskUse(true).toFuture()
+  }
+
+  def getLast30MinMonitorTypeConstantSensor(colName: String, mt:String): Future[Seq[MonitorRecord]] = {
+    import org.mongodb.scala.model.Projections._
+    import org.mongodb.scala.model.Sorts._
+
+    val targetMonitors = monitorOp.mvList
+    val monitorFilter =
+      Aggregates.filter(Filters.in("_id.monitor", targetMonitors: _*))
+
+    val sortFilter = Aggregates.sort(orderBy(descending("_id.time"), descending("_id.monitor")))
+    val timeFrameFilter = Aggregates.filter(Filters.and(Filters.gt("_id.time", DateTime.now.minusMinutes(30).toDate)))
+
+    val latestFilter = Aggregates.group(id = "$_id.monitor", Accumulators.first("time", "$_id.time"),
+      Accumulators.first("mtDataList", "$mtDataList"),
+      Accumulators.sum("count", 1),
+      Accumulators.max(s"${mt}Max", s"$$$mt"),
+      Accumulators.min(s"${mt}Min", s"$$$mt"))
+    val constantFilter = Aggregates.filter(Filters.and(Filters.gte("count", 8),
+      Filters.expr(Document("$eq" -> Seq(s"${mt}Max", s"${mt}Min")))
+    ))
+    val addMtValueStage = Aggregates.addFields(Field(s"$mt", s"$$${mt}Data.value"))
+    val projectStage = Aggregates.project(fields(
+      Projections.include("time", "id")))
+    val codecRegistry = fromRegistries(fromProviders(classOf[MonitorRecord], classOf[MtRecord], classOf[RecordListID]), DEFAULT_CODEC_REGISTRY)
+    val col = mongoDB.database.getCollection[MonitorRecord](colName).withCodecRegistry(codecRegistry)
+    col.aggregate(Seq(sortFilter, timeFrameFilter, monitorFilter, addMtDataStage(mt),
+      addMtValueStage, latestFilter, constantFilter, projectStage))
       .allowDiskUse(true).toFuture()
   }
 
