@@ -14,9 +14,9 @@ import scala.concurrent.{Future, blocking}
 object EcoPhysics88P extends AbstractDrv(_id = "EcoPhysics88P", desp = "Eco Physics 88P",
   protocols = List(Protocol.serial)) {
   val instrumentStatusKeyList = List(
-    InstrumentStatusType(key = MonitorType.NO, addr = 1, desc = "NO", "ppm"),
-    InstrumentStatusType(key = MonitorType.NO2, addr = 2, desc = "NO2", "ppm"),
-    InstrumentStatusType(key = MonitorType.NOX, addr = 3, desc = "NOX", "ppm"),
+    InstrumentStatusType(key = "NO_eco", addr = 1, desc = "NO", "ppm"),
+    InstrumentStatusType(key = "NO2_eco", addr = 2, desc = "NO2", "ppm"),
+    InstrumentStatusType(key = "NOX_eco", addr = 3, desc = "NOX", "ppm"),
 
     InstrumentStatusType(key = "Instrument internal temp", addr = 4,
       desc = "Instrument internal temperature", "C"),
@@ -54,7 +54,7 @@ object EcoPhysics88P extends AbstractDrv(_id = "EcoPhysics88P", desp = "Eco Phys
   }
 
   override def getMonitorTypes(param: String): List[String] =
-    List(MonitorType.NO, MonitorType.NO2, MonitorType.NOX)
+    List("NO_eco", "NO2_eco", "NOX_eco")
 
   override def getCalibrationTime(param: String): Option[Imports.LocalTime] = {
     val config = Json.parse(param).validate[DeviceConfig].asOpt.get
@@ -65,11 +65,6 @@ object EcoPhysics88P extends AbstractDrv(_id = "EcoPhysics88P", desp = "Eco Phys
     val f2 = f.asInstanceOf[EcoPhysics88P.Factory]
     val config = Json.parse(param).validate[DeviceConfig].asOpt.get
     f2(id, desc = super.description, config, protocol)
-  }
-
-  override def verifyParam(json: String) = {
-    Logger.info(json)
-    json
   }
 
   trait Factory {
@@ -94,6 +89,7 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
   val STX = "\u0002"
 
   Logger.info(s"EcoPhysics88P collector start")
+  Logger.info(deviceConfig.toString)
   val ETX = "\u0003"
   var serialOpt: Option[SerialComm] = None
 
@@ -109,7 +105,7 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
     val tokens = getDataPart(reply)
     statusTypeList.zip(tokens).flatMap(pair=>
       try{
-        Some((pair._1, pair._2.trim.toDouble))
+        Some((pair._1, pair._2.replace(" ","").trim.toDouble))
       }catch {
         case _:Throwable=>
           None
@@ -188,10 +184,7 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
 
   override def setCalibrationReg(address: Int, on: Boolean): Unit = {
     for (serial <- serialOpt) {
-      val m = if(address == 0)
-        "00"
-      else
-        "02"
+      val m = "00"
       val n = if(on)
         "1"
       else
