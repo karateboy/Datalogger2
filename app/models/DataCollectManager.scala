@@ -777,7 +777,19 @@ class DataCollectManager @Inject()
       errorReportOp.setConstantRecordTime(today, DateTime.now().getTime)
       for (ret <- f) {
         for (m <- ret) {
-          errorReportOp.addConstantSensor(today, m._id);
+          errorReportOp.addConstantSensor(today, m._id)
+        }
+      }
+      val f2 = recordOp.getLast30MinMonitorTypeConstantSensor(recordOp.MinCollection, MonitorType.H2S)
+      for (ret <- f2) {
+        for (m <- ret) {
+          errorReportOp.addH2SConstantSensor(today, m._id)
+        }
+      }
+      val f3 = recordOp.getLast30MinMonitorTypeConstantSensor(recordOp.MinCollection, MonitorType.NH3)
+      for (ret <- f3) {
+        for (m <- ret) {
+          errorReportOp.addNH3ConstantSensor(today, m._id)
         }
       }
 
