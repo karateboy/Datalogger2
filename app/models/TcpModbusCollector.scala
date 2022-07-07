@@ -227,7 +227,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
           timerOpt = if (protocol.protocol == Protocol.tcp)
             Some(context.system.scheduler.scheduleOnce(Duration(2, SECONDS), self, ReadRegister))
           else
-            Some(context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
+            Some(context.system.scheduler.scheduleOnce(Duration(5, SECONDS), self, ReadRegister))
         }
       }
     }
@@ -397,14 +397,14 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
       context become calibration(calibrationType, startTime, recordCalibration,
         calibrationReadingList, zeroReading, endState, calibrationTimer)
 
-      Future {
-        blocking {
-          if (calibrationType.zero)
-            triggerZeroCalibration(true)
-          else
-            triggerSpanCalibration(true)
-        }
-      } onFailure calibrationErrorHandler(instId, timerOpt, endState)
+      try {
+        if (calibrationType.zero)
+          triggerZeroCalibration(true)
+        else
+          triggerSpanCalibration(true)
+      } catch {
+        calibrationErrorHandler(instId, timerOpt, endState)
+      }
 
     case HoldStart => {
       Logger.info(s"${self.path.name} => HoldStart")
@@ -434,14 +434,16 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
         context become calibration(calibrationType, startTime, false, calibrationReadingList,
           zeroReading, endState, calibrationTimerOpt)
       }
-      Future {
-        blocking {
-          if (calibrationType.zero)
-            triggerZeroCalibration(false)
-          else
-            triggerSpanCalibration(false)
-        }
-      } onFailure calibrationErrorHandler(instId, timerOpt, endState)
+
+      try {
+        if (calibrationType.zero)
+          triggerZeroCalibration(false)
+        else
+          triggerSpanCalibration(false)
+      } catch {
+        calibrationErrorHandler(instId, timerOpt, endState)
+      }
+
 
     case rd: ReportData =>
       if (recordCalibration)
@@ -550,52 +552,42 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
   }
 
   def triggerZeroCalibration(v: Boolean) {
-    try {
-      deviceConfig.calibrateZeoDO map {
-        doBit =>
-          context.parent ! WriteDO(doBit, v)
-      }
 
-      deviceConfig.calibrateZeoSeq map {
-        seq =>
-          context.parent ! ExecuteSeq(seq, v)
+    deviceConfig.calibrateZeoDO map {
+      doBit =>
+        context.parent ! WriteDO(doBit, v)
+    }
 
-      }
+    deviceConfig.calibrateZeoSeq map {
+      seq =>
+        context.parent ! ExecuteSeq(seq, v)
 
-      if (deviceConfig.skipInternalVault != Some(true)) {
-        for (reg <- modelReg.calibrationReg) {
-          val locator = BaseLocator.coilStatus(deviceConfig.slaveID, reg.zeroAddress)
-          masterOpt.get.setValue(locator, v)
-        }
+    }
+
+    if (deviceConfig.skipInternalVault != Some(true)) {
+      for (reg <- modelReg.calibrationReg) {
+        val locator = BaseLocator.coilStatus(deviceConfig.slaveID, reg.zeroAddress)
+        masterOpt.get.setValue(locator, v)
       }
-    } catch {
-      case ex: Exception =>
-        ModelHelper.logException(ex)
     }
   }
 
   def triggerSpanCalibration(v: Boolean) {
-    try {
-      deviceConfig.calibrateSpanDO map {
-        doBit =>
-          context.parent ! WriteDO(doBit, v)
-      }
+    deviceConfig.calibrateSpanDO map {
+      doBit =>
+        context.parent ! WriteDO(doBit, v)
+    }
 
-      deviceConfig.calibrateSpanSeq map {
-        seq =>
-          context.parent ! ExecuteSeq(seq, v)
-      }
+    deviceConfig.calibrateSpanSeq map {
+      seq =>
+        context.parent ! ExecuteSeq(seq, v)
+    }
 
-      if (deviceConfig.skipInternalVault != Some(true)) {
-        for (reg <- modelReg.calibrationReg) {
-          val locator = BaseLocator.coilStatus(deviceConfig.slaveID, reg.spanAddress)
-          masterOpt.get.setValue(locator, v)
-        }
-
+    if (deviceConfig.skipInternalVault != Some(true)) {
+      for (reg <- modelReg.calibrationReg) {
+        val locator = BaseLocator.coilStatus(deviceConfig.slaveID, reg.spanAddress)
+        masterOpt.get.setValue(locator, v)
       }
-    } catch {
-      case ex: Exception =>
-        ModelHelper.logException(ex)
     }
   }
 

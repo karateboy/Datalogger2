@@ -170,12 +170,6 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
         SerialPort.DATABITS_7,
         SerialPort.STOPBITS_1,
         SerialPort.PARITY_NONE))
-    val cmd = makeCmd("HR1")
-    for (serial <- serialOpt) {
-      serial.port.writeBytes(cmd)
-      Thread.sleep(1500)
-      serial.port.readHexString()
-    }
   }
 
   override def getDataRegList: Seq[DataReg] = EcoPhysics88P.getDataRegList
@@ -184,6 +178,10 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
 
   override def setCalibrationReg(address: Int, on: Boolean): Unit = {
     for (serial <- serialOpt) {
+      serial.port.writeBytes(makeCmd("HR1"))
+      Thread.sleep(1000)
+      serial.port.readHexString()
+
       val m = "00"
       val n = if(on)
         "1"
@@ -191,6 +189,10 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
         "0"
       val cmd = s"TV$m,$n"
       serial.port.writeBytes(makeCmd(cmd))
+      Thread.sleep(1000)
+      serial.port.readHexString()
+
+      serial.port.writeBytes(makeCmd("HR0"))
       Thread.sleep(1000)
       serial.port.readHexString()
     }
