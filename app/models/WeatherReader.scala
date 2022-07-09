@@ -7,17 +7,20 @@ import models.mongodb.RecordOp
 import play.api._
 
 import java.io.File
-import java.time.format.DateTimeFormatter
+import java.time.format.{DateTimeFormatter, DateTimeParseException}
 import java.time.{Instant, LocalDateTime, ZoneId}
 import java.util.Date
 import scala.concurrent.duration.{FiniteDuration, MINUTES, SECONDS}
 import scala.concurrent.{Future, blocking}
 import scala.io.{Codec, Source}
 
-case class WeatherReaderConfig(enable: Boolean, dir: String)
+case class WeatherReaderConfig(enable: Boolean, dir: String, model:String)
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object WeatherReader {
+  val CR800_MODEL = "CR800"
+  val CR300_MODEL = "CR300"
+  val models = Seq(CR800_MODEL, CR300_MODEL)
   def start(configuration: Configuration, actorSystem: ActorSystem,
             sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
             recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) = {
@@ -25,9 +28,10 @@ object WeatherReader {
       for {config <- configuration.getConfig("weatherReader")
            enable <- config.getBoolean("enable")
            dir <- config.getString("dir")
+           modelOpt = config.getString("model")
            }
       yield
-        WeatherReaderConfig(enable, dir)
+        WeatherReaderConfig(enable, dir, modelOpt.getOrElse(CR800_MODEL))
     }
 
     for (config <- getConfig if config.enable)
@@ -43,12 +47,26 @@ object WeatherReader {
 
 class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
                     monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) extends Actor {
-  Logger.info(s"WeatherReader start reading: ${config.dir}")
+  Logger.info(s"WeatherReader start processing ${config.model}: ${config.dir}")
 
   import WeatherReader._
 
-  val mtList = Seq(MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION, MonitorType.TEMP, MonitorType.HUMID,
+  val CR800_MT_LIST = Seq(MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION, MonitorType.TEMP, MonitorType.HUMID,
     MonitorType.PRESS, MonitorType.SOLAR, "Photometric", MonitorType.RAIN, "Visible", "Battery")
+
+  val CR300_MT_LIST = Seq(MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION, "WINSPEED_MAX", MonitorType.TEMP, MonitorType.HUMID, MonitorType.RAIN)
+
+  val mtList: Seq[String] = config.model match {
+    case CR300_MODEL =>
+      CR300_MT_LIST
+
+    case CR800_MODEL =>
+      CR800_MT_LIST
+
+    case _ =>
+      throw new Exception(s"unknown ${config.model} model")
+  }
+
   var timer: Cancellable = context.system.scheduler.scheduleOnce(FiniteDuration(5, SECONDS), self, ParseReport)
 
   override def receive: Receive = {
@@ -84,10 +102,15 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
       for (line <- lines if processedLine < 2000) {
         try {
           val token: Array[String] = line.split(",")
-          if (token.length < 12) {
+          if (token.length < mtList.length) {
             throw new Exception("unexpected file length")
           }
-          val dt: LocalDateTime = LocalDateTime.parse(token(0), DateTimeFormatter.ofPattern("\"yyyy-MM-dd HH:mm:ss\""))
+          val dt: LocalDateTime = try {
+            LocalDateTime.parse(token(0), DateTimeFormatter.ofPattern("\"yyyy-MM-dd HH:mm:ss\""))
+          }catch {
+            case _: DateTimeParseException =>
+              LocalDateTime.parse(token(0), DateTimeFormatter.ofPattern("\"yyyy/MM/dd HH:mm:ss\""))
+          }
 
           if (dt.isBefore(dataBegin))
             dataBegin = dt
