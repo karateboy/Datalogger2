@@ -1,6 +1,6 @@
 <template>
   <b-row class="match-height">
-    <b-col lg="9" md="12">
+    <b-col v-if="isRealtimMeasuring" lg="9" md="12">
       <b-card
         class="text-center"
         header="即時監測資訊"
@@ -12,8 +12,8 @@
         <div id="realtimeChart"></div>
       </b-card>
     </b-col>
-    <b-col lg="3" class="text-center">
-      <b-card no-body>
+    <b-col v-if="isRealtimMeasuring" lg="3" class="text-center">
+      <b-card no-body border-variant="primary">
         <b-table
           :fields="fields"
           :items="realTimeStatus"
@@ -57,7 +57,7 @@
       lg="4"
       xl="3"
     >
-      <b-card>
+      <b-card border-variant="primary">
         <div :id="`history_${mt}`"></div>
       </b-card>
     </b-col>
@@ -72,7 +72,7 @@
       <b-card
         :header="`${getMtName(mt)}玫瑰圖`"
         header-class="h4 display text-center"
-        border-variant="primary"
+        border-variant="success"
         header-bg-variant="success"
         header-text-variant="white"
       >
@@ -200,6 +200,9 @@ export default Vue.extend({
       let mtInterest = this.userInfo.monitorTypeOfInterest as Array<string>;
       let ret = mtInterest.filter(mt => mt !== 'WD_DIR');
       return ret;
+    },
+    isRealtimMeasuring(): boolean {
+      return this.realTimeStatus.length !== 0;
     },
   },
   async mounted() {

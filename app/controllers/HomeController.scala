@@ -1,6 +1,7 @@
 package controllers
 
 import akka.actor.ActorRef
+import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import models.ForwardManager.{ForwardHourRecord, ForwardMinRecord}
 import models.ModelHelper.errorHandler
@@ -212,14 +213,17 @@ class HomeController @Inject()(environment: play.api.Environment,
           "停用"
       }
 
-      def getCalibrationTime = {
+      def getCalibrationTime: Option[Imports.LocalTime] = {
         val instTypeCase = instrumentTypeOp.map(inst.instType)
         instTypeCase.driver.getCalibrationTime(inst.param)
       }
 
-      def getInfoClass = {
-        val mtStr = getMonitorTypes.map {
-          monitorTypeOp.map(_).desp
+      def getInfoClass: InstrumentInfo = {
+        val mtStr = getMonitorTypes.map { mt =>
+          if(monitorTypeOp.map.contains(mt))
+            monitorTypeOp.map(mt).desp
+          else
+            mt
         }.mkString(",")
         val protocolParam =
           inst.protocol.protocol match {
@@ -243,19 +247,19 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.toJson(ret2))
   }
 
-  def getInstrumentList = Security.Authenticated {
+  def getInstrumentList: Action[AnyContent] = Security.Authenticated {
     val ret = instrumentOp.getInstrumentList()
 
     Ok(Json.toJson(ret))
   }
 
-  def getDoInstrumentList = Security.Authenticated {
+  def getDoInstrumentList: Action[AnyContent] = Security.Authenticated {
     val ret = instrumentOp.getInstrumentList().filter(p => instrumentTypeOp.DoInstruments.contains(p.instType))
 
     Ok(Json.toJson(ret))
   }
 
-  def getInstrument(id: String) = Security.Authenticated {
+  def getInstrument(id: String): Action[AnyContent] = Security.Authenticated {
     val ret = instrumentOp.getInstrument(id)
     if (ret.isEmpty)
       BadRequest(s"No such instrument: $id")
