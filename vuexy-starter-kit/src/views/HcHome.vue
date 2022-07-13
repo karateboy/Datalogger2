@@ -216,7 +216,9 @@ export default Vue.extend({
       if (isNumber(this.weatherSummary.windir)) {
         let v = this.weatherSummary.windir as number;
         let index = Math.floor((v + 11.25) / 22.5) % 16;
-        return `windir${index}.png`;
+        return process.env.NODE_ENV === 'production'
+          ? `/dist/windir${index}.png`
+          : `/windir${index}.png`;
       } else return '';
     },
     winDirText(): string {
