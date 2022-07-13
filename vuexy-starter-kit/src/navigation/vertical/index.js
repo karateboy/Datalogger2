@@ -4,8 +4,14 @@ export default [
     icon: 'ActivityIcon',
     children: [
       {
-        title: '儀錶板',
+        title: '首頁',
         route: 'home',
+        action: 'read',
+        resource: 'Dashboard',
+      },
+      {
+        title: '儀錶板',
+        route: 'dashboard',
         action: 'read',
         resource: 'Dashboard',
       },

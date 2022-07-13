@@ -11,10 +11,10 @@
 
     <!-- Left Col -->
     <div
-      class="bookmark-wrapper align-items-center flex-grow-1 d-none d-lg-flex"
+      class="bookmark-wrapper align-items-center flex-grow-1 d-none d-lg-flex text-center"
     >
-      <dark-Toggler class="d-none d-lg-block" />
-      <h2 class="m-0">空氣品質資料蒐集系統</h2>
+      <b-img src="@/assets/images/logo/logo.png" fluid></b-img>
+      <h2 class="m-0 text-center">新竹市政府氣象監測系統</h2>
     </div>
 
     <b-navbar-nav class="nav align-items-center ml-auto">
@@ -38,21 +38,6 @@
             badge-variant="success"
           />
         </template>
-
-        <b-dropdown-item link-class="d-flex align-items-center">
-          <feather-icon size="16" icon="UserIcon" class="mr-50" />
-          <span>Profile</span>
-        </b-dropdown-item>
-
-        <b-dropdown-item link-class="d-flex align-items-center">
-          <feather-icon size="16" icon="MailIcon" class="mr-50" />
-          <span>Inbox</span>
-        </b-dropdown-item>
-
-        <b-dropdown-item link-class="d-flex align-items-center">
-          <feather-icon size="16" icon="CheckSquareIcon" class="mr-50" />
-          <span>Task</span>
-        </b-dropdown-item>
 
         <b-dropdown-item link-class="d-flex align-items-center">
           <feather-icon size="16" icon="MessageSquareIcon" class="mr-50" />
@@ -79,7 +64,6 @@ import jscookie from 'js-cookie';
 export default {
   components: {
     // Navbar Components
-    DarkToggler,
   },
   props: {
     toggleVerticalMenuActive: {

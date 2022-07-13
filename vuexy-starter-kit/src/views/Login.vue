@@ -19,7 +19,7 @@
       <b-col lg="4" class="d-flex align-items-center auth-bg px-2 p-lg-5">
         <b-col sm="8" md="6" lg="12" class="px-xl-2 mx-auto">
           <b-card-title title-tag="h1" class="font-weight-bold mb-1">
-            昱山環境資料蒐集系統
+            新竹市政府氣象監測系統
           </b-card-title>
           <b-card-text class="mb-2"> 請登入您的帳號 </b-card-text>
 
@@ -120,8 +120,8 @@ export default {
   data() {
     return {
       status: '',
-      password: '',
-      userEmail: '',
+      password: 'abc123',
+      userEmail: 'sales@wecc.com.tw',
       sideImg: require('@/assets/images/pages/login-v2.svg'),
       // validation rulesimport store from '@/store/index'
       required,
@@ -141,7 +141,9 @@ export default {
       return this.sideImg;
     },
   },
-  mounted() {},
+  mounted() {
+    this.validationForm();
+  },
   methods: {
     ...mapMutations(['setLogin']),
     ...mapMutations('user', ['setUserInfo']),

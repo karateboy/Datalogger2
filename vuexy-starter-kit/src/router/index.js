@@ -13,6 +13,20 @@ const router = new VueRouter({
     {
       path: '/',
       name: 'home',
+      component: () => import('@/views/HcHome.vue'),
+      meta: {
+        pageTitle: '首頁',
+        breadcrumb: [
+          {
+            text: '',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
+      path: '/dashboard',
+      name: 'dashboard',
       component: () => import('@/views/Home.vue'),
       meta: {
         pageTitle: '儀表板',
