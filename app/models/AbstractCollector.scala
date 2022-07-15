@@ -26,8 +26,8 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
   import TapiTxxCollector._
 
   self ! ConnectHost
-  var readRegTimer: Option[Cancellable] = None
-  var (collectorState: String, instrumentStatusTypesOpt) = {
+  @volatile var readRegTimer: Option[Cancellable] = None
+  @volatile var (collectorState: String, instrumentStatusTypesOpt) = {
     val instList = instrumentOp.getInstrument(instId)
     if (instList.nonEmpty) {
       val inst: Instrument = instList(0)
@@ -35,9 +35,9 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     } else
       (MonitorStatus.NormalStat, None)
   }
-  var connected = false
-  var oldModelReg: Option[ModelRegValue2] = None
-  var nextLoggingStatusTime = {
+  @volatile var connected = false
+  @volatile var oldModelReg: Option[ModelRegValue2] = None
+  @volatile var nextLoggingStatusTime = {
     def getNextTime(period: Int) = {
       import com.github.nscala_time.time.Imports._
       val now = DateTime.now()
@@ -153,7 +153,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     case ReadRegister =>
       readRegHanlder(false)
 
-    case SetState(id, state) =>
+    case SetState(_, state) =>
       if (state == MonitorStatus.ZeroCalibrationStat) {
         Logger.error(s"Unexpected command: SetState($state)")
       } else {
@@ -245,6 +245,8 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
         instrumentOp.setState(instId, targetState)
         resetToNormal
         context become normalPhase
+      }else {
+        Logger.info(s"During calibration ignore $targetState change.")
       }
       Logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
 
@@ -276,7 +278,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
         }
       } onFailure calibrationErrorHandler(instId, calibrationTimerOpt, endState)
 
-    case HoldStart => {
+    case HoldStart =>
       Logger.info(s"${self.path.name} => HoldStart")
       import scala.concurrent.duration._
       val calibrationTimer = {
@@ -284,8 +286,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           context.system.scheduler.scheduleOnce(Duration(holdTime, SECONDS), self, DownStart)
       }
       context become calibrationPhase(calibrationType, startTime, true, calibrationReadingList,
-        zeroReading, endState, calibrationTimerOpt)
-    }
+        zeroReading, endState, calibrationTimer)
 
     case DownStart =>
       Logger.info(s"${self.path.name} => DownStart (${calibrationReadingList.length})")

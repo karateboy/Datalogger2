@@ -24,13 +24,13 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
 
   assert(protocolParam.protocol == Protocol.tcpCli)
   Logger.info(s"$instId : ${this.getClass.toString} start")
-  var calibrating = false
+  @volatile var calibrating = false
 
   val dataInstrumentTypes: List[InstrumentStatusType]
 
-  private var socketOpt: Option[Socket] = None
-  private var outOpt: Option[OutputStream] = None
-  private var inOpt: Option[BufferedReader] = None
+  @volatile private var socketOpt: Option[Socket] = None
+  @volatile private var outOpt: Option[OutputStream] = None
+  @volatile private var inOpt: Option[BufferedReader] = None
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = {
     Logger.info(s"Probe $model")

@@ -29,7 +29,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
   val WarnKey = "Warn"
   var timerOpt: Option[Cancellable] = None
   var masterOpt: Option[ModbusMaster] = None
-  var (collectorState: String, instrumentStatusTypesOpt) = {
+  @volatile var (collectorState: String, instrumentStatusTypesOpt) = {
     val instList = instrumentOp.getInstrument(instId)
     if (instList.nonEmpty) {
       val inst: Instrument = instList(0)
@@ -364,7 +364,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
     case ReadRegister =>
       readRegFuture(recordCalibration)
 
-    case SetState(id, targetState) =>
+    case SetState(_, targetState) =>
       if (targetState == MonitorStatus.ZeroCalibrationStat) {
         Logger.info("Already in calibration. Ignore it")
       } else if (targetState == MonitorStatus.NormalStat) {
@@ -376,6 +376,8 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
         instrumentOp.setState(instId, targetState)
         resetToNormal
         context become normalReceive
+      } else {
+        Logger.info(s"During calibration ignore $targetState state change")
       }
       Logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
 
