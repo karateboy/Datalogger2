@@ -5,14 +5,16 @@
         <b-card
           class="text-center"
           header="風向"
-          header-class="h4 display text-center"
+          header-class="h1 display justify-content-center"
           border-variant="primary"
           header-bg-variant="primary"
           header-text-variant="white"
         >
-          <b-img v-if="winDirImg !== ''" :src="winDirImg" fluid></b-img>
+          <div v-if="winDirImg !== ''" class="flex-grow-1 align-content-center">
+            <b-img v-if="winDirImg !== ''" :src="winDirImg" fluid></b-img>
+            <h1>{{ winDirText }}</h1>
+          </div>
           <h1 v-else>無資料</h1>
-          <h1>{{ winDirText }}</h1>
         </b-card>
       </b-col>
       <b-col cols="9">
@@ -21,7 +23,7 @@
             <b-card
               class="text-center"
               header="陣風"
-              header-class="h4 display text-center"
+              header-class="h1 display justify-content-center"
               border-variant="primary"
               header-bg-variant="primary"
               header-text-variant="white"
@@ -39,7 +41,7 @@
             ><b-card
               class="text-center"
               header="溫度"
-              header-class="h4 display text-center"
+              header-class="h1 display justify-content-center"
               border-variant="primary"
               header-bg-variant="primary"
               header-text-variant="white"
@@ -53,7 +55,7 @@
             <b-card
               class="text-center"
               header="平均風力"
-              header-class="h4 display text-center"
+              header-class="h1 display justify-content-center"
               border-variant="primary"
               header-bg-variant="primary"
               header-text-variant="white"
@@ -71,7 +73,7 @@
             <b-card
               class="text-center"
               header="濕度"
-              header-class="h4 display text-center"
+              header-class="h1 display justify-content-center"
               border-variant="primary"
               header-bg-variant="primary"
               header-text-variant="white"
@@ -89,7 +91,7 @@
         <b-card
           class="text-center"
           header="即時雨量"
-          header-class="h4 display text-center"
+          header-class="h1 display justify-content-center"
           border-variant="primary"
           header-bg-variant="primary"
           header-text-variant="white"
@@ -127,7 +129,7 @@
         <b-card
           class="text-center"
           header="整點雨量"
-          header-class="h4 display text-center"
+          header-class="h1 display justify-content-center"
           border-variant="primary"
           header-bg-variant="primary"
           header-text-variant="white"
@@ -167,15 +169,30 @@
           </b-table-simple>
         </b-card>
       </b-col>
+      <b-col v-for="mt in windRoseList" :key="`rose${mt}`" cols="12" md="3">
+        <b-card
+          :header="`${getMtName(mt)}玫瑰圖`"
+          header-class="h1 display justify-content-center"
+          border-variant="success"
+          header-bg-variant="success"
+          header-text-variant="white"
+        >
+          <div :id="`rose_${mt}`">尚無資料</div>
+        </b-card>
+      </b-col>
     </b-row>
   </div>
 </template>
+<style scoped></style>
 <script lang="ts">
 import Vue from 'vue';
 import { mapActions, mapGetters, mapState } from 'vuex';
 import axios from 'axios';
 import useAppConfig from '../@core/app-config/useAppConfig';
 import { isNumber } from 'highcharts';
+import highcharts from 'highcharts';
+import highchartMore from 'highcharts/highcharts-more';
+import { MonitorType } from './types';
 import moment from 'moment';
 
 interface WeatherSummary {
@@ -211,6 +228,11 @@ export default Vue.extend({
     skin() {
       const { skin } = useAppConfig();
       return skin;
+    },
+    windRoseList(): Array<string> {
+      let mtInterest = this.userInfo.monitorTypeOfInterest as Array<string>;
+      let ret = mtInterest.filter(mt => mt !== 'WD_DIR');
+      return ret;
     },
     winDirImg(): string {
       if (isNumber(this.weatherSummary.windir)) {
@@ -253,8 +275,10 @@ export default Vue.extend({
     await this.getUserInfo();
     const me = this;
     this.getWeatherSummary();
+    for (const mt of me.windRoseList) me.queryWindRose(mt);
     this.refreshTimer = setInterval(() => {
       me.getWeatherSummary();
+      for (const mt of me.windRoseList) me.queryWindRose(mt);
     }, 60000);
   },
   beforeDestroy() {
@@ -299,6 +323,68 @@ export default Vue.extend({
       let end = moment(start);
       end.add(1, 'hour');
       return `${start.hour()}-${end.hour()}時`;
+    },
+    getMtName(mt: string): string {
+      let mtInfo = this.mtMap.get(mt) as MonitorType;
+      if (mtInfo !== undefined) return mtInfo.desp;
+      else return '';
+    },
+    async queryWindRose(mt: string) {
+      const now = new Date().getTime();
+      const oneHourBefore = now - 60 * 60 * 1000;
+      const monitors = 'me';
+
+      try {
+        const url = `/WindRose/me/${mt}/min/16/${oneHourBefore}/${now}`;
+        const res = await axios.get(url);
+        const ret = res.data;
+        ret.pane = {
+          size: '90%',
+        };
+
+        ret.yAxis = {
+          min: 0,
+          endOnTick: false,
+          showLastLabel: true,
+          title: {
+            text: '頻率 (%)',
+          },
+          labels: {
+            formatter(this: any) {
+              return this.value + '%';
+            },
+          },
+          reversedStacks: false,
+        };
+
+        ret.tooltip = {
+          valueDecimals: 2,
+          valueSuffix: '%',
+        };
+
+        ret.plotOptions = {
+          series: {
+            stacking: 'normal',
+            shadow: false,
+            groupPadding: 0,
+            pointPlacement: 'on',
+          },
+        };
+
+        ret.exporting = {
+          enabled: false,
+        };
+        ret.credits = {
+          enabled: false,
+          href: 'http://www.wecc.com.tw/',
+        };
+
+        ret.title.x = -70;
+        highchartMore(highcharts);
+        highcharts.chart(`rose_${mt}`, ret);
+      } catch (err) {
+      } finally {
+      }
     },
   },
 });
