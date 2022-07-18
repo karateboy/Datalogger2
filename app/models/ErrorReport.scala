@@ -2,7 +2,7 @@ package models
 
 import org.joda.time.DateTime
 import org.mongodb.scala.model.{ReplaceOptions, Updates}
-import org.mongodb.scala.result.UpdateResult
+import org.mongodb.scala.result.{InsertOneResult, UpdateResult}
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.libs.mailer.{Email, MailerClient}
@@ -17,9 +17,8 @@ case class ErrorReport(_id: Date, noErrorCode: Seq[String], powerError: Seq[Stri
                        constant: Seq[String], ineffective: Seq[EffectiveRate], disconnect:Seq[String],
                        inspections: Seq[ErrorAction], actions:Seq[ErrorAction], constantRecordTime: Option[Long],
                        disconnectRecordTime: Option[Long],
-                       dailyChecked: Boolean = false,
-                       constantH2S: Option[Seq[String]] = None,
-                       constantNH3: Option[Seq[String]] = None)
+                       constantH2S: Seq[String],
+                       constantNH3: Seq[String])
 case class SensorErrorReport(errorType:String, monitors:Seq[Monitor])
 
 object ErrorReport {
@@ -134,9 +133,20 @@ class ErrorReportOp @Inject()(mongoDB: MongoDB, mailerClient: MailerClient, moni
     })
   }
 
-  def insertEmptyIfNotExist(date: Date) = {
-    val emptyDoc = ErrorReport(date, Seq.empty[String], Seq.empty[String], Seq.empty[String], Seq.empty[EffectiveRate],
-      Seq.empty[String], Seq.empty[ErrorAction], Seq.empty[ErrorAction], None, None)
+  def insertEmptyIfNotExist(date: Date): Future[InsertOneResult] = {
+    val emptyDoc = ErrorReport(_id = date,
+      noErrorCode = Seq.empty[String],
+      powerError = Seq.empty[String],
+      constant = Seq.empty[String],
+      ineffective = Seq.empty[EffectiveRate],
+      disconnect = Seq.empty[String],
+      inspections = Seq.empty[ErrorAction],
+      actions = Seq.empty[ErrorAction],
+      constantRecordTime = None,
+      disconnectRecordTime = None,
+      constantH2S = Seq.empty[String],
+      constantNH3 = Seq.empty[String]
+    )
     collection.insertOne(emptyDoc).toFuture()
   }
 
@@ -215,18 +225,13 @@ class ErrorReportOp @Inject()(mongoDB: MongoDB, mailerClient: MailerClient, moni
               val monitors = monitorIDs.map(monitorOp.map.get).flatten
               SensorErrorReport(title, monitors = monitors)
             }
-            val constantH2sReport = for(constantH2S<-report.constantH2S) yield
-              getSensorErrorReport("H2S定值", constantH2S.filter(emailTarget.monitorIDs.contains))
-
-            val constantNH3Report = for(constantNH3<-report.constantNH3) yield
-              getSensorErrorReport("NH3定值", constantNH3.filter(emailTarget.monitorIDs.contains))
-
-            val optReport = Seq(constantH2sReport, constantNH3Report).flatten
 
             Seq(getSensorErrorReport("電力不足", report.powerError.filter(emailTarget.monitorIDs.contains)),
               getSensorErrorReport("PM2.5定值", report.constant.filter(emailTarget.monitorIDs.contains)),
-              getSensorErrorReport("斷線", report.disconnect.filter(emailTarget.monitorIDs.contains))
-            ) ++ optReport
+              getSensorErrorReport("斷線", report.disconnect.filter(emailTarget.monitorIDs.contains)),
+              getSensorErrorReport("H2S定值", report.constantH2S.filter(emailTarget.monitorIDs.contains)),
+              getSensorErrorReport("NH3定值", report.constantNH3.filter(emailTarget.monitorIDs.contains))
+            )
           }
         val htmlBody = views.html.errorReport(today.toString("yyyy/MM/dd"), emailTarget.groupName, subReportList).body
         val mail = Email(

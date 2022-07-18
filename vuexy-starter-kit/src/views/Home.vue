@@ -193,8 +193,8 @@ export default {
       const ret = [];
       const getIconUrl = (v, mt) => {
         let url = `https://chart.googleapis.com/chart?chst=d_bubble_text_small_withshadow&&chld=bb|`;
-
-        let valueStr = v.toFixed(this.mtMap.get(mt).prec);
+        let mtCase = this.mtMap.get(mt);
+        let valueStr = `${mtCase.desp} ${v.toFixed(this.mtMap.get(mt).prec)}`;
         if (v < 15.4) url += `${valueStr}|009865|000000`;
         else if (v < 35.4) url += `${valueStr}|FFFB26|000000`;
         else if (v < 54.4) url += `${valueStr}|FF9835|000000`;
@@ -204,6 +204,41 @@ export default {
         else url += `${valueStr}|7E0123|FFFFFF`;
 
         return url;
+      };
+
+      const getMtUrl = mtEntries => {
+        let url = `https://chart.googleapis.com/chart?chst=d_bubble_text_small_withshadow&&chld=bb|`;
+        let valueStr = '';
+        let valueStrList = [];
+        let v = 0;
+        for (let mtEntry of mtEntries) {
+          let mt = mtEntry.mt;
+          let mtCase = this.mtMap.get(mt);
+          if (mtEntry.data.value) {
+            valueStrList.push(
+              `${mtCase.desp} ${mtEntry.data.value.toFixed(mtCase.prec)}${
+                mtCase.unit
+              }`,
+            );
+            if (mt === 'PM25') v = mtEntry.data.value;
+          }
+        }
+        valueStr = encodeURI(valueStrList.join(', '));
+        console.info(valueStr);
+        if (v < 15.4) url += `${valueStr}|009865|000000`;
+        else if (v < 35.4) url += `${valueStr}|FFFB26|000000`;
+        else if (v < 54.4) url += `${valueStr}|FF9835|000000`;
+        else if (v < 150.4) url += `${valueStr}|CA0034|000000`;
+        else if (v < 250.4) url += `${valueStr}|670099|000000`;
+        else if (v < 350.4) url += `${valueStr}|7E0123|000000`;
+        else url += `${valueStr}|7E0123|FFFFFF`;
+
+        let pm25desc = '';
+        if (v !== 0) pm25desc = this.getPM25Explain(v);
+        return {
+          url,
+          pm25desc,
+        };
       };
 
       for (const stat of this.realTimeStatus) {
@@ -219,14 +254,23 @@ export default {
         lat = latEntry.value;
         lng = lngEntry.value;
 
-        const mt = this.userInfo.monitorTypeOfInterest[0];
-        const mtEntry = stat.mtDataList.find(v => v.mtName === mt);
-        if (!mtEntry) continue;
+        let mtEntries = this.userInfo.monitorTypeOfInterest.flatMap(mt => {
+          const data = stat.mtDataList.find(v => v.mtName === mt);
+          if (!data) return [];
 
-        const iconUrl = getIconUrl(mtEntry.value, mt);
+          return [
+            {
+              mt,
+              data,
+            },
+          ];
+        });
+
+        console.info(mtEntries);
+        const { iconUrl, pm25desc } = getMtUrl(mtEntries);
         const monitor = this.mMap.get(stat._id.monitor);
         if (!monitor) continue;
-        let pm25desc = this.getPM25Explain(mtEntry.value);
+        let title = '';
         ret.push({
           title: `${monitor.desc}-${pm25desc}`,
           position: { lat, lng },
