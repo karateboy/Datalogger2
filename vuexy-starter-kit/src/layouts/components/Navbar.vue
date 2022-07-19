@@ -14,7 +14,9 @@
       class="bookmark-wrapper align-items-center flex-grow-1 d-none d-lg-flex text-center"
     >
       <b-img src="@/assets/images/logo/logo.png" fluid></b-img>
-      <h2 class="m-0 text-center">新竹市政府氣象監測系統</h2>
+      <h1 class="m-0 pl-1 display-4 font-weight-bolder">
+        新竹市政府氣象監測系統
+      </h1>
     </div>
 
     <b-navbar-nav class="nav align-items-center ml-auto">

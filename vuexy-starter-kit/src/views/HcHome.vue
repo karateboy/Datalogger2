@@ -1,24 +1,50 @@
 <template>
   <div>
-    <b-row class="match-height">
+    <b-row class="mt-1 match-height">
       <b-col cols="3">
         <b-card
           class="text-center"
           header="風向"
-          header-class="h1 display justify-content-center"
+          header-class="h1 justify-content-center font-weight-bolder"
           border-variant="primary"
           header-bg-variant="primary"
           header-text-variant="white"
+          no-body
         >
-          <div v-if="winDirImg !== ''" class="flex-grow-1 align-content-center">
-            <b-img v-if="winDirImg !== ''" :src="winDirImg" fluid></b-img>
-            <h1>{{ winDirText }}</h1>
-          </div>
-          <h1 v-else>無資料</h1>
+          <b-row align-h="center" align-v="center" class="m-1">
+            <b-col cols="12"
+              ><b-img
+                v-if="winDirImg !== ''"
+                :src="winDirImg"
+                fluid-grow
+                rounded="circle"
+                thumbnail
+              ></b-img
+            ></b-col>
+            <b-col class="mt-1"
+              ><h1 class="display">
+                <strong>{{ winDirText }}</strong>
+              </h1></b-col
+            >
+          </b-row>
         </b-card>
       </b-col>
-      <b-col cols="9">
-        <b-row>
+      <b-col cols="3">
+        <b-card
+          header="風瑰圖"
+          header-class="h1 justify-content-center font-weight-bolder"
+          border-variant="primary"
+          header-bg-variant="primary"
+          header-text-variant="white"
+          no-body
+        >
+          <b-row align-v="center" align-h="center" class="pt-1">
+            <b-col><div id="rose_WD_DIR">尚無資料</div></b-col>
+          </b-row>
+        </b-card>
+      </b-col>
+      <b-col cols="6">
+        <b-row class="match-height">
           <b-col cols="6">
             <b-card
               class="text-center"
@@ -27,60 +53,104 @@
               border-variant="primary"
               header-bg-variant="primary"
               header-text-variant="white"
+              no-body
             >
-              <b-row class="pt-2"
-                ><b-col cols="2" class="bg-info"
+              <b-row align-v="center" align-h="center" class="m-2">
+                <b-col cols="2"
                   ><h1>{{ getWindLevel(weatherSummary.winmax) }}級</h1></b-col
-                ><b-col cols="10"
+                >
+                <b-col cols="10"
                   ><h1>{{ weatherSummary.winmax }} m/s</h1></b-col
-                ></b-row
-              >
+                >
+                <b-col cols="12"
+                  ><b-progress
+                    :value="getWindLevel(weatherSummary.winmax)"
+                    :max="10"
+                    show-value
+                    animated
+                    height="2rem"
+                  ></b-progress
+                ></b-col>
+              </b-row>
             </b-card>
           </b-col>
           <b-col cols="6"
             ><b-card
               class="text-center"
               header="溫度"
-              header-class="h1 display justify-content-center"
+              header-class="h1 display justify-content-center font-weight-bolder"
               border-variant="primary"
               header-bg-variant="primary"
               header-text-variant="white"
+              no-body
             >
-              <div class="pt-2">
-                <h1>{{ weatherSummary.temp }}℃</h1>
-              </div>
-            </b-card></b-col
-          >
+              <b-row align-v="center" align-h="center" class="p-3">
+                <b-col cols="12"
+                  ><h1>{{ weatherSummary.temp }}℃</h1></b-col
+                >
+                <b-col cols="12"
+                  ><b-progress
+                    :value="weatherSummary.temp"
+                    :max="50"
+                    show-value
+                    animated
+                    height="2rem"
+                  ></b-progress
+                ></b-col>
+              </b-row> </b-card
+          ></b-col>
           <b-col cols="6">
             <b-card
               class="text-center"
               header="平均風力"
-              header-class="h1 display justify-content-center"
+              header-class="h1 display justify-content-center font-weight-bolder"
               border-variant="primary"
               header-bg-variant="primary"
               header-text-variant="white"
+              no-body
             >
-              <b-row class="pt-2"
-                ><b-col cols="2" class="bg-info"
+              <b-row align-v="center" align-h="center" class="m-2">
+                <b-col cols="2"
                   ><h1>{{ getWindLevel(weatherSummary.winspeed) }}級</h1></b-col
-                ><b-col cols="10"
+                >
+                <b-col cols="10"
                   ><h1>{{ weatherSummary.winspeed }} m/s</h1></b-col
-                ></b-row
-              >
+                >
+                <b-col cols="12"
+                  ><b-progress
+                    :value="getWindLevel(weatherSummary.winspeed)"
+                    :max="10"
+                    animated
+                    show-value
+                    height="2rem"
+                  ></b-progress
+                ></b-col>
+              </b-row>
             </b-card>
           </b-col>
           <b-col cols="6">
             <b-card
               class="text-center"
               header="濕度"
-              header-class="h1 display justify-content-center"
+              header-class="h1 justify-content-center font-weight-bolder"
               border-variant="primary"
               header-bg-variant="primary"
               header-text-variant="white"
             >
-              <div class="pt-2">
-                <h1>{{ weatherSummary.humid }}%</h1>
-              </div>
+              <b-row align-v="center" align-h="center" class="p-3">
+                <b-col cols="12"
+                  ><h1>{{ weatherSummary.humid }}%</h1></b-col
+                >
+                <b-col cols="12"
+                  ><b-progress
+                    :value="weatherSummary.humid"
+                    :max="100"
+                    show-value
+                    animated
+                    height="2rem"
+                  ></b-progress
+                ></b-col>
+              </b-row>
             </b-card>
           </b-col>
         </b-row>
@@ -91,7 +161,7 @@
         <b-card
           class="text-center"
           header="即時雨量"
-          header-class="h1 display justify-content-center"
+          header-class="h1 justify-content-center font-weight-bolder"
           border-variant="primary"
           header-bg-variant="primary"
           header-text-variant="white"
@@ -99,7 +169,7 @@
         >
           <b-table-simple>
             <b-tr>
-              <b-td class="bg-info"><h3>10分鐘累積雨量</h3></b-td>
+              <b-td class="bg-secondary"><h3>10分鐘累積雨量</h3></b-td>
             </b-tr>
             <b-tr>
               <b-td
@@ -107,7 +177,7 @@
               >
             </b-tr>
             <b-tr>
-              <b-td class="bg-info"><h3>1小時累積雨量</h3></b-td>
+              <b-td class="bg-secondary"><h3>1小時累積雨量</h3></b-td>
             </b-tr>
             <b-tr>
               <b-td
@@ -115,7 +185,7 @@
               >
             </b-tr>
             <b-tr>
-              <b-td class="bg-info"><h3>日累積雨量</h3></b-td>
+              <b-td class="bg-secondary"><h3>日累積雨量</h3></b-td>
             </b-tr>
             <b-tr>
               <b-td
@@ -137,7 +207,7 @@
         >
           <b-table-simple>
             <b-tr>
-              <b-td class="bg-info"
+              <b-td class="bg-secondary"
                 ><h3>{{ getHourStr(0) }}</h3></b-td
               >
             </b-tr>
@@ -147,7 +217,7 @@
               >
             </b-tr>
             <b-tr>
-              <b-td class="bg-info"
+              <b-td class="bg-secondary"
                 ><h3>{{ getHourStr(1) }}</h3></b-td
               >
             </b-tr>
@@ -157,7 +227,7 @@
               >
             </b-tr>
             <b-tr>
-              <b-td class="bg-info"
+              <b-td class="bg-secondary"
                 ><h3>{{ getHourStr(2) }}</h3></b-td
               >
             </b-tr>
@@ -167,17 +237,6 @@
               >
             </b-tr>
           </b-table-simple>
-        </b-card>
-      </b-col>
-      <b-col v-for="mt in windRoseList" :key="`rose${mt}`" cols="12" md="3">
-        <b-card
-          :header="`${getMtName(mt)}玫瑰圖`"
-          header-class="h1 display justify-content-center"
-          border-variant="success"
-          header-bg-variant="success"
-          header-text-variant="white"
-        >
-          <div :id="`rose_${mt}`">尚無資料</div>
         </b-card>
       </b-col>
     </b-row>
@@ -229,11 +288,6 @@ export default Vue.extend({
       const { skin } = useAppConfig();
       return skin;
     },
-    windRoseList(): Array<string> {
-      let mtInterest = this.userInfo.monitorTypeOfInterest as Array<string>;
-      let ret = mtInterest.filter(mt => mt !== 'WD_DIR');
-      return ret;
-    },
     winDirImg(): string {
       if (isNumber(this.weatherSummary.windir)) {
         let v = this.weatherSummary.windir as number;
@@ -275,10 +329,10 @@ export default Vue.extend({
     await this.getUserInfo();
     const me = this;
     this.getWeatherSummary();
-    for (const mt of me.windRoseList) me.queryWindRose(mt);
+    me.queryWindRose('WD_DIR');
     this.refreshTimer = setInterval(() => {
       me.getWeatherSummary();
-      for (const mt of me.windRoseList) me.queryWindRose(mt);
+      me.queryWindRose('WD_DIR');
     }, 60000);
   },
   beforeDestroy() {
