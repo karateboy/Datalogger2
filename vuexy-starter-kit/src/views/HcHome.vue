@@ -39,7 +39,7 @@
           no-body
         >
           <b-row align-v="center" align-h="center" class="pt-1">
-            <b-col><div id="rose_WD_DIR">尚無資料</div></b-col>
+            <b-col><div id="rose_WD_SPEED">尚無資料</div></b-col>
           </b-row>
         </b-card>
       </b-col>
@@ -329,10 +329,10 @@ export default Vue.extend({
     await this.getUserInfo();
     const me = this;
     this.getWeatherSummary();
-    me.queryWindRose('WD_DIR');
+    me.queryWindRose('WD_SPEED');
     this.refreshTimer = setInterval(() => {
       me.getWeatherSummary();
-      me.queryWindRose('WD_DIR');
+      me.queryWindRose('WD_SPEED');
     }, 60000);
   },
   beforeDestroy() {

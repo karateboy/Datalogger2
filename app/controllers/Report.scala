@@ -37,11 +37,10 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
     implicit request =>
       val reportType = PeriodReport.withName(reportTypeStr)
       val outputType = OutputType.withName(outputTypeStr)
-
+      val mtList = monitorTypeOp.activeMtvList
       reportType match {
         case PeriodReport.DailyReport =>
           val startDate = new DateTime(startNum).withMillisOfDay(0)
-          val mtList = monitorTypeOp.realtimeMtvList
           val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.SELF_ID, mtList, startDate, startDate + 1.day)
           val mtTimeMap: Map[String, Map[DateTime, Record]] = periodMap.map { pair =>
             val k = pair._1
@@ -110,7 +109,6 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
 
         case PeriodReport.MonthlyReport =>
           val start = new DateTime(startNum).withMillisOfDay(0).withDayOfMonth(1)
-          val mtList = monitorTypeOp.realtimeMtvList
           val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.SELF_ID, monitorTypeOp.activeMtvList, start, start + 1.month)
           val statMap = query.getPeriodStatReportMap(periodMap, 1.day)(start, start + 1.month)
           val overallStatMap = getOverallStatMap(statMap)

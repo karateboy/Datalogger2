@@ -148,7 +148,7 @@ class Realtime @Inject()
       else
         None
 
-      val rainHour3 = if(rainHourList.size>=2)
+      val rainHour3 = if(rainHourList.size>=3)
         rainHourList(2).mtMap(MonitorType.RAIN).value
       else
         None

@@ -15,12 +15,6 @@ export default [
         action: 'read',
         resource: 'Dashboard',
       },
-      {
-        title: '即時數據',
-        route: 'realtime-data',
-        action: 'read',
-        resource: 'Dashboard',
-      },
     ],
   },
   {
@@ -42,16 +36,6 @@ export default [
       {
         title: '玫瑰圖查詢',
         route: 'wind-rose-query',
-      },
-      {
-        title: '校正資料查詢',
-        route: 'calibration-query',
-      },
-      {
-        title: '警報記錄查詢',
-        route: 'alarm-query',
-        action: 'read',
-        resource: 'Data',
       },
     ],
   },

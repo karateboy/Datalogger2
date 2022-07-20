@@ -128,8 +128,8 @@ export default Vue.extend({
   },
   mounted() {
     this.fetchMonitorTypes().then(() => {
-      if (this.monitorTypes.length !== 0) {
-        this.form.monitorType = this.monitorTypes[0]._id;
+      if (this.activatedMonitorTypes.length !== 0) {
+        this.form.monitorType = this.activatedMonitorTypes[0]._id;
       }
     });
   },
