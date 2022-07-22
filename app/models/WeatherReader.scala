@@ -14,7 +14,7 @@ import scala.concurrent.duration.{FiniteDuration, MINUTES, SECONDS}
 import scala.concurrent.{Future, blocking}
 import scala.io.{Codec, Source}
 
-case class WeatherReaderConfig(enable: Boolean, dir: String, model:String)
+case class WeatherReaderConfig(enable: Boolean, dir: String, model:String, realtimeDir: Option[String])
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object WeatherReader {
@@ -28,10 +28,11 @@ object WeatherReader {
       for {config <- configuration.getConfig("weatherReader")
            enable <- config.getBoolean("enable")
            dir <- config.getString("dir")
+           realtimeDir = config.getString("realtime")
            modelOpt = config.getString("model")
            }
       yield
-        WeatherReaderConfig(enable, dir, modelOpt.getOrElse(CR800_MODEL))
+        WeatherReaderConfig(enable, dir, modelOpt.getOrElse(CR800_MODEL), realtimeDir)
     }
 
     for (config <- getConfig if config.enable)
@@ -43,6 +44,9 @@ object WeatherReader {
     Props(classOf[WeatherReader], config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
 
   case object ParseReport
+  case object ParseRealtimeReport
+
+  @volatile var latestRecord = Seq.empty[MtRecord]
 }
 
 class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
@@ -54,7 +58,8 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
   val CR800_MT_LIST = Seq(MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION, MonitorType.TEMP, MonitorType.HUMID,
     MonitorType.PRESS, MonitorType.SOLAR, "Photometric", MonitorType.RAIN, "Visible", "Battery")
 
-  val CR300_MT_LIST = Seq(MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION, "WINSPEED_MAX", MonitorType.TEMP, MonitorType.HUMID, MonitorType.RAIN)
+  val CR300_MT_LIST = Seq(MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION, MonitorType.WINSPEED_MAX,
+    MonitorType.TEMP, MonitorType.HUMID, MonitorType.RAIN)
 
   val mtList: Seq[String] = config.model match {
     case CR300_MODEL =>
@@ -69,6 +74,10 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
 
   var timer: Cancellable = context.system.scheduler.scheduleOnce(FiniteDuration(5, SECONDS), self, ParseReport)
 
+  var realtimeTimer: Option[Cancellable] = for(_ <- config.realtimeDir) yield
+    context.system.scheduler.schedule(FiniteDuration(1, SECONDS), FiniteDuration(3, SECONDS), self, ParseRealtimeReport)
+
+  Logger.info(s"WeatherReader: ${config.toString}")
   override def receive: Receive = {
     case ParseReport =>
       Future {
@@ -76,6 +85,18 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
           try {
             fileParser(new File(config.dir))
             timer = context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, ParseReport)
+          } catch {
+            case ex: Throwable =>
+              Logger.error("fail to process weather file", ex)
+          }
+        }
+      }
+    case ParseRealtimeReport =>
+      Future {
+        blocking {
+          try {
+            for(realtimeDir<-config.realtimeDir)
+              realtimeFileParser(new File(realtimeDir))
           } catch {
             case ex: Throwable =>
               Logger.error("fail to process weather file", ex)
@@ -155,8 +176,52 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
     }
   }
 
+  def realtimeFileParser(file: File): Unit = {
+    import scala.collection.mutable.ListBuffer
+    for (mt <- mtList)
+      monitorTypeOp.ensureMeasuring(mt)
+
+    Logger.debug(s"parsing ${file.getAbsolutePath}")
+
+    val src = Source.fromFile(file)(Codec.UTF8)
+    try {
+      val lines = src.getLines().drop(4)
+      for (line <- lines) {
+        try {
+          val token: Array[String] = line.split(",")
+          if (token.length < mtList.length) {
+            throw new Exception("unexpected file length")
+          }
+
+          val mtRecordOpts: Seq[Option[MtRecord]] =
+            for ((mt, idx) <- mtList.zipWithIndex) yield {
+              try {
+                val value = token(idx + 2).toDouble
+                Some(MtRecord(mt, Some(value), MonitorStatus.NormalStat))
+              } catch {
+                case _: Exception =>
+                  None
+              }
+            }
+
+          WeatherReader.latestRecord = mtRecordOpts.flatten
+        } catch {
+          case ex: Throwable =>
+            Logger.warn("skip unknown line", ex)
+        } finally {
+        }
+      }
+
+    } finally {
+      src.close()
+    }
+  }
+
   override def postStop(): Unit = {
     timer.cancel()
+    for(realtimeTM<-realtimeTimer)
+      realtimeTM.cancel()
+
     super.postStop()
   }
 

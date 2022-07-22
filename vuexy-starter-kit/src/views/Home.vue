@@ -280,11 +280,11 @@ export default Vue.extend({
             return mt.measuringBy.length !== 0;
           } else return false;
         });
-        console.debug('activeMonitoeTypes', activeMonitorTypes);
+        
         if (activeMonitorTypes.length !== 0)
           selectedMt.push(activeMonitorTypes[0]._id);
 
-        console.debug('selectedMT', selectedMt);
+        
         const visible = selectedMt.indexOf(mtStatus._id) !== -1;
         if (wind.indexOf(mtStatus._id) === -1) {
           let yAxisIndex: number;

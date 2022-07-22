@@ -57,14 +57,16 @@
             >
               <b-row align-v="center" align-h="center" class="m-2">
                 <b-col cols="2"
-                  ><h1>{{ getWindLevel(weatherSummary.winmax) }}級</h1></b-col
+                  ><h1>
+                    {{ getWindLevel(getRealtimeValue('WINSPEED_MAX')) }}級
+                  </h1></b-col
                 >
                 <b-col cols="10"
-                  ><h1>{{ weatherSummary.winmax }} m/s</h1></b-col
+                  ><h1>{{ getRealtimeValue('WINSPEED_MAX') }} m/s</h1></b-col
                 >
                 <b-col cols="12"
                   ><b-progress
-                    :value="getWindLevel(weatherSummary.winmax)"
+                    :value="getWindLevel(getRealtimeValue('WINSPEED_MAX'))"
                     :max="10"
                     show-value
                     animated
@@ -86,11 +88,11 @@
             >
               <b-row align-v="center" align-h="center" class="p-3">
                 <b-col cols="12"
-                  ><h1>{{ weatherSummary.temp }}℃</h1></b-col
+                  ><h1>{{ getRealtimeValue('TEMP') }}℃</h1></b-col
                 >
                 <b-col cols="12"
                   ><b-progress
-                    :value="weatherSummary.temp"
+                    :value="getRealtimeValue('TEMP')"
                     :max="50"
                     show-value
                     animated
@@ -111,14 +113,16 @@
             >
               <b-row align-v="center" align-h="center" class="m-2">
                 <b-col cols="2"
-                  ><h1>{{ getWindLevel(weatherSummary.winspeed) }}級</h1></b-col
+                  ><h1>
+                    {{ getWindLevel(getRealtimeValue('WD_SPEED')) }}級
+                  </h1></b-col
                 >
                 <b-col cols="10"
-                  ><h1>{{ weatherSummary.winspeed }} m/s</h1></b-col
+                  ><h1>{{ getRealtimeValue('WD_SPEED') }} m/s</h1></b-col
                 >
                 <b-col cols="12"
                   ><b-progress
-                    :value="getWindLevel(weatherSummary.winspeed)"
+                    :value="getWindLevel(getRealtimeValue('WD_SPEED'))"
                     :max="10"
                     animated
                     show-value
@@ -139,11 +143,11 @@
             >
               <b-row align-v="center" align-h="center" class="p-3">
                 <b-col cols="12"
-                  ><h1>{{ weatherSummary.humid }}%</h1></b-col
+                  ><h1>{{ getRealtimeValue('HUMID') }}%</h1></b-col
                 >
                 <b-col cols="12"
                   ><b-progress
-                    :value="weatherSummary.humid"
+                    :value="getRealtimeValue('HUMID')"
                     :max="100"
                     show-value
                     animated
@@ -253,6 +257,11 @@ import highcharts from 'highcharts';
 import highchartMore from 'highcharts/highcharts-more';
 import { MonitorType } from './types';
 import moment from 'moment';
+interface MtRecord {
+  mtName: string;
+  value?: number;
+  status: string;
+}
 
 interface WeatherSummary {
   windir?: number;
@@ -266,6 +275,7 @@ interface WeatherSummary {
 }
 export default Vue.extend({
   data() {
+    let realtime = Array<MtRecord>();
     let weatherSummary: WeatherSummary = {
       windir: undefined,
       winmax: undefined,
@@ -278,6 +288,8 @@ export default Vue.extend({
     return {
       refreshTimer: 0,
       weatherSummary,
+      realtime,
+      count: 0,
     };
   },
   computed: {
@@ -289,16 +301,17 @@ export default Vue.extend({
       return skin;
     },
     winDirImg(): string {
-      if (isNumber(this.weatherSummary.windir)) {
-        let v = this.weatherSummary.windir as number;
+      let v = this.getRealtimeValue('WD_DIR');
+      if (typeof v == 'number') {
         let index = Math.floor((v + 11.25) / 22.5) % 16;
         return process.env.NODE_ENV === 'production'
-          ? `/dist/windir${index}.png`
-          : `/windir${index}.png`;
+          ? `/dist/windir${index}.svg`
+          : `/windir${index}.svg`;
       } else return '';
     },
     winDirText(): string {
-      if (isNumber(this.weatherSummary.windir)) {
+      let v = this.getRealtimeValue('WD_DIR');
+      if (typeof v == 'number') {
         let dir = [
           '北',
           '北北東',
@@ -317,7 +330,6 @@ export default Vue.extend({
           '西北',
           '北北西',
         ];
-        let v = this.weatherSummary.windir as number;
         let index = Math.floor((v + 11.25) / 22.5) % 16;
         return dir[index];
       } else return '';
@@ -329,11 +341,15 @@ export default Vue.extend({
     await this.getUserInfo();
     const me = this;
     this.getWeatherSummary();
-    me.queryWindRose('WD_SPEED');
+    this.getRealtimeWeather();
+    this.queryWindRose('WD_SPEED');
+
     this.refreshTimer = setInterval(() => {
+      me.count++;
       me.getWeatherSummary();
-      me.queryWindRose('WD_SPEED');
-    }, 60000);
+      me.getRealtimeWeather();
+      if (me.count % 20 === 0) me.queryWindRose('WD_SPEED');
+    }, 3000);
   },
   beforeDestroy() {
     clearInterval(this.refreshTimer);
@@ -351,6 +367,20 @@ export default Vue.extend({
       } catch (err) {
         throw err;
       }
+    },
+    async getRealtimeWeather() {
+      try {
+        const res = await axios.get('/RealtimeWeather');
+        if (res.status === 200) {
+          this.realtime = res.data;
+        }
+      } catch (err) {
+        throw err;
+      }
+    },
+    getRealtimeValue(mt: string): number | undefined {
+      let ret = this.realtime.find(mtRecord => mtRecord.mtName === mt);
+      return ret?.value;
     },
     getWindLevel(v: number | undefined): number {
       if (v == undefined) return 0;

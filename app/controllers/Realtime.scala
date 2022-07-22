@@ -159,6 +159,11 @@ class Realtime @Inject()
     }
   }
 
+  def getRealtimeWeather = Security.Authenticated {
+    implicit val writes = Json.writes[MtRecord]
+    Ok(Json.toJson(WeatherReader.latestRecord))
+  }
+
   case class MonitorTypeStatus(_id: String, desp: String, value: String, unit: String, instrument: String, status: String, classStr: Seq[String], order: Int)
 
   case class WeatherSummary(windir: Option[Double], winmax: Option[Double],

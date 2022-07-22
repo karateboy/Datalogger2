@@ -391,11 +391,13 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
               period_start <- getPeriods(start, end, period)
               records = periodSlice(period_start, period_start + period) if records.length > 0
             } yield {
-              if (mt == MonitorType.WIN_DIRECTION) {
-                val windDir = records
-                val windSpeed = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitor, List(MonitorType.WIN_SPEED), period_start, period_start + period)(MonitorType.WIN_SPEED)
-                period_start -> (windAvg(windSpeed, windDir), None)
-              } else {
+              if (mt == MonitorType.WINSPEED_MAX) {
+                val values = records.flatMap { r => r.value }
+                if (values.nonEmpty)
+                  period_start -> (Some(values.max), None)
+                else
+                  period_start -> (None, None)
+              }else               {
                 val values = records.flatMap { r => r.value }
                 if (values.nonEmpty)
                   period_start -> (Some(values.sum / values.length), None)

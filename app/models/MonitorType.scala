@@ -90,6 +90,7 @@ object MonitorType {
   val NH3 = "NH3"
   val NOY_NO = "NOY-NO"
   val NOY = "NOY"
+  val WINSPEED_MAX = "WINSPEED_MAX"
   var rangeOrder = 0
   var signalOrder = 1000
 

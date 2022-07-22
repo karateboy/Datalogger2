@@ -76,6 +76,7 @@ GET      /Upload/:start/:end                                                    
 #Realtime
 GET      /MonitorTypeStatusList                                                   controllers.Realtime.MonitorTypeStatusList()
 GET      /WeatherSummary                                                          controllers.Realtime.getWeatherSummary()
+GET      /RealtimeWeather                                                         controllers.Realtime.getRealtimeWeather()
 
 #Report
 GET      /monitorReport/:reportType/:reportDate                                   controllers.Report.getMonitorReport(reportType, reportDate:Long, outputTypeStr="html")

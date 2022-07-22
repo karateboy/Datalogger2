@@ -158,7 +158,6 @@ export default Vue.extend({
         { id: 'valid', txt: '有效數據' },
       ],
       reportUnits: [
-        { txt: '秒', id: 'Sec' },
         { txt: '分', id: 'Min' },
         { txt: '六分', id: 'SixMin' },
         { txt: '十分', id: 'TenMin' },
