@@ -62,7 +62,7 @@
                   </h1></b-col
                 >
                 <b-col cols="10"
-                  ><h1>{{ getRealtimeValue('WINSPEED_MAX') }} m/s</h1></b-col
+                  ><h1>{{ getRealtimeValueStr('WINSPEED_MAX') }} m/s</h1></b-col
                 >
                 <b-col cols="12"
                   ><b-progress
@@ -88,7 +88,7 @@
             >
               <b-row align-v="center" align-h="center" class="p-3">
                 <b-col cols="12"
-                  ><h1>{{ getRealtimeValue('TEMP') }}℃</h1></b-col
+                  ><h1>{{ getRealtimeValueStr('TEMP') }}℃</h1></b-col
                 >
                 <b-col cols="12"
                   ><b-progress
@@ -118,7 +118,7 @@
                   </h1></b-col
                 >
                 <b-col cols="10"
-                  ><h1>{{ getRealtimeValue('WD_SPEED') }} m/s</h1></b-col
+                  ><h1>{{ getRealtimeValueStr('WD_SPEED') }} m/s</h1></b-col
                 >
                 <b-col cols="12"
                   ><b-progress
@@ -143,7 +143,7 @@
             >
               <b-row align-v="center" align-h="center" class="p-3">
                 <b-col cols="12"
-                  ><h1>{{ getRealtimeValue('HUMID') }}%</h1></b-col
+                  ><h1>{{ getRealtimeValueStr('HUMID') }}%</h1></b-col
                 >
                 <b-col cols="12"
                   ><b-progress
@@ -381,6 +381,10 @@ export default Vue.extend({
     getRealtimeValue(mt: string): number | undefined {
       let ret = this.realtime.find(mtRecord => mtRecord.mtName === mt);
       return ret?.value;
+    },
+    getRealtimeValueStr(mt: string): string | undefined {
+      let ret = this.realtime.find(mtRecord => mtRecord.mtName === mt);
+      return ret?.value?.toFixed(1);
     },
     getWindLevel(v: number | undefined): number {
       if (v == undefined) return 0;
