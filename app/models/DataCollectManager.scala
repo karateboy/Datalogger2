@@ -728,7 +728,7 @@ class DataCollectManager @Inject()
             if (current.getMinuteOfHour == 0) {
               for (m <- monitorOp.mvList) {
                 dataCollectManagerOp.recalculateHourData(monitor = m,
-                  current = current)(monitorTypeOp.realtimeMtvList)
+                  current = current)(monitorTypeOp.activeMtvList)
               }
               self ! CheckInstruments
             }
