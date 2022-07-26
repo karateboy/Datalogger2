@@ -1,6 +1,6 @@
 <template>
   <b-row class="match-height">
-    <b-col v-if="isRealtimMeasuring" lg="9" md="12">
+    <b-col v-if="isRealtimeMeasuring" lg="9" md="12">
       <b-card
         class="text-center"
         header="即時監測資訊"
@@ -12,7 +12,20 @@
         <div id="realtimeChart"></div>
       </b-card>
     </b-col>
-    <b-col v-if="isRealtimMeasuring" lg="3" class="text-center">
+    <b-col v-else lg="12" md="12">
+      <b-card
+        class="text-center"
+        header="即時監測資訊"
+        header-class="h4 display text-center"
+        border-variant="primary"
+        header-bg-variant="primary"
+        header-text-variant="white"
+        no-body
+      >
+        <h1 class="m-2 display-4"><strong>請到系統管理>儀器管理設定測量儀器</strong></h1>
+      </b-card>
+    </b-col>
+    <b-col v-if="isRealtimeMeasuring" lg="3" class="text-center">
       <b-card no-body border-variant="primary">
         <b-table
           :fields="fields"
@@ -201,7 +214,7 @@ export default Vue.extend({
       let ret = mtInterest.filter(mt => mt !== 'WD_DIR');
       return ret;
     },
-    isRealtimMeasuring(): boolean {
+    isRealtimeMeasuring(): boolean {
       return this.realTimeStatus.length !== 0;
     },
   },
@@ -267,6 +280,8 @@ export default Vue.extend({
     async initRealtimeChart(): Promise<boolean> {
       await this.getRealtimeStatus();
 
+      if (this.realTimeStatus.length === 0) return false;
+
       let yAxisList = Array<highcharts.YAxisOptions>();
       let yAxisMap = new Map<string, number>();
       for (const mtStatus of this.realTimeStatus) {
@@ -280,11 +295,10 @@ export default Vue.extend({
             return mt.measuringBy.length !== 0;
           } else return false;
         });
-        console.debug('activeMonitoeTypes', activeMonitorTypes);
+
         if (activeMonitorTypes.length !== 0)
           selectedMt.push(activeMonitorTypes[0]._id);
 
-        console.debug('selectedMT', selectedMt);
         const visible = selectedMt.indexOf(mtStatus._id) !== -1;
         if (wind.indexOf(mtStatus._id) === -1) {
           let yAxisIndex: number;
