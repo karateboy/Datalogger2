@@ -245,7 +245,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
         instrumentOp.setState(instId, targetState)
         resetToNormal
         context become normalPhase
-      }else {
+      } else {
         Logger.info(s"During calibration ignore $targetState change.")
       }
       Logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
@@ -318,83 +318,79 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
       } onFailure (calibrationErrorHandler(instId, calibrationTimerOpt, endState))
 
     case rd: ReportData =>
-      if(recordCalibration)
+      if (recordCalibration)
         context become calibrationPhase(calibrationType, startTime, recordCalibration, rd :: calibrationReadingList,
           zeroReading, endState, calibrationTimerOpt)
 
     case CalibrateEnd =>
-      Future {
-        blocking {
-          Logger.info(s"$self =>$calibrationType CalibrateEnd")
+      Logger.info(s"$self =>$calibrationType CalibrateEnd")
 
-          val values = for {mt <- deviceConfig.monitorTypes.getOrElse(List.empty[String])} yield {
-            val calibrations = calibrationReadingList.flatMap {
-              reading =>
-                reading.dataList.filter {
-                  _.mt == mt
-                }.map { r => r.value }
-            }
+      val values = for {mt <- deviceConfig.monitorTypes.getOrElse(List.empty[String])} yield {
+        val calibrations = calibrationReadingList.flatMap {
+          reading =>
+            reading.dataList.filter {
+              _.mt == mt
+            }.map { r => r.value }
+        }
 
-            if (calibrations.length == 0) {
-              Logger.warn(s"No calibration data for $mt")
-              (mt, 0d)
-            } else
-              (mt, calibrations.sum / calibrations.length)
+        if (calibrations.length == 0) {
+          Logger.warn(s"No calibration data for $mt")
+          (mt, 0d)
+        } else
+          (mt, calibrations.sum / calibrations.length)
+      }
+
+      //For auto calibration, span will be executed after zero
+      if (calibrationType.auto && calibrationType.zero) {
+        for (v <- values)
+          Logger.info(s"${v._1} zero calibration end. (${v._2})")
+
+        if (deviceConfig.calibratorPurgeTime.isDefined) {
+          collectorState = MonitorStatus.NormalStat
+          instrumentOp.setState(instId, collectorState)
+          val raiseStartTimer = Some(purgeCalibrator)
+          context become calibrationPhase(AutoSpan, startTime, false, List.empty[ReportData],
+            values, endState, raiseStartTimer)
+        } else {
+          context become calibrationPhase(AutoSpan, startTime, false, List.empty[ReportData],
+            values, endState, None)
+          self ! RaiseStart
+        }
+      } else {
+        val endTime = DateTime.now()
+
+        if (calibrationType.auto) {
+          val zeroMap = zeroReading.toMap
+          val spanMap = values.toMap
+
+          for (mt <- deviceConfig.monitorTypes.getOrElse(List.empty[String])) {
+            val zero = zeroMap.get(mt)
+            val span = spanMap.get(mt)
+            val spanStd = monitorTypeOp.map(mt).span
+            val cal = Calibration(mt, startTime, endTime, zero, spanStd, span)
+            calibrationOp.insertFuture(cal)
           }
-
-          //For auto calibration, span will be executed after zero
-          if (calibrationType.auto && calibrationType.zero) {
-            for (v <- values)
-              Logger.info(s"${v._1} zero calibration end. (${v._2})")
-
-            if (deviceConfig.calibratorPurgeTime.isDefined) {
-              collectorState = MonitorStatus.NormalStat
-              instrumentOp.setState(instId, collectorState)
-              val raiseStartTimer = Some(purgeCalibrator)
-              context become calibrationPhase(AutoSpan, startTime, false, List.empty[ReportData],
-                values, endState, raiseStartTimer)
-            } else {
-              context become calibrationPhase(AutoSpan, startTime, false, List.empty[ReportData],
-                values, endState, None)
-              self ! RaiseStart
-            }
-          } else {
-            val endTime = DateTime.now()
-
-            if (calibrationType.auto) {
-              val zeroMap = zeroReading.toMap
-              val spanMap = values.toMap
-
-              for (mt <- deviceConfig.monitorTypes.getOrElse(List.empty[String])) {
-                val zero = zeroMap.get(mt)
-                val span = spanMap.get(mt)
+        } else {
+          val valueMap = values.toMap
+          for (mt <- deviceConfig.monitorTypes.getOrElse(List.empty[String])) {
+            val values = valueMap.get(mt)
+            val cal =
+              if (calibrationType.zero)
+                Calibration(mt, startTime, endTime, values, None, None)
+              else {
                 val spanStd = monitorTypeOp.map(mt).span
-                val cal = Calibration(mt, startTime, endTime, zero, spanStd, span)
-                calibrationOp.insertFuture(cal)
+                Calibration(mt, startTime, endTime, None, spanStd, values)
               }
-            } else {
-              val valueMap = values.toMap
-              for (mt <- deviceConfig.monitorTypes.getOrElse(List.empty[String])) {
-                val values = valueMap.get(mt)
-                val cal =
-                  if (calibrationType.zero)
-                    Calibration(mt, startTime, endTime, values, None, None)
-                  else {
-                    val spanStd = monitorTypeOp.map(mt).span
-                    Calibration(mt, startTime, endTime, None, spanStd, values)
-                  }
-                calibrationOp.insertFuture(cal)
-              }
-            }
-            onCalibrationEnd()
-            Logger.info("All monitorTypes are calibrated.")
-            collectorState = endState
-            instrumentOp.setState(instId, collectorState)
-            resetToNormal
-            context become normalPhase
-            Logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
+            calibrationOp.insertFuture(cal)
           }
         }
+        onCalibrationEnd()
+        Logger.info("All monitorTypes are calibrated.")
+        collectorState = endState
+        instrumentOp.setState(instId, collectorState)
+        resetToNormal
+        context become normalPhase
+        Logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
       }
   }
 
@@ -441,12 +437,12 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           context.parent ! WriteDO(doBit, v)
       }
 
-      if(v){
+      if (v) {
         deviceConfig.calibrateZeoSeq.foreach {
           seq =>
             context.parent ! ExecuteSeq(seq, v)
         }
-      }else
+      } else
         context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
 
 
@@ -467,12 +463,12 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           context.parent ! WriteDO(doBit, v)
       }
 
-      if(v){
+      if (v) {
         deviceConfig.calibrateSpanSeq map {
           seq =>
             context.parent ! ExecuteSeq(seq, v)
         }
-      }else
+      } else
         context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
 
       if (deviceConfig.skipInternalVault != Some(true)) {
