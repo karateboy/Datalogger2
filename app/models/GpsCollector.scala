@@ -8,11 +8,12 @@ import ModelHelper._
 import scala.concurrent.ExecutionContext.Implicits.global
 import Protocol.{ProtocolParam, serial}
 import com.google.inject.assistedinject.Assisted
+import jssc.SerialPort
 
 object GpsCollector extends DriverOps {
   override def getMonitorTypes(param: String) = {
-    val lat = ("LAT")
-    val lng = ("LNG")
+    val lat = "LAT"
+    val lng = "LNG"
     List(lat, lng)
   }
 
@@ -55,7 +56,8 @@ import javax.inject._
 
 class GpsCollector @Inject()()(@Assisted id: String, @Assisted protocolParam: ProtocolParam) extends Actor
     with ActorLogging with SentenceListener with ExceptionListener with PositionListener {
-  val comm: SerialComm = SerialComm.open(protocolParam.comPort.get)
+  val comm: SerialComm =
+    SerialComm.open(protocolParam.comPort.get, protocolParam.speed.getOrElse(SerialPort.BAUDRATE_9600))
   var reader: SentenceReader = _
 
   import scala.concurrent.Future

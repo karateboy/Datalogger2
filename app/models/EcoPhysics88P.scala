@@ -178,6 +178,7 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
 
   override def onCalibrationStart(): Unit = {
     for (serial <- serialOpt) {
+      Logger.info(s"$instId Switch to Remote mode")
       serial.port.writeBytes(makeCmd("HR1"))
       Thread.sleep(1000)
       serial.port.readHexString()
@@ -186,6 +187,7 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
 
   override def onCalibrationEnd(): Unit = {
     for (serial <- serialOpt) {
+      Logger.info(s"$instId Switch to Local mode")
       serial.port.writeBytes(makeCmd("HR0"))
       Thread.sleep(1000)
       serial.port.readHexString()
