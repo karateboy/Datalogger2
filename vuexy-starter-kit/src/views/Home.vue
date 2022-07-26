@@ -194,7 +194,9 @@ export default {
       const getIconUrl = (v, mt) => {
         let url = `https://chart.googleapis.com/chart?chst=d_bubble_text_small_withshadow&&chld=bb|`;
         let mtCase = this.mtMap.get(mt);
-        let valueStr = `${mtCase.desp} ${v.toFixed(this.mtMap.get(mt).prec)}`;
+        let valueStr = encodeURIComponent(
+          `${v.toFixed(this.mtMap.get(mt).prec)}`,
+        );
         if (v < 15.4) url += `${valueStr}|009865|000000`;
         else if (v < 35.4) url += `${valueStr}|FFFB26|000000`;
         else if (v < 54.4) url += `${valueStr}|FF9835|000000`;
@@ -216,9 +218,7 @@ export default {
           let mtCase = this.mtMap.get(mt);
           if (mtEntry.data.value) {
             valueStrList.push(
-              `${mtCase.desp} ${mtEntry.data.value.toFixed(mtCase.prec)}${
-                mtCase.unit
-              }`,
+              `${mtCase.desp}:${mtEntry.data.value.toFixed(mtCase.prec)}`,
             );
             if (mt === 'PM25') v = mtEntry.data.value;
           }
@@ -236,7 +236,7 @@ export default {
         let pm25desc = '';
         if (v !== 0) pm25desc = this.getPM25Explain(v);
         return {
-          url,
+          iconUrl: url,
           pm25desc,
         };
       };
@@ -266,13 +266,14 @@ export default {
           ];
         });
 
-        console.info(mtEntries);
         const { iconUrl, pm25desc } = getMtUrl(mtEntries);
+
+        console.info(pm25desc);
         const monitor = this.mMap.get(stat._id.monitor);
         if (!monitor) continue;
-        let title = '';
+        let title = `${monitor.desc}-${pm25desc}`;
         ret.push({
-          title: `${monitor.desc}-${pm25desc}`,
+          title,
           position: { lat, lng },
           pm25,
           infoText: `<strong>${monitor.desc}</strong>`,

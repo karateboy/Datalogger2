@@ -51,11 +51,13 @@ case class UpdateRecordParam(time: Long, mt: String, status: String)
 class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp,
                       instrumentStatusOp: InstrumentStatusOp, instrumentOp: InstrumentOp,
                       alarmOp: AlarmOp, calibrationOp: CalibrationOp, groupOp: GroupOp,
+                      configuration: Configuration,
                       manualAuditLogOp: ManualAuditLogOp, excelUtility: ExcelUtility) extends Controller {
 
   implicit val cdWrite = Json.writes[CellData]
   implicit val rdWrite = Json.writes[RowData]
   implicit val dtWrite = Json.writes[DataTab]
+  val trendShowActual = configuration.getBoolean("logger.trendShowActual").getOrElse(true)
 
   def getPeriodCount(start: DateTime, endTime: DateTime, p: Period) = {
     var count = 0
@@ -169,7 +171,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
 
       val outputType = OutputType.withName(outputTypeStr)
       val chart = trendHelper(monitors, monitorTypes, tabType, reportUnit, start.withSecondOfMinute(0).withMillisOfSecond(0),
-        end.withSecondOfMinute(0).withMillisOfSecond(0))(statusFilter)
+        end.withSecondOfMinute(0).withMillisOfSecond(0), trendShowActual)(statusFilter)
 
       if (outputType == OutputType.excel) {
         import java.nio.file.Files
