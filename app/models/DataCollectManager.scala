@@ -341,7 +341,7 @@ object DataCollectManager {
               Some(values.max)
 
             case MonitorType.RAIN =>
-              Some(values.max)
+              Some(values.sum)
             case MonitorType.PM10 =>
               Some(values.last)
             case MonitorType.PM25 =>

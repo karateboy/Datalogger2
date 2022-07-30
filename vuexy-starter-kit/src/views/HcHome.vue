@@ -1,17 +1,17 @@
 <template>
   <div>
     <b-row class="mt-1 match-height">
-      <b-col cols="3">
+      <b-col lg="3" md="5" sm="12">
         <b-card
           class="text-center"
-          header="風向"
+          header-html="風向&nbsp;<sub>更新週期(5秒)"
           header-class="h1 justify-content-center font-weight-bolder"
           border-variant="primary"
           header-bg-variant="primary"
           header-text-variant="white"
           no-body
         >
-          <b-row align-h="center" align-v="center" class="m-1">
+          <b-row align-h="center" align-v="center" class="m-3">
             <b-col cols="12"
               ><b-img
                 v-if="winDirImg !== ''"
@@ -19,8 +19,8 @@
                 fluid-grow
                 rounded="circle"
                 thumbnail
-              ></b-img
-            ></b-col>
+              ></b-img>
+            </b-col>
             <b-col class="mt-1"
               ><h1 class="display">
                 <strong>{{ winDirText }}</strong>
@@ -29,33 +29,20 @@
           </b-row>
         </b-card>
       </b-col>
-      <b-col cols="3">
-        <b-card
-          header="風瑰圖"
-          header-class="h1 justify-content-center font-weight-bolder"
-          border-variant="primary"
-          header-bg-variant="primary"
-          header-text-variant="white"
-          no-body
-        >
-          <b-row align-v="center" align-h="center" class="pt-1">
-            <b-col><div id="rose_WD_SPEED">尚無資料</div></b-col>
-          </b-row>
-        </b-card>
-      </b-col>
-      <b-col cols="6">
+      <b-col lg="9" md="7" sm="12">
         <b-row class="match-height">
-          <b-col cols="6">
+          <b-col lg="6" md="6">
             <b-card
               class="text-center"
-              header="陣風"
-              header-class="h1 display justify-content-center"
+              header-html="最大陣風&nbsp;<sub>更新週期(5秒)</sub>"
+              header-class="h1 justify-content-center font-weight-bolder"
               border-variant="primary"
               header-bg-variant="primary"
               header-text-variant="white"
               no-body
+              footer-bg-variant="primary"
             >
-              <b-row align-v="center" align-h="center" class="m-2">
+              <b-row align-v="center" align-h="center" class="p-3">
                 <b-col cols="2"
                   ><h1>
                     {{ getWindLevel(getRealtimeValue('WINSPEED_MAX')) }}級
@@ -76,10 +63,10 @@
               </b-row>
             </b-card>
           </b-col>
-          <b-col cols="6"
+          <b-col lg="6" md="6"
             ><b-card
               class="text-center"
-              header="溫度"
+              header-html="溫度&nbsp;<sub>更新週期(5秒)"
               header-class="h1 display justify-content-center font-weight-bolder"
               border-variant="primary"
               header-bg-variant="primary"
@@ -101,17 +88,17 @@
                 ></b-col>
               </b-row> </b-card
           ></b-col>
-          <b-col cols="6">
+          <b-col lg="6" md="6">
             <b-card
               class="text-center"
-              header="平均風力"
+              header-html="平均風力&nbsp;<sub>更新週期(5秒)"
               header-class="h1 display justify-content-center font-weight-bolder"
               border-variant="primary"
               header-bg-variant="primary"
               header-text-variant="white"
               no-body
             >
-              <b-row align-v="center" align-h="center" class="m-2">
+              <b-row align-v="center" align-h="center" class="p-3">
                 <b-col cols="2"
                   ><h1>
                     {{ getWindLevel(getRealtimeValue('WD_SPEED')) }}級
@@ -132,10 +119,10 @@
               </b-row>
             </b-card>
           </b-col>
-          <b-col cols="6">
+          <b-col lg="6" md="6">
             <b-card
               class="text-center"
-              header="濕度"
+              header-html="濕度&nbsp;<sub>更新週期(5秒)"
               header-class="h1 justify-content-center font-weight-bolder"
               border-variant="primary"
               header-bg-variant="primary"
@@ -159,12 +146,10 @@
           </b-col>
         </b-row>
       </b-col>
-    </b-row>
-    <b-row class="match-height">
-      <b-col cols="6">
+      <b-col lg="6" md="12">
         <b-card
           class="text-center"
-          header="即時雨量"
+          header-html="即時雨量&nbsp;<sub>更新週期(1分鐘)"
           header-class="h1 justify-content-center font-weight-bolder"
           border-variant="primary"
           header-bg-variant="primary"
@@ -199,11 +184,11 @@
           </b-table-simple>
         </b-card>
       </b-col>
-      <b-col cols="6">
+      <b-col lg="6" md="12">
         <b-card
           class="text-center"
-          header="整點雨量"
-          header-class="h1 display justify-content-center"
+          header-html="整點雨量&nbsp;<sub>更新週期(1小時)"
+          header-class="h1 justify-content-center font-weight-bolder"
           border-variant="primary"
           header-bg-variant="primary"
           header-text-variant="white"

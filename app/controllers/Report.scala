@@ -3,7 +3,6 @@ package controllers
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import models._
-import models.mongodb.RecordOp
 import play.api.libs.json.Json
 import play.api.mvc._
 
@@ -90,7 +89,9 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
               RowData(recordTime.getMillis, mtData)
             }
           val columnNames = mtList map {
-            monitorTypeOp.map(_).desp
+            mt =>
+              val mtCase = monitorTypeOp.map(mt)
+              s"${mtCase.desp}(${mtCase.unit})"
           }
           val dailyReport = DisplayReport(columnNames, hourRows, statRows)
 
@@ -299,7 +300,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
           val windSpeed = hourList.map(timeMap)
           windAvg(windSpeed, windDir)
         } else {
-          if(total != 0)
+          if (total != 0)
             Some(sum / total)
           else
             None
@@ -325,7 +326,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
       }
     val hourStatMap = Map(hourValues: _*)
     val dayStatMap = query.getPeriodStatReportMap(Map(mt -> recordList), 1.day)(start, start + 1.month)
-    val overallPeriod : Period = new Period(start, start + 1.month)
+    val overallPeriod: Period = new Period(start, start + 1.month)
     val overallStat = query.getPeriodStatReportMap(Map(mt -> recordList), overallPeriod)(start, start + 1.month)(mt)(start)
     var columns = Seq.empty[String]
     for (i <- 0 to 23) {
@@ -339,7 +340,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
           CellData(monitorTypeOp.format(mt, hourStatMap(h).avg), Seq.empty[String])
         }
 
-      avgData = avgData.:+(CellData(monitorTypeOp.format(mt,overallStat.avg), Seq.empty[String]))
+      avgData = avgData.:+(CellData(monitorTypeOp.format(mt, overallStat.avg), Seq.empty[String]))
       avgData = avgData.:+(CellData("", Seq.empty[String]))
       avgData = avgData.:+(CellData("", Seq.empty[String]))
       avgData = avgData.:+(CellData("", Seq.empty[String]))

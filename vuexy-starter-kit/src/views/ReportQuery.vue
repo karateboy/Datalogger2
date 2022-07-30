@@ -82,9 +82,9 @@
           <template #custom-foot>
             <b-tr v-for="stat in statRows" :key="stat.name">
               <b-th>{{ stat.name }}</b-th>
-              <th v-for="(cell, i) in stat.cellData" :key="i">
+              <b-th v-for="(cell, i) in stat.cellData" :key="i">
                 {{ cell.v }}
-              </th>
+              </b-th>
             </b-tr>
           </template>
         </b-table>
