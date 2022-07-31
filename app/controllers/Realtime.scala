@@ -118,28 +118,30 @@ class Realtime @Inject()
         realtimeMap(MonitorType.WIN_SPEED).last.value
         else
           None
+
       val humid =
         if(realtimeMap(MonitorType.HUMID).nonEmpty)
         realtimeMap(MonitorType.HUMID).last.value
         else
           None
+
       val rainList = realtimeMap(MonitorType.RAIN).reverse
-      val rain10 = if(rainList.size > 11)
-          for (rain0 <- rainList(0).value; rain10 <- rainList(10).value) yield rain10 - rain0
+      val rain10 = if(rainList.size >= 10)
+          Some(rainList.take(10).flatMap(_.value).sum)
       else
         None
-      val rain60 =  if(rainList.size > 61)
-        for (rain0 <- rainList(0).value; rain60 <- rainList(60).value) yield rain60 - rain0
+      val rain60 =  if(rainList.size >= 60)
+        Some(rainList.take(60).flatMap(_.value).sum)
       else
         None
-      val rainDay = if(rainList.nonEmpty)
-        for (rain0 <- rainList(0).value; rainDay <- rainList.last.value) yield rainDay - rain0
+      val rainDay = if(rainList.size > 60*24)
+        Some(rainList.take(60*24).flatMap(_.value).sum)
       else
         None
 
       val rainHourList = hourList.filter(rec=>rec.mtDataList.exists(_.mtName == MonitorType.RAIN)).reverse
       val (hourStart, rainHour1) = if(rainHourList.nonEmpty)
-        (rainHourList(0)._id.time.getTime, rainHourList(0).mtMap(MonitorType.RAIN).value)
+        (rainHourList.head._id.time.getTime, rainHourList.head.mtMap(MonitorType.RAIN).value)
       else
         (DateTime.now.getMillis, None)
 
