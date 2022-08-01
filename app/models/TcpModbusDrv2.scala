@@ -12,7 +12,7 @@ import play.api.libs.json._
 
 import java.io.{File, InputStream, OutputStream}
 
-case class DeviceConfig(slaveID: Int, calibrationTime: Option[LocalTime] = None,
+case class DeviceConfig(slaveID: Option[Int], calibrationTime: Option[LocalTime] = None,
                         monitorTypes: Option[List[String]] = None,
                         raiseTime: Option[Int]= None,
                         downTime: Option[Int]= None,
@@ -25,7 +25,7 @@ case class DeviceConfig(slaveID: Int, calibrationTime: Option[LocalTime] = None,
                         calibrateSpanDO: Option[Int]= None,
                         skipInternalVault: Option[Boolean]= None)
 object DeviceConfig{
-  val default = DeviceConfig(1)
+  val default = DeviceConfig(Some(1))
 }
 
 case class DataReg(monitorType: String, address: Int, multiplier: Float)

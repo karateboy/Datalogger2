@@ -65,9 +65,9 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
     def probeInputReg(addr: Int, desc: String) = {
       try {
         val locator = if (protocol.protocol == Protocol.tcp)
-          BaseLocator.inputRegister(deviceConfig.slaveID, addr, DataType.FOUR_BYTE_FLOAT)
+          BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), addr, DataType.FOUR_BYTE_FLOAT)
         else
-          BaseLocator.inputRegister(deviceConfig.slaveID, addr, DataType.FOUR_BYTE_FLOAT_SWAPPED)
+          BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), addr, DataType.FOUR_BYTE_FLOAT_SWAPPED)
         masterOpt.get.getValue(locator)
         true
       } catch {
@@ -80,7 +80,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
 
     def probeHoldingReg(addr: Int, desc: String) = {
       try {
-        val locator = BaseLocator.holdingRegister(deviceConfig.slaveID, addr, DataType.FOUR_BYTE_FLOAT)
+        val locator = BaseLocator.holdingRegister(deviceConfig.slaveID.getOrElse(1), addr, DataType.FOUR_BYTE_FLOAT)
         masterOpt.get.getValue(locator)
         true
       } catch {
@@ -92,7 +92,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
 
     def probeInputStatus(addr: Int, desc: String) = {
       try {
-        val locator = BaseLocator.inputStatus(deviceConfig.slaveID, addr)
+        val locator = BaseLocator.inputStatus(deviceConfig.slaveID.getOrElse(1), addr)
         masterOpt.get.getValue(locator)
         true
       } catch {
@@ -154,11 +154,11 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
       idx = st_idx._2
     } {
       if (st.key.startsWith(InputKey)) {
-        batch.addLocator(idx, BaseLocator.inputRegister(deviceConfig.slaveID, st.addr, modelReg.byteSwapMode))
+        batch.addLocator(idx, BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode))
       } else if (st.key.startsWith(HoldingKey)) {
-        batch.addLocator(idx, BaseLocator.holdingRegister(deviceConfig.slaveID, st.addr, modelReg.byteSwapMode))
+        batch.addLocator(idx, BaseLocator.holdingRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode))
       } else if (st.key.startsWith(ModeKey) || st.key.startsWith(WarnKey)) {
-        batch.addLocator(idx, BaseLocator.inputStatus(deviceConfig.slaveID, st.addr))
+        batch.addLocator(idx, BaseLocator.inputStatus(deviceConfig.slaveID.getOrElse(1), st.addr))
       } else {
         throw new Exception(s"Unexpected key ${st.key}")
       }
@@ -542,9 +542,9 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
       if (deviceConfig.skipInternalVault != Some(true)) {
         for (reg <- modelReg.calibrationReg) {
           masterOpt.get.setValue(BaseLocator.coilStatus(
-            deviceConfig.slaveID, reg.zeroAddress), false)
+            deviceConfig.slaveID.getOrElse(1), reg.zeroAddress), false)
           masterOpt.get.setValue(BaseLocator.coilStatus(
-            deviceConfig.slaveID, reg.spanAddress), false)
+            deviceConfig.slaveID.getOrElse(1), reg.spanAddress), false)
         }
       }
     } catch {
@@ -568,7 +568,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
 
     if (deviceConfig.skipInternalVault != Some(true)) {
       for (reg <- modelReg.calibrationReg) {
-        val locator = BaseLocator.coilStatus(deviceConfig.slaveID, reg.zeroAddress)
+        val locator = BaseLocator.coilStatus(deviceConfig.slaveID.getOrElse(1), reg.zeroAddress)
         masterOpt.get.setValue(locator, v)
       }
     }
@@ -587,7 +587,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
 
     if (deviceConfig.skipInternalVault != Some(true)) {
       for (reg <- modelReg.calibrationReg) {
-        val locator = BaseLocator.coilStatus(deviceConfig.slaveID, reg.spanAddress)
+        val locator = BaseLocator.coilStatus(deviceConfig.slaveID.getOrElse(1), reg.spanAddress)
         masterOpt.get.setValue(locator, v)
       }
     }
