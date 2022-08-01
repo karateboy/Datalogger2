@@ -12,19 +12,6 @@
         <div id="realtimeChart"></div>
       </b-card>
     </b-col>
-    <b-col v-else lg="12" md="12">
-      <b-card
-        class="text-center"
-        header="即時監測資訊"
-        header-class="h4 display text-center"
-        border-variant="primary"
-        header-bg-variant="primary"
-        header-text-variant="white"
-        no-body
-      >
-        <h1 class="m-2 display-4"><strong>請到系統管理>儀器管理設定測量儀器</strong></h1>
-      </b-card>
-    </b-col>
     <b-col v-if="isRealtimeMeasuring" lg="3" class="text-center">
       <b-card no-body border-variant="primary">
         <b-table
