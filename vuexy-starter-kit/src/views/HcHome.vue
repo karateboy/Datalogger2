@@ -12,13 +12,12 @@
           no-body
         >
           <b-row align-h="center" align-v="center" class="m-3">
-            <b-col cols="12"
+            <b-col cols="12" class="border rounded-circle border-primary"
               ><b-img
                 v-if="winDirImg !== ''"
                 :src="winDirImg"
+                class="p-2"
                 fluid-grow
-                rounded="circle"
-                thumbnail
               ></b-img>
             </b-col>
             <b-col class="mt-1"
