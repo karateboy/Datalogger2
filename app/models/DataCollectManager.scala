@@ -269,7 +269,7 @@ object DataCollectManager {
                 windAvg(windSpeed.toList, windDir.toList)
               }
             case MonitorType.RAIN =>
-              Some(values.max)
+              Some(values.sum)
             case MonitorType.PM10 =>
               Some(values.last)
             case MonitorType.PM25 =>
@@ -337,7 +337,7 @@ object DataCollectManager {
                 windAvg(windSpeed.toList, windDir)
               }
             case MonitorType.RAIN =>
-              Some(values.max)
+              Some(values.sum)
             case MonitorType.PM10 =>
               Some(values.last)
             case MonitorType.PM25 =>

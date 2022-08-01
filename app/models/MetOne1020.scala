@@ -74,7 +74,7 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
   Logger.info(s"MetOne1020 collector start with protocolType ${deviceConfig.slaveID}")
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] =
-    if (deviceConfig.slaveID == 1)
+    if (deviceConfig.slaveID.contains(1))
       MetOne1020.instrumentStatusKeyList
     else
       MetOne1020.instrumentStatusKeyListOld
@@ -118,7 +118,7 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
 
   override def readReg(statusTypeList: List[InstrumentStatusType], full: Boolean): Future[Option[ModelRegValue2]] = Future {
     blocking {
-      if(deviceConfig.slaveID == 1)
+      if(deviceConfig.slaveID.contains(1))
         newProtocol
       else
         oldProtocol()

@@ -2,7 +2,7 @@ package controllers
 
 import com.github.nscala_time.time.Imports.DateTime
 import models.ModelHelper.errorHandler
-import models.{CdxUploader, RecordDB, SysConfigDB}
+import models.{CdxUploader, MonitorTypeDB, RecordDB, SysConfigDB}
 import play.api.{Environment, Logger}
 import play.api.libs.json.{JsError, Json}
 import play.api.mvc.{Action, AnyContent, BodyParsers, Controller}
@@ -12,7 +12,7 @@ import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class Cdx @Inject()(cdxUploader: CdxUploader, sysConfigDB: SysConfigDB, recordDB: RecordDB, environment: Environment) extends Controller {
+class Cdx @Inject()(cdxUploader: CdxUploader, monitorTypeDB: MonitorTypeDB, sysConfigDB: SysConfigDB, recordDB: RecordDB, environment: Environment) extends Controller {
 
   import CdxUploader._
 
@@ -53,7 +53,12 @@ class Cdx @Inject()(cdxUploader: CdxUploader, sysConfigDB: SysConfigDB, recordDB
           Future.successful(BadRequest(JsError.toJson(error).toString))
         },
         monitorTypes => {
-          sysConfigDB.setCdxMonitorTypes(monitorTypes)
+          val validated = CdxUploader.itemIdMap.keys.toList.sorted.map{
+            mt =>
+              monitorTypes.find(cdxMt=>cdxMt.mt == mt).getOrElse(CdxMonitorType(mt, monitorTypeDB.map(mt).desp, None, None))
+          }
+
+          sysConfigDB.setCdxMonitorTypes(validated)
           Future.successful(Ok("ok"))
         })
   }

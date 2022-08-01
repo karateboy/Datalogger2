@@ -152,8 +152,11 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
       val year = dirName.take(3).toInt
       val month = dirName.drop(3).toInt
       parseAllTx0(monitorConfig, year + 1911, month)
-      if(year != today.getYear && month != today.getMonthOfYear)
-        setArchive(dir)
+
+      if(year > today.getYear || (year == today.getYear && month > today.getMonthOfYear))
+        return
+
+      setArchive(dir)
     }
   }
 
