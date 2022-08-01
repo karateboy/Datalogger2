@@ -91,6 +91,7 @@ class Module(environment: Environment,
   	bindActorFactory[AkDrvCollector, AkDrv.Factory]
 	  bindActorFactory[DuoCollector, Duo.Factory]
     bindActorFactory[EcoPhysics88PCollector, EcoPhysics88P.Factory]
+    bindActorFactory[HydreonRainGaugeCollector, HydreonRainGauge.Factory]
 
     bindActorFactory[ForwardManager, ForwardManager.Factory]
     bindActorFactory[HourRecordForwarder, HourRecordForwarder.Factory]

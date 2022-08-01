@@ -3,7 +3,6 @@ package controllers
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import models._
-import models.mongodb.RecordOp
 import play.api.libs.json.Json
 import play.api.mvc._
 
@@ -113,32 +112,32 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
           val mtList = monitorTypeOp.realtimeMtvList
           val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.SELF_ID, monitorTypeOp.activeMtvList, start, start + 1.month)
           val statMap = query.getPeriodStatReportMap(periodMap, 1.day)(start, start + 1.month)
-          val overallStatMap = getOverallStatMap(statMap)
+          val overallStatMap = getOverallStatMap(statMap, 20)
           val avgRow = {
             val avgData =
               for (mt <- mtList) yield {
-                CellData(monitorTypeOp.format(mt, statMap(mt)(start).avg), Seq.empty[String])
+                CellData(monitorTypeOp.format(mt, overallStatMap(mt).avg), Seq.empty[String])
               }
             StatRow("平均", avgData)
           }
           val maxRow = {
             val maxData =
               for (mt <- mtList) yield {
-                CellData(monitorTypeOp.format(mt, statMap(mt)(start).max), Seq.empty[String])
+                CellData(monitorTypeOp.format(mt, overallStatMap(mt).max), Seq.empty[String])
               }
             StatRow("最大", maxData)
           }
           val minRow = {
             val minData =
               for (mt <- mtList) yield {
-                CellData(monitorTypeOp.format(mt, statMap(mt)(start).min), Seq.empty[String])
+                CellData(monitorTypeOp.format(mt, overallStatMap(mt).min), Seq.empty[String])
               }
             StatRow("最小", minData)
           }
           val effectiveRow = {
             val effectiveData =
               for (mt <- mtList) yield {
-                CellData(monitorTypeOp.format(mt, statMap(mt)(start).effectPercent), Seq.empty[String])
+                CellData(monitorTypeOp.format(mt, overallStatMap(mt).effectPercent), Seq.empty[String])
               }
             StatRow("有效率(%)", effectiveData)
           }
@@ -148,8 +147,13 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
             for (recordTime <- getPeriods(start, start + 1.month, 1.day)) yield {
               val mtData =
                 for (mt <- mtList) yield {
+                  val status = if (statMap(mt)(recordTime).isEffective)
+                    MonitorStatus.NormalStat
+                  else
+                    MonitorStatus.InvalidDataStat
+
                   CellData(monitorTypeOp.format(mt, statMap(mt)(recordTime).avg),
-                    Seq(statMap(mt)(recordTime).isEffective.toString))
+                    MonitorStatus.getCssClassStr(status), Some(status))
                 }
               RowData(recordTime.getMillis, mtData)
             }
@@ -176,7 +180,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
           val startDate = start.withMillisOfDay(0).withDayOfMonth(1).withMonthOfYear(1)
           val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.SELF_ID, monitorTypeOp.activeMtvList, startDate, startDate + 1.year)
           val statMap = query.getPeriodStatReportMap(periodMap, 1.month)(start, start + 1.year)
-          val overallStatMap = getOverallStatMap(statMap)
+          val overallStatMap = getOverallStatMap(statMap, 12)
           Ok("")
 
         //case PeriodReport.MonthlyReport =>
@@ -208,14 +212,13 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
 
   }
 
-  def getOverallStatMap(statMap: Map[String, Map[DateTime, Stat]]) = {
-    val mTypes = statMap.keys.toList
+  def getOverallStatMap(statMap: Map[String, Map[DateTime, Stat]], minimalValidCount: Int): Map[String, Stat] = {
     statMap.map { pair =>
       val mt = pair._1
       val dateMap = pair._2
       val values = dateMap.values.toList
       val total = values.size
-      val count = values.count(_.avg.isDefined)
+      val count = values.count(_.valid)
       val overCount = values.map {
         _.overCount
       }.sum
@@ -267,7 +270,8 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
         max = max,
         total = total,
         count = count,
-        overCount = overCount)
+        overCount = overCount,
+        valid = count >= minimalValidCount)
     }
   }
 
@@ -282,12 +286,12 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
     def getHourPeriodStat(records: Seq[Record], hourList: List[DateTime]) = {
       val values = records.flatMap { r => r.value }
       if (values.length == 0)
-        Stat(None, None, None, 0, 0, 0)
+        Stat(None, None, None, 0, 0, 0, false)
       else {
         val min = values.min
         val max = values.max
         val sum = values.sum
-        val count = records.length
+        val count = records.filter(r => r.status == MonitorStatus.NormalStat || r.status == MonitorStatus.OverNormalStat).length
         val total = new Duration(start, start + 1.month).getStandardDays.toInt
         val overCount = if (monitorTypeOp.map(mt).std_law.isDefined) {
           values.count {
@@ -301,7 +305,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
           val windSpeed = hourList.map(timeMap)
           windAvg(windSpeed, windDir)
         } else {
-          if(total != 0)
+          if (total != 0)
             Some(sum / total)
           else
             None
@@ -312,7 +316,8 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
           max = Some(max),
           total = total,
           count = count,
-          overCount = overCount)
+          overCount = overCount,
+          valid = true)
       }
     }
 
@@ -327,7 +332,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
       }
     val hourStatMap = Map(hourValues: _*)
     val dayStatMap = query.getPeriodStatReportMap(Map(mt -> recordList), 1.day)(start, start + 1.month)
-    val overallPeriod : Period = new Period(start, start + 1.month)
+    val overallPeriod: Period = new Period(start, start + 1.month)
     val overallStat = query.getPeriodStatReportMap(Map(mt -> recordList), overallPeriod)(start, start + 1.month)(mt)(start)
     var columns = Seq.empty[String]
     for (i <- 0 to 23) {
@@ -341,7 +346,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
           CellData(monitorTypeOp.format(mt, hourStatMap(h).avg), Seq.empty[String])
         }
 
-      avgData = avgData.:+(CellData(monitorTypeOp.format(mt,overallStat.avg), Seq.empty[String]))
+      avgData = avgData.:+(CellData(monitorTypeOp.format(mt, overallStat.avg), Seq.empty[String]))
       avgData = avgData.:+(CellData("", Seq.empty[String]))
       avgData = avgData.:+(CellData("", Seq.empty[String]))
       avgData = avgData.:+(CellData("", Seq.empty[String]))
