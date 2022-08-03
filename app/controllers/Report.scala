@@ -47,7 +47,8 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
             val v = pair._2
             k -> Map(v.map { r => r.time -> r }: _*)
           }
-          val statMap: Map[String, Map[DateTime, Stat]] = query.getPeriodStatReportMap(periodMap, 1.day)(startDate, startDate + 1.day)
+          val statMap: Map[String, Map[DateTime, Stat]] =
+            query.getPeriodStatReportMap(periodMap, 1.day)(startDate, startDate + 1.day)
 
           val avgRow = {
             val avgData =
@@ -216,9 +217,9 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
     statMap.map { pair =>
       val mt = pair._1
       val dateMap = pair._2
-      val values = dateMap.values.toList
-      val total = values.size
-      val count = values.count(_.valid)
+      val values = dateMap.values.filter(_.valid).toList
+      val total = dateMap.values.size
+      val count = values.size
       val overCount = values.map {
         _.overCount
       }.sum
@@ -233,9 +234,8 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
           if (total == 0 || count == 0)
             None
           else {
-            Some(values.filter {
-              _.avg.isDefined
-            }.map { s => s.avg.get * s.total }.sum / (values.map(_.total).sum))
+            val sum = values.flatMap(_.avg).sum
+            Some(sum / count)
           }
         } else {
           val winSpeedMap = statMap(MonitorType.WIN_SPEED)
@@ -276,7 +276,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
   }
 
   def monthlyHourReport(monitorTypeStr: String, startDate: Long, outputTypeStr: String) = Security.Authenticated {
-    val mt = (monitorTypeStr)
+    val mt = monitorTypeStr
     val start = new DateTime(startDate).withMillisOfDay(0).withDayOfMonth(1)
     val outputType = OutputType.withName(outputTypeStr)
     val recordList = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.SELF_ID, List(mt), start, start + 1.month)(mt)
@@ -284,14 +284,15 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
     val timeMap = Map(timePair: _*)
 
     def getHourPeriodStat(records: Seq[Record], hourList: List[DateTime]) = {
-      val values = records.flatMap { r => r.value }
+      val values = records.filter(rec => MonitorStatusFilter.isMatched(MonitorStatusFilter.ValidData, rec.status))
+        .flatMap { r => r.value }
       if (values.length == 0)
         Stat(None, None, None, 0, 0, 0, false)
       else {
         val min = values.min
         val max = values.max
         val sum = values.sum
-        val count = records.filter(r => r.status == MonitorStatus.NormalStat || r.status == MonitorStatus.OverNormalStat).length
+        val count = values.length
         val total = new Duration(start, start + 1.month).getStandardDays.toInt
         val overCount = if (monitorTypeOp.map(mt).std_law.isDefined) {
           values.count {
@@ -305,8 +306,8 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
           val windSpeed = hourList.map(timeMap)
           windAvg(windSpeed, windDir)
         } else {
-          if (total != 0)
-            Some(sum / total)
+          if (count != 0)
+            Some(sum / count)
           else
             None
         }
