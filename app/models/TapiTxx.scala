@@ -11,7 +11,7 @@ case class TapiConfig(slaveID: Int, calibrationTime: Option[LocalTime], monitorT
     calibrateZeoSeq:Option[String], calibrateSpanSeq:Option[String],
     calibratorPurgeSeq:Option[String], calibratorPurgeTime:Option[Int],
     calibrateZeoDO:Option[Int], calibrateSpanDO:Option[Int], skipInternalVault:Option[Boolean]){
-  def toDeviceConfig = DeviceConfig(slaveID = slaveID,
+  def toDeviceConfig = DeviceConfig(slaveID = Some(slaveID),
     calibrationTime = calibrationTime, monitorTypes = monitorTypes,
     raiseTime = raiseTime, downTime = downTime, holdTime = holdTime,
     calibrateZeoSeq = calibrateZeoSeq, calibrateSpanSeq = calibrateSpanSeq,

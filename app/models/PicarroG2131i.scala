@@ -43,7 +43,7 @@ object PicarroG2131i extends AbstractDrv(_id = "picarroG2131i", desp = "Picarro 
 
   override def verifyParam(json: String) = {
     val mt = getDataRegList.map(_.monitorType)
-    val newParam = DeviceConfig(1, None, Some(mt),
+    val newParam = DeviceConfig(Some(1), None, Some(mt),
       None, None, None,
       None, None,
       None, None,

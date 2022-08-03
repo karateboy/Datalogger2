@@ -98,6 +98,7 @@
     <b-card v-show="display" :title="resultTitle">
       <b-table
         striped
+        class="text-center"
         hover
         :fields="columns"
         :items="rows"

@@ -42,7 +42,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
   val WarnKey = "Warn"
   var timerOpt: Option[Cancellable] = None
   var masterOpt: Option[ModbusMaster] = None
-  var (collectorState: String, instrumentStatusTypesOpt) = {
+  @volatile var (collectorState: String, instrumentStatusTypesOpt) = {
     val instList = instrumentOp.getInstrument(instId)
     if (!instList.isEmpty) {
       val inst: Instrument = instList(0)

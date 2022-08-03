@@ -33,7 +33,7 @@
           <b-col lg="6" md="6">
             <b-card
               class="text-center"
-              header-html="最大陣風&nbsp;<sub>更新週期(5秒)</sub>"
+              header-html="陣風&nbsp;<sub>更新週期(5秒)</sub>"
               header-class="h1 justify-content-center font-weight-bolder"
               border-variant="primary"
               header-bg-variant="primary"

@@ -1,6 +1,7 @@
 name := """DataLogger2"""
-
-version := "1.4.11"
+val mainVersion = "1.4.16"
+val distVersion = ""
+version := s"$mainVersion$distVersion"
 
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala, LauncherJarPlugin, JavaAppPackaging, WindowsPlugin)
@@ -54,6 +55,7 @@ mappings in Universal ++=
   (baseDirectory.value / "cdxUpload" * "*" get) map
     (x => x -> ("cdxUpload/" + x.getName))
 
+mappings in Universal ++= Seq((baseDirectory.value / "cleanup.bat", "cleanup.bat"))
 //libraryDependencies += "com.google.guava" % "guava" % "19.0"
 scalacOptions += "-feature"
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
