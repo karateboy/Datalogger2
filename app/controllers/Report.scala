@@ -223,12 +223,18 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
       val overCount = values.map {
         _.overCount
       }.sum
-      val max = values.map {
+      val max = if(values.nonEmpty)
+        values.map {
         _.avg
       }.max
-      val min = values.map {
+      else
+        None
+      val min = if(values.nonEmpty)
+        values.map {
         _.avg
       }.min
+      else
+        None
       val avg =
         if (mt != MonitorType.WIN_DIRECTION) {
           if (total == 0 || count == 0)
