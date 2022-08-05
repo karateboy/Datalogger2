@@ -71,7 +71,8 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
   }
 
   def getPeriodStatReportMap(recordListMap: Map[String, Seq[Record]], period: Period,
-                             statusFilter: List[String] = List("010"))(start: DateTime, end: DateTime):
+                             statusFilter: MonitorStatusFilter.Value = MonitorStatusFilter.ValidData)
+                            (start: DateTime, end: DateTime):
   Map[String, Map[Imports.DateTime, Stat]] = {
     val mTypes = recordListMap.keys.toList
     if (mTypes.contains(MonitorType.WIN_DIRECTION)) {
@@ -92,14 +93,15 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     }
 
     def getPeriodStat(records: Seq[Record], mt: String, period_start: DateTime, minimumValidCount: Int): Stat = {
-      val values = records.flatMap(x => x.value)
+      val values = records.filter(rec=> MonitorStatusFilter.isMatched(statusFilter, rec.status))
+        .flatMap(x => x.value)
       if (values.length == 0)
         Stat(None, None, None, 0, 0, 0, false)
       else {
         val min = values.min
         val max = values.max
         val sum = values.sum
-        val count = records.length
+        val count = values.length
         val total = new Duration(period_start, period_start + period).getStandardHours.toInt
         val overCount = if (monitorTypeOp.map(mt).std_law.isDefined) {
           values.count {
@@ -113,8 +115,8 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
           val windSpeed = periodSlice(recordListMap(MonitorType.WIN_SPEED), period_start, period_start + period)
           windAvg(windSpeed, windDir)
         } else {
-          if (total != 0)
-            Some(sum / total)
+          if (count != 0)
+            Some(sum / count)
           else
             None
         }
