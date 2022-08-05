@@ -149,9 +149,10 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
 
     for(dir<-dirs) {
       val dirName = dir.getName
-      val year = dirName.take(3).toInt
+      val taiwanYear = dirName.take(3).toInt
+      val year = taiwanYear + 1911
       val month = dirName.drop(3).toInt
-      parseAllTx0(monitorConfig, year + 1911, month)
+      parseAllTx0(monitorConfig, year, month)
 
       if(year > today.getYear || (year == today.getYear && month > today.getMonthOfYear))
         return
