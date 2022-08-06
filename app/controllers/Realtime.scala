@@ -140,24 +140,16 @@ class Realtime @Inject()
         None
 
       val rainHourList = hourList.filter(rec=>rec.mtDataList.exists(_.mtName == MonitorType.RAIN)).reverse
-      val (hourStart, rainHour1) = if(rainHourList.nonEmpty)
-        (rainHourList.head._id.time.getTime, rainHourList.head.mtMap(MonitorType.RAIN).value)
+      val hourStart = if(rainHourList.nonEmpty)
+        rainHourList.head._id.time.getTime
       else
-        (DateTime.now.getMillis, None)
+        DateTime.now.getMillis
 
-      val rainHour2 = if(rainHourList.size>=2)
-        rainHourList(1).mtMap(MonitorType.RAIN).value
-      else
-        None
-
-      val rainHour3 = if(rainHourList.size>=3)
-        rainHourList(2).mtMap(MonitorType.RAIN).value
-      else
-        None
+      val rainHourData = rainHourList.take(12).map(_.mtMap(MonitorType.RAIN).value)
 
       Ok(Json.toJson(WeatherSummary(windir, winmax,
         temp, winspeed, humid,
-        Seq(rain10, rain60, rainDay), hourStart, Seq(rainHour1, rainHour2, rainHour3))))
+        Seq(rain10, rain60, rainDay), hourStart, rainHourData)))
     }
   }
 

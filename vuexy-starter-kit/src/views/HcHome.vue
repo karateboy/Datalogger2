@@ -195,33 +195,33 @@
         >
           <b-table-simple>
             <b-tr>
-              <b-td class="bg-secondary"
-                ><h3>{{ getHourStr(0) }}</h3></b-td
+              <b-td v-for="hr in hourGroups[0]" :key="hr" class="bg-secondary"
+                ><h3>{{ getHourStr(hr) }}</h3></b-td
               >
             </b-tr>
             <b-tr>
-              <b-td
-                ><h3>{{ weatherSummary.hourRain[0] }}mm</h3></b-td
+              <b-td v-for="hr in hourGroups[0]" :key="hr"
+                ><h3>{{ getHourRain(hr) }}mm</h3></b-td
               >
             </b-tr>
             <b-tr>
-              <b-td class="bg-secondary"
-                ><h3>{{ getHourStr(1) }}</h3></b-td
+              <b-td v-for="hr in hourGroups[1]" :key="hr" class="bg-secondary"
+                ><h3>{{ getHourStr(hr) }}</h3></b-td
               >
             </b-tr>
             <b-tr>
-              <b-td
-                ><h3>{{ weatherSummary.hourRain[1] }}mm</h3></b-td
+              <b-td v-for="hr in hourGroups[1]" :key="hr"
+                ><h3>{{ getHourRain(hr) }}mm</h3></b-td
               >
             </b-tr>
             <b-tr>
-              <b-td class="bg-secondary"
-                ><h3>{{ getHourStr(2) }}</h3></b-td
+              <b-td v-for="hr in hourGroups[2]" :key="hr" class="bg-secondary"
+                ><h3>{{ getHourStr(hr) }}</h3></b-td
               >
             </b-tr>
             <b-tr>
-              <b-td
-                ><h3>{{ weatherSummary.hourRain[2] }}mm</h3></b-td
+              <b-td v-for="hr in hourGroups[2]" :key="hr"
+                ><h3>{{ getHourRain(hr) }}mm</h3></b-td
               >
             </b-tr>
           </b-table-simple>
@@ -269,11 +269,22 @@ export default Vue.extend({
       hourStart: 0,
       hourRain: [1, 2, 3],
     };
+    let hourGroups = Array<Array<number>>();
+    for (let i = 0; i < 12; i++) {
+      if (i % 4 === 0) {
+        hourGroups.push(Array<number>());
+      }
+      let groupIdx = Math.floor(i / 4);
+      let hrGroup = hourGroups[groupIdx];
+      hrGroup.push(i);
+    }
+
     return {
       refreshTimer: 0,
       weatherSummary,
       realtime,
       count: 0,
+      hourGroups,
     };
   },
   computed: {
@@ -400,6 +411,11 @@ export default Vue.extend({
       let mtInfo = this.mtMap.get(mt) as MonitorType;
       if (mtInfo !== undefined) return mtInfo.desp;
       else return '';
+    },
+    getHourRain(hr: number): string {
+      if (hr < this.weatherSummary.hourRain.length)
+        return `${this.weatherSummary.hourRain[hr]}`;
+      else return '-';
     },
     async queryWindRose(mt: string) {
       const now = new Date().getTime();

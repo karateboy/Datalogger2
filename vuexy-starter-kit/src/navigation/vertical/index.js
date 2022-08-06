@@ -36,6 +36,8 @@ export default [
       {
         title: '玫瑰圖查詢',
         route: 'wind-rose-query',
+        action: 'read',
+        resource: 'Data',
       },
     ],
   },

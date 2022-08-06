@@ -21,7 +21,10 @@
           <b-card-title title-tag="h1" class="font-weight-bold mb-1">
             新竹市政府氣象監測系統
           </b-card-title>
-          <b-card-text class="mb-2"> 請登入您的帳號 </b-card-text>
+          <b-card-text class="mb-2">
+            請登入您的帳號
+            <sub>{{ loginCountDown }} 秒後自動登入</sub></b-card-text
+          >
 
           <!-- form -->
           <validation-observer ref="loginValidation">
@@ -118,6 +121,8 @@ export default {
   },
   mixins: [togglePasswordVisibility],
   data() {
+    let loginCountDown = 5;
+    let loginTimer = 0;
     return {
       status: '',
       password: 'abc123',
@@ -126,6 +131,8 @@ export default {
       // validation rulesimport store from '@/store/index'
       required,
       email,
+      loginCountDown,
+      loginTimer,
     };
   },
   computed: {
@@ -142,7 +149,17 @@ export default {
     },
   },
   mounted() {
-    this.validationForm();
+    let me = this;
+    this.loginTimer = setInterval(() => {
+      me.loginCountDown--;
+      if (me.loginCountDown === 0) {
+        clearInterval(me.loginTimer);
+        me.validationForm();
+      }
+    }, 1000);
+  },
+  beforeDestroy() {
+    clearInterval(this.loginTimer);
   },
   methods: {
     ...mapMutations(['setLogin']),
