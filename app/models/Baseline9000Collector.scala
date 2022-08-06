@@ -10,8 +10,12 @@ import play.api.libs.json.{JsError, Json}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-case class Baseline9000Config(calibrationTime: LocalTime,
-                              raiseTime: Int, downTime: Int, holdTime: Int, calibrateZeoSeq: Option[String], calibrateSpanSeq: Option[String])
+case class Baseline9000Config(calibrationTime: Option[LocalTime],
+                              raiseTime: Option[Int],
+                              downTime: Option[Int],
+                              holdTime: Option[Int],
+                              calibrateZeoSeq: Option[String],
+                              calibrateSpanSeq: Option[String])
 
 object Baseline9000Collector extends DriverOps {
 
@@ -37,7 +41,7 @@ object Baseline9000Collector extends DriverOps {
 
   override def getCalibrationTime(param: String) = {
     val config = validateParam(param)
-    Some(config.calibrationTime)
+    config.calibrationTime
   }
 
   def validateParam(json: String) = {
@@ -246,7 +250,9 @@ class Baseline9000Collector @Inject()
 
           for (serial <- serialCommOpt)
             serial.port.writeByte(cmd)
-          calibrateTimerOpt = Some(context.system.scheduler.scheduleOnce(Duration(config.raiseTime, SECONDS), self, HoldStart))
+
+          calibrateTimerOpt = for(raiseTime <- config.raiseTime) yield
+            context.system.scheduler.scheduleOnce(Duration(raiseTime, SECONDS), self, HoldStart)
         }
       } onFailure serialErrorHandler
 
@@ -259,7 +265,8 @@ class Baseline9000Collector @Inject()
     case HoldStart =>
       Logger.debug(s"${calibrationType} HoldStart: $mt")
       calibrateRecordStart = true
-      calibrateTimerOpt = Some(context.system.scheduler.scheduleOnce(Duration(config.holdTime, SECONDS), self, DownStart))
+      calibrateTimerOpt = for(holdTime<-config.holdTime) yield
+        context.system.scheduler.scheduleOnce(Duration(holdTime, SECONDS), self, DownStart)
 
     case DownStart =>
       Logger.debug(s"${calibrationType} DownStart: $mt")
@@ -288,7 +295,8 @@ class Baseline9000Collector @Inject()
             collectorState = MonitorStatus.CalibrationResume
             instrumentOp.setState(id, collectorState)
 
-            Some(context.system.scheduler.scheduleOnce(Duration(config.downTime, SECONDS), self, CalibrateEnd))
+            for(downTime<-config.downTime) yield
+            context.system.scheduler.scheduleOnce(Duration(downTime, SECONDS), self, CalibrateEnd)
           }
         }
       } onFailure serialErrorHandler

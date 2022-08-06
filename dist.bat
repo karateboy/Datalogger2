@@ -7,7 +7,8 @@ cd vuexy-starter-kit
 call yarn build
 cd ../public
 mkdir dist
-xcopy /E /I ..\..\vuexy-starter-kit\dist dist
-cd ..
+cd dist
+xcopy /E /I ..\..\vuexy-starter-kit\dist
+cd ../..
 call sbt clean;dist
 @echo on
