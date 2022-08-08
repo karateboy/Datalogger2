@@ -67,6 +67,9 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
       throw new Exception(s"unknown ${config.model} model")
   }
 
+  for(mt<-mtList)
+    recordOp.ensureMonitorType(mt)
+
   var timer: Cancellable = context.system.scheduler.scheduleOnce(FiniteDuration(5, SECONDS), self, ParseReport)
 
   override def receive: Receive = {
@@ -148,7 +151,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
         val end = new DateTime(Date.from(dataEnd.atZone(ZoneId.systemDefault()).toInstant))
 
         for (current <- getHourBetween(start, end))
-          dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID, current)(monitorTypeOp.mtvList)
+          dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
       }
     } finally {
       src.close()
