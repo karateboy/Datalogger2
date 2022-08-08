@@ -36,7 +36,7 @@ trait MonitorTypeDB {
     rangeType(TEMP, "溫度", "℃", 2),
     rangeType(HUMID, "濕度", "%", 2),
     rangeType(PRESS, "氣壓", "hPa", 2),
-    rangeType(RAIN, "雨量", "mm/h", 2, true),
+    rangeType(RAIN, "雨量", "mm/h", 2),
     rangeType(LAT, "緯度", "度", 4),
     rangeType(LNG, "經度", "度", 4),
     rangeType("RT", "室內溫度", "℃", 1),

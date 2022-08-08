@@ -164,7 +164,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
   }
 
   def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean = false)
-                         (mtList: Seq[String]): Future[UpdateResult] = {
+                         (mtList: Seq[String], monitorTypeDB: MonitorTypeDB): Future[UpdateResult] = {
     val ret =
       for (recordMap <- recordOp.getRecordMapFuture(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current)) yield {
         import scala.collection.mutable.ListBuffer
@@ -199,14 +199,14 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
           for (v <- r.value if !v.isNaN)
             lb.append((r.time, v))
         }
-        val mtDataList = calculateHourAvgMap(mtMap, alwaysValid)
+        val mtDataList = calculateHourAvgMap(mtMap, alwaysValid, monitorTypeDB)
         val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
         val f = recordOp.replaceRecord(recordList)(recordOp.HourCollection)
         if (forward) {
           f onComplete {
-            case Success(_)=>
+            case Success(_) =>
               manager ! ForwardHour
-              for(cdxConfig<-sysConfigDB.getCdxConfig() if cdxConfig.enable;cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes())
+              for (cdxConfig <- sysConfigDB.getCdxConfig() if cdxConfig.enable; cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes())
                 cdxUploader.upload(recordList = recordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
 
             case Failure(exception) =>
@@ -223,12 +223,12 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 object DataCollectManager {
   var effectiveRatio = 0.75
 
-  def updateEffectiveRatio(sysConfig: SysConfigDB): Unit ={
-    for(ratio <-sysConfig.getEffectiveRatio())
+  def updateEffectiveRatio(sysConfig: SysConfigDB): Unit = {
+    for (ratio <- sysConfig.getEffectiveRatio())
       effectiveRatio = ratio
   }
 
-  def calculateMinAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
+  def calculateMinAvgMap(monitorTypeDB: MonitorTypeDB, mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
     for {
       mt <- mtMap.keys
       statusMap = mtMap(mt)
@@ -269,7 +269,11 @@ object DataCollectManager {
                 windAvg(windSpeed.toList, windDir.toList)
               }
             case MonitorType.RAIN =>
-              Some(values.sum)
+              val mtCase = monitorTypeDB.map(MonitorType.RAIN)
+              if (mtCase.accumulated.contains(true))
+                Some(values.max)
+              else
+                Some(values.sum)
             case MonitorType.PM10 =>
               Some(values.last)
             case MonitorType.PM25 =>
@@ -283,7 +287,7 @@ object DataCollectManager {
           }
         }
         val roundedAvg =
-          for(avg<-avgOpt) yield
+          for (avg <- avgOpt) yield
             BigDecimal(avg).setScale(3, RoundingMode.HALF_EVEN).doubleValue()
         (roundedAvg, statusKV._1)
       }
@@ -292,7 +296,9 @@ object DataCollectManager {
     }
   }
 
-  def calculateHourAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
+  def calculateHourAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]],
+                          alwaysValid: Boolean,
+                          monitorTypeDB: MonitorTypeDB) = {
     for {
       mt <- mtMap.keys
       statusMap = mtMap(mt)
@@ -337,7 +343,11 @@ object DataCollectManager {
                 windAvg(windSpeed.toList, windDir)
               }
             case MonitorType.RAIN =>
-              Some(values.sum)
+              val mtCase = monitorTypeDB.map(MonitorType.RAIN)
+              if (mtCase.accumulated.contains(true))
+                Some(values.max)
+              else
+                Some(values.sum)
             case MonitorType.PM10 =>
               Some(values.last)
             case MonitorType.PM25 =>
@@ -352,7 +362,7 @@ object DataCollectManager {
         }
 
         val roundedAvg =
-          for(avg<-avgOpt) yield
+          for (avg <- avgOpt) yield
             BigDecimal(avg).setScale(3, RoundingMode.HALF_EVEN).doubleValue()
         (roundedAvg, statusKV._1)
       }
@@ -462,19 +472,19 @@ class DataCollectManager @Inject()
         forwardManager ! ForwardMin
 
 
-    case fhr: ForwardHourRecord=>
-      for(forwardManager<-forwardManagerOpt)
-        forwardManager !fhr
+    case fhr: ForwardHourRecord =>
+      for (forwardManager <- forwardManagerOpt)
+        forwardManager ! fhr
 
-    case fmr: ForwardMinRecord=>
-      for(forwardManager<-forwardManagerOpt)
-        forwardManager !fmr
+    case fmr: ForwardMinRecord =>
+      for (forwardManager <- forwardManagerOpt)
+        forwardManager ! fmr
 
 
     case AutoState =>
       for (autoStateConfigs <- autoStateConfigOpt)
-        autoStateConfigs.foreach(config=>{
-          if(config.period == "Hour" && config.time.toInt == DateTime.now().getMinuteOfHour){
+        autoStateConfigs.foreach(config => {
+          if (config.period == "Hour" && config.time.toInt == DateTime.now().getMinuteOfHour) {
             Logger.info(s"AutoState=>$config")
             self ! SetState(config.instID, config.state)
           }
@@ -700,7 +710,7 @@ class DataCollectManager @Inject()
         if (storeSecondData)
           flushSecData(priorityMtMap)
 
-        val minuteMtAvgList = calculateMinAvgMap(priorityMtMap, false)
+        val minuteMtAvgList = calculateMinAvgMap(monitorTypeOp, priorityMtMap, false)
 
         checkMinDataAlarm(minuteMtAvgList)
 
@@ -710,7 +720,7 @@ class DataCollectManager @Inject()
         f onComplete {
           case Success(_) =>
             self ! ForwardMin
-          case Failure(exception)=>
+          case Failure(exception) =>
             errorHandler(exception)
         }
         f
@@ -724,11 +734,11 @@ class DataCollectManager @Inject()
             if (current.getMinuteOfHour == 0) {
               for (m <- monitorOp.mvList) {
                 dataCollectManagerOp.recalculateHourData(monitor = m,
-                  current = current)(monitorTypeOp.realtimeMtvList)
+                  current = current)(monitorTypeOp.activeMtvList, monitorTypeOp)
               }
               self ! CheckInstruments
             }
-          case Failure(exception)=>
+          case Failure(exception) =>
             errorHandler(exception)
         }
       }
@@ -745,7 +755,7 @@ class DataCollectManager @Inject()
         param.actor ! AutoCalibration(instId)
 
         param.calibrationTimerOpt =
-          for(localTime: LocalTime <- param.calibrationTimeOpt) yield {
+          for (localTime: LocalTime <- param.calibrationTimeOpt) yield {
             val now = DateTime.now()
             val calibrationTime = now.toLocalDate().toDateTime(localTime)
 
@@ -874,7 +884,7 @@ class DataCollectManager @Inject()
         handler(bit)
 
     case ReportSignalData(dataList) =>
-      dataList.foreach(signalData=>monitorTypeOp.logDiMonitorType(alarmOp, signalData.mt, signalData.value))
+      dataList.foreach(signalData => monitorTypeOp.logDiMonitorType(alarmOp, signalData.mt, signalData.value))
       val updateMap: Map[String, (DateTime, Boolean)] = dataList.map(signal => {
         signal.mt -> (DateTime.now(), signal.value)
       }).toMap
@@ -885,10 +895,10 @@ class DataCollectManager @Inject()
       val now = DateTime.now()
       val f = recordOp.getRecordMapFuture(recordOp.MinCollection)(Monitor.SELF_ID, monitorTypeOp.realtimeMtvList,
         now.minusHours(1), now)
-      for(minRecordMap <- f){
-        for(kv<- instrumentMap){
-          val ( instID, instParam) = kv;
-          if(instParam.mtList.exists(mt=> minRecordMap.contains(mt) && minRecordMap(mt).size < 45)){
+      for (minRecordMap <- f) {
+        for (kv <- instrumentMap) {
+          val (instID, instParam) = kv;
+          if (instParam.mtList.exists(mt => minRecordMap.contains(mt) && minRecordMap(mt).size < 45)) {
             Logger.error(s"$instID has less than 45 minRecords. Restart $instID")
             self ! RestartInstrument(instID)
           }
