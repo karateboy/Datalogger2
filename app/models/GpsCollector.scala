@@ -1,16 +1,20 @@
 package models
-import play.api._
-import akka.actor._
-import play.api.Play.current
-import play.api.libs.concurrent.Akka
-import ModelHelper._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import Protocol.{ProtocolParam, serial}
+import akka.actor._
 import com.google.inject.assistedinject.Assisted
 import jssc.SerialPort
+import models.GpsCollector.ReadBuffer
+import models.Protocol.{ProtocolParam, serial}
+import net.sf.marineapi.nmea.io.AbstractDataReader
+import play.api._
+
+import java.io.{BufferedReader, InputStreamReader}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.{FiniteDuration, MICROSECONDS, SECONDS}
 
 object GpsCollector extends DriverOps {
+  var count = 0
+
   override def getMonitorTypes(param: String) = {
     val lat = "LAT"
     val lng = "LNG"
@@ -23,13 +27,7 @@ object GpsCollector extends DriverOps {
 
   override def getCalibrationTime(param: String) = None
 
-  var count = 0
-
-  trait Factory {
-    def apply(id: String, protocolParam: ProtocolParam): Actor
-  }
-
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor ={
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt: Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Factory])
     val f2 = f.asInstanceOf[Factory]
     f2(id, protocol)
@@ -40,47 +38,75 @@ object GpsCollector extends DriverOps {
   override def description: String = "GPS"
 
   override def protocol: List[String] = List(serial)
+
+  trait Factory {
+    def apply(id: String, protocolParam: ProtocolParam): Actor
+  }
+
+  case object ReadBuffer
 }
 
-import net.sf.marineapi.nmea.io.ExceptionListener;
-import net.sf.marineapi.nmea.io.SentenceReader;
-import net.sf.marineapi.provider.PositionProvider;
-import net.sf.marineapi.provider.event.PositionEvent;
-import net.sf.marineapi.provider.event.PositionListener;
-import net.sf.marineapi.nmea.event.SentenceEvent;
-import net.sf.marineapi.nmea.event.SentenceListener;
-import net.sf.marineapi.nmea.io.SentenceReader;
-import net.sf.marineapi.nmea.sentence.SentenceValidator;
+import net.sf.marineapi.nmea.event.{SentenceEvent, SentenceListener}
+import net.sf.marineapi.nmea.io.{ExceptionListener, SentenceReader}
+import net.sf.marineapi.provider.PositionProvider
+import net.sf.marineapi.provider.event.{PositionEvent, PositionListener}
 
 import javax.inject._
 
+class SerialDataReader(serialComm: SerialComm) extends AbstractDataReader {
+
+  import collection.mutable._
+
+  val lineBuffer = ListBuffer.empty[String]
+
+  override def read(): String = {
+    for (line <- serialComm.getLine3())
+      lineBuffer.append(line.trim)
+
+    if (lineBuffer.isEmpty)
+      null
+    else
+      lineBuffer.remove(0)
+  }
+}
+
 class GpsCollector @Inject()()(@Assisted id: String, @Assisted protocolParam: ProtocolParam) extends Actor
-    with ActorLogging with SentenceListener with ExceptionListener with PositionListener {
+  with ActorLogging with SentenceListener with ExceptionListener with PositionListener {
+  Logger.info(s"$id ${protocolParam}")
+
   val comm: SerialComm =
     SerialComm.open(protocolParam.comPort.get, protocolParam.speed.getOrElse(SerialPort.BAUDRATE_9600))
   var reader: SentenceReader = _
-
-  import scala.concurrent.Future
-  import scala.concurrent.blocking
+  var buffer: Option[BufferedReader] = None
+  var timer: Option[Cancellable] = None
 
   def receive = handler(MonitorStatus.NormalStat)
+
+  init
 
   def handler(collectorState: String): Receive = {
     case SetState(id, state) =>
       Logger.warn(s"Ignore $self => $state")
+
+    case ReadBuffer =>
+      comm.getLine3().foreach(line => Logger.info(line.trim))
   }
 
   def init() {
     Logger.info("Init GPS reader...")
-    val stream = comm.is
-    reader = new SentenceReader(stream)
+    reader = new SentenceReader(new SerialDataReader(comm))
     reader.setExceptionListener(this)
     val provider = new PositionProvider(reader)
     provider.addListener(this)
     reader.start()
   }
 
-  init
+  def initDebug(): Unit = {
+    buffer = Some(new BufferedReader(new InputStreamReader(comm.is)))
+    timer = Some(context.system.scheduler.schedule(FiniteDuration(1, SECONDS),
+      FiniteDuration(100, MICROSECONDS),
+      self, ReadBuffer))
+  }
 
   override def postStop(): Unit = {
     if (reader != null) {
@@ -89,17 +115,18 @@ class GpsCollector @Inject()()(@Assisted id: String, @Assisted protocolParam: Pr
 
     if (comm != null)
       SerialComm.close(comm)
+
+    for (tm <- timer)
+      tm.cancel()
+
+    for (buff <- buffer)
+      buff.close()
   }
 
-  import com.github.nscala_time.time.Imports._
-  var reportTime = DateTime.now
   def providerUpdate(evt: PositionEvent) {
-    if (reportTime < DateTime.now - 3.second) {
-      val lat = MonitorTypeData(MonitorType.LAT, evt.getPosition.getLatitude, MonitorStatus.NormalStat)
-      val lng = MonitorTypeData(MonitorType.LNG, evt.getPosition.getLongitude, MonitorStatus.NormalStat)
-      context.parent ! ReportData(List(lat, lng))
-      reportTime = DateTime.now
-    }
+    val lat = MonitorTypeData(MonitorType.LAT, evt.getPosition.getLatitude, MonitorStatus.NormalStat)
+    val lng = MonitorTypeData(MonitorType.LNG, evt.getPosition.getLongitude, MonitorStatus.NormalStat)
+    context.parent ! ReportData(List(lat, lng))
   }
 
   def onException(ex: Exception) {
@@ -111,7 +138,7 @@ class GpsCollector @Inject()()(@Assisted id: String, @Assisted protocolParam: Pr
 	 * @see net.sf.marineapi.nmea.event.SentenceListener#readingPaused()
 	 */
   def readingPaused() {
-    Logger.debug("-- Paused --");
+    Logger.error("-- Paused --");
   }
 
   /*
@@ -119,7 +146,7 @@ class GpsCollector @Inject()()(@Assisted id: String, @Assisted protocolParam: Pr
 	 * @see net.sf.marineapi.nmea.event.SentenceListener#readingStarted()
 	 */
   def readingStarted() {
-    Logger.debug("-- Started --");
+    Logger.info("GPS -- Started");
   }
 
   /*
@@ -127,7 +154,7 @@ class GpsCollector @Inject()()(@Assisted id: String, @Assisted protocolParam: Pr
 	 * @see net.sf.marineapi.nmea.event.SentenceListener#readingStopped()
 	 */
   def readingStopped() {
-    Logger.debug("-- Stopped --");
+    Logger.info("GPS -- Stopped");
   }
 
   /*
@@ -138,7 +165,7 @@ class GpsCollector @Inject()()(@Assisted id: String, @Assisted protocolParam: Pr
 	 */
   def sentenceRead(event: SentenceEvent) {
     // here we receive each sentence read from the port
-    Logger.debug(event.getSentence().toString());
+    Logger.info(event.getSentence().toString());
   }
 
 }

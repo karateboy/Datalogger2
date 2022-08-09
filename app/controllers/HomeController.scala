@@ -564,7 +564,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     for {
       monitor <- monitors
       hour <- query.getPeriods(start, end, 1.hour)} {
-      dataCollectManagerOp.recalculateHourData(monitor, hour)(monitorTypeOp.realtimeMtvList)
+      dataCollectManagerOp.recalculateHourData(monitor, hour)(monitorTypeOp.activeMtvList, monitorTypeOp)
     }
 
     Ok(Json.obj("ok" -> true))
