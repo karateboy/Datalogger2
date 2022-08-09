@@ -155,32 +155,26 @@
           header-text-variant="white"
           no-body
         >
-          <b-table-simple>
-            <b-tr>
-              <b-td class="bg-secondary"><h3>10分鐘累積雨量</h3></b-td>
-            </b-tr>
-            <b-tr>
-              <b-td
-                ><h3>{{ weatherSummary.rain[0] }}mm</h3></b-td
-              >
-            </b-tr>
-            <b-tr>
-              <b-td class="bg-secondary"><h3>1小時累積雨量</h3></b-td>
-            </b-tr>
-            <b-tr>
-              <b-td
-                ><h3>{{ weatherSummary.rain[1] }}mm</h3></b-td
-              >
-            </b-tr>
-            <b-tr>
-              <b-td class="bg-secondary"><h3>日累積雨量</h3></b-td>
-            </b-tr>
-            <b-tr>
-              <b-td
-                ><h3>{{ weatherSummary.rain[2] }}mm</h3></b-td
-              >
-            </b-tr>
-          </b-table-simple>
+          <b-row no-gutters>
+            <b-col cols="12" class="bg-secondary p-1"
+              ><h3>10分鐘累積雨量</h3></b-col
+            >
+            <b-col cols="12" class="p-1"
+              ><h3>{{ weatherSummary.rain[0] }}mm</h3></b-col
+            >
+            <b-col cols="12" class="bg-secondary p-1"
+              ><h3>1小時累積雨量</h3></b-col
+            >
+            <b-col cols="12" class="p-1"
+              ><h3>{{ weatherSummary.rain[1] }}mm</h3></b-col
+            >
+            <b-col cols="12" class="bg-secondary p-1"
+              ><h3>日累積雨量</h3></b-col
+            >
+            <b-col cols="12" class="p-1"
+              ><h3>{{ weatherSummary.rain[2] }}mm</h3></b-col
+            >
+          </b-row>
         </b-card>
       </b-col>
       <b-col lg="6" md="12">
@@ -193,38 +187,20 @@
           header-text-variant="white"
           no-body
         >
-          <b-table-simple>
-            <b-tr>
-              <b-td v-for="hr in hourGroups[0]" :key="hr" class="bg-secondary"
-                ><h3>{{ getHourStr(hr) }}</h3></b-td
-              >
-            </b-tr>
-            <b-tr>
-              <b-td v-for="hr in hourGroups[0]" :key="hr"
-                ><h3>{{ getHourRain(hr) }}mm</h3></b-td
-              >
-            </b-tr>
-            <b-tr>
-              <b-td v-for="hr in hourGroups[1]" :key="hr" class="bg-secondary"
-                ><h3>{{ getHourStr(hr) }}</h3></b-td
-              >
-            </b-tr>
-            <b-tr>
-              <b-td v-for="hr in hourGroups[1]" :key="hr"
-                ><h3>{{ getHourRain(hr) }}mm</h3></b-td
-              >
-            </b-tr>
-            <b-tr>
-              <b-td v-for="hr in hourGroups[2]" :key="hr" class="bg-secondary"
-                ><h3>{{ getHourStr(hr) }}</h3></b-td
-              >
-            </b-tr>
-            <b-tr>
-              <b-td v-for="hr in hourGroups[2]" :key="hr"
-                ><h3>{{ getHourRain(hr) }}mm</h3></b-td
-              >
-            </b-tr>
-          </b-table-simple>
+          <b-row no-gutters>
+            <b-col v-for="hr in hourGroups[0]" :key="hr" lg="3" md="4" sm="6">
+              <h3 class="bg-secondary p-1">{{ getHourStr(hr) }}</h3>
+              <h3 class="p-1">{{ getHourRain(hr) }}mm</h3>
+            </b-col>
+            <b-col v-for="hr in hourGroups[1]" :key="hr" lg="3" md="4" sm="6">
+              <h3 class="bg-secondary p-1">{{ getHourStr(hr) }}</h3>
+              <h3 class="p-1">{{ getHourRain(hr) }}mm</h3>
+            </b-col>
+            <b-col v-for="hr in hourGroups[2]" :key="hr" lg="3" md="4" sm="6">
+              <h3 class="bg-secondary p-1">{{ getHourStr(hr) }}</h3>
+              <h3 class="p-1">{{ getHourRain(hr) }}mm</h3>
+            </b-col>
+          </b-row>
         </b-card>
       </b-col>
     </b-row>
