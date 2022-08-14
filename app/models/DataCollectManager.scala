@@ -365,7 +365,7 @@ object DataCollectManager {
 
         val roundedAvg =
           for (avg <- avgOpt) yield
-            BigDecimal(avg).setScale(3, RoundingMode.HALF_EVEN).doubleValue()
+            BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
         (roundedAvg, statusKV._1)
       }
 
