@@ -163,7 +163,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! EvtOperationOverThreshold
   }
 
-  def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean = false)
+  def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean = true)
                          (mtList: Seq[String], monitorTypeDB: MonitorTypeDB): Future[UpdateResult] = {
     val ret =
       for (recordMap <- recordOp.getRecordMapFuture(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current)) yield {
@@ -199,6 +199,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
           for (v <- r.value if !v.isNaN)
             lb.append((r.time, v))
         }
+
         val mtDataList = calculateHourAvgMap(mtMap, alwaysValid, monitorTypeDB)
         val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
         val f = recordOp.replaceRecord(recordList)(recordOp.HourCollection)
@@ -313,13 +314,13 @@ object DataCollectManager {
         } sum
         val statusKV = {
           val kv = statusMap.maxBy(kv => kv._2.length)
-          if (kv._1 == MonitorStatus.NormalStat && (alwaysValid ||
-            statusMap(kv._1).size < totalSize * effectiveRatio)) {
+          if(alwaysValid || (kv._1 == MonitorStatus.NormalStat && statusMap(kv._1).size >= totalSize * effectiveRatio))
+            kv
+          else {
             //return most status except normal
             val noNormalStatusMap = statusMap - kv._1
             noNormalStatusMap.maxBy(kv => kv._2.length)
-          } else
-            kv
+          }
         }
         val values = if (statusMap.contains(MonitorStatus.NormalStat))
           statusMap(MonitorStatus.NormalStat).map(_._2).toList

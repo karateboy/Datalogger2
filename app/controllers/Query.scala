@@ -174,8 +174,8 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
           else if (reportUnit == ReportUnit.Sec)
             (TableType.second, new DateTime(startNum).withMillisOfSecond(0), new DateTime(endNum).withMillisOfSecond(0))
           else
-            (TableType.min, new DateTime(startNum).withSecondOfMinute(0).withMillisOfSecond(0),
-              new DateTime(endNum).withSecondOfMinute(0).withMillisOfSecond(0))
+            (TableType.min, new DateTime(startNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0),
+              new DateTime(endNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0))
         } else
           (TableType.hour, new DateTime(startNum).withMillisOfDay(0), new DateTime(endNum).withMillisOfDay(0))
 

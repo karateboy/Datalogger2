@@ -20,7 +20,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 object WeatherReader {
   val CR800_MODEL = "CR800"
   val CR300_MODEL = "CR300"
-  val models = Seq(CR800_MODEL, CR300_MODEL)
+  val CR1000_MODEL = "CR1000"
+  val models = Seq(CR800_MODEL, CR300_MODEL, CR1000_MODEL)
   def start(configuration: Configuration, actorSystem: ActorSystem,
             sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
             recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) = {
@@ -31,7 +32,7 @@ object WeatherReader {
            modelOpt = config.getString("model")
            }
       yield
-        WeatherReaderConfig(enable, dir, modelOpt.getOrElse(CR800_MODEL))
+        WeatherReaderConfig(enable, dir, modelOpt.getOrElse(CR1000_MODEL))
     }
 
     for (config <- getConfig if config.enable)
@@ -56,12 +57,18 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
 
   val CR300_MT_LIST = Seq(MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION, "WINSPEED_MAX", MonitorType.TEMP, MonitorType.HUMID, MonitorType.RAIN)
 
+  val CR1000_MT_LIST = Seq("BattV_Avg","PTemp_C_Avg",MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION, MonitorType.TEMP,
+    MonitorType.HUMID, MonitorType.PRESS, MonitorType.RAIN, "CO2_1_Avg","CO2_2_Avg","T107_C_Avg","WL_A","WL_B","WL_C","WL_D")
+
   val mtList: Seq[String] = config.model match {
     case CR300_MODEL =>
       CR300_MT_LIST
 
     case CR800_MODEL =>
       CR800_MT_LIST
+
+    case CR1000_MODEL =>
+      CR1000_MT_LIST
 
     case _ =>
       throw new Exception(s"unknown ${config.model} model")

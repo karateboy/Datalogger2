@@ -164,7 +164,7 @@ export default Vue.extend({
       form: {
         monitors: Array<any>(),
         monitorTypes: Array<any>(),
-        dataType: 'hour',
+        dataType: 'min',
         range,
       },
       display: false,

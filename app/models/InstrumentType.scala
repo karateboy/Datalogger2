@@ -94,29 +94,7 @@ class InstrumentTypeOp @Inject()
     InstrumentType(adam6017Drv, adam6017Factory, true),
     InstrumentType(adam6066Drv, adam6066Factory, true),
     InstrumentType(Baseline9000Collector, baseline9000Factory),
-    InstrumentType(GpsCollector, gpsFactory),
-    InstrumentType(Horiba370Collector, horiba370Factory),
-    InstrumentType(moxaE1240Drv, moxaE1240Factory),
-    InstrumentType(moxaE1212Drv, moxaE1212Factory),
-    InstrumentType(MqttCollector2, mqtt2Factory),
-    InstrumentType(T100Collector, t100Factory, false, Some(t100CliFactory)),
-    InstrumentType(T200Collector, t200Factory, false, Some(t200CliFactory)),
-    InstrumentType(T201Collector, t201Factory),
-    InstrumentType(T300Collector, t300Factory, false, Some(t300CliFactory)),
-    InstrumentType(T360Collector, t360Factory),
-    InstrumentType(T400Collector, t400Factory, false, Some(t400CliFactory)),
-    InstrumentType(T700Collector, t700Factory, false, Some(t700CliFactory)),
-    InstrumentType(VerewaF701Collector, verewaF701Factory),
-    InstrumentType(ThetaCollector, thetaFactory),
-    InstrumentType(Sabio4010, sabio4010Factory),
-    InstrumentType(Duo, duoFactory),
-    InstrumentType(Tca08Drv, tca08Factory),
-    InstrumentType(PicarroG2401, picarroG2401Factory),
-    InstrumentType(PicarroG2131i, picarroG2131iFactory),
-    InstrumentType(Ma350Drv, ma350Factory),
-    InstrumentType(MetOne1020, metOne1020Factory),
-    InstrumentType(EcoPhysics88P, ecoPhysics88PFactory),
-    InstrumentType(HydreonRainGauge, hydreonRainGaugeFactory)
+    InstrumentType(GpsCollector, gpsFactory)
   )
 
   val otherMap = otherDeviceList.map(dt=> dt.id->dt).toMap
