@@ -8,6 +8,7 @@ import org.mongodb.scala.model.{Filters, Updates}
 import play.api.libs.json.Json
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.language.implicitConversions
 import scala.util.Success
 
@@ -111,6 +112,18 @@ class GroupOp @Inject()(mongoDB: MongoDB) {
       Some(group)
     else
       None
+  }
+
+  def getGroupByIdAsync(_id: String): Future[Option[Group]] = {
+    val f = collection.find(equal("_id", _id)).toFuture()
+    f.onFailure {
+      errorHandler
+    }
+    for (rets <- f) yield
+      if (rets.nonEmpty)
+        Some(rets(0))
+      else
+        None
   }
 
   def getAllGroups() = {

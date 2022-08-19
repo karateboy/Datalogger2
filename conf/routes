@@ -35,6 +35,7 @@ GET      /RealtimeStatus                                                        
 GET      /CalibrationReport/:start/:end                                           controllers.Query.calibrationReport(start:Long, end:Long)
 
 GET      /AlarmReport/:level/:start/:end                                          controllers.Query.alarmReport(level:Int, start:Long, end:Long)
+GET      /ErrorReport/:start/:end                                                 controllers.Query.getErrorReports(start:Long, end:Long)
 
 GET      /InstrumentTypes                                                         controllers.HomeController.getInstrumentTypes
 GET      /InstrumentType/:id                                                      controllers.HomeController.getInstrumentType(id)

@@ -13,6 +13,10 @@ export default [
         title: '即時數據',
         route: 'realtime-data',
       },
+      {
+        title: '完整率異常查詢',
+        route: 'effective-rate-report',
+      },
     ],
   },
   {

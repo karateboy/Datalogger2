@@ -57,6 +57,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/effective-rate-report',
+      name: 'effective-rate-report',
+      component: () => import('@/views/EffectiveRateReport.vue'),
+      meta: {
+        pageTitle: '完整率異常查詢',
+        breadcrumb: [
+          {
+            text: '數據查詢',
+            active: true,
+          },
+          {
+            text: '完整率異常查詢',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/history-trend',
       name: 'history-trend',
       component: () => import('@/views/HistoryTrend.vue'),

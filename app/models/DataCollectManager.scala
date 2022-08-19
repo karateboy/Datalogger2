@@ -331,11 +331,6 @@ class DataCollectManager @Inject()
       Duration(1, DAYS), self, SendErrorReport)
   }
 
-  val cleanupTimer = {
-    import scala.concurrent.duration._
-    context.system.scheduler.schedule(FiniteDuration(5, SECONDS), Duration(1, DAYS), self, CleanOldData)
-  }
-
   var calibratorOpt: Option[ActorRef] = None
   var digitalOutputOpt: Option[ActorRef] = None
   var onceTimer: Option[Cancellable] = None
@@ -844,7 +839,6 @@ class DataCollectManager @Inject()
     onceTimer map {
       _.cancel()
     }
-    cleanupTimer.cancel()
   }
 
   case class InstrumentParam(actor: ActorRef, mtList: List[String], calibrationTimerOpt: Option[Cancellable])

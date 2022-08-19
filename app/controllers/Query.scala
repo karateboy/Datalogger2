@@ -52,7 +52,8 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
                       instrumentStatusOp: InstrumentStatusOp, instrumentOp: InstrumentOp,
                       alarmOp: AlarmOp, calibrationOp: CalibrationOp, groupOp: GroupOp,
                       configuration: Configuration,
-                      manualAuditLogOp: ManualAuditLogOp, excelUtility: ExcelUtility) extends Controller {
+                      manualAuditLogOp: ManualAuditLogOp, excelUtility: ExcelUtility,
+                      errorReportOp: ErrorReportOp) extends Controller {
 
   implicit val cdWrite = Json.writes[CellData]
   implicit val rdWrite = Json.writes[RowData]
@@ -194,7 +195,7 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
 
   def trendHelper(monitors: Seq[String], monitorTypes: Seq[String], tabType: TableType.Value,
                   reportUnit: ReportUnit.Value, start: DateTime, end: DateTime, showActual: Boolean = false)(statusFilter: MonitorStatusFilter.Value) = {
-    val (adjustedStart, adjustEnd, period:Period) =
+    val (adjustedStart, adjustEnd, period: Period) =
       reportUnit match {
         case ReportUnit.Min =>
           (start, end, 1.minute.toPeriod)
@@ -600,6 +601,16 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           _.toJson
         }
         Ok(Json.toJson(jsonReport))
+      }
+  }
+
+  def getErrorReports(startN: Long, endN: Long) = Security.Authenticated.async {
+    implicit request =>
+      val end = new DateTime(endN).withMillisOfDay(0)
+      val start = new DateTime(startN).withMillisOfDay(0)
+      for (reports <- errorReportOp.get(start.toDate, end.toDate)) yield {
+        import ErrorReport._
+        Ok(Json.toJson(reports))
       }
   }
 
