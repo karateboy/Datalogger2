@@ -1,6 +1,6 @@
 name := """MqttManager"""
 
-version := "1.2.17"
+version := "1.2.18"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala, LauncherJarPlugin)
 
@@ -34,7 +34,8 @@ mappings in Universal ++=
 mappings in Universal ++=
 (baseDirectory.value / "importEPA" * "*" get) map
     (x => x -> ("importEPA/" + x.getName))
-	
+
+mappings in Universal ++= Seq((baseDirectory.value / "cleanup.bat", "cleanup.bat"))
  	
 //libraryDependencies += "com.google.guava" % "guava" % "19.0"
 scalacOptions += "-feature"

@@ -98,8 +98,7 @@ interface Sensor {
   date: number;
   status: string;
   effectRate?: number;
-  inspection?: string;
-  action?: string;
+  desc: string;
 }
 
 interface EffectiveRate {
@@ -173,6 +172,11 @@ export default Vue.extend({
         {
           key: '_id',
           label: '設備序號',
+          sortable: true,
+        },
+        {
+          key: 'desc',
+          label: '設備名稱',
           sortable: true,
         },
         {
@@ -276,13 +280,7 @@ export default Vue.extend({
       updateMap(errorReport.actions, actionMap);
       if (this.errorStatus.indexOf('lt95') !== -1) {
         for (const ef of errorReport.ineffective) {
-          let sensor = this.populateSensor(
-            date,
-            ef._id,
-            '完整率異常',
-            inspectionMap,
-            actionMap,
-          );
+          let sensor = this.populateSensor(date, ef._id, '完整率異常');
           if (sensor !== null) {
             sensor.effectRate = ef.rate;
             ret.push(sensor as Sensor);
@@ -292,31 +290,18 @@ export default Vue.extend({
 
       return ret;
     },
-    populateSensor(
-      date: number,
-      id: string,
-      status: string,
-      inspectionMap: Map<string, Map<string, string>>,
-      actionMap: Map<string, Map<string, string>>,
-    ): Sensor | null {
+    populateSensor(date: number, id: string, status: string): Sensor | null {
       const m = this.mMap.get(id);
+      if (m === undefined) {
+        console.error([id, m]);
+        return null;
+      }
 
       let sensor = Object.assign({}, m) as Sensor;
 
       sensor.status = status;
       sensor.date = date;
-      if (inspectionMap.has(status)) {
-        let errorMap = inspectionMap.get(status);
-        if (errorMap !== undefined) {
-          sensor.inspection = errorMap.get(sensor._id);
-        }
-      }
-      if (actionMap.has(status)) {
-        let errorMap = actionMap.get(status);
-        if (errorMap != undefined) {
-          sensor.action = errorMap.get(sensor._id);
-        }
-      }
+      sensor.desc = m.desc;
       return sensor;
     },
     exportExcel() {
