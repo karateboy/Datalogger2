@@ -8,6 +8,7 @@ import models.ModelHelper._
 import org.mongodb.scala.result.UpdateResult
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
+import play.api.libs.ws.WSClient
 
 import javax.inject._
 import scala.collection.mutable.ListBuffer
@@ -314,7 +315,7 @@ object DataCollectManager {
         } sum
         val statusKV = {
           val kv = statusMap.maxBy(kv => kv._2.length)
-          if(alwaysValid || (kv._1 == MonitorStatus.NormalStat && statusMap(kv._1).size >= totalSize * effectiveRatio))
+          if (alwaysValid || (kv._1 == MonitorStatus.NormalStat && statusMap(kv._1).size >= totalSize * effectiveRatio))
             kv
           else {
             //return most status except normal
@@ -380,7 +381,8 @@ class DataCollectManager @Inject()
 (config: Configuration, recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
  dataCollectManagerOp: DataCollectManagerOp,
  instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentDB,
- sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
+ sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory,
+ WSClient: WSClient) extends Actor with InjectedActorSupport {
   val storeSecondData = config.getBoolean("logger.storeSecondData").getOrElse(false)
   Logger.info(s"store second data = $storeSecondData")
   DataCollectManager.updateEffectiveRatio(sysConfig)
@@ -408,6 +410,7 @@ class DataCollectManager @Inject()
   val forwardManagerOpt =
     for (serverConfig <- ForwardManager.getConfig(config)) yield
       injectedChild(forwardManagerFactory(serverConfig.server, serverConfig.monitor), "forwardManager")
+  val instrumentList = instrumentOp.getInstrumentList()
   var calibratorOpt: Option[ActorRef] = None
   var digitalOutputOpt: Option[ActorRef] = None
   var onceTimer: Option[Cancellable] = None
@@ -418,17 +421,14 @@ class DataCollectManager @Inject()
     WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
     VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self)
   }
-
-
-  {
-    val instrumentList = instrumentOp.getInstrumentList()
-    instrumentList.foreach {
-      inst =>
-        if (inst.active)
-          self ! StartInstrument(inst)
-    }
-    Logger.info("DataCollect manager started")
+  instrumentList.foreach {
+    inst =>
+      if (inst.active)
+        self ! StartInstrument(inst)
   }
+  Logger.info("DataCollect manager started")
+
+  EasexDataGetter.start(context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp, WSClient)
 
   def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord]) = {
     var overThreshold = false
