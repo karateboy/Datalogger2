@@ -1,5 +1,7 @@
 package models
 
+import java.time.Instant
+
 case class ThresholdConfig(elapseTime: Int)
 
 case class MonitorType(_id: String,
@@ -22,7 +24,8 @@ case class MonitorType(_id: String,
                        calibrate: Option[Boolean] = None,
                        accumulated: Option[Boolean] = None,
                        fixedM: Option[Double] = None,
-                       fixedB: Option[Double] = None) {
+                       fixedB: Option[Double] = None,
+                       var latestRecordTime: Option[Long] = None) {
 
   def addMeasuring(instrumentId: String, append: Boolean) = {
     if (measuringBy.isEmpty)
