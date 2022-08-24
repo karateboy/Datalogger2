@@ -2,7 +2,7 @@ package models
 
 import akka.actor.{Actor, ActorSystem, Props}
 import com.github.nscala_time.time.Imports.{DateTime, Duration}
-import models.EasexDataGetter.GetData
+import models.EasexDataGetter.GetHistoryData
 import models.ModelHelper.{errorHandler, getHourBetween}
 import play.api.Logger
 import play.api.libs.json._
@@ -13,7 +13,7 @@ import java.util.Date
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.duration.{FiniteDuration, MINUTES}
+import scala.concurrent.duration.{FiniteDuration, MINUTES, SECONDS}
 
 object EasexDataGetter {
   def start(actorSystem: ActorSystem,
@@ -27,7 +27,9 @@ object EasexDataGetter {
             WSClient: WSClient) =
     Props(classOf[EasexDataGetter], sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp, WSClient)
 
-  case object GetData
+  case object GetLatestData
+
+  case object GetHistoryData
 }
 
 case class Tag(key: String, value: String)
@@ -60,7 +62,7 @@ class EasexDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
     recordOp.ensureMonitorType(mt)
   })
 
-  self ! GetData
+  val timer = context.system.scheduler.schedule(FiniteDuration(5, SECONDS), FiniteDuration(10, MINUTES), self, GetLatestData)
 
   implicit val mapIntDoubleReads: Reads[Map[Int, Double]] = new Reads[Map[Int, Double]] {
     def reads(jv: JsValue): JsResult[Map[Int, Double]] =
@@ -80,8 +82,14 @@ class EasexDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
   implicit val write = Json.writes[EaseXParam]
 
   val firstDataTime = new DateTime(2022, 5, 1, 0, 0).getMillis
+
+  def handler(latestStart:DateTime, latestRequest:Int, historyStart:DateTime, historyRequest:Int): Receive = {
+    case GetLatestData =>
+
+  }
   override def receive: Receive = {
-    case GetData =>
+
+    case GetHistoryData =>
       val startTime = new DateTime(monitorTypes.map(monitorTypeOp.map(_).latestRecordTime.getOrElse(firstDataTime)).min)
       val futures: Seq[Future[Any]] = monitorTypes.map(getMonitorTypeData)
       val allFuture = Future.sequence(futures)
@@ -93,16 +101,14 @@ class EasexDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
 
         val duration = new Duration(endTime, DateTime.now)
         if(duration.getStandardMinutes > 15)
-          self ! GetData
+          self ! GetHistoryData
         else
-          context.system.scheduler.scheduleOnce(FiniteDuration(15, MINUTES), self, GetData)
+          context.system.scheduler.scheduleOnce(FiniteDuration(15, MINUTES), self, GetHistoryData)
       }
   }
 
-  def getMonitorTypeData(mt: String): Future[Any] = {
+  def getMonitorTypeData(mt: String, start: DateTime, end:DateTime): Future[Any] = {
     val mtCase = monitorTypeOp.map(mt)
-    val start = new DateTime(mtCase.latestRecordTime.getOrElse(firstDataTime))
-    val end = DateTime.now()
     Logger.info(s"start=$start end=$end")
 
     val param = EaseXParam(project_uuid, resource_uuid = resource_uuid,
@@ -164,5 +170,10 @@ class EasexDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
             Future.successful{}
         })
     }
+  }
+
+  override def postStop(): Unit = {
+    timer.cancel()
+    super.postStop()
   }
 }
