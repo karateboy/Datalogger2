@@ -25,7 +25,7 @@ case class MonitorType(_id: String,
                        accumulated: Option[Boolean] = None,
                        fixedM: Option[Double] = None,
                        fixedB: Option[Double] = None,
-                       var latestRecordTime: Option[Long] = None) {
+                       var oldestRecordTime: Option[Long] = None) {
 
   def addMeasuring(instrumentId: String, append: Boolean) = {
     if (measuringBy.isEmpty)
