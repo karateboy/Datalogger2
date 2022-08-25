@@ -88,35 +88,138 @@
               </b-row> </b-card
           ></b-col>
           <b-col lg="6" md="6">
-            <b-card
-              class="text-center"
-              header-html="平均風力&nbsp;<sub>更新週期(5秒)"
-              header-class="h1 display justify-content-center font-weight-bolder"
-              border-variant="primary"
-              header-bg-variant="primary"
-              header-text-variant="white"
-              no-body
-            >
-              <b-row align-v="center" align-h="center" class="p-3">
-                <b-col cols="2"
-                  ><h1>
-                    {{ getWindLevel(getRealtimeValue('WD_SPEED')) }}級
-                  </h1></b-col
+            <b-row>
+              <b-col cols="6">
+                <b-card
+                  class="text-center"
+                  header-html="平均風力&nbsp;<sub>更新週期(5秒)</sub>"
+                  header-class="h2 display justify-content-center font-weight-bolder"
+                  border-variant="primary"
+                  header-bg-variant="primary"
+                  header-text-variant="white"
+                  no-body
                 >
-                <b-col cols="10"
-                  ><h1>{{ getRealtimeValueStr('WD_SPEED') }} m/s</h1></b-col
+                  <b-row align-v="center" align-h="center" class="p-1">
+                    <b-col lg="2" md="4" sm="6"
+                      ><h4>
+                        {{ getWindLevel(getRealtimeValue('WD_SPEED')) }}級
+                      </h4></b-col
+                    >
+                    <b-col lg="10" md="8" sm="6"
+                      ><h4>{{ getRealtimeValueStr('WD_SPEED') }} m/s</h4></b-col
+                    >
+                    <b-col cols="12"
+                      ><b-progress
+                        :value="getWindLevel(getRealtimeValue('WD_SPEED'))"
+                        :max="10"
+                        animated
+                        show-value
+                        height="1rem"
+                      ></b-progress
+                    ></b-col>
+                  </b-row>
+                </b-card>
+              </b-col>
+              <b-col cols="6">
+                <b-card
+                  class="text-center"
+                  header-html="最大風力&nbsp;<sub>本日最大</sub>"
+                  header-class="h2 display justify-content-center font-weight-bolder"
+                  border-variant="primary"
+                  header-bg-variant="primary"
+                  header-text-variant="white"
+                  no-body
                 >
-                <b-col cols="12"
-                  ><b-progress
-                    :value="getWindLevel(getRealtimeValue('WD_SPEED'))"
-                    :max="10"
-                    animated
-                    show-value
-                    height="2rem"
-                  ></b-progress
-                ></b-col>
-              </b-row>
-            </b-card>
+                  <b-row align-v="center" align-h="center" class="p-1">
+                    <b-col lg="2" md="4" sm="6"
+                      ><h4>
+                        {{ getWindLevel(weatherSummary.winSpeed) }}級
+                      </h4></b-col
+                    >
+                    <b-col lg="10" md="8" sm="6"
+                      ><h4>
+                        {{ formatValue(weatherSummary.winSpeed) }} m/s
+                      </h4></b-col
+                    >
+                    <b-col cols="12"
+                      ><b-progress
+                        :value="getWindLevel(weatherSummary.winSpeed)"
+                        :max="10"
+                        animated
+                        show-value
+                        height="1rem"
+                      ></b-progress
+                    ></b-col>
+                  </b-row>
+                </b-card>
+              </b-col>
+              <b-col cols="6">
+                <b-card
+                  class="text-center"
+                  header-html="即時陣風&nbsp;<sub>更新週期(5秒)</sub>"
+                  header-class="h2 display justify-content-center font-weight-bolder"
+                  border-variant="primary"
+                  header-bg-variant="primary"
+                  header-text-variant="white"
+                  no-body
+                >
+                  <b-row align-v="center" align-h="center" class="p-1">
+                    <b-col lg="2" md="4" sm="6"
+                      ><h4>
+                        {{ getWindLevel(getRealtimeValue('WINSPEED_MAX')) }}級
+                      </h4></b-col
+                    >
+                    <b-col lg="10" md="8" sm="6"
+                      ><h4>
+                        {{ getRealtimeValueStr('WINSPEED_MAX') }} m/s
+                      </h4></b-col
+                    >
+                    <b-col cols="12"
+                      ><b-progress
+                        :value="getWindLevel(getRealtimeValue('WINSPEED_MAX'))"
+                        :max="10"
+                        animated
+                        show-value
+                        height="1rem"
+                      ></b-progress
+                    ></b-col>
+                  </b-row>
+                </b-card>
+              </b-col>
+              <b-col cols="6">
+                <b-card
+                  class="text-center"
+                  header-html="最大陣風&nbsp;<sub>今日最大</sub>"
+                  header-class="h2 display justify-content-center font-weight-bolder"
+                  border-variant="primary"
+                  header-bg-variant="primary"
+                  header-text-variant="white"
+                  no-body
+                >
+                  <b-row align-v="center" align-h="center" class="p-1">
+                    <b-col lg="2" md="4" sm="6"
+                      ><h4>
+                        {{ getWindLevel(weatherSummary.winMaxToday) }}級
+                      </h4></b-col
+                    >
+                    <b-col lg="10" md="8" sm="6"
+                      ><h4>
+                        {{ formatValue(weatherSummary.winMaxToday) }} m/s
+                      </h4></b-col
+                    >
+                    <b-col cols="12"
+                      ><b-progress
+                        :value="getWindLevel(weatherSummary.winMaxToday)"
+                        :max="10"
+                        animated
+                        show-value
+                        height="1rem"
+                      ></b-progress
+                    ></b-col>
+                  </b-row>
+                </b-card>
+              </b-col>
+            </b-row>
           </b-col>
           <b-col lg="6" md="6">
             <b-card
@@ -126,6 +229,7 @@
               border-variant="primary"
               header-bg-variant="primary"
               header-text-variant="white"
+              no-body
             >
               <b-row align-v="center" align-h="center" class="p-3">
                 <b-col cols="12"
@@ -225,9 +329,11 @@ interface MtRecord {
 
 interface WeatherSummary {
   windir?: number;
-  winmax?: number;
+  winMax?: number;
+  winMaxToday?: number;
   temp?: number;
-  winspeed?: number;
+  winSpeed?: number;
+  winSpeedMaxToday?: number;
   humid?: number;
   rain: Array<number | undefined>;
   hourStart: number;
@@ -237,10 +343,6 @@ export default Vue.extend({
   data() {
     let realtime = Array<MtRecord>();
     let weatherSummary: WeatherSummary = {
-      windir: undefined,
-      winmax: undefined,
-      winspeed: undefined,
-      humid: undefined,
       rain: [undefined, undefined, undefined],
       hourStart: 0,
       hourRain: [1, 2, 3],
@@ -356,6 +458,11 @@ export default Vue.extend({
     getRealtimeValueStr(mt: string): string | undefined {
       let ret = this.realtime.find(mtRecord => mtRecord.mtName === mt);
       return ret?.value?.toFixed(1);
+    },
+    formatValue(v: number | undefined): string {
+      if (v) return v.toFixed(1);
+
+      return '';
     },
     getWindLevel(v: number | undefined): number {
       if (v == undefined) return 0;

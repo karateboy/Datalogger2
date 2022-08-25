@@ -2,7 +2,6 @@ package controllers
 
 import com.github.nscala_time.time.Imports._
 import models._
-import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc._
 
@@ -102,54 +101,77 @@ class Realtime @Inject()
       else
         None
 
+      val startOfToday = DateTime.now().withHourOfDay(0).withMinuteOfHour(0)
+        .withSecondOfMinute(0).withMillisOfSecond(0)
+
+      def todayRecord(records:Seq[Record]) =
+        records.filter(rec=>rec.time>=startOfToday && rec.time < DateTime.now())
+
       val winmax =
-        if(realtimeMap(winSpeedMax).nonEmpty)
+        if (realtimeMap(winSpeedMax).nonEmpty)
           realtimeMap(winSpeedMax).last.value
         else
           None
 
-      val temp =
-        if(realtimeMap(MonitorType.TEMP).nonEmpty)
-        realtimeMap(MonitorType.TEMP).last.value
-        else
-          None
-      val winspeed =
-        if(realtimeMap(MonitorType.WIN_SPEED).nonEmpty)
-        realtimeMap(MonitorType.WIN_SPEED).last.value
+      val winMaxTodayRecords = todayRecord(realtimeMap(winSpeedMax))
+      val winMaxToday =
+        if (winMaxTodayRecords.nonEmpty)
+          winMaxTodayRecords.map(_.value).max
         else
           None
 
+      val temp =
+        if (realtimeMap(MonitorType.TEMP).nonEmpty)
+          realtimeMap(MonitorType.TEMP).last.value
+        else
+          None
+
+
+      val winspeed =
+        if (realtimeMap(MonitorType.WIN_SPEED).nonEmpty)
+          realtimeMap(MonitorType.WIN_SPEED).last.value
+        else
+          None
+
+      val winSpeedTodayRecords = todayRecord(realtimeMap(MonitorType.WIN_SPEED))
+      val winSpeedTodayMax =
+        if (winSpeedTodayRecords.nonEmpty)
+          winSpeedTodayRecords.map(_.value).max
+        else
+          None
+
+
       val humid =
-        if(realtimeMap(MonitorType.HUMID).nonEmpty)
-        realtimeMap(MonitorType.HUMID).last.value
+        if (realtimeMap(MonitorType.HUMID).nonEmpty)
+          realtimeMap(MonitorType.HUMID).last.value
         else
           None
 
       val rainList = realtimeMap(MonitorType.RAIN).reverse
-      val rain10 = if(rainList.size >= 10)
-          Some(rainList.take(10).flatMap(_.value).sum)
+      val rain10 = if (rainList.size >= 10)
+        Some(rainList.take(10).flatMap(_.value).sum)
       else
         None
-      val rain60 =  if(rainList.size >= 60)
+      val rain60 = if (rainList.size >= 60)
         Some(rainList.take(60).flatMap(_.value).sum)
       else
         None
-      val rainDay = if(rainList.size > 60*24)
-        Some(rainList.take(60*24).flatMap(_.value).sum)
+      val rainDay = if (rainList.size > 60 * 24)
+        Some(rainList.take(60 * 24).flatMap(_.value).sum)
       else
         None
 
-      val rainHourList = hourList.filter(rec=>rec.mtDataList.exists(_.mtName == MonitorType.RAIN)).reverse
-      val hourStart = if(rainHourList.nonEmpty)
+      val rainHourList = hourList.filter(rec => rec.mtDataList.exists(_.mtName == MonitorType.RAIN)).reverse
+      val hourStart = if (rainHourList.nonEmpty)
         rainHourList.head._id.time.getTime
       else
         DateTime.now.getMillis
 
       val rainHourData = rainHourList.take(12).map(_.mtMap(MonitorType.RAIN).value)
 
-      Ok(Json.toJson(WeatherSummary(windir, winmax,
-        temp, winspeed, humid,
-        Seq(rain10, rain60, rainDay), hourStart, rainHourData)))
+      Ok(Json.toJson(WeatherSummary(windir, winmax, winMaxToday,
+        temp, winspeed, winSpeedTodayMax,
+        humid, Seq(rain10, rain60, rainDay), hourStart, rainHourData)))
     }
   }
 
@@ -160,7 +182,8 @@ class Realtime @Inject()
 
   case class MonitorTypeStatus(_id: String, desp: String, value: String, unit: String, instrument: String, status: String, classStr: Seq[String], order: Int)
 
-  case class WeatherSummary(windir: Option[Double], winmax: Option[Double],
-                            temp: Option[Double], winspeed: Option[Double], humid: Option[Double],
+  case class WeatherSummary(windir: Option[Double], winMax: Option[Double], winMaxToday: Option[Double],
+                            temp: Option[Double], winSpeed: Option[Double], winSpeedMaxToday: Option[Double],
+                            humid: Option[Double],
                             rain: Seq[Option[Double]], hourStart: Long, hourRain: Seq[Option[Double]])
 }
