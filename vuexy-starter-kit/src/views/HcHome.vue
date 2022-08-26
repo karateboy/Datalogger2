@@ -133,17 +133,17 @@
                   <b-row align-v="center" align-h="center" class="p-1">
                     <b-col lg="2" md="4" sm="6"
                       ><h4>
-                        {{ getWindLevel(weatherSummary.winSpeed) }}級
+                        {{ getWindLevel(weatherSummary.winSpeedMaxToday) }}級
                       </h4></b-col
                     >
                     <b-col lg="10" md="8" sm="6"
                       ><h4>
-                        {{ formatValue(weatherSummary.winSpeed) }} m/s
+                        {{ formatValue(weatherSummary.winSpeedMaxToday) }} m/s
                       </h4></b-col
                     >
                     <b-col cols="12"
                       ><b-progress
-                        :value="getWindLevel(weatherSummary.winSpeed)"
+                        :value="getWindLevel(weatherSummary.winSpeedMaxToday)"
                         :max="10"
                         animated
                         show-value
@@ -189,7 +189,7 @@
               <b-col cols="6">
                 <b-card
                   class="text-center"
-                  header-html="最大陣風&nbsp;<sub>今日最大</sub>"
+                  header-html="最大陣風&nbsp;<sub>本日最大</sub>"
                   header-class="h2 display justify-content-center font-weight-bolder"
                   border-variant="primary"
                   header-bg-variant="primary"
@@ -229,7 +229,7 @@
               border-variant="primary"
               header-bg-variant="primary"
               header-text-variant="white"
-              no-body
+              
             >
               <b-row align-v="center" align-h="center" class="p-3">
                 <b-col cols="12"
