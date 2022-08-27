@@ -75,6 +75,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/scatter-chart',
+      name: 'scatter-chart',
+      component: () => import('@/views/ScatterChart.vue'),
+      meta: {
+        pageTitle: '雙測項對比圖',
+        breadcrumb: [
+          {
+            text: '數據查詢',
+            active: true,
+          },
+          {
+            text: '雙測項對比圖',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/calibration-query',
       name: 'calibration-query',
       component: () => import('@/views/CalibrationQuery.vue'),
