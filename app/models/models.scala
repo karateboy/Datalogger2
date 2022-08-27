@@ -108,7 +108,7 @@ object ModelHelper {
     import scala.collection.mutable.ListBuffer
 
     val buf = ListBuffer[DateTime]()
-    var current = start
+    var current = start.withSecondOfMinute(0).withMillisOfSecond(0)
     while (current <= end) {
       if (current.getMinuteOfHour == 0)
         buf.append(current)

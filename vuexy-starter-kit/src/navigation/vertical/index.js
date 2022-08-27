@@ -38,8 +38,16 @@ export default [
         route: 'wind-rose-query',
       },
       {
-        title: '校正資料查詢',
-        route: 'calibration-query',
+        title: '年度地震查詢',
+        route: 'earthquake-event-query',
+        action: 'read',
+        resource: 'Data',
+      },
+      {
+        title: '每日波形查詢',
+        route: 'wave-query',
+        action: 'read',
+        resource: 'Data',
       },
       {
         title: '警報記錄查詢',
@@ -72,14 +80,6 @@ export default [
     icon: 'SettingsIcon',
     children: [
       {
-        title: '儀器管理',
-        route: 'instrument-management',
-      },
-      {
-        title: '儀器狀態查詢',
-        route: 'instrument-status',
-      },
-      {
         title: '測點管理',
         route: 'monitor-config',
       },
@@ -88,16 +88,8 @@ export default [
         route: 'monitor-type-config',
       },
       {
-        title: '數位訊號管理',
-        route: 'signal-type-config',
-      },
-      {
         title: '人工資料註記',
         route: 'manual-audit',
-      },
-      {
-        title: '人工註記查詢',
-        route: 'audit-log-query',
       },
       {
         title: '使用者管理',
@@ -108,16 +100,8 @@ export default [
         route: 'group-management',
       },
       {
-        title: '資料檢核設定',
-        route: 'audit-config',
-      },
-      {
         title: '資料管理',
         route: 'data-management',
-      },
-      {
-        title: 'CDX上傳設定',
-        route: 'cdx-upload-config',
       },
       {
         title: '參數設定',

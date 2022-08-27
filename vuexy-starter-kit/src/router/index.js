@@ -129,6 +129,42 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/earthquake-event-query',
+      name: 'earthquake-event-query',
+      component: () => import('@/views/EarthquakeEventQuery.vue'),
+      meta: {
+        pageTitle: '年度地震查詢',
+        breadcrumb: [
+          {
+            text: '數據查詢',
+            active: true,
+          },
+          {
+            text: '年度地震查詢',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
+      path: '/wave-query',
+      name: 'wave-query',
+      component: () => import('@/views/WaveQuery.vue'),
+      meta: {
+        pageTitle: '每日波形查詢',
+        breadcrumb: [
+          {
+            text: '數據查詢',
+            active: true,
+          },
+          {
+            text: '每日波形查詢',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/report',
       name: 'report',
       component: () => import('@/views/ReportQuery.vue'),

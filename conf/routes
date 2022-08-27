@@ -121,6 +121,18 @@ POST     /AlertEmailTargets                                                     
 GET      /SystemConfig/EffectiveRatio                                             controllers.HomeController.getEffectiveRatio
 POST     /SystemConfig/EffectiveRatio                                             controllers.HomeController.saveEffectiveRatio
 
+#EARTHQUAKE
+GET     /EarthquakeEvents                       controllers.Query.getEarthquakeEvents
+GET     /EarthquakeReport                       controllers.Query.getEarthquakeReportImage(dateTime:Long)
+GET     /EarthquakeBImg                         controllers.Query.getEarthquakeBImage(dateTime:Long)
+GET     /EarthquakeDImg                         controllers.Query.getEarthquakeDImage(dateTime:Long)
+GET     /WaveBE                                 controllers.Query.getWaveImage(dateTime:Long, src="B", sub="E")
+GET     /WaveBN                                 controllers.Query.getWaveImage(dateTime:Long, src="B", sub="N")
+GET     /WaveBZ                                 controllers.Query.getWaveImage(dateTime:Long, src="B", sub="Z")
+GET     /WaveDE                                 controllers.Query.getWaveImage(dateTime:Long, src="D", sub="E")
+GET     /WaveDN                                 controllers.Query.getWaveImage(dateTime:Long, src="D", sub="N")
+GET     /WaveDZ                                 controllers.Query.getWaveImage(dateTime:Long, src="D", sub="Z")
+
 #Rules
 GET     /SpikeRules                             controllers.RuleController.getSpikeRules
 POST    /SpikeRule                              controllers.RuleController.upsertSpikeRule

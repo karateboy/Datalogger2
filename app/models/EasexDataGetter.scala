@@ -84,18 +84,18 @@ class EasexDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
   val firstDataTime = new DateTime(2022, 5, 1, 0, 0)
 
   // Try to get all history data
-  monitorTypes.foreach(self ! GetHistoryData(_))
+  //monitorTypes.foreach(self ! GetHistoryData(_))
 
   override def receive: Receive = {
     case GetLatestData =>
-      monitorTypes.foreach(getMonitorTypeData(_, firstDataTime, DateTime.now()))
+      monitorTypes.foreach(getMonitorTypeData(_, DateTime.now().minusHours(2), DateTime.now(), 1, false))
 
     case GetHistoryData(mt) =>
       val endTime = new DateTime(monitorTypeOp.map(mt).oldestRecordTime.getOrElse(DateTime.now().getMillis))
-      getMonitorTypeData(mt, firstDataTime, endTime, true)
+      getMonitorTypeData(mt, firstDataTime, endTime, 100, true)
   }
 
-  def getMonitorTypeData(mt: String, start: DateTime, end:DateTime, recursive:Boolean = false): Future[Any] = {
+  def getMonitorTypeData(mt: String, start: DateTime, end:DateTime, limit:Int, recursive:Boolean = false): Future[Any] = {
     val mtCase = monitorTypeOp.map(mt)
     if(recursive)
       Logger.info(s"$mt GetHistoryData start=$start end=$end")
@@ -103,7 +103,7 @@ class EasexDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
       Logger.info(s"$mt GetLatestData start=$start end=$end")
 
     val param = EaseXParam(project_uuid, resource_uuid = resource_uuid,
-      fields = Seq(mt), limit = 100, tags = Seq(Tag("WellID", "EV-20-NE-1")),
+      fields = Seq(mt), limit = limit, tags = Seq(Tag("WellID", "EV-20-NE-1")),
       start = start.toString, stop = end.toString())
 
     val request = WSClient.url("https://app-backend.ease-x.com/api/influx/data")
@@ -122,17 +122,17 @@ class EasexDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
       }
 
       if (docList.nonEmpty) {
-        Logger.info(s"$mt has ${docList.size} records from ${docList.head._id.time} to ${docList.last._id.time}")
+        Logger.debug(s"$mt has ${docList.size} records from ${docList.head._id.time} to ${docList.last._id.time}")
         val f = recordOp.upsertManyRecords(recordOp.MinCollection)(docList)
 
         f onFailure errorHandler()
         for (_ <- f) yield {
           mtCase.oldestRecordTime = Some(docList.head._id.time.getTime - 1000)
           monitorTypeOp.upsertMonitorType(mtCase)
-          for (current <- getHourBetween(new DateTime(docList.head._id.time.getTime - 1000), end))
+          for (current <- getHourBetween(new DateTime(docList.head._id.time.getTime), end))
             dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
 
-          if(recursive) {
+          if(recursive && docList.size == 100) {
             Logger.info(s"$mt still have more history data fire GetHistoryData again")
             self ! GetHistoryData(mt)
           }

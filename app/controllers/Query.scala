@@ -9,7 +9,7 @@ import play.api._
 import play.api.libs.json._
 import play.api.mvc._
 
-import java.nio.file.Files
+import java.nio.file.{Files, Path, Paths}
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -52,7 +52,8 @@ case class UpdateRecordParam(time: Long, mt: String, status: String)
 class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
                       instrumentStatusOp: InstrumentStatusDB, instrumentOp: InstrumentDB,
                       alarmOp: AlarmDB, calibrationOp: CalibrationDB,
-                      manualAuditLogOp: ManualAuditLogDB, excelUtility: ExcelUtility, configuration: Configuration) extends Controller {
+                      manualAuditLogOp: ManualAuditLogDB, excelUtility: ExcelUtility,
+                      configuration: Configuration, earthquakeDb: EarthquakeDb) extends Controller {
 
   implicit val cdWrite = Json.writes[CellData]
   implicit val rdWrite = Json.writes[RowData]
@@ -797,6 +798,43 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
             BadRequest("無資料")
           }
       }
+  }
+
+  case class EarthquakeYearEvents(year:Int, events:List[EarthQuakeData])
+  def getEarthquakeEvents() = Security.Authenticated {
+    implicit val writes = Json.writes[EarthQuakeData]
+    implicit val w1 = Json.writes[EarthquakeYearEvents]
+    val db = earthquakeDb.dataMap.toList.groupBy(entry=>entry._1.getYear)
+      .map(kv=>{
+        val events = kv._2.map(_._2)
+        EarthquakeYearEvents(year=kv._1, events=events)
+      }).toList.sortBy(_.year)
+    Ok(Json.toJson(db))
+  }
+  def getEarthquakeReportImage(dateTime:Long) = Security.Authenticated {
+    val dt = new DateTime(dateTime)
+    val dtStr = dt.toString("yyyyMMddHHmmss")
+    val path = Paths.get(earthquakeDb.rootPath, s"EQ_REPORT/${dt.getYear}/${dtStr}.gif")
+    Ok.sendFile(path.toFile)
+  }
+  def getEarthquakeBImage(dateTime:Long) = Security.Authenticated {
+    val dt = new DateTime(dateTime)
+    val dtStr = dt.toString("yyyyMMddHHmmss")
+    val path = Paths.get(earthquakeDb.rootPath, s"EQ_CBPV_B/${dt.getYear}/CBPV-B_${dtStr}.png")
+    Ok.sendFile(path.toFile)
+  }
+  def getEarthquakeDImage(dateTime:Long) = Security.Authenticated {
+    val dt = new DateTime(dateTime)
+    val dtStr = dt.toString("yyyyMMddHHmmss")
+    val path = Paths.get(earthquakeDb.rootPath, s"EQ_CBPV_D/${dt.getYear}/CBPV-D_${dtStr}.png")
+    Ok.sendFile(path.toFile)
+  }
+
+  def getWaveImage(dateTime:Long, src:String, sub:String)= Security.Authenticated {
+    val dt = new DateTime(dateTime)
+    val dtStr = dt.toString("yyyyMMdd")
+    val path = Paths.get(earthquakeDb.rootPath, s"DAY_CBPV_${src}/${dt.getYear}/CBPV-${src}_${dtStr}.${sub}.png")
+    Ok.sendFile(path.toFile)
   }
 
   case class InstrumentReport(columnNames: Seq[String], rows: Seq[RowData])
