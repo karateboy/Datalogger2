@@ -16,6 +16,7 @@ trait SysConfigDB {
   val AlertEmailTaget = "AlertEmailTarget"
   val CDX_CONFIG = "CdxConfig"
   val CDX_MONITOR_TYPES = "CdxMonitorTypes"
+  val EASE_HISTORY_DATA = "Ease History Data"
 
   // def getLogo: Future[LogoImage]
 
@@ -43,9 +44,13 @@ trait SysConfigDB {
 
   def getCdxConfig(): Future[CdxConfig]
 
-  def setCdxConfig(config:CdxConfig): Future[UpdateResult]
+  def setCdxConfig(config: CdxConfig): Future[UpdateResult]
 
-  def getCdxMonitorTypes() : Future[Seq[CdxMonitorType]]
+  def getCdxMonitorTypes(): Future[Seq[CdxMonitorType]]
 
-  def setCdxMonitorTypes(monitorTypes: Seq[CdxMonitorType]) : Future[UpdateResult]
+  def setCdxMonitorTypes(monitorTypes: Seq[CdxMonitorType]): Future[UpdateResult]
+
+  def getEaseHistoryData(): Future[Boolean]
+
+  def setEaseHistoryData(v: Boolean): Future[UpdateResult]
 }

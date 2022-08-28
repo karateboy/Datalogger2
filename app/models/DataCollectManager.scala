@@ -428,7 +428,7 @@ class DataCollectManager @Inject()
   }
   Logger.info("DataCollect manager started")
 
-  EasexDataGetter.start(context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp, WSClient)
+  EaseDataGetter.start(context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp, WSClient)
 
   def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord]) = {
     var overThreshold = false

@@ -3,7 +3,7 @@ package models.mongodb
 import models.CdxUploader.{CdxConfig, CdxMonitorType}
 import models.ModelHelper.{errorHandler, waitReadyResult}
 import models.{CdxUploader, SysConfigDB}
-import org.mongodb.scala.bson.{BsonDateTime, BsonNumber, BsonString, BsonValue, Document}
+import org.mongodb.scala.bson.{BsonBoolean, BsonDateTime, BsonNumber, BsonString, BsonValue, Document}
 import org.mongodb.scala.model.{Filters, ReplaceOptions}
 import org.mongodb.scala.result.UpdateResult
 import play.api.libs.json.Json
@@ -30,7 +30,8 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     AlertEmailTaget -> Document(valueKey -> Seq("karateboy.tw@gmail.com")),
     EffectiveRatio -> Document(valueKey -> 0.75),
     CDX_CONFIG -> Document(valueKey -> Json.toJson(CdxUploader.defaultConfig).toString()),
-    CDX_MONITOR_TYPES -> Document(valueKey -> Json.toJson(CdxUploader.defaultMonitorTypes).toString())
+    CDX_MONITOR_TYPES -> Document(valueKey -> Json.toJson(CdxUploader.defaultMonitorTypes).toString()),
+    EASE_HISTORY_DATA -> Document(valueKey -> false)
   )
 
   override def getSpectrumLastParseTime(): Future[Instant] = getInstant(SpectrumLastParseTime)()
@@ -130,4 +131,8 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
       }
     }
   }
+
+  override def getEaseHistoryData(): Future[Boolean] = get(EASE_HISTORY_DATA).map(_.asBoolean().getValue)
+
+  override def setEaseHistoryData(v: Boolean): Future[UpdateResult] = set(EASE_HISTORY_DATA, BsonBoolean(v))
 }

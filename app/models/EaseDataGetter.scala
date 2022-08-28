@@ -2,7 +2,7 @@ package models
 
 import akka.actor.{Actor, ActorSystem, Props}
 import com.github.nscala_time.time.Imports.{DateTime, Duration}
-import models.EasexDataGetter.GetHistoryData
+import models.EaseDataGetter.{GetDataEnd, GetHistoryData, RecalculateHour}
 import models.ModelHelper.{errorHandler, getHourBetween}
 import play.api.Logger
 import play.api.libs.json._
@@ -15,7 +15,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, MINUTES, SECONDS}
 
-object EasexDataGetter {
+object EaseDataGetter {
   def start(actorSystem: ActorSystem,
             sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
             recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp,
@@ -25,11 +25,15 @@ object EasexDataGetter {
   def props(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
             recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp,
             WSClient: WSClient) =
-    Props(classOf[EasexDataGetter], sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp, WSClient)
+    Props(classOf[EaseDataGetter], sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp, WSClient)
 
   case object GetLatestData
 
-  case class GetHistoryData(mt:String)
+  case class GetHistoryData(mt:String, adjustOutstanding:Boolean)
+
+  case class GetDataEnd(mt:String, startTime:DateTime)
+
+  case object RecalculateHour
 }
 
 case class Tag(key: String, value: String)
@@ -43,13 +47,13 @@ case class EaseXParam(project_uuid: String,
                       stop: String
                      )
 
-case class EasxResult(_time: Map[Int, Long], _value: Map[Int, Double])
+case class EaseResult(_time: Map[Int, Long], _value: Map[Int, Double])
 
-case class EasxResponse(result: String, data: String)
+case class EaseResponse(result: String, data: String)
 
-class EasexDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
-                      recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp,
-                      WSClient: WSClient) extends Actor {
+class EaseDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
+                     recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp,
+                     WSClient: WSClient) extends Actor {
 
   Logger.info(s"Ease-X Data Getter started")
   val project_uuid = "f3d26306-1766-4ce6-9081-8ca2843c8f99"
@@ -62,7 +66,7 @@ class EasexDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
     recordOp.ensureMonitorType(mt)
   })
 
-  val timer = context.system.scheduler.schedule(FiniteDuration(5, SECONDS), FiniteDuration(10, MINUTES), self, GetLatestData)
+  val timer = context.system.scheduler.schedule(FiniteDuration(10, SECONDS), FiniteDuration(3, MINUTES), self, GetLatestData)
 
   implicit val mapIntDoubleReads: Reads[Map[Int, Double]] = new Reads[Map[Int, Double]] {
     def reads(jv: JsValue): JsResult[Map[Int, Double]] =
@@ -84,18 +88,53 @@ class EasexDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
   val firstDataTime = new DateTime(2022, 5, 1, 0, 0)
 
   // Try to get all history data
-  //monitorTypes.foreach(self ! GetHistoryData(_))
-
-  override def receive: Receive = {
-    case GetLatestData =>
-      monitorTypes.foreach(getMonitorTypeData(_, DateTime.now().minusHours(2), DateTime.now(), 1, false))
-
-    case GetHistoryData(mt) =>
-      val endTime = new DateTime(monitorTypeOp.map(mt).oldestRecordTime.getOrElse(DateTime.now().getMillis))
-      getMonitorTypeData(mt, firstDataTime, endTime, 100, true)
+  for(ret<-sysConfig.getEaseHistoryData()){
+    if(!ret)
+      monitorTypes.foreach(self ! GetHistoryData(_, true))
   }
 
-  def getMonitorTypeData(mt: String, start: DateTime, end:DateTime, limit:Int, recursive:Boolean = false): Future[Any] = {
+  override def receive = handler(0, firstDataTime, DateTime.now())
+
+  def handler(outstanding:Int, start:DateTime, end:DateTime): Receive = {
+    case GetLatestData =>
+
+      if(outstanding == 0){
+        context become handler(monitorTypes.size, DateTime.now().minusHours(2), DateTime.now())
+        monitorTypes.foreach(getMonitorTypeData(_, DateTime.now().minusHours(2), DateTime.now(), 1, false))
+      }
+
+    case GetHistoryData(mt, adjustOutstanding) =>
+      Logger.info(s"GetHistoryData $outstanding")
+      val endTime = new DateTime(monitorTypeOp.map(mt).oldestRecordTime.getOrElse(DateTime.now().getMillis))
+      if(adjustOutstanding){
+        if(outstanding == 0)
+          context become handler(1, firstDataTime, endTime)
+        else
+          context become handler(outstanding + 1, start, end)
+      }
+
+      getMonitorTypeData(mt, firstDataTime, endTime, 100, true)
+
+    case GetDataEnd(_, startTime) =>
+      val newOutstanding = outstanding -1
+      if(start == firstDataTime)
+        context become handler(newOutstanding, startTime, end)
+      else{
+        if(startTime.isBefore(start))
+          context become handler(newOutstanding, startTime, end)
+        else
+          context become handler(newOutstanding, start, end)
+      }
+      if(newOutstanding == 0)
+        self ! RecalculateHour
+
+    case RecalculateHour=>
+      Logger.info(s"Recalculate from $start to $end")
+      for (current <- getHourBetween(start, end))
+        dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
+  }
+
+  def getMonitorTypeData(mt: String, start: DateTime, end:DateTime, limit:Int, recursive:Boolean = false)  {
     val mtCase = monitorTypeOp.map(mt)
     if(recursive)
       Logger.info(s"$mt GetHistoryData start=$start end=$end")
@@ -111,7 +150,7 @@ class EasexDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
         "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6InNmZGZmMzI3QGdtYWlsLmNvbSIsInVuZXhwaXJlZF90b2tlbiI6dHJ1ZSwiY3JlYXRlZF90aW1lIjoxNjQxODAzNDgyLjI1NTg2NH0.T6zJD8BlcG_QC3jffDo1_gUyjM51j2e1DrWyWZ6WcEM"))
       .withBody(Json.toJson(param)).get()
 
-    def handleResult(result: EasxResult): Future[Any] = {
+    def handleResult(result: EaseResult) {
       val count = result._value.size
       val docList = ListBuffer.empty[RecordList]
 
@@ -129,27 +168,26 @@ class EasexDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
         for (_ <- f) yield {
           mtCase.oldestRecordTime = Some(docList.head._id.time.getTime - 1000)
           monitorTypeOp.upsertMonitorType(mtCase)
-          for (current <- getHourBetween(new DateTime(docList.head._id.time.getTime), end))
-            dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
 
           if(recursive && docList.size == 100) {
             Logger.info(s"$mt still have more history data fire GetHistoryData again")
-            self ! GetHistoryData(mt)
-          }
+            self ! GetHistoryData(mt, false)
+          }else
+            self ! GetDataEnd(mt, end)
         }
       } else
-        Future.successful({ end })
+        self ! GetDataEnd(mt, new DateTime(docList.head._id.time.getTime))
     }
 
-    def handleData(data: String): Future[Any] = {
-      implicit val reads = Json.reads[EasxResult]
-      val ret = Json.parse(data).validate[EasxResult]
+    def handleData(data: String) {
+      implicit val reads = Json.reads[EaseResult]
+      val ret = Json.parse(data).validate[EaseResult]
       ret.fold(invalid => Future.successful({
         if(recursive)
           Logger.info(s"$mt has invalid Data terminated recursive getData")
         else
           Logger.error(s"$mt get invalid Data ${JsError.toJson(invalid)}")
-        end
+        self ! GetDataEnd(mt, end)
       }),
         result => handleResult(result))
     }
@@ -157,8 +195,8 @@ class EasexDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
     request onFailure errorHandler()
 
     for (response <- request) yield {
-      implicit val reads = Json.reads[EasxResponse]
-      val ret = response.json.validate[EasxResponse]
+      implicit val reads = Json.reads[EaseResponse]
+      val ret = response.json.validate[EaseResponse]
       ret.fold(invalid =>
         Future.successful{
           if(recursive)
@@ -166,14 +204,14 @@ class EasexDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
           else
             Logger.error(s"$mt get invalid Data ${JsError.toJson(invalid)}")
 
-          end
+          self ! GetDataEnd(mt, end)
         }
        ,
         result => {
           if(result.result == "success")
             handleData(result.data)
           else
-            Future.successful{ end }
+            self ! GetDataEnd(mt, end)
         })
     }
   }

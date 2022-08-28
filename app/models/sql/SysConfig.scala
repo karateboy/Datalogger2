@@ -155,4 +155,8 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
   }
 
   case class Value(v: String, blob: Option[Blob])
+
+  override def getEaseHistoryData(): Future[Boolean] = ???
+
+  override def setEaseHistoryData(v: Boolean): Future[UpdateResult] = ???
 }
