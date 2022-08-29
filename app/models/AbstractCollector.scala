@@ -173,9 +173,14 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
     case ExecuteSeq(seq, on) =>
       executeSeq(seq, on)
+
+    case WriteSignal(mtId, bit) =>
+      onWriteSignal(mtId, bit)
   }
 
   def executeSeq(str: String, bool: Boolean): Unit = {}
+
+  def onWriteSignal(mt:String, bit:Boolean): Unit = {}
 
   def startCalibration(calibrationType: CalibrationType, monitorTypes: List[String]): Unit = {
     Logger.info(s"start calibrating ${monitorTypes.mkString(",")}")

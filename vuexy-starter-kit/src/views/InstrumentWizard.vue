@@ -354,6 +354,10 @@ export default Vue.extend({
     let form: Instrument = this.isNew ? emptyForm : this.inst;
     let serialSpeed: Array<TextStrValue> = [
       {
+        value: 2400,
+        text: '2400',
+      },
+      {
         value: 4800,
         text: '4800',
       },
