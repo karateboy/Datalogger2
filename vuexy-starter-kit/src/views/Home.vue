@@ -32,24 +32,6 @@
       </b-card>
     </b-col>
     <b-col
-      v-if="cdxConfig.enable"
-      cols="12"
-      md="6"
-      lg="6"
-      xl="6"
-      style="max-height: 400px"
-    >
-      <b-table
-        small
-        striped
-        responsive
-        sticky-header
-        :fields="cdxUploadColumns"
-        :items="cdxUploadLogs"
-        :tbody-tr-class="rowClass"
-      />
-    </b-col>
-    <b-col
       v-for="mt in userInfo.monitorTypeOfInterest"
       :key="mt"
       cols="12"
@@ -61,7 +43,7 @@
         <div :id="`history_${mt}`"></div>
       </b-card>
     </b-col>
-    <b-col
+    <!-- <b-col
       v-for="mt in windRoseList"
       :key="`rose${mt}`"
       cols="12"
@@ -78,7 +60,7 @@
       >
         <div :id="`rose_${mt}`">尚無資料</div>
       </b-card>
-    </b-col>
+    </b-col> -->
   </b-row>
 </template>
 <script lang="ts">
@@ -388,9 +370,9 @@ export default Vue.extend({
     },
     async query(mt: string) {
       const now = new Date().getTime();
-      const oneHourBefore = now - 60 * 60 * 1000;
+      const oneDayBefore = now - 24 * 60 * 60 * 1000;
       const monitors = 'me';
-      const url = `/HistoryTrend/${monitors}/${mt}/Min/all/${oneHourBefore}/${now}`;
+      const url = `/HistoryTrend/${monitors}/${mt}/Min/all/${oneDayBefore}/${now}`;
       const res = await axios.get(url);
       const ret: highcharts.Options = res.data;
 
@@ -405,7 +387,7 @@ export default Vue.extend({
       };
 
       let mtInfo = this.mtMap.get(mt) as MonitorType;
-      ret.title!.text = `${mtInfo.desp}分鐘趨勢圖`;
+      ret.title!.text = `${mtInfo.desp}24小時趨勢圖`;
 
       ret.colors = [
         '#7CB5EC',

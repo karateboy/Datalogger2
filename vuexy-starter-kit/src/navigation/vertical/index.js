@@ -9,12 +9,6 @@ export default [
         action: 'read',
         resource: 'Dashboard',
       },
-      {
-        title: '即時數據',
-        route: 'realtime-data',
-        action: 'read',
-        resource: 'Dashboard',
-      },
     ],
   },
   {
