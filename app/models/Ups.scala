@@ -69,7 +69,7 @@ class UpsCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monito
     Logger.info(s"UPS receive $mt signal cmd")
     for(serial <- serialOpt){
       if(bit) {
-        serial.port.writeBytes("S.2R600".getBytes)
+        serial.port.writeBytes("S.2R600\r".getBytes)
         serial.readPort
       }
     }
