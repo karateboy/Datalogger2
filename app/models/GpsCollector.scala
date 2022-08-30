@@ -9,7 +9,6 @@ import net.sf.marineapi.nmea.io.AbstractDataReader
 import net.sf.marineapi.nmea.util.Position
 import org.joda.time.DateTime
 import play.api._
-import play.api.libs.json.JsError.toJson
 import play.api.libs.json.{JsError, Json}
 
 import java.io.BufferedReader
@@ -19,8 +18,6 @@ object GpsCollector extends DriverOps {
   var count = 0
 
   val monitorTypes = List(MonitorType.LAT, MonitorType.LNG, MonitorType.ALTITUDE, MonitorType.SPEED)
-
-  //val GPS_OUT_OF_RANGE = MonitorTypeDB
 
   override def getMonitorTypes(param: String) = monitorTypes
 
@@ -88,6 +85,10 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
 
   monitorTypes.foreach(monitorTypeDB.ensureMonitorType(_))
 
+  val GPS_OUT_OF_RANGE = "GPS_OUT_OF_RANGE"
+  val mtGPS_OUT_OF_RANGE = monitorTypeDB.signalType(GPS_OUT_OF_RANGE, "GPS超出範圍")
+  monitorTypeDB.ensureMonitorType(mtGPS_OUT_OF_RANGE)
+
   val comm: SerialComm =
     SerialComm.open(protocolParam.comPort.get, protocolParam.speed.getOrElse(SerialPort.BAUDRATE_9600))
   var reader: SentenceReader = _
@@ -148,10 +149,34 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
     }
   }
 
+  private def getFixedDistance(pos:Position, lat:Double, lon:Double) : Double = {
+    val R = 6371 // Radius of the earth
+
+
+      val latDistance = Math.toRadians(pos.getLatitude - lat)
+      val lonDistance = Math.toRadians(pos.getLongitude - lon)
+      val a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2) +
+        Math.cos(Math.toRadians(lon)) * Math.cos(Math.toRadians(pos.getLongitude)) * Math.sin(lonDistance / 2) *
+          Math.sin(lonDistance / 2)
+      val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+      //val height = pos.getAltitude - lastPos.getAltitude
+      val distance = R * c * 1000 // convert to meters
+      //val distanceWithAlt = Math.pow(distance, 2) + Math.pow(height, 2)
+      distance
+
+  }
+
+  def checkWithinRange(pos:Position): Unit ={
+    for(lat<-gpsParam.lat;lon<-gpsParam.lon;radius<-gpsParam.radius; enable<-gpsParam.enableAlert if enable){
+      val distance = getFixedDistance(pos, lat, lon)
+      if(distance > radius)
+        context.parent ! WriteSignal(GPS_OUT_OF_RANGE, true)
+    }
+  }
   def providerUpdate(evt: PositionEvent) {
-    val lat = MonitorTypeData(MonitorType.LAT, evt.getPosition.getLatitude, MonitorStatus.NormalStat)
-    val lng = MonitorTypeData(MonitorType.LNG, evt.getPosition.getLongitude, MonitorStatus.NormalStat)
-    val altitude = MonitorTypeData(MonitorType.ALTITUDE, evt.getPosition.getAltitude, MonitorStatus.NormalStat)
+    val latValue = MonitorTypeData(MonitorType.LAT, evt.getPosition.getLatitude, MonitorStatus.NormalStat)
+    val lngValue = MonitorTypeData(MonitorType.LNG, evt.getPosition.getLongitude, MonitorStatus.NormalStat)
+    val altValue = MonitorTypeData(MonitorType.ALTITUDE, evt.getPosition.getAltitude, MonitorStatus.NormalStat)
     val now = DateTime.now().getMillis
     val speedValue = for(lastTime<-lastTimeOpt;distance <- getDistance(evt.getPosition)) yield
       distance/(now - lastTime)
@@ -160,11 +185,13 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
     lastTimeOpt = Some(now)
     lastPositionOpt = Some(evt.getPosition)
 
+
+
     val fullList = if(speedValue.nonEmpty) {
       val speed = MonitorTypeData(MonitorType.SPEED, speedValue.get, MonitorStatus.NormalStat)
-      List(lat, lng, altitude, speed)
+      List(latValue, lngValue, altValue, speed)
     }else
-      List(lat, lng, altitude)
+      List(latValue, lngValue, altValue)
 
 
     context.parent ! ReportData(fullList)
