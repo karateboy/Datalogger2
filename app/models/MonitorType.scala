@@ -71,6 +71,8 @@ object MonitorType {
   val NMHC = "NMHC"
   val LAT = "LAT"
   val LNG = "LNG"
+  val ALTITUDE = "ALTITUDE"
+  val SPEED = "SPEED"
   val WIN_SPEED = "WD_SPEED"
   val WIN_DIRECTION = "WD_DIR"
   val RAIN = "RAIN"
