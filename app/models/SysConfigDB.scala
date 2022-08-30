@@ -17,6 +17,7 @@ trait SysConfigDB {
   val CDX_CONFIG = "CdxConfig"
   val CDX_MONITOR_TYPES = "CdxMonitorTypes"
   val EASE_HISTORY_DATA = "Ease History Data"
+  val IMPORT_GPS = "IMPORT GPS Data"
 
   // def getLogo: Future[LogoImage]
 
@@ -53,4 +54,8 @@ trait SysConfigDB {
   def getEaseHistoryData(): Future[Boolean]
 
   def setEaseHistoryData(v: Boolean): Future[UpdateResult]
+
+  def getImportGPS(): Future[Boolean]
+
+  def setImportGPS(v: Boolean) : Future[UpdateResult]
 }

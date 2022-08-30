@@ -26,38 +26,38 @@
                 v-model="form.monitorTypes"
                 label="desp"
                 :reduce="mt => mt._id"
-                :options="activatedMonitorTypes"
+                :options="myMonitorTypes"
                 multiple
               />
             </b-form-group>
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="資料種類"
-              label-for="dataType"
+              label="時間單位"
+              label-for="reportUnit"
               label-cols-md="3"
             >
               <v-select
-                id="dataType"
-                v-model="form.dataType"
+                id="reportUnit"
+                v-model="form.reportUnit"
                 label="txt"
                 :reduce="dt => dt.id"
-                :options="dataTypes"
+                :options="reportUnits"
               />
             </b-form-group>
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="狀態"
-              label-for="statusFilter"
+              label="圖表類型"
+              label-for="chartType"
               label-cols-md="3"
             >
               <v-select
-                id="statusFilter"
-                v-model="form.statusFilter"
-                label="txt"
-                :reduce="dt => dt.id"
-                :options="statusFilters"
+                id="chartType"
+                v-model="form.chartType"
+                label="desc"
+                :reduce="ct => ct.type"
+                :options="chartTypes"
               />
             </b-form-group>
           </b-col>
@@ -89,12 +89,21 @@
             >
               查詢
             </b-button>
+            <b-button
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              type="submit"
+              variant="primary"
+              class="mr-1"
+              @click="downloadExcel"
+            >
+              下載Excel
+            </b-button>
           </b-col>
         </b-row>
       </b-form>
     </b-card>
     <b-card v-show="display">
-      <b-card-body><div id="chart_container"></div></b-card-body>
+      <b-card-body><div id="chart_container" /></b-card-body>
     </b-card>
   </div>
 </template>
@@ -113,6 +122,8 @@ import useAppConfig from '../@core/app-config/useAppConfig';
 import moment from 'moment';
 import axios from 'axios';
 import highcharts from 'highcharts';
+import hcRegression from 'highcharts-regression';
+hcRegression(highcharts);
 
 export default Vue.extend({
   components: {
@@ -123,12 +134,8 @@ export default Vue.extend({
   },
 
   data() {
-    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
+    const range = [moment().subtract(3, 'years').valueOf(), moment().valueOf()];
     return {
-      dataTypes: [
-        { txt: '小時資料', id: 'hour' },
-        { txt: '分鐘資料', id: 'min' },
-      ],
       statusFilters: [
         { id: 'all', txt: '全部' },
         { id: 'normal', txt: '正常量測值' },
@@ -137,6 +144,8 @@ export default Vue.extend({
         { id: 'invalid', txt: '無效數據' },
         { id: 'valid', txt: '有效數據' },
       ],
+      reportUnits: [{ txt: '小時', id: 'Hour' }],
+      reportUnit: 'Hour',
       display: false,
       chartTypes: [
         {
@@ -167,18 +176,35 @@ export default Vue.extend({
       form: {
         monitors: Array<string>(),
         monitorTypes: Array<string>(),
-        dataType: 'hour',
+        reportUnit: 'Hour',
         statusFilter: 'all',
+        chartType: 'scatter',
         range,
       },
     };
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
-    ...mapGetters('monitorTypes', ['activatedMonitorTypes', 'mtMap']),
+    ...mapGetters('monitorTypes', ['activatedMonitorTypes']),
     ...mapState('monitors', ['monitors']),
     myMonitors(): Array<any> {
-      return this.monitors.filter((m: any) => m._id === 'me');
+      return this.monitors.filter((m: any) => m._id !== 'me');
+    },
+    myMonitorTypes(): Array<any> {
+      let mtList = [
+        'E',
+        'N',
+        'V',
+        'SigmaE',
+        'SigmaN',
+        'SigmaV',
+        'CorrEN',
+        'CorrEV',
+        'CorrNV',
+      ];
+      return this.monitorTypes.filter(
+        (mt: any) => mtList.indexOf(mt._id) !== -1,
+      );
     },
   },
   watch: {},
@@ -192,7 +218,7 @@ export default Vue.extend({
     await this.fetchMonitors();
 
     if (this.activatedMonitorTypes.length !== 0)
-      this.form.monitorTypes.push(this.activatedMonitorTypes[0]._id);
+      this.form.monitorTypes.push(this.myMonitorTypes[0]._id);
 
     if (this.monitors.length !== 0) {
       this.form.monitors.push(this.myMonitors[0]._id);
@@ -203,90 +229,86 @@ export default Vue.extend({
     ...mapActions('monitors', ['fetchMonitors']),
     ...mapMutations(['setLoading']),
     async query() {
-      if (this.form.monitorTypes.length !== 2) {
-        this.$bvModal.msgBoxOk('測項數必須為2個');
-        return;
-      }
       this.setLoading({ loading: true });
-      try {
-        this.display = true;
-        const monitors = this.form.monitors.join(':');
-        const url = `/ScatterChart/${monitors}/${this.form.monitorTypes.join(
-          ':',
-        )}/${this.form.dataType}/${this.form.statusFilter}/${
-          this.form.range[0]
-        }/${this.form.range[1]}`;
-        const res = await axios.get(url);
-        const ret = res.data;
+      this.display = true;
+      const monitors = this.form.monitors.join(':');
+      const url = `/HistoryTrend/${monitors}/${this.form.monitorTypes.join(
+        ':',
+      )}/${this.form.reportUnit}/${this.form.statusFilter}/${
+        this.form.range[0]
+      }/${this.form.range[1]}`;
+      const res = await axios.get(url);
+      const ret = res.data;
 
-        ret.legend = {
-          layout: 'vertical',
-          align: 'left',
-          verticalAlign: 'top',
-          x: 100,
-          y: 70,
-          floating: true,
-          borderWidth: 1,
-        };
+      this.setLoading({ loading: false });
 
-        let mt1 = this.mtMap.get(this.form.monitorTypes[0]);
-        let mt2 = this.mtMap.get(this.form.monitorTypes[1]);
-        ret.plotOptions = {
-          scatter: {
-            marker: {
-              radius: 3,
-              states: {
-                hover: {
-                  enabled: true,
-                  lineColor: 'rgb(100,100,100)',
-                },
-              },
-            },
-            states: {
-              hover: {
-                marker: {
-                  enabled: false,
-                },
-              },
-            },
-            tooltip: {
-              headerFormat: '<b>{series.name}</b><br>',
-              pointFormat: `${mt1.desp}{point.x} ${mt1.unit}, ${mt2.desp}{point.y} ${mt2.unit}`,
-            },
+      ret.chart = {
+        type: this.form.chartType,
+        zoomType: 'x',
+        panning: true,
+        panKey: 'shift',
+        alignTicks: false,
+      };
+
+      const pointFormatter = function pointFormatter(this: any) {
+        const d = new Date(this.x);
+        return `${d.toLocaleString()}:${Math.round(this.y)}度`;
+      };
+
+      ret.colors = [
+        '#7CB5EC',
+        '#434348',
+        '#90ED7D',
+        '#F7A35C',
+        '#8085E9',
+        '#F15C80',
+        '#E4D354',
+        '#2B908F',
+        '#FB9FA8',
+        '#91E8E1',
+        '#7CB5EC',
+        '#80C535',
+        '#969696',
+      ];
+
+      ret.tooltip = { valueDecimals: 2 };
+      ret.legend = { enabled: true };
+      ret.credits = {
+        enabled: false,
+        href: 'http://www.wecc.com.tw/',
+      };
+      ret.xAxis.type = 'datetime';
+      ret.xAxis.dateTimeLabelFormats = {
+        day: '%b%e日',
+        week: '%b%e日',
+        month: '%y年%b',
+      };
+
+      ret.plotOptions = {
+        scatter: {
+          tooltip: {
+            pointFormatter,
           },
-        };
+        },
+      };
+      ret.time = {
+        timezoneOffset: -480,
+      };
 
-        ret.colors = [
-          '#7CB5EC',
-          '#434348',
-          '#90ED7D',
-          '#F7A35C',
-          '#8085E9',
-          '#F15C80',
-          '#E4D354',
-          '#2B908F',
-          '#FB9FA8',
-          '#91E8E1',
-          '#7CB5EC',
-          '#80C535',
-          '#969696',
-        ];
+      ret.series[0].regression = true;
+      highcharts.chart('chart_container', ret);
+    },
+    async downloadExcel() {
+      const baseUrl =
+        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
+      const monitors = this.form.monitors.join(':');
+      const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
+        ':',
+      )}/${this.form.reportUnit}/${this.form.statusFilter}/${
+        this.form.range[0]
+      }/${this.form.range[1]}`;
 
-        let prec = Math.max(mt1.prec, mt2.prec);
-
-        ret.tooltip = { valueDecimals: prec };
-        //ret.legend = { enabled: true };
-        ret.credits = {
-          enabled: false,
-          href: 'http://www.wecc.com.tw/',
-        };
-
-        highcharts.chart('chart_container', ret);
-      } catch (err) {
-        throw Error(`${err}`);
-      } finally {
-        this.setLoading({ loading: false });
-      }
+      window.open(url);
     },
   },
 });

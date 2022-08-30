@@ -378,7 +378,8 @@ object DataCollectManager {
 
 @Singleton
 class DataCollectManager @Inject()
-(config: Configuration, recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
+(config: Configuration, environment: Environment, recordOp: RecordDB,
+ monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
  dataCollectManagerOp: DataCollectManagerOp,
  instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentDB,
  sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory,
@@ -420,6 +421,9 @@ class DataCollectManager @Inject()
     SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
     WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
     VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self)
+    for(ret<-sysConfig.getImportGPS() if !ret){
+      GpsDataReader.start(context.system, environment,sysConfig, monitorOp, monitorTypeOp, recordOp)
+    }
   }
   instrumentList.foreach {
     inst =>

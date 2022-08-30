@@ -104,7 +104,7 @@ class EaseDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
       }
 
     case GetHistoryData(mt, adjustOutstanding) =>
-      Logger.info(s"GetHistoryData $outstanding")
+      Logger.debug(s"GetHistoryData $outstanding")
       val endTime = new DateTime(monitorTypeOp.map(mt).oldestRecordTime.getOrElse(DateTime.now().getMillis))
       if(adjustOutstanding){
         if(outstanding == 0)
@@ -137,9 +137,9 @@ class EaseDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
   def getMonitorTypeData(mt: String, start: DateTime, end:DateTime, limit:Int, recursive:Boolean = false)  {
     val mtCase = monitorTypeOp.map(mt)
     if(recursive)
-      Logger.info(s"$mt GetHistoryData start=$start end=$end")
+      Logger.debug(s"$mt GetHistoryData start=$start end=$end")
     else
-      Logger.info(s"$mt GetLatestData start=$start end=$end")
+      Logger.debug(s"$mt GetLatestData start=$start end=$end")
 
     val param = EaseXParam(project_uuid, resource_uuid = resource_uuid,
       fields = Seq(mt), limit = limit, tags = Seq(Tag("WellID", "EV-20-NE-1")),
@@ -170,7 +170,7 @@ class EaseDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
           monitorTypeOp.upsertMonitorType(mtCase)
 
           if(recursive && docList.size == 100) {
-            Logger.info(s"$mt still have more history data fire GetHistoryData again")
+            Logger.debug(s"$mt still have more history data fire GetHistoryData again")
             self ! GetHistoryData(mt, false)
           }else
             self ! GetDataEnd(mt, end)
@@ -184,7 +184,7 @@ class EaseDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
       val ret = Json.parse(data).validate[EaseResult]
       ret.fold(invalid => Future.successful({
         if(recursive)
-          Logger.info(s"$mt has invalid Data terminated recursive getData")
+          Logger.debug(s"$mt has invalid Data terminated recursive getData")
         else
           Logger.error(s"$mt get invalid Data ${JsError.toJson(invalid)}")
         self ! GetDataEnd(mt, end)
@@ -200,7 +200,7 @@ class EaseDataGetter(sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
       ret.fold(invalid =>
         Future.successful{
           if(recursive)
-            Logger.info(s"$mt has invalid Data terminated recursive getData")
+            Logger.debug(s"$mt has invalid Data terminated recursive getData")
           else
             Logger.error(s"$mt get invalid Data ${JsError.toJson(invalid)}")
 

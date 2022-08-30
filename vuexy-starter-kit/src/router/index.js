@@ -93,6 +93,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/gps-trend',
+      name: 'gps-trend',
+      component: () => import('@/views/GpsTrend.vue'),
+      meta: {
+        pageTitle: '地表變形趨勢圖',
+        breadcrumb: [
+          {
+            text: '數據查詢',
+            active: true,
+          },
+          {
+            text: '地表變形趨勢圖',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/calibration-query',
       name: 'calibration-query',
       component: () => import('@/views/CalibrationQuery.vue'),

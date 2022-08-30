@@ -159,4 +159,8 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
   override def getEaseHistoryData(): Future[Boolean] = ???
 
   override def setEaseHistoryData(v: Boolean): Future[UpdateResult] = ???
+
+  override def getImportGPS(): Future[Boolean] = ???
+
+  override def setImportGPS(v: Boolean): Future[UpdateResult] = ???
 }

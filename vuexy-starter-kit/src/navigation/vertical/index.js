@@ -33,6 +33,13 @@ export default [
         action: 'read',
         resource: 'Data',
       },
+      //地表變形趨勢圖
+      {
+        title: '地表變形趨勢圖',
+        route: 'gps-trend',
+        action: 'read',
+        resource: 'Data',
+      },
       {
         title: '玫瑰圖查詢',
         route: 'wind-rose-query',

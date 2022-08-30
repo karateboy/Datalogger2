@@ -10,7 +10,7 @@
                 v-model="form.monitors"
                 label="desc"
                 :reduce="mt => mt._id"
-                :options="monitors"
+                :options="myMonitors"
                 multiple
               />
             </b-form-group>
@@ -181,6 +181,9 @@ export default Vue.extend({
     resultTitle(): string {
       return `總共${this.rows.length}筆`;
     },
+    myMonitors(): Array<any> {
+      return this.monitors.filter((m: any) => m._id === 'me');
+    },
   },
   watch: {},
   async mounted() {
@@ -188,7 +191,7 @@ export default Vue.extend({
     await this.fetchMonitors();
 
     if (this.monitors.length !== 0) {
-      this.form.monitors.push(this.monitors[0]._id);
+      this.form.monitors.push(this.myMonitors[0]._id);
     }
 
     if (this.activatedMonitorTypes.length !== 0)

@@ -31,7 +31,8 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     EffectiveRatio -> Document(valueKey -> 0.75),
     CDX_CONFIG -> Document(valueKey -> Json.toJson(CdxUploader.defaultConfig).toString()),
     CDX_MONITOR_TYPES -> Document(valueKey -> Json.toJson(CdxUploader.defaultMonitorTypes).toString()),
-    EASE_HISTORY_DATA -> Document(valueKey -> false)
+    EASE_HISTORY_DATA -> Document(valueKey -> false),
+    IMPORT_GPS -> Document(valueKey -> false)
   )
 
   override def getSpectrumLastParseTime(): Future[Instant] = getInstant(SpectrumLastParseTime)()
@@ -135,4 +136,8 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
   override def getEaseHistoryData(): Future[Boolean] = get(EASE_HISTORY_DATA).map(_.asBoolean().getValue)
 
   override def setEaseHistoryData(v: Boolean): Future[UpdateResult] = set(EASE_HISTORY_DATA, BsonBoolean(v))
+
+  override def getImportGPS(): Future[Boolean] = get(IMPORT_GPS).map(_.asBoolean().getValue)
+
+  override def setImportGPS(v: Boolean): Future[UpdateResult] = set(IMPORT_GPS, BsonBoolean(v))
 }
