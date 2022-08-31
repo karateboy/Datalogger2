@@ -170,7 +170,7 @@ class Adam6017Collector @Inject()
       Logger.info(s"Output DO $bit to $on")
       try {
         import com.serotonin.modbus4j.locator.BaseLocator
-        val locator = BaseLocator.coilStatus(1, bit)
+        val locator = BaseLocator.coilStatus(1, 16 + bit)
         masterOpt map {
           master => master.setValue(locator, on)
         }

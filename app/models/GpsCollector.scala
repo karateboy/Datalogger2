@@ -169,6 +169,7 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
   def checkWithinRange(pos:Position): Unit ={
     for(lat<-gpsParam.lat;lon<-gpsParam.lon;radius<-gpsParam.radius; enable<-gpsParam.enableAlert if enable){
       val distance = getFixedDistance(pos, lat, lon)
+      Logger.info(s"Distance from center=$distance")
       if(distance > radius)
         context.parent ! WriteSignal(GPS_OUT_OF_RANGE, true)
     }
@@ -185,7 +186,7 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
     lastTimeOpt = Some(now)
     lastPositionOpt = Some(evt.getPosition)
 
-
+    checkWithinRange(evt.getPosition)
 
     val fullList = if(speedValue.nonEmpty) {
       val speed = MonitorTypeData(MonitorType.SPEED, speedValue.get, MonitorStatus.NormalStat)
