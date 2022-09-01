@@ -30,12 +30,9 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
                 ,[order] = ${mt.order}
                 ,[signalType] = ${mt.signalType}
                 ,[std_law] = ${mt.std_law}
-                ,[std_internal] = ${mt.std_internal}
                 ,[zd_law] = ${mt.zd_law}
-                ,[zd_internal] = ${mt.zd_internal}
                 ,[span] = ${mt.span}
                 ,[span_dev_law] = ${mt.span_dev_law}
-                ,[span_dev_internal] = ${mt.span_dev_internal}
                 ,[measuringBy] = ${measuringBy}
                 ,[acoustic] = ${mt.acoustic}
                 ,[spectrum] = ${mt.spectrum}
@@ -44,6 +41,7 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
                 ,[accumulated] = ${mt.accumulated}
                 ,[fixedM] = ${mt.fixedM}
                 ,[fixedB] = ${mt.fixedB}
+                ,[overLawSignalType] = ${mt.overLawSignalType}
             WHERE [id] = ${mt._id}
           IF(@@ROWCOUNT = 0)
             BEGIN
@@ -55,12 +53,9 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
            ,[order]
            ,[signalType]
            ,[std_law]
-           ,[std_internal]
            ,[zd_law]
-           ,[zd_internal]
            ,[span]
            ,[span_dev_law]
-           ,[span_dev_internal]
            ,[measuringBy]
            ,[acoustic]
            ,[spectrum]
@@ -68,7 +63,8 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
            ,[calibrate]
            ,[accumulated]
            ,[fixedM]
-           ,[fixedB])
+           ,[fixedB]
+           ,[overLawSignalType])
           VALUES
               (${mt._id}
                 ,${mt.desp}
@@ -77,12 +73,9 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
                 ,${mt.order}
                 ,${mt.signalType}
                 ,${mt.std_law}
-                ,${mt.std_internal}
                 ,${mt.zd_law}
-                ,${mt.zd_internal}
                 ,${mt.span}
                 ,${mt.span_dev_law}
-                ,${mt.span_dev_internal}
                 ,${measuringBy}
                 ,${mt.acoustic}
                 ,${mt.spectrum}
@@ -90,7 +83,8 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
                 ,${mt.calibrate}
                 ,${mt.accumulated}
                 ,${mt.fixedM}
-                ,${mt.fixedB})
+                ,${mt.fixedB}
+                ,${mt.overLawSignalType})
             END
          """.update().apply()
     UpdateResult.acknowledged(ret, ret, null)
@@ -114,11 +108,8 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
       order = rs.int("order"),
       signalType = rs.boolean("signalType"),
       std_law = rs.doubleOpt("std_law"),
-      std_internal = rs.doubleOpt("std_internal"),
-      zd_internal = rs.doubleOpt("zd_internal"),
       zd_law = rs.doubleOpt("zd_law"),
       span = rs.doubleOpt("span"),
-      span_dev_internal = rs.doubleOpt("span_dev_internal"),
       span_dev_law = rs.doubleOpt("span_dev_law"),
       measuringBy = measuringBy,
       acoustic = rs.booleanOpt("acoustic"),
@@ -127,7 +118,8 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
       calibrate = rs.booleanOpt("calibrate"),
       accumulated = rs.booleanOpt("accumulated"),
       fixedM = rs.doubleOpt("fixedM"),
-      fixedB = rs.doubleOpt("fixedB"))
+      fixedB = rs.doubleOpt("fixedB"),
+      overLawSignalType = rs.stringOpt("overLawSignalType"))
   }
 
   override def deleteItemFuture(_id: String): Unit = {
@@ -149,12 +141,9 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
 	          [order] [int] NOT NULL,
 	          [signalType] [bit] NOT NULL,
 	          [std_law] [float] NULL,
-	          [std_internal] [float] NULL,
 	          [zd_law] [float] NULL,
-	          [zd_internal] [float] NULL,
 	          [span] [float] NULL,
 	          [span_dev_law] [float] NULL,
-	          [span_dev_internal] [float] NULL,
 	          [measuringBy] [nvarchar](50) NULL,
 	          [acoustic] [bit] NULL,
 	          [spectrum] [bit] NULL,
@@ -183,6 +172,13 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
       sql"""
           Alter Table monitorType
           Add [fixedB] float;
+         """.execute().apply()
+    }
+
+    if(!sqlServer.getColumnNames(tabName).contains("overLawSignalType")){
+      sql"""
+          Alter Table monitorType
+          Add [overLawSignalType] [nvarchar](50);
          """.execute().apply()
     }
 

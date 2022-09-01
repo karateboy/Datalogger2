@@ -240,12 +240,6 @@ trait MonitorTypeDB {
 
   def overStd(mt: String, vOpt: Option[Double]): (Boolean, Boolean) = {
     val mtCase = map(mt)
-    val overInternal =
-      for (std <- mtCase.std_internal; v <- vOpt) yield
-        if (v > std)
-          true
-        else
-          false
 
     val overLaw =
       for (std <- mtCase.std_law; v <- vOpt) yield
@@ -253,6 +247,6 @@ trait MonitorTypeDB {
           true
         else
           false
-    (overInternal.getOrElse(false), overLaw.getOrElse(false))
+    (overLaw.getOrElse(false), overLaw.getOrElse(false))
   }
 }

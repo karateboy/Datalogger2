@@ -131,49 +131,32 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
 
   @volatile var lastPositionOpt : Option[Position] = None
   @volatile var lastTimeOpt : Option[Long] = None
-
+  @volatile var outOfRange : Option[Boolean] = None
   private def getDistance(pos:Position): Option[Double] = {
-    val R = 6371 // Radius of the earth
-
-    for(lastPos<-lastPositionOpt) yield {
-      val latDistance = Math.toRadians(pos.getLatitude - lastPos.getLatitude)
-      val lonDistance = Math.toRadians(pos.getLongitude - lastPos.getLongitude)
-      val a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2) +
-        Math.cos(Math.toRadians(lastPos.getLongitude)) * Math.cos(Math.toRadians(pos.getLongitude)) * Math.sin(lonDistance / 2) *
-          Math.sin(lonDistance / 2)
-      val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-      //val height = pos.getAltitude - lastPos.getAltitude
-      val distance = R * c * 1000 // convert to meters
-      //val distanceWithAlt = Math.pow(distance, 2) + Math.pow(height, 2)
-      distance
-    }
+    for(lastPos<-lastPositionOpt) yield
+      lastPos.distanceTo(pos)
   }
 
-  private def getFixedDistance(pos:Position, lat:Double, lon:Double) : Double = {
-    val R = 6371 // Radius of the earth
-
-
-      val latDistance = Math.toRadians(pos.getLatitude - lat)
-      val lonDistance = Math.toRadians(pos.getLongitude - lon)
-      val a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2) +
-        Math.cos(Math.toRadians(lon)) * Math.cos(Math.toRadians(pos.getLongitude)) * Math.sin(lonDistance / 2) *
-          Math.sin(lonDistance / 2)
-      val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-      //val height = pos.getAltitude - lastPos.getAltitude
-      val distance = R * c * 1000 // convert to meters
-      //val distanceWithAlt = Math.pow(distance, 2) + Math.pow(height, 2)
-      distance
-
-  }
 
   def checkWithinRange(pos:Position): Unit ={
     for(lat<-gpsParam.lat;lon<-gpsParam.lon;radius<-gpsParam.radius; enable<-gpsParam.enableAlert if enable){
-      val distance = getFixedDistance(pos, lat, lon)
-      Logger.info(s"Distance from center=$distance")
-      if(distance > radius)
-        context.parent ! WriteSignal(GPS_OUT_OF_RANGE, true)
+      val center = new Position(lat, lon)
+      val distance = center.distanceTo(pos)
+
+      if(distance > radius) {
+        if(outOfRange.isEmpty || !outOfRange.get){
+          outOfRange = Some(true)
+          context.parent ! WriteSignal(GPS_OUT_OF_RANGE, true)
+        }
+      }else {
+        if(outOfRange.isEmpty || outOfRange.get){
+          outOfRange = Some(false)
+          context.parent ! WriteSignal(GPS_OUT_OF_RANGE, false)
+        }
+      }
     }
   }
+
   def providerUpdate(evt: PositionEvent) {
     val latValue = MonitorTypeData(MonitorType.LAT, evt.getPosition.getLatitude, MonitorStatus.NormalStat)
     val lngValue = MonitorTypeData(MonitorType.LNG, evt.getPosition.getLongitude, MonitorStatus.NormalStat)

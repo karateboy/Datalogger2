@@ -10,15 +10,15 @@
         @change="onChange"
       ></b-form-checkbox>
     </b-form-group>
-    <b-form-group label="經度" label-for="lat" label-cols-md="3">
+    <b-form-group label="經度" label-for="lon" label-cols-md="3">
       <b-form-input
-        v-model.number="paramObj.lat"
+        v-model.number="paramObj.lon"
         @change="onChange"
       ></b-form-input>
     </b-form-group>
-    <b-form-group label="緯度" label-for="lon" label-cols-md="3">
+    <b-form-group label="緯度" label-for="lat" label-cols-md="3">
       <b-form-input
-        v-model.number="paramObj.lon"
+        v-model.number="paramObj.lat"
         @change="onChange"
       ></b-form-input>
     </b-form-group>
