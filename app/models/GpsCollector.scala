@@ -87,9 +87,9 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
 
   monitorTypes.foreach(monitorTypeDB.ensureMonitorType(_))
 
-  val GPS_OUT_OF_RANGE = "GPS_OUT_OF_RANGE"
-  val mtGPS_OUT_OF_RANGE = monitorTypeDB.signalType(GPS_OUT_OF_RANGE, "GPS超出範圍")
-  monitorTypeDB.ensureMonitorType(mtGPS_OUT_OF_RANGE)
+  val POS_IN_THE_RANGE = "POS_IN_THE_RANGE"
+  val mtPOS_IN_THE_RANGE = monitorTypeDB.signalType(POS_IN_THE_RANGE, "位置在範圍內")
+  monitorTypeDB.ensureMonitorType(mtPOS_IN_THE_RANGE)
 
   val comm: SerialComm =
     SerialComm.open(protocolParam.comPort.get, protocolParam.speed.getOrElse(SerialPort.BAUDRATE_9600))
@@ -133,7 +133,7 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
       buff.close()
   }
 
-  @volatile var counter = 0
+  @volatile var posInTheRangeValue : Option[Boolean] = None
   def providerUpdate(evt: PositionEvent) {
     val latValue = MonitorTypeData(MonitorType.LAT, evt.getPosition.getLatitude, MonitorStatus.NormalStat)
     val lngValue = MonitorTypeData(MonitorType.LNG, evt.getPosition.getLongitude, MonitorStatus.NormalStat)
@@ -146,10 +146,7 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
     lastTimeOpt = Some(now)
     lastPositionOpt = Some(evt.getPosition)
 
-    if(counter % 100 == 0)
-      checkWithinRange(evt.getPosition)
-
-    counter = counter + 1
+    checkWithinRange(evt.getPosition)
 
     val fullList = if (speedValue.nonEmpty) {
       val speed = MonitorTypeData(MonitorType.SPEED, speedValue.get, MonitorStatus.NormalStat)
@@ -157,29 +154,10 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
     } else
       List(latValue, lngValue, altValue)
 
-
     context.parent ! ReportData(fullList)
   }
 
   private def getDistance(pos: Position): Option[Double] = {
-    /*
-    val R = 6371 // Radius of the earth
-     */
-/*
-    for (lastPos <- lastPositionOpt) yield {
-      val latDistance = Math.toRadians(pos.getLatitude - lastPos.getLatitude)
-      val lonDistance = Math.toRadians(pos.getLongitude - lastPos.getLongitude)
-      val a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2) +
-        Math.cos(Math.toRadians(lastPos.getLongitude)) * Math.cos(Math.toRadians(pos.getLongitude)) * Math.sin(lonDistance / 2) *
-          Math.sin(lonDistance / 2)
-      val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-      //val height = pos.getAltitude - lastPos.getAltitude
-      val distance = R * c * 1000 // convert to meters
-      //val distanceWithAlt = Math.pow(distance, 2) + Math.pow(height, 2)
-      distance
-    }
-    */
-
     for (lastPos <- lastPositionOpt) yield
       lastPos.distanceTo(pos)
   }
@@ -189,8 +167,17 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
       val center = new Position(lat, lon)
       val distance = center.distanceTo(pos)
       Logger.info(s"Distance from center=$distance")
-      if (distance > radius)
-        context.parent ! WriteSignal(GPS_OUT_OF_RANGE, true)
+      if (distance <= radius) {
+        if(posInTheRangeValue.isEmpty || posInTheRangeValue.get == false) {
+          posInTheRangeValue = Some(true)
+          context.parent ! WriteSignal(POS_IN_THE_RANGE, true)
+        }
+      }else{
+        if(posInTheRangeValue.isEmpty || posInTheRangeValue.get == true) {
+          posInTheRangeValue = Some(false)
+          context.parent ! WriteSignal(POS_IN_THE_RANGE, false)
+        }
+      }
     }
   }
 
