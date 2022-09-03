@@ -71,8 +71,6 @@ class SerialDataReader(serialComm: SerialComm) extends AbstractDataReader {
     for (line <- serialComm.getLine3())
       lineBuffer.append(line.trim)
 
-    Logger.info(s"gps read ${lineBuffer.toList}")
-
     if (lineBuffer.isEmpty)
       null
     else
