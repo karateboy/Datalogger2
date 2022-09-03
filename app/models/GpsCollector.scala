@@ -164,7 +164,7 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
     for (lat <- gpsParam.lat; lon <- gpsParam.lon; radius <- gpsParam.radius; enable <- gpsParam.enableAlert if enable) {
       val center = new Position(lat, lon)
       val distance = center.distanceTo(pos)
-      Logger.info(s"Distance from center=$distance")
+
       if (distance <= radius) {
         if(posInTheRangeValue.isEmpty || posInTheRangeValue.get == false) {
           posInTheRangeValue = Some(true)
