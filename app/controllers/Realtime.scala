@@ -88,10 +88,10 @@ class Realtime @Inject()
       MonitorType.TEMP, winSpeedMax)
 
     val realtimeMapFuture =
-      recordDB.getRecordMapFuture(recordDB.MinCollection)(Monitor.SELF_ID, mtList, DateTime.now.minusDays(2), DateTime.now)
+      recordDB.getRecordMapFuture(recordDB.MinCollection)(Monitor.SELF_ID, mtList, DateTime.now.minusDays(1), DateTime.now)
 
     val hourListFuture =
-      recordDB.getRecordListFuture(recordDB.HourCollection)(DateTime.now.minusDays(2), DateTime.now)
+      recordDB.getRecordListFuture(recordDB.HourCollection)(DateTime.now.minusDays(1), DateTime.now)
 
     implicit val write = Json.writes[WeatherSummary]
 
@@ -128,19 +128,21 @@ class Realtime @Inject()
 
 
       val winspeed =
-        if (realtimeMap(MonitorType.WIN_SPEED).nonEmpty)
-          realtimeMap(MonitorType.WIN_SPEED).last.value
-        else
+        if (realtimeMap(MonitorType.WIN_SPEED).nonEmpty) {
+          val data = realtimeMap(MonitorType.WIN_SPEED).reverse.take(60).flatMap(_.value)
+          Some(data.sum/data.length)
+        } else
           None
-
-      val winSpeedTodayRecords = todayRecord(realtimeMap(MonitorType.WIN_SPEED))
+      
+      val winSpeedTodayRecords = hourList.filter(rec => new DateTime(rec._id.time) >=startOfToday && new DateTime(rec._id.time) < DateTime.now())
+        .flatMap(_.mtMap.get(MonitorType.WIN_SPEED))
+      
       val winSpeedTodayMax =
         if (winSpeedTodayRecords.nonEmpty)
           winSpeedTodayRecords.map(_.value).max
         else
           None
-
-
+      
       val humid =
         if (realtimeMap(MonitorType.HUMID).nonEmpty)
           realtimeMap(MonitorType.HUMID).last.value
@@ -152,11 +154,11 @@ class Realtime @Inject()
         Some(rainList.take(10).flatMap(_.value).sum)
       else
         None
-      val rain60 = if (rainList.size >= 60)
+      val rain60 = if (rainList.nonEmpty)
         Some(rainList.take(60).flatMap(_.value).sum)
       else
         None
-      val rainDay = if (rainList.size > 60 * 24)
+      val rainDay = if (rainList.nonEmpty)
         Some(rainList.take(60 * 24).flatMap(_.value).sum)
       else
         None

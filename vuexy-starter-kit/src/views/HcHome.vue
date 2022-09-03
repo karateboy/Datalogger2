@@ -15,16 +15,16 @@
             >
               <b-row align-v="center" align-h="center" class="p-3">
                 <b-col lg="2" md="4" sm="6"
-                  ><h1>
-                    {{ getWindLevel(getRealtimeValue('WD_SPEED')) }}級
-                  </h1></b-col
+                  ><h1>{{ getWindLevel(weatherSummary.winSpeed) }}級</h1></b-col
                 >
                 <b-col lg="10" md="8" sm="6"
-                  ><h1>{{ getRealtimeValueStr('WD_SPEED') }} m/s</h1></b-col
+                  ><h1>
+                    {{ formatValue(weatherSummary.winSpeed) }} m/s
+                  </h1></b-col
                 >
                 <b-col cols="12"
                   ><b-progress
-                    :value="getWindLevel(getRealtimeValue('WD_SPEED'))"
+                    :value="getWindLevel(weatherSummary.winSpeed)"
                     :max="10"
                     animated
                     show-value
@@ -288,8 +288,6 @@ import { mapActions, mapGetters, mapState } from 'vuex';
 import axios from 'axios';
 import useAppConfig from '../@core/app-config/useAppConfig';
 import { isNumber } from 'highcharts';
-import highcharts from 'highcharts';
-import highchartMore from 'highcharts/highcharts-more';
 import { MonitorType } from './types';
 import moment from 'moment';
 interface MtRecord {
@@ -386,13 +384,11 @@ export default Vue.extend({
     const me = this;
     this.getWeatherSummary();
     this.getRealtimeWeather();
-    this.queryWindRose('WD_SPEED');
 
     this.refreshTimer = setInterval(() => {
       me.count++;
       me.getWeatherSummary();
       me.getRealtimeWeather();
-      if (me.count % 20 === 0) me.queryWindRose('WD_SPEED');
     }, 3000);
   },
   beforeDestroy() {
@@ -472,63 +468,6 @@ export default Vue.extend({
       if (hr < this.weatherSummary.hourRain.length)
         return `${this.weatherSummary.hourRain[hr]}`;
       else return '-';
-    },
-    async queryWindRose(mt: string) {
-      const now = new Date().getTime();
-      const oneHourBefore = now - 60 * 60 * 1000;
-      const monitors = 'me';
-
-      try {
-        const url = `/WindRose/me/${mt}/min/16/${oneHourBefore}/${now}`;
-        const res = await axios.get(url);
-        const ret = res.data;
-        ret.pane = {
-          size: '90%',
-        };
-
-        ret.yAxis = {
-          min: 0,
-          endOnTick: false,
-          showLastLabel: true,
-          title: {
-            text: '頻率 (%)',
-          },
-          labels: {
-            formatter(this: any) {
-              return this.value + '%';
-            },
-          },
-          reversedStacks: false,
-        };
-
-        ret.tooltip = {
-          valueDecimals: 2,
-          valueSuffix: '%',
-        };
-
-        ret.plotOptions = {
-          series: {
-            stacking: 'normal',
-            shadow: false,
-            groupPadding: 0,
-            pointPlacement: 'on',
-          },
-        };
-
-        ret.exporting = {
-          enabled: false,
-        };
-        ret.credits = {
-          enabled: false,
-          href: 'http://www.wecc.com.tw/',
-        };
-
-        ret.title.x = -70;
-        highchartMore(highcharts);
-        highcharts.chart(`rose_${mt}`, ret);
-      } catch (err) {
-      } finally {
-      }
     },
   },
 });
