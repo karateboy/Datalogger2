@@ -442,13 +442,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           context.parent ! WriteDO(doBit, v)
       }
 
-      if (v) {
+      if (v)
         deviceConfig.calibrateZeoSeq.foreach {
           seq =>
             context.parent ! ExecuteSeq(seq, v)
         }
-      } else
-        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
 
 
       if (deviceConfig.skipInternalVault != Some(true)) {
@@ -468,13 +466,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           context.parent ! WriteDO(doBit, v)
       }
 
-      if (v) {
+      if (v)
         deviceConfig.calibrateSpanSeq map {
           seq =>
             context.parent ! ExecuteSeq(seq, v)
         }
-      } else
-        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
 
       if (deviceConfig.skipInternalVault != Some(true)) {
         for (reg <- getCalibrationReg)

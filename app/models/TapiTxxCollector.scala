@@ -511,10 +511,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
         context.parent ! WriteDO(doBit, false)
     }
 
-    tapiConfig.calibrateSpanSeq map {
-      seq =>
-        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
-    }
+    context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
   }
 
   def triggerZeroCalibration(v: Boolean) {
@@ -527,8 +524,6 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
       seq =>
         if (v)
           context.parent ! ExecuteSeq(seq, v)
-        else
-          context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
     }
   }
 
@@ -542,8 +537,6 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
       seq =>
         if (v)
           context.parent ! ExecuteSeq(seq, v)
-        else
-          context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
     }
   }
 
@@ -560,8 +553,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
     try {
       if (v && tapiConfig.calibratorPurgeSeq.isDefined)
         context.parent ! ExecuteSeq(tapiConfig.calibratorPurgeSeq.get, v)
-      else
-        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+
     } catch {
       case ex: Exception =>
         ModelHelper.logException(ex)
