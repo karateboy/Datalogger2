@@ -41,6 +41,18 @@
         <b-form-input v-model.number="row.item.mtMin" @change="onChange" />
       </template>
     </b-table>
+    <b-table :fields="doFields" :items="paramObj.doChannels">
+      <template #cell(monitorType)="row">
+        <v-select
+          id="monitorType"
+          v-model="row.item.monitorType"
+          label="desp"
+          :reduce="mt => mt._id"
+          :options="signalTypes"
+          @input="onChange"
+        />
+      </template>
+    </b-table>
   </div>
 </template>
 <style lang="scss">
@@ -50,6 +62,7 @@
 import Vue from 'vue';
 import { mapState, mapGetters } from 'vuex';
 import vSelect from 'vue-select';
+import axios from 'axios';
 
 export default Vue.extend({
   components: {
@@ -78,8 +91,14 @@ export default Vue.extend({
         repairMode: false,
       });
     }
+    let doChannels = [];
+    for (let i = 0; i < 2; i++) {
+      doChannels.push({
+        monitorType: undefined,
+      });
+    }
     let addr = 1;
-    let paramObj = { addr, chs };
+    let paramObj = { addr, chs, doChannels };
 
     if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr);
 
@@ -114,14 +133,27 @@ export default Vue.extend({
       },
     ];
 
+    const doFields = [
+      {
+        key: 'monitorType',
+        label: '數位訊號',
+      },
+    ];
+
+    let signalTypes = [];
     return {
       paramObj,
+      doFields,
       fields,
+      signalTypes,
     };
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap']),
+  },
+  async mounted() {
+    await this.getSignalTypes();
   },
   methods: {
     justify() {
@@ -135,6 +167,10 @@ export default Vue.extend({
     onChange(evt) {
       this.justify();
       this.$emit('param-changed', JSON.stringify(this.paramObj));
+    },
+    async getSignalTypes() {
+      const res = await axios.get('/SignalTypes');
+      this.signalTypes = res.data;
     },
   },
 });

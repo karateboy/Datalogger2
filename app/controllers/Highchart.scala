@@ -28,6 +28,7 @@ object Highchart {
                            yAxis: Seq[YAxis],
                            series: Seq[seqData],
                            downloadFileName: Option[String]=None)
+
   case class FrequencyTab(header:Seq[String], body:Seq[Seq[String]], footer:Seq[String])                         
   case class WindRoseReport(chart:HighchartData, table:FrequencyTab)
   implicit val xaWrite = Json.writes[XAxis]
@@ -68,5 +69,17 @@ object Highchart {
   implicit val feqWrite = Json.writes[FrequencyTab]
   implicit val wrWrite = Json.writes[WindRoseReport]
 
-
+  case class Title(enabled:Boolean, text:String)
+  case class ScatterAxis(title:Title, plotLines: Option[Seq[AxisLine]], startOnTick:Boolean = true, endOnTick:Boolean = true, showLastLabel:Boolean = true)
+  case class ScatterSeries(name:String, data:Seq[Seq[Double]])
+  case class ScatterChart(chart: Map[String, String],
+                          title: Map[String, String],
+                          xAxis: ScatterAxis,
+                          yAxis: ScatterAxis,
+                          series: Seq[ScatterSeries],
+                          downloadFileName: Option[String]=None)
+  implicit val titleWrite = Json.writes[Title]
+  implicit val scatterAxisWrite = Json.writes[ScatterAxis]
+  implicit val scatterSeriesWrite = Json.writes[ScatterSeries]
+  implicit val scatterChartWrite = Json.writes[ScatterChart]
 }

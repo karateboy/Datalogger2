@@ -3,34 +3,43 @@ package models
 import akka.actor._
 import com.google.inject.assistedinject.Assisted
 import jssc.SerialPort
-import models.GpsCollector.ReadBuffer
+import models.GpsCollector.monitorTypes
 import models.Protocol.{ProtocolParam, serial}
 import net.sf.marineapi.nmea.io.AbstractDataReader
+import net.sf.marineapi.nmea.util.Position
+import org.joda.time.DateTime
 import play.api._
+import play.api.libs.json.{JsError, Json}
 
-import java.io.{BufferedReader, InputStreamReader}
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{FiniteDuration, MICROSECONDS, SECONDS}
+import java.io.BufferedReader
+
+case class GpsParam(lat: Option[Double], lon: Option[Double], radius: Option[Double], enableAlert: Option[Boolean])
 
 object GpsCollector extends DriverOps {
+  val monitorTypes = List(MonitorType.LAT, MonitorType.LNG, MonitorType.ALTITUDE, MonitorType.SPEED)
   var count = 0
 
-  override def getMonitorTypes(param: String) = {
-    val lat = "LAT"
-    val lng = "LNG"
-    List(lat, lng)
-  }
+  override def getMonitorTypes(param: String) = monitorTypes
+
 
   override def verifyParam(json: String) = {
-    json
+    implicit val reads = Json.reads[GpsParam]
+    val ret = Json.parse(json).validate[GpsParam]
+    ret.fold(err => {
+      throw new IllegalArgumentException(JsError(err).toString)
+    }, param =>
+      json
+    )
   }
 
   override def getCalibrationTime(param: String) = None
 
   override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt: Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Factory])
+    implicit val read = Json.reads[GpsParam]
     val f2 = f.asInstanceOf[Factory]
-    f2(id, protocol)
+    val gpsParam = Json.parse(param).asOpt[GpsParam].get
+    f2(id, protocol, gpsParam)
   }
 
   override def id: String = "gps"
@@ -40,10 +49,9 @@ object GpsCollector extends DriverOps {
   override def protocol: List[String] = List(serial)
 
   trait Factory {
-    def apply(id: String, protocolParam: ProtocolParam): Actor
+    def apply(id: String, protocolParam: ProtocolParam, gpsParam: GpsParam): Actor
   }
 
-  case object ReadBuffer
 }
 
 import net.sf.marineapi.nmea.event.{SentenceEvent, SentenceListener}
@@ -70,26 +78,33 @@ class SerialDataReader(serialComm: SerialComm) extends AbstractDataReader {
   }
 }
 
-class GpsCollector @Inject()()(@Assisted id: String, @Assisted protocolParam: ProtocolParam) extends Actor
+class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String, @Assisted protocolParam: ProtocolParam,
+                                                           @Assisted gpsParam: GpsParam) extends Actor
   with ActorLogging with SentenceListener with ExceptionListener with PositionListener {
-  Logger.info(s"$id ${protocolParam}")
+  Logger.info(s"$id $protocolParam")
+
+  monitorTypes.foreach(monitorTypeDB.ensureMonitorType(_))
+
+  val POS_IN_THE_RANGE = "POS_IN_THE_RANGE"
+  val mtPOS_IN_THE_RANGE = monitorTypeDB.signalType(POS_IN_THE_RANGE, "位置在範圍內")
+  monitorTypeDB.ensureMonitorType(mtPOS_IN_THE_RANGE)
 
   val comm: SerialComm =
     SerialComm.open(protocolParam.comPort.get, protocolParam.speed.getOrElse(SerialPort.BAUDRATE_9600))
   var reader: SentenceReader = _
   var buffer: Option[BufferedReader] = None
   var timer: Option[Cancellable] = None
-
-  def receive = handler(MonitorStatus.NormalStat)
+  @volatile var lastPositionOpt: Option[Position] = None
 
   init
+  @volatile var lastTimeOpt: Option[Long] = None
+
+  def receive = handler(MonitorStatus.NormalStat)
 
   def handler(collectorState: String): Receive = {
     case SetState(id, state) =>
       Logger.warn(s"Ignore $self => $state")
 
-    case ReadBuffer =>
-      comm.getLine3().foreach(line => Logger.info(line.trim))
   }
 
   def init() {
@@ -99,13 +114,6 @@ class GpsCollector @Inject()()(@Assisted id: String, @Assisted protocolParam: Pr
     val provider = new PositionProvider(reader)
     provider.addListener(this)
     reader.start()
-  }
-
-  def initDebug(): Unit = {
-    buffer = Some(new BufferedReader(new InputStreamReader(comm.is)))
-    timer = Some(context.system.scheduler.schedule(FiniteDuration(1, SECONDS),
-      FiniteDuration(100, MICROSECONDS),
-      self, ReadBuffer))
   }
 
   override def postStop(): Unit = {
@@ -123,10 +131,56 @@ class GpsCollector @Inject()()(@Assisted id: String, @Assisted protocolParam: Pr
       buff.close()
   }
 
+  @volatile var posInTheRangeValue : Option[Boolean] = None
   def providerUpdate(evt: PositionEvent) {
-    val lat = MonitorTypeData(MonitorType.LAT, evt.getPosition.getLatitude, MonitorStatus.NormalStat)
-    val lng = MonitorTypeData(MonitorType.LNG, evt.getPosition.getLongitude, MonitorStatus.NormalStat)
-    context.parent ! ReportData(List(lat, lng))
+    val latValue = MonitorTypeData(MonitorType.LAT, evt.getPosition.getLatitude, MonitorStatus.NormalStat)
+    val lngValue = MonitorTypeData(MonitorType.LNG, evt.getPosition.getLongitude, MonitorStatus.NormalStat)
+    val altValue = MonitorTypeData(MonitorType.ALTITUDE, evt.getPosition.getAltitude, MonitorStatus.NormalStat)
+    val now = DateTime.now().getMillis
+    val speedValue = for (lastTime <- lastTimeOpt; distance <- getDistance(evt.getPosition)) yield
+      distance / (now - lastTime)
+
+    //Update time and pos
+    lastTimeOpt = Some(now)
+    lastPositionOpt = Some(evt.getPosition)
+
+    checkWithinRange(evt.getPosition)
+
+    val fullList = if (speedValue.nonEmpty) {
+      val speed = MonitorTypeData(MonitorType.SPEED, speedValue.get, MonitorStatus.NormalStat)
+      List(latValue, lngValue, altValue, speed)
+    } else
+      List(latValue, lngValue, altValue)
+
+    context.parent ! ReportData(fullList)
+  }
+
+  private def getDistance(pos: Position): Option[Double] = {
+    for (lastPos <- lastPositionOpt) yield
+      lastPos.distanceTo(pos)
+  }
+
+  def checkWithinRange(pos: Position): Unit = {
+    for (lat <- gpsParam.lat; lon <- gpsParam.lon; radius <- gpsParam.radius; enable <- gpsParam.enableAlert if enable) {
+      val center = new Position(lat, lon)
+      val distance = center.distanceTo(pos)
+
+      if (distance <= radius) {
+        if(posInTheRangeValue.isEmpty || posInTheRangeValue.get == false) {
+          posInTheRangeValue = Some(true)
+          context.parent ! WriteSignal(POS_IN_THE_RANGE, true)
+        }
+      }else{
+        if(posInTheRangeValue.isEmpty || posInTheRangeValue.get == true) {
+          posInTheRangeValue = Some(false)
+          context.parent ! WriteSignal(POS_IN_THE_RANGE, false)
+        }
+      }
+    }
+  }
+
+  private def getFixedDistance(pos: Position, lastPos:Position): Double = {
+    lastPos.distanceTo(pos)
   }
 
   def onException(ex: Exception) {
