@@ -9,7 +9,6 @@ import play.api.libs.ws.WSClient
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-case class InstrumentStatusTypeMap(instrumentId: String, statusTypeSeq: Seq[InstrumentStatusType])
 
 object InstrumentStatusTypeForwarder {
   trait Factory {

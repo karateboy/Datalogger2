@@ -11,7 +11,7 @@ case class CalibrationJSON(monitorType: String, startTime: Long, endTime: Long, 
                            span_std: Option[Double], span_val: Option[Double])
 
 case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTime, zero_val: Option[Double],
-                       span_std: Option[Double], span_val: Option[Double]) {
+                       span_std: Option[Double], span_val: Option[Double], monitor:Option[String] = None) {
   def zero_dev: Option[Double] = zero_val.map(Math.abs)
 
   def span_dev_ratio = for (s_dev <- span_dev; std <- span_std)
@@ -100,4 +100,5 @@ trait CalibrationDB {
   }
 
   def insertFuture(cal: Calibration): Unit
+  def getLatestMonitorRecordTimeAsync(monitor:String) : Future[Option[DateTime]]
 }

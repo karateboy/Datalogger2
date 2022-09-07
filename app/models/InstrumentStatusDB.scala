@@ -9,8 +9,12 @@ import scala.concurrent.Future
 
 trait InstrumentStatusDB {
   case class Status(key: String, value: Double)
-  case class InstrumentStatusJSON(time:Long, instID: String, statusList: Seq[Status])
-  case class InstrumentStatus(time: DateTime, instID: String, statusList: Seq[Status]) {
+  case class InstrumentStatusJSON(time:Long, instID: String, statusList: Seq[Status]){
+    def toInstrumentStatus(monitor:String): InstrumentStatus =
+      InstrumentStatus(time = new DateTime(time), instID = instID,
+        statusList = statusList, monitor = Some(monitor))
+  }
+  case class InstrumentStatus(time: DateTime, instID: String, statusList: Seq[Status], monitor: Option[String] = None) {
     def excludeNaN = {
       val validList = statusList.filter { s => !(s.value.isNaN() || s.value.isInfinite() || s.value.isNegInfinity) }
       InstrumentStatus(time, instID, validList)
@@ -21,12 +25,14 @@ trait InstrumentStatusDB {
     }
   }
 
+  def getLatestMonitorRecordTimeAsync(monitor:String) : Future[Option[DateTime]]
 
   implicit val stRead = Json.reads[Status]
   implicit val isRead = Json.reads[InstrumentStatus]
   implicit val stWrite = Json.writes[Status]
   implicit val isWrite = Json.writes[InstrumentStatus]
   implicit val jsonWrite = Json.writes[InstrumentStatusJSON]
+  implicit val jsonRead = Json.reads[InstrumentStatusJSON]
 
   def log(is: InstrumentStatus): Unit
 
