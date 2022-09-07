@@ -226,6 +226,11 @@
             :param-str="form.param"
             @param-changed="onParamChange"
           />
+          <gps-config
+            v-else-if="form.instType === 'gps'"
+            :param-str="form.param"
+            @param-changed="onParamChange"
+          />
           <div v-else>TBD {{ form.instType }}</div>
         </validation-observer>
       </tab-content>
@@ -265,6 +270,7 @@ import MoxaE1212ConfigPage from './Moxa1212ConfigPage.vue';
 import MoxaE1240ConfigPage from './MoxaE1240ConfigPage.vue';
 import VerewaConfig from './VerewaConfig.vue';
 import MetOne1020Config from './MetOne1020Config.vue';
+import GpsConfig from './GpsConfig.vue';
 
 interface ProtocolParam {
   protocol: 'tcp' | 'serial' | 'tcpCli' | undefined;
@@ -311,6 +317,7 @@ export default Vue.extend({
     MoxaE1240ConfigPage,
     VerewaConfig,
     MetOne1020Config,
+    GpsConfig,
   },
   props: {
     isNew: {
@@ -354,6 +361,10 @@ export default Vue.extend({
     let form: Instrument = this.isNew ? emptyForm : this.inst;
     let serialSpeed: Array<TextStrValue> = [
       {
+        value: 2400,
+        text: '2400',
+      },
+      {
         value: 4800,
         text: '4800',
       },
@@ -388,7 +399,7 @@ export default Vue.extend({
   },
   computed: {
     hasDetailConfig(): boolean {
-      let list = ['tca08', 'gps'];
+      let list = ['tca08'];
       if (list.indexOf(this.form.instType) !== -1) return false;
 
       return true;

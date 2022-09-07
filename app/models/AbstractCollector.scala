@@ -173,9 +173,14 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
     case ExecuteSeq(seq, on) =>
       executeSeq(seq, on)
+
+    case WriteSignal(mtId, bit) =>
+      onWriteSignal(mtId, bit)
   }
 
   def executeSeq(str: String, bool: Boolean): Unit = {}
+
+  def onWriteSignal(mt:String, bit:Boolean): Unit = {}
 
   def startCalibration(calibrationType: CalibrationType, monitorTypes: List[String]): Unit = {
     Logger.info(s"start calibrating ${monitorTypes.mkString(",")}")
@@ -437,13 +442,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           context.parent ! WriteDO(doBit, v)
       }
 
-      if (v) {
+      if (v)
         deviceConfig.calibrateZeoSeq.foreach {
           seq =>
             context.parent ! ExecuteSeq(seq, v)
         }
-      } else
-        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
 
 
       if (deviceConfig.skipInternalVault != Some(true)) {
@@ -463,13 +466,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           context.parent ! WriteDO(doBit, v)
       }
 
-      if (v) {
+      if (v)
         deviceConfig.calibrateSpanSeq map {
           seq =>
             context.parent ! ExecuteSeq(seq, v)
         }
-      } else
-        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
 
       if (deviceConfig.skipInternalVault != Some(true)) {
         for (reg <- getCalibrationReg)

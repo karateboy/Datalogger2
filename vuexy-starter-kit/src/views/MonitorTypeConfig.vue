@@ -114,6 +114,15 @@
             @change="markDirty(row.item)"
           />
         </template>
+        <template #cell(overLawSignalType)="row">
+          <v-select
+            v-model="row.item.overLawSignalType"
+            label="desp"
+            :reduce="mt => mt._id"
+            :options="signalTypes"
+            @input="markDirty(row.item)"
+          />
+        </template>
       </b-table>
       <b-row>
         <b-col>
@@ -242,6 +251,11 @@ export default Vue.extend({
         tdClass: { 'text-center': true },
       },
       {
+        key: 'overLawSignalType',
+        label: '超標數位訊號',
+        tdClass: { 'text-center': true },
+      },
+      {
         key: 'measuringBy',
         label: '測量儀器',
         formatter: (
@@ -256,6 +270,7 @@ export default Vue.extend({
     ];
     const monitorTypes = Array<EditMonitorType>();
 
+    const signalTypes = Array<MonitorType>();
     let thresholdConfig: ThresholdConfig = {
       elapseTime: 30,
     };
@@ -267,6 +282,7 @@ export default Vue.extend({
       display: false,
       columns,
       monitorTypes,
+      signalTypes,
       editingMt: {
         thresholdConfig: {},
       },
@@ -274,8 +290,9 @@ export default Vue.extend({
       selected: Array<MonitorType>(),
     };
   },
-  mounted() {
+  async mounted() {
     this.getMonitorTypes();
+    await this.getSignalTypes();
   },
   methods: {
     getMonitorTypes() {
@@ -287,6 +304,14 @@ export default Vue.extend({
           }
         }
       });
+    },
+    async getSignalTypes() {
+      try {
+        const res = await axios.get('/SignalTypes');
+        this.signalTypes = res.data;
+      } catch (err) {
+        throw new Error('failed to get signal types');
+      }
     },
     justify(mt: any) {
       if (mt.span === '') mt.span = null;

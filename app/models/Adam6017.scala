@@ -7,25 +7,24 @@ import play.api.libs.json._
 
 import javax.inject._
 
-// case class ChannelCfg(enable: Boolean, mt: Option[String], scale: Option[Double], repairMode: Option[Boolean])
-
-case class Adam6017Param(chs: Seq[AiChannelCfg])
+case class Adam6017Param(chs: Seq[AiChannelCfg], doChannels: Seq[SignalConfig])
 
 @Singleton
-class Adam6017 @Inject()
-(monitorTypeOp: MonitorTypeDB)
-  extends DriverOps {
+class Adam6017 @Inject()(monitorTypeOp: MonitorTypeDB) extends DriverOps {
 
+  implicit val signalConfigRead = Json.reads[SignalConfig]
   implicit val cfgReads = Json.reads[AiChannelCfg]
   implicit val reads = Json.reads[Adam6017Param]
 
   override def getMonitorTypes(param: String) = {
     val adam6017Param = validateParam(param)
-    adam6017Param.chs.filter {
+    val aiMonitorTypes = adam6017Param.chs.filter {
       _.enable
     }.flatMap {
       _.mt
     }.toList.filter { mt => monitorTypeOp.allMtvList.contains(mt) }
+    val doMonitorTypes = adam6017Param.doChannels.flatMap(_.monitorType)
+    aiMonitorTypes ++ doMonitorTypes
   }
 
   def validateParam(json: String) = {
@@ -55,11 +54,16 @@ class Adam6017 @Inject()
 
         for (cfg <- param.chs) {
           if (cfg.enable) {
-            // FIXME
-            // assert(cfg.mt.isDefined)
-            // assert(cfg.scale.isDefined && cfg.scale.get != 0)
+            assert(cfg.mt.isDefined)
+            assert(cfg.max.isDefined && cfg.min.isDefined)
+            assert(cfg.mtMax.isDefined && cfg.mtMin.isDefined)
           }
         }
+
+        if(param.doChannels.length != 2) {
+          throw new Exception("DO # shall be 2")
+        }
+
         json
       })
   }
