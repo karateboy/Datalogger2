@@ -1,5 +1,6 @@
 package models.sql
 
+import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import com.mongodb.bulk.BulkWriteResult
 import com.mongodb.client.result.{InsertManyResult, UpdateResult}
@@ -258,4 +259,6 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
       ) ON [PRIMARY]
       """.execute().apply()
   }
+
+  override def getLatestMonitorRecordTimeAsync(colName: String)(monitor: String): Future[Option[Imports.DateTime]] = ???
 }

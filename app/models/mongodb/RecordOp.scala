@@ -1,5 +1,6 @@
 package models.mongodb
 
+import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports.DateTime
 import models.ModelHelper.errorHandler
 import models._
@@ -239,4 +240,6 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
   }
 
   override def ensureMonitorType(mt: String): Unit = {}
+
+  override def getLatestMonitorRecordTimeAsync(colName: String)(monitor: String): Future[Option[Imports.DateTime]] = ???
 }

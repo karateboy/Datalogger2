@@ -11,18 +11,20 @@ import java.util.Date
 case class MtRecord(mtName: String, value: Option[Double], status: String)
 
 object RecordList {
-  def apply(time: Date, mtDataList: Seq[MtRecord], monitor: String): RecordList =
+  def factory(time: Date, mtDataList: Seq[MtRecord], monitor: String): RecordList =
     RecordList(mtDataList, RecordListID(time, monitor))
 
-  def apply(dt: DateTime, dataList: List[(String, (Double, String))], monitor: String = Monitor.SELF_ID): RecordList = {
+  def factory(dt: DateTime, dataList: List[(String, (Double, String))], monitor: String = Monitor.SELF_ID): RecordList = {
     val mtDataList = dataList map { t => MtRecord(t._1, Some(t._2._1), t._2._2) }
     RecordList(mtDataList, RecordListID(dt, monitor))
   }
 
   implicit val mtRecordWrite = Json.writes[MtRecord]
+  implicit val mtRecordRead = Json.reads[MtRecord]
   implicit val idWrite = Json.writes[RecordListID]
   implicit val idRead = Json.reads[RecordListID]
   implicit val recordListWrite = Json.writes[RecordList]
+  implicit val recordListRead = Json.reads[RecordList]
 }
 
 case class RecordList(var mtDataList: Seq[MtRecord], _id: RecordListID) {
@@ -74,7 +76,7 @@ case class RecordList(var mtDataList: Seq[MtRecord], _id: RecordListID) {
 
 }
 
+
 case class RecordListID(time: Date, monitor: String)
 
 case class Record(time: DateTime, value: Option[Double], status: String, monitor: String)
-

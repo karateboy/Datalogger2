@@ -168,7 +168,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
 
           if (dt.isAfter(dataEnd))
             dataEnd = dt
-          Some(RecordList(time = Date.from(dt), monitor = Monitor.SELF_ID,
+          Some(RecordList.factory(time = Date.from(dt), monitor = Monitor.SELF_ID,
             mtDataList = Seq(MtRecord(mtName, Some(value), MonitorStatus.NormalStat))))
         } catch {
           case ex: Throwable =>

@@ -1,5 +1,6 @@
 package models.mongodb
 
+import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import models.InstrumentStatusDB
 import models.ModelHelper.{errorHandler, waitReadyResult}
@@ -76,4 +77,5 @@ class InstrumentStatusOp @Inject()(mongodb: MongoDB) extends InstrumentStatusDB 
       yield f.map { toInstrumentStatus }
   }
 
+  override def getLatestMonitorRecordTimeAsync(monitor: String): Future[Option[Imports.DateTime]] = ???
 }

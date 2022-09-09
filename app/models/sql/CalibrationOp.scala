@@ -1,5 +1,6 @@
 package models.sql
 
+import com.github.nscala_time.time
 import com.github.nscala_time.time.Imports
 import models.{Calibration, CalibrationDB}
 import scalikejdbc._
@@ -96,4 +97,6 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
            """.execute().apply()
     }
   }
+
+  override def getLatestMonitorRecordTimeAsync(monitor: String): Future[Option[time.Imports.DateTime]] = ???
 }

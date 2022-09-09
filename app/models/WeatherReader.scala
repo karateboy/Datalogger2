@@ -132,7 +132,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
               }
             }
 
-          docList.append(RecordList(time = Date.from(dt.atZone(ZoneId.systemDefault()).toInstant), monitor = Monitor.SELF_ID,
+          docList.append(RecordList.factory(time = Date.from(dt.atZone(ZoneId.systemDefault()).toInstant), monitor = Monitor.SELF_ID,
             mtDataList = mtRecordOpts.flatten))
         } catch {
           case ex: Throwable =>

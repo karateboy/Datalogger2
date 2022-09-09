@@ -1,5 +1,6 @@
 package models.sql
 
+import com.github.nscala_time.time
 import com.github.nscala_time.time.Imports
 import models.InstrumentStatusDB
 import play.api.libs.json.Json
@@ -70,4 +71,6 @@ class InstrumentStatusOp @Inject()(sqlServer: SqlServer) extends InstrumentStatu
            """.execute().apply()
     }
   }
+
+  override def getLatestMonitorRecordTimeAsync(monitor: String): Future[Option[time.Imports.DateTime]] = ???
 }

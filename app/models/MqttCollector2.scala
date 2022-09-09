@@ -260,7 +260,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB,alarmOp: AlarmDB,
 
         if(sensorMap.contains(message.id)){
           val sensor = sensorMap(message.id)
-          val recordList = RecordList(time.toDate, mtDataList, sensor.monitor)
+          val recordList = RecordList.factory(time.toDate, mtDataList, sensor.monitor)
           val f = recordOp.upsertRecord(recordList)(recordOp.MinCollection)
           f.onFailure(ModelHelper.errorHandler)
 
@@ -277,7 +277,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB,alarmOp: AlarmDB,
             case Success(_) =>
               sensorMap = sensorMap + (message.id -> sensor)
           })
-          val recordList = RecordList(time.toDate, mtDataList, sensor.monitor)
+          val recordList = RecordList.factory(time.toDate, mtDataList, sensor.monitor)
           val f = recordOp.upsertRecord(recordList)(recordOp.MinCollection)
           f.onFailure(ModelHelper.errorHandler)
         }

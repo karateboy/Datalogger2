@@ -6,20 +6,23 @@ import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc._
 
+import java.util.Date
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class DataLogger @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB, instrumentStatusDB: InstrumentStatusDB,
                            instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusDB,
-                           instrumentStatusTypeMapDB: InstrumentStatusTypeMapDB,
+                           instrumentStatusTypeDB: InstrumentStatusTypeDB,
                            recordDB: RecordDB, calibrationDB: CalibrationDB, alarmDB: AlarmDB) extends Controller {
 
   import RecordList._
+
   implicit val latestRecordTimeWrite = Json.writes[LatestRecordTime]
   implicit val CalibrationRead = Json.reads[CalibrationJSON]
 
   def getRecordRange(tabType: TableType.Value)(monitor: String) = Action.async {
-    for(timeOpt <- recordDB.getLatestMonitorRecordTimeAsync(TableType.map(tabType))(monitor)) yield {
+    for (timeOpt <- recordDB.getLatestMonitorRecordTimeAsync(TableType.map(tabType))(monitor)) yield {
       val latestRecordTime = timeOpt.map {
         time =>
           LatestRecordTime(time.getMillis)
@@ -51,7 +54,7 @@ class DataLogger @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB, i
   def upsertMinRecord = upsertDataRecord(TableType.min) _
 
   def getCalibrationRange(monitor: String) = Action.async {
-    for(timeOpt<-calibrationDB.getLatestMonitorRecordTimeAsync(monitor)) yield {
+    for (timeOpt <- calibrationDB.getLatestMonitorRecordTimeAsync(monitor)) yield {
       val latestRecordTime = timeOpt.map {
         time =>
           LatestRecordTime(time.getMillis)
@@ -77,7 +80,7 @@ class DataLogger @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB, i
         BadRequest(Json.obj("ok" -> false, "msg" -> JsError(err).toString().toString()))
       },
         calibrations => {
-          calibrations.map(json =>Calibration(monitorType = json.monitorType,
+          calibrations.map(json => Calibration(monitorType = json.monitorType,
             startTime = new DateTime(json.startTime),
             endTime = new DateTime(json.endTime),
             zero_val = json.zero_val,
@@ -91,7 +94,7 @@ class DataLogger @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB, i
 
 
   def getAlarmRange(monitor: String) = Action.async {
-    for(timeOpt <- alarmDB.getLatestMonitorRecordTimeAsync(monitor)) yield {
+    for (timeOpt <- alarmDB.getLatestMonitorRecordTimeAsync(monitor)) yield {
       val latestRecordTime = timeOpt.map {
         time =>
           LatestRecordTime(time.getMillis)
@@ -110,7 +113,7 @@ class DataLogger @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB, i
         BadRequest(Json.obj("ok" -> false, "msg" -> JsError(err).toString().toString()))
       },
         alarm2JsonSeq => {
-          val alarms = alarm2JsonSeq.map { json=>
+          val alarms = alarm2JsonSeq.map { json =>
             Alarm(new DateTime(json.time), json.src, json.level, json.info, Some(monitor))
           }
           alarmDB.insertAlarms(alarms)
@@ -120,7 +123,7 @@ class DataLogger @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB, i
 
   def getInstrumentStatusRange(monitor: String) = Action.async {
 
-    for(timeOpt <- instrumentStatusDB.getLatestMonitorRecordTimeAsync(monitor)) yield {
+    for (timeOpt <- instrumentStatusDB.getLatestMonitorRecordTimeAsync(monitor)) yield {
       val latestRecordTime = timeOpt.map {
         time =>
           LatestRecordTime(time.getMillis)
@@ -143,30 +146,27 @@ class DataLogger @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB, i
         })
   }
 
-  def getInstrumentStatusTypeIds(monitor: String) = Action {
-    val instrumentStatusTypeMapOpt = Monitor.map(monitor).instrumentStatusTypeMapOpt
-    val instrumentStatusTypeIds = instrumentStatusTypeMapOpt.map { istMap =>
-      istMap.map { map =>
-        map.instrumentId + map.statusTypeSeq.mkString("")
+  def getInstrumentStatusTypeIds(monitor: String) = Action.async {
+    for (instrumentStatusTypeLists <- instrumentStatusTypeDB.getAllInstrumentStatusTypeListAsync(monitor)) yield {
+      val instrumentStatusTypeIds = instrumentStatusTypeLists.map { istList =>
+        istList.instrumentId + istList.statusTypeSeq.mkString("")
       }.mkString("")
-    }.getOrElse("")
-
-    Ok(Json.toJson(instrumentStatusTypeIds))
+      Ok(Json.toJson(instrumentStatusTypeIds))
+    }
   }
 
-  def updateInstrumentStatusTypeMap(monitorStr: String) = Action(BodyParsers.parse.json) {
+  def updateInstrumentStatusTypeMap(monitor: String) = Action.async(BodyParsers.parse.json) {
     implicit request =>
-
-      val monitor = Monitor.withName(monitorStr)
+      implicit val r1 = Json.reads[InstrumentStatusType]
+      implicit val read = Json.reads[InstrumentStatusTypeMap]
       val result = request.body.validate[Seq[InstrumentStatusTypeMap]]
       result.fold(err => {
         Logger.error(JsError(err).toString())
-        BadRequest(Json.obj("ok" -> false, "msg" -> JsError(err).toString().toString()))
+        Future.successful(BadRequest(Json.obj("ok" -> false, "msg" -> JsError(err).toString())))
       },
-        newMap => {
-          val newMonitor = Monitor.map(monitor).updateInstrumentStatusTypeMap(Some(newMap.toList))
-          Monitor.updateInstrumentStatusTypeMap(newMonitor)
-          Ok(Json.obj("ok" -> true))
+        istLists => {
+          for (_ <- instrumentStatusTypeDB.upsertInstrumentStatusTypeMapAsync(monitor, istLists)) yield
+            Ok(Json.obj("ok" -> true))
         })
   }
 }

@@ -1,5 +1,6 @@
 package models.mongodb
 
+import com.github.nscala_time.time
 import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
@@ -111,4 +112,6 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
       }
     }
   }
+
+  override def getLatestMonitorRecordTimeAsync(monitor: String): Future[Option[DateTime]] = ???
 }

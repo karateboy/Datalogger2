@@ -1,9 +1,11 @@
 package models.sql
 
+import com.github.nscala_time
 import com.github.nscala_time.time
 import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports.DateTime
 import models.{Alarm, AlarmDB}
+import org.mongodb.scala.result.UpdateResult
 import scalikejdbc._
 
 import javax.inject.{Inject, Singleton}
@@ -101,4 +103,8 @@ class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
            """.execute().apply()
     }
   }
+
+  override def getLatestMonitorRecordTimeAsync(monitor: String): Future[Option[nscala_time.time.Imports.DateTime]] = ???
+
+  override def insertAlarms(alarms: Seq[Alarm]): Future[UpdateResult] = ???
 }
