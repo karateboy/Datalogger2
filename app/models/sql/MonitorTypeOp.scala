@@ -152,6 +152,7 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
 	          [accumulated] [bit] NULL,
             [fixedM] [float] NULL,
             [fixedB] [float] NULL,
+            [overLawSignalType] [nvarchar](50),
         CONSTRAINT [PK_monitorType] PRIMARY KEY CLUSTERED
         (
 	        [id] ASC
