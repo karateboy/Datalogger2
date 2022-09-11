@@ -64,7 +64,7 @@ class CalibrationForwarder @Inject()
         val f = ws.url(url).put(Json.toJson(recordJSON))
         f onSuccess {
           case response =>
-            context become handler(Some(records.last.startTime.getMillis))
+            context become handler(Some(records.last.startTime.getTime))
         }
         f onFailure {
           case ex: Throwable =>

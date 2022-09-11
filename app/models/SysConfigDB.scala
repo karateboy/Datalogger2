@@ -16,10 +16,9 @@ trait SysConfigDB {
   val AlertEmailTaget = "AlertEmailTarget"
   val CDX_CONFIG = "CdxConfig"
   val CDX_MONITOR_TYPES = "CdxMonitorTypes"
-
-  // def getLogo: Future[LogoImage]
-
-  // def setLogo(logo: LogoImage): Future[UpdateResult]
+  val ALARM_UPGRADED = "AlarmUpgraded"
+  val CALIBRATION_UPGRADED = "CalibrationUpgraded"
+  val INSTRUMENT_STATUS_UPGRADED = "InstrumentStatusUpgraded"
 
   def getSpectrumLastParseTime(): Future[Instant]
 
@@ -48,4 +47,15 @@ trait SysConfigDB {
   def getCdxMonitorTypes() : Future[Seq[CdxMonitorType]]
 
   def setCdxMonitorTypes(monitorTypes: Seq[CdxMonitorType]) : Future[UpdateResult]
+
+  def getAlarmUpgraded() : Future[Boolean]
+  def setAlarmUpgraded(v:Boolean) : Future[UpdateResult]
+
+  def getCalibrationUpgraded(): Future[Boolean]
+
+  def setCalibrationUpgraded(v: Boolean): Future[UpdateResult]
+
+  def getInstrumentStatusUpgraded(): Future[Boolean]
+
+  def setInstrumentStatusUpgraded(v: Boolean): Future[UpdateResult]
 }

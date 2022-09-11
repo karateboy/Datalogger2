@@ -1,13 +1,15 @@
 package models.sql
 
-import com.github.nscala_time
 import com.github.nscala_time.time
 import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports.DateTime
-import models.{Alarm, AlarmDB}
-import org.mongodb.scala.result.UpdateResult
+import com.mongodb.client.result.UpdateResult
+import models.{Alarm, AlarmDB, Monitor}
 import scalikejdbc._
 
+import java.time.Instant
+import java.time.temporal.{ChronoUnit, TemporalAmount}
+import java.util.Date
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -54,33 +56,35 @@ class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
   init()
 
   private def mapper(rs: WrappedResultSet) =
-    Alarm(rs.jodaDateTime("time"),
+    Alarm(rs.jodaDateTime("time").toDate,
       rs.string("src"),
       rs.int("level"),
-      rs.string("desc"))
+      rs.string("desc"),
+      rs.string("monitor")
+    )
 
   override def log(src: String, level: Int, desc: String, coldPeriod: Int = 30): Unit = {
-    val ar = Alarm(DateTime.now(), src, level, desc)
+    val ar = Alarm(Date.from(Instant.now), src, level, desc, Monitor.SELF_ID)
     logFilter(ar, coldPeriod)
   }
 
   private def logFilter(ar: Alarm, coldPeriod: Int = 30) = {
     val start = ar.time
-    val end = ar.time.minusMinutes(coldPeriod)
+    val end = Date.from(ar.time.toInstant.minus(coldPeriod, ChronoUnit.MINUTES))
     implicit val session: DBSession = AutoSession
     val countOpt =
       sql"""
           Select Count(*)
           FROM [dbo].[alarms]
-          Where [time] >= ${start.toDate} and [time] < ${end.toDate} and [src] = ${ar.src} and [desc] = ${ar.desc}
+          Where [time] >= ${start} and [time] < ${end} and [src] = ${ar.src} and [desc] = ${ar.desc}
          """.map(rs => rs.int(1)).first().apply()
     for (count <- countOpt) {
       if (count == 0) {
         sql"""
              INSERT INTO [dbo].[alarms]
-                ([time],[src],[level],[desc])
+                ([monitor],[time],[src],[level],[desc])
             VALUES
-            (${ar.time.toDate}, ${ar.src}, ${ar.level}, ${ar.desc})
+            (${ar.monitor}, ${ar.time}, ${ar.src}, ${ar.level}, ${ar.desc})
              """.execute().apply()
       }
     }
@@ -91,6 +95,7 @@ class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
       sql"""
            CREATE TABLE [dbo].[alarms](
 	                      [id] [bigint] IDENTITY(1,1) NOT NULL,
+                        [monitor] [nvarchar](50) NOT NULL,
 	                      [time] [datetime2](7) NOT NULL,
 	                      [src] [nvarchar](50) NOT NULL,
 	                      [level] [int] NOT NULL,
@@ -102,9 +107,22 @@ class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
           ) ON [PRIMARY]
            """.execute().apply()
     }
+    sqlServer.addMonitorIfNotExist(tabName)
   }
 
-  override def getLatestMonitorRecordTimeAsync(monitor: String): Future[Option[nscala_time.time.Imports.DateTime]] = ???
+  override def getLatestMonitorRecordTimeAsync(monitor: String): Future[Option[DateTime]] =
+    sqlServer.getLatestMonitorRecordTimeAsync(tabName, monitor, "time")
 
-  override def insertAlarms(alarms: Seq[Alarm]): Future[UpdateResult] = ???
+  override def insertAlarms(alarms: Seq[Alarm]): Future[UpdateResult] = Future{
+    val ret =
+      DB localTx { implicit session =>
+      val batchParams: Seq[Seq[Any]] = alarms.map(ar => Seq(ar.monitor, ar.time, ar.src, ar.level, ar.desc))
+      sql"""
+      INSERT INTO [dbo].[alarms]
+      ([monitor], [time], [src], [level], [desc])
+      VALUES (?, ?, ?, ?, ?)""".batch(batchParams: _*).apply()
+    }
+    val sum = ret.sum
+    UpdateResult.acknowledged(sum, sum,null)
+  }
 }

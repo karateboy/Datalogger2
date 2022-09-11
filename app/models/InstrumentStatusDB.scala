@@ -5,23 +5,26 @@ import com.github.nscala_time.time.Imports.DateTime
 import com.google.inject.ImplementedBy
 import play.api.libs.json.Json
 
+import java.time.Instant
+import java.util.Date
 import scala.concurrent.Future
 
 trait InstrumentStatusDB {
   case class Status(key: String, value: Double)
   case class InstrumentStatusJSON(time:Long, instID: String, statusList: Seq[Status]){
     def toInstrumentStatus(monitor:String): InstrumentStatus =
-      InstrumentStatus(time = new DateTime(time), instID = instID,
-        statusList = statusList, monitor = Some(monitor))
+      InstrumentStatus(time = Date.from(Instant.ofEpochMilli(time)), instID = instID,
+        statusList = statusList, monitor = monitor)
   }
-  case class InstrumentStatus(time: DateTime, instID: String, statusList: Seq[Status], monitor: Option[String] = None) {
+
+  case class InstrumentStatus(time: Date, instID: String, statusList: Seq[Status], monitor: String = Monitor.SELF_ID) {
     def excludeNaN = {
       val validList = statusList.filter { s => !(s.value.isNaN() || s.value.isInfinite() || s.value.isNegInfinity) }
       InstrumentStatus(time, instID, validList)
     }
     def toJSON = {
       val validList = statusList.filter { s => !(s.value.isNaN() || s.value.isInfinite() || s.value.isNegInfinity) }
-      InstrumentStatusJSON(time.getMillis, instID, validList)
+      InstrumentStatusJSON(time.getTime, instID, validList)
     }
   }
 

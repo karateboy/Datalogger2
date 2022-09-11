@@ -19,11 +19,13 @@ class InstrumentStatusOp @Inject()(sqlServer: SqlServer) extends InstrumentStatu
     val statusList = Json.toJson(is.statusList).toString()
     sql"""
           INSERT INTO [dbo].[instrumentStatus]
-           ([time]
+           ([monitor]
+           ,[time]
            ,[instID]
            ,[statusList])
      VALUES
-           (${is.time.toDate}
+           (${is.monitor}
+           ,${is.time}
            ,${is.instID}
            ,${statusList})
          """.update().apply()
@@ -52,7 +54,10 @@ class InstrumentStatusOp @Inject()(sqlServer: SqlServer) extends InstrumentStatu
 
   private def mapper(rs: WrappedResultSet): InstrumentStatus = {
     val statusList = Json.parse(rs.string("statusList")).validate[Seq[Status]].asOpt.getOrElse(Seq.empty[Status])
-    InstrumentStatus(rs.jodaDateTime("time"), instID = rs.string("instID"), statusList)
+    InstrumentStatus(time = rs.jodaDateTime("time").toDate,
+      instID = rs.string("instID"),
+      statusList = statusList,
+      monitor = rs.string("monitor"))
   }
 
   private def init()(implicit session: DBSession = AutoSession): Unit = {
@@ -60,6 +65,7 @@ class InstrumentStatusOp @Inject()(sqlServer: SqlServer) extends InstrumentStatu
       sql"""
           CREATE TABLE [dbo].[instrumentStatus](
 	          [id] [bigint] IDENTITY(1,1) NOT NULL,
+            [monitor] [nvarchar](50) NOT NULL,
 	          [time] [datetime2](7) NOT NULL,
 	          [instID] [nvarchar](50) NOT NULL,
 	          [statusList] [nvarchar](max) NOT NULL,
@@ -70,7 +76,9 @@ class InstrumentStatusOp @Inject()(sqlServer: SqlServer) extends InstrumentStatu
           ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
            """.execute().apply()
     }
+    sqlServer.addMonitorIfNotExist(tabName)
   }
 
-  override def getLatestMonitorRecordTimeAsync(monitor: String): Future[Option[time.Imports.DateTime]] = ???
+  override def getLatestMonitorRecordTimeAsync(monitor: String): Future[Option[time.Imports.DateTime]] =
+    sqlServer.getLatestMonitorRecordTimeAsync(tabName, monitor, "time")
 }

@@ -8,6 +8,7 @@ import models.Protocol.ProtocolParam
 import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 import play.api._
 
+import java.util.Date
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -263,7 +264,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
         val v = kv._2
         instrumentStatusOp.Status(k.key, v)
     }
-    val instStatus = instrumentStatusOp.InstrumentStatus(DateTime.now(), instId, isList).excludeNaN
+    val instStatus = instrumentStatusOp.InstrumentStatus(new Date(), instId, isList).excludeNaN
     instrumentStatusOp.log(instStatus)
   }
 

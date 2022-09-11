@@ -12,7 +12,7 @@ case class ManualAuditLog(dataTime: DateTime, mt: String, modifiedTime: DateTime
                           operator: String, changedStatus: String, reason: String)
 
 case class ManualAuditLog2(dataTime: Long, mt: String, modifiedTime: Long,
-                           operator: String, changedStatus: String, reason: String)
+                           operator: String, changedStatus: String, reason: String, monitor:String)
 
 trait ManualAuditLogDB {
 

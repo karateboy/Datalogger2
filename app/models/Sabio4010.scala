@@ -11,6 +11,7 @@ import models.mongodb.InstrumentStatusOp
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 
+import java.util.Date
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, MINUTES}
@@ -210,7 +211,7 @@ class Sabio4010Collector @Inject()(instrumentOp: InstrumentDB, instrumentStatusO
         Logger.info(s"Collect V status ${statusList.size}")
         getStatus("G", Gas, 1)
         Logger.info(s"Collect G status ${statusList.size}")
-        val is = instrumentStatusOp.InstrumentStatus(DateTime.now(), id, statusList.toList)
+        val is = instrumentStatusOp.InstrumentStatus(new Date(), id, statusList.toList)
         instrumentStatusOp.log(is)
       } catch {
         case ex: Exception =>

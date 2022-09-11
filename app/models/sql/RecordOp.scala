@@ -260,5 +260,16 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
       """.execute().apply()
   }
 
-  override def getLatestMonitorRecordTimeAsync(colName: String)(monitor: String): Future[Option[Imports.DateTime]] = ???
+  override def getLatestMonitorRecordTimeAsync(colName: String)(monitor: String): Future[Option[Imports.DateTime]] = {
+    Future {
+      implicit val session: DBSession = ReadOnlyAutoSession
+      val tab: SQLSyntax = getTab(colName)
+      sql"""
+              SELECT TOP 1 time
+              FROM $tab
+              WHERE [monitor] = $monitor
+              Order by time desc
+             """.map(rs => rs.jodaDateTime(1)).first().apply()
+    }
+  }
 }

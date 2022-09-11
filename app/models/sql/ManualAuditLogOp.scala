@@ -63,7 +63,8 @@ class ManualAuditLogOp @Inject()(sqlServer: SqlServer) extends ManualAuditLogDB 
       modifiedTime = rs.jodaDateTime("modifiedTime").getMillis,
       operator = rs.string("operator"),
       changedStatus = rs.string("changedStatus"),
-      reason = rs.string("reason")
+      reason = rs.string("reason"),
+      monitor = rs.string("monitor")
     )
 
   private def init()(implicit session: DBSession = AutoSession): Unit = {
@@ -71,6 +72,7 @@ class ManualAuditLogOp @Inject()(sqlServer: SqlServer) extends ManualAuditLogDB 
       sql"""
           CREATE TABLE [dbo].[auditLog](
 	          [id] [bigint] IDENTITY(1,1) NOT NULL,
+            [monitor] [nvarchar](50) NOT NULL,
 	          [dateTime] [datetime2](7) NOT NULL,
 	          [mt] [nvarchar](50) NOT NULL,
 	          [modifiedTime] [datetime2](7) NOT NULL,
@@ -84,5 +86,6 @@ class ManualAuditLogOp @Inject()(sqlServer: SqlServer) extends ManualAuditLogDB 
           ) ON [PRIMARY]
            """.execute().apply()
     }
+    sqlServer.addMonitorIfNotExist(tabName)
   }
 }

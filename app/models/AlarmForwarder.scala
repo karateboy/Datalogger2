@@ -66,7 +66,7 @@ class AlarmForwarder @Inject()(alarmOp: AlarmDB, ws: WSClient)
         val f = ws.url(url).put(Json.toJson(recordJSON))
         f onSuccess {
           case response =>
-            context become handler(Some(records.last.time.getMillis))
+            context become handler(Some(records.last.time.getTime))
         }
         f onFailure {
           case ex: Throwable =>

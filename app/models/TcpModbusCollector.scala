@@ -321,7 +321,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
   }
 
   // FIXME not implemented
-  def executeSeq(str: String, bool: Boolean): Unit = ???
+  def executeSeq(str: String, bool: Boolean): Unit = {}
 
   def startCalibration(calibrationType: CalibrationType, monitorTypes: List[String]) {
 

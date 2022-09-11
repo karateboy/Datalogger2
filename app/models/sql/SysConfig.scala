@@ -155,4 +155,28 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
   }
 
   case class Value(v: String, blob: Option[Blob])
+
+  private def getBoolean(key:String, defaultValue:Boolean): Future[Boolean] = Future {
+    val valueOpt = get(key)
+    val ret: Option[Boolean] =
+      for (value <- valueOpt) yield value.v.toBoolean
+    ret.getOrElse(defaultValue)
+  }
+
+  private def setBoolean(key:String)(v:Boolean): Future[UpdateResult] = Future {
+    val ret = set(key, v.toString())
+    UpdateResult.acknowledged(ret, ret, null)
+  }
+
+  override def getAlarmUpgraded(): Future[Boolean] = getBoolean(ALARM_UPGRADED, false)
+
+  override def setAlarmUpgraded(v: Boolean): Future[UpdateResult] = setBoolean(ALARM_UPGRADED)(v)
+
+  override def getCalibrationUpgraded(): Future[Boolean] = getBoolean(CALIBRATION_UPGRADED, false)
+
+  override def setCalibrationUpgraded(v: Boolean): Future[UpdateResult] = setBoolean(CALIBRATION_UPGRADED)(v)
+
+  override def getInstrumentStatusUpgraded(): Future[Boolean] = getBoolean(INSTRUMENT_STATUS_UPGRADED, false)
+
+  override def setInstrumentStatusUpgraded(v: Boolean): Future[UpdateResult] = setBoolean(INSTRUMENT_STATUS_UPGRADED)(v)
 }

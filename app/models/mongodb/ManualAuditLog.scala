@@ -4,6 +4,7 @@ import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import models._
 import org.mongodb.scala._
+import org.mongodb.scala.bson.BsonString
 import org.mongodb.scala.result.UpdateResult
 
 import javax.inject._
@@ -55,8 +56,10 @@ class ManualAuditLogOp @Inject()(mongodb: MongoDB) extends ManualAuditLogDB {
     val operator = doc.get("operator").get.asString().getValue
     val changedStatus = doc.get("changedStatus").get.asString().getValue
     val reason = doc.get("reason").get.asString().getValue
+    val monitor = doc.get("monitor").getOrElse(BsonString(Monitor.SELF_ID)).asString().getValue
 
-    ManualAuditLog2(dataTime = dataTime.getMillis, mt = mt, modifiedTime = modifiedTime.getMillis, operator = operator, changedStatus = changedStatus, reason = reason)
+    ManualAuditLog2(dataTime = dataTime.getMillis, mt = mt, modifiedTime = modifiedTime.getMillis, operator = operator,
+      changedStatus = changedStatus, reason = reason, monitor = monitor)
   }
 
   private def init() {

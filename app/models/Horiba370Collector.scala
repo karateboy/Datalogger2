@@ -2,12 +2,14 @@ package models
 
 import akka.actor.{Actor, ActorRef, _}
 import akka.util.ByteString
-import com.github.nscala_time.time.Imports.LocalTime
+import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.{ProtocolParam, tcp}
 import play.api._
 import play.api.libs.json.{JsError, Json}
 import akka.io._
+
+import java.util.Date
 import scala.concurrent.ExecutionContext.Implicits.global
 
 case class Horiba370Config(calibrationTime: Option[LocalTime],
@@ -172,7 +174,7 @@ class Horiba370Collector @Inject()
     if (DateTime.now() > nextLoggingStatusTime) {
       try {
         val statusList = statusMap map { kv => instrumentStatusOp.Status(kv._1, kv._2) }
-        val is = instrumentStatusOp.InstrumentStatus(DateTime.now(), id, statusList.toList)
+        val is = instrumentStatusOp.InstrumentStatus(new Date(), id, statusList.toList)
         instrumentStatusOp.log(is)
       } catch {
         case _: Throwable =>
@@ -568,16 +570,16 @@ class Horiba370Collector @Inject()
               mt <- monitorTypes
               zeroValue = zeroMap(mt)
               avg = mtAvgMap(mt)
-            } yield Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, zeroValue, monitorTypeOp.map(mt).span, avg)
+            } yield Calibration(mt, startTime.toDate, DateTime.now.toDate, zeroValue, monitorTypeOp.map(mt).span, avg)
           } else {
             for {
               mt <- monitorTypes
               avg = mtAvgMap(mt)
             } yield {
               if (calibrationType.zero) {
-                Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, avg, None, None)
+                Calibration(mt, startTime.toDate, DateTime.now().toDate, avg, None, None)
               } else {
-                Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, None, monitorTypeOp.map(mt).span, avg)
+                Calibration(mt, startTime.toDate, DateTime.now().toDate, None, monitorTypeOp.map(mt).span, avg)
               }
             }
           }

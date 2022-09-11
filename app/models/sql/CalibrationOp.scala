@@ -42,11 +42,12 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
     }
 
   private def mapper(rs: WrappedResultSet) = Calibration(rs.string("monitorType"),
-    rs.jodaDateTime("startTime"),
-    rs.jodaDateTime("endTime"),
+    rs.jodaDateTime("startTime").toDate,
+    rs.jodaDateTime("endTime").toDate,
     rs.doubleOpt("zero_val"),
     rs.doubleOpt("span_std"),
-    rs.doubleOpt("span_val"))
+    rs.doubleOpt("span_val"),
+    rs.string("monitor"))
 
   override def calibrationReport(mt: String, start: Imports.DateTime, end: Imports.DateTime): Seq[Calibration] = {
     implicit val session: DBSession = ReadOnlyAutoSession
@@ -62,16 +63,18 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
     implicit val session: DBSession = AutoSession
     sql"""
       INSERT INTO [dbo].[calibration]
-           ([monitorType]
+           ([monitor]
+           ,[monitorType]
            ,[startTime]
            ,[endTime]
            ,[zero_val]
            ,[span_std]
            ,[span_val])
      VALUES
-           (${cal.monitorType}
-           ,${cal.startTime.toDate}
-           ,${cal.endTime.toDate}
+           (${cal.monitor}
+           ,${cal.monitorType}
+           ,${cal.startTime}
+           ,${cal.endTime}
            ,${cal.zero_val}
            ,${cal.span_std}
            ,${cal.span_val})
@@ -82,6 +85,7 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
     if (!sqlServer.getTables().contains(tabName)) {
       sql"""
            CREATE TABLE [dbo].[calibration](
+              [monitor] [nvarchar](50) NOT NULL,
 	            [monitorType] [nvarchar](50) NOT NULL,
 	            [startTime] [datetime2](7) NOT NULL,
 	            [endTime] [datetime2](7) NOT NULL,
@@ -90,13 +94,16 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
 	            [span_val] [float] NULL,
           CONSTRAINT [PK_calibration_1] PRIMARY KEY CLUSTERED
           (
+            [monitor] ASC,
 	          [monitorType] ASC,
 	          [startTime] ASC
           )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
           ) ON [PRIMARY]
            """.execute().apply()
     }
+    sqlServer.addMonitorIfNotExist(tabName)
   }
 
-  override def getLatestMonitorRecordTimeAsync(monitor: String): Future[Option[time.Imports.DateTime]] = ???
+  override def getLatestMonitorRecordTimeAsync(monitor: String): Future[Option[time.Imports.DateTime]] =
+    sqlServer.getLatestMonitorRecordTimeAsync(tabName, monitor, "startTime")
 }

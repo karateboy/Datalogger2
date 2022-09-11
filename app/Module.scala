@@ -36,6 +36,7 @@ class Module(environment: Environment,
       bind(classOf[SysConfigDB]).to(classOf[SysConfig])
       bind(classOf[UserDB]).to(classOf[UserOp])
       bind(classOf[VariationRuleDB]).to(classOf[VariationRuleOp])
+      bind(classOf[InstrumentStatusTypeDB]).to(classOf[InstrumentStatusTypeOp])
     }else{
       import models.mongodb._
       bind(classOf[AlarmDB]).to(classOf[AlarmOp])

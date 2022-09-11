@@ -3,7 +3,7 @@ package models.mongodb
 import models.CdxUploader.{CdxConfig, CdxMonitorType}
 import models.ModelHelper.{errorHandler, waitReadyResult}
 import models.{CdxUploader, SysConfigDB}
-import org.mongodb.scala.bson.{BsonDateTime, BsonNumber, BsonString, BsonValue, Document}
+import org.mongodb.scala.bson.{BsonBoolean, BsonDateTime, BsonNumber, BsonString, BsonValue, Document}
 import org.mongodb.scala.model.{Filters, ReplaceOptions}
 import org.mongodb.scala.result.UpdateResult
 import play.api.libs.json.Json
@@ -30,8 +30,11 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     AlertEmailTaget -> Document(valueKey -> Seq("karateboy.tw@gmail.com")),
     EffectiveRatio -> Document(valueKey -> 0.75),
     CDX_CONFIG -> Document(valueKey -> Json.toJson(CdxUploader.defaultConfig).toString()),
-    CDX_MONITOR_TYPES -> Document(valueKey -> Json.toJson(CdxUploader.defaultMonitorTypes).toString())
-  )
+    CDX_MONITOR_TYPES -> Document(valueKey -> Json.toJson(CdxUploader.defaultMonitorTypes).toString()),
+    ALARM_UPGRADED -> Document(valueKey -> false),
+    CALIBRATION_UPGRADED -> Document(valueKey -> false),
+    INSTRUMENT_STATUS_UPGRADED -> Document(valueKey -> false)
+    )
 
   override def getSpectrumLastParseTime(): Future[Instant] = getInstant(SpectrumLastParseTime)()
 
@@ -130,4 +133,16 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
       }
     }
   }
+
+  override def getAlarmUpgraded(): Future[Boolean] = get(ALARM_UPGRADED).map(_.asBoolean().getValue)
+
+  override def setAlarmUpgraded(v: Boolean): Future[UpdateResult] = set(ALARM_UPGRADED, BsonBoolean(v))
+
+  override def getCalibrationUpgraded(): Future[Boolean] = get(CALIBRATION_UPGRADED).map(_.asBoolean().getValue)
+
+  override def setCalibrationUpgraded(v: Boolean): Future[UpdateResult] = set(CALIBRATION_UPGRADED, BsonBoolean(v))
+
+  override def getInstrumentStatusUpgraded(): Future[Boolean] = get(INSTRUMENT_STATUS_UPGRADED).map(_.asBoolean().getValue)
+
+  override def setInstrumentStatusUpgraded(v: Boolean): Future[UpdateResult] = set(INSTRUMENT_STATUS_UPGRADED, BsonBoolean(v))
 }

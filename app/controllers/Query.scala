@@ -706,7 +706,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
         else
           CellData("-", Seq.empty[String])
       }
-      RowData(report._1.getMillis, cellData)
+      RowData(report._1.getTime, cellData)
     }
 
     implicit val write = Json.writes[InstrumentReport]

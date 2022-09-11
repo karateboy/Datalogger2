@@ -4,14 +4,15 @@ import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import play.api.libs.json.Json
 
+import java.util.Date
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 case class CalibrationJSON(monitorType: String, startTime: Long, endTime: Long, zero_val: Option[Double],
                            span_std: Option[Double], span_val: Option[Double])
 
-case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTime, zero_val: Option[Double],
-                       span_std: Option[Double], span_val: Option[Double], monitor:Option[String] = None) {
+case class Calibration(monitorType: String, startTime: Date, endTime: Date, zero_val: Option[Double],
+                       span_std: Option[Double], span_val: Option[Double], monitor:String = Monitor.SELF_ID) {
   def zero_dev: Option[Double] = zero_val.map(Math.abs)
 
   def span_dev_ratio = for (s_dev <- span_dev; std <- span_std)
@@ -22,7 +23,7 @@ case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTi
       yield Math.abs(span_val.get - span_std.get)
 
   def toJSON = {
-    CalibrationJSON(monitorType, startTime.getMillis, endTime.getMillis, zero_val,
+    CalibrationJSON(monitorType, startTime.getTime, endTime.getTime, zero_val,
       span_std, span_val)
   }
 
@@ -93,7 +94,7 @@ trait CalibrationDB {
         val resultMap = Map.empty[String, ListBuffer[(DateTime, Calibration)]]
         for (item <- calibrationList.filter { c => c.success } if item.monitorType != MonitorType.NO2) {
           val lb = resultMap.getOrElseUpdate(item.monitorType, ListBuffer.empty[(DateTime, Calibration)])
-          lb.append((item.endTime, item))
+          lb.append((new DateTime(item.endTime), item))
         }
         resultMap.map(kv => kv._1 -> kv._2.toList).toMap
       }

@@ -5,12 +5,14 @@ import com.github.nscala_time.time.Imports.DateTime
 import org.mongodb.scala.result.UpdateResult
 import play.api.libs.json.Json
 
+import java.time.Instant
+import java.util.Date
 import scala.concurrent.Future
 
 case class Alarm2JSON(time: Long, src: String, level: Int, info: String)
 
-case class Alarm(time: DateTime, src: String, level: Int, desc: String, monitor:Option[String] = None){
-  def toJson = Alarm2JSON(time.getMillis, src, level, desc)
+case class Alarm(time: Date, src: String, level: Int, desc: String, monitor:String){
+  def toJson = Alarm2JSON(time.getTime, src, level, desc)
 }
 
 
