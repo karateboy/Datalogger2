@@ -9,7 +9,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class MonitorOp @Inject()(sqlServer: SqlServer) extends MonitorDB {
+class MonitorOp @Inject()(sqlServer: SqlServer, sysConfig: SysConfig) extends MonitorDB {
   private val tabName = "monitor"
 
   override def deleteMonitor(_id: String): Future[DeleteResult] = Future {
@@ -52,11 +52,10 @@ class MonitorOp @Inject()(sqlServer: SqlServer) extends MonitorDB {
           )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
           ) ON [PRIMARY]
            """.execute().apply()
-      upsert(Monitor.selfMonitor)
-      refresh
-    } else {
-      refresh
-    }
+      upsert(Monitor.defaultMonitor)
+      refresh(sysConfig)
+    } else
+      refresh(sysConfig)
   }
 
   override def upsert(m: Monitor): Unit = {

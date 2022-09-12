@@ -585,7 +585,7 @@ class DataCollectManager @Inject()
                 r.time >= DateTime.now() - 6.second
               }
 
-              (data.mt -> (filteredMap ++ Map(instId -> Record(now, Some(data.value), data.status, Monitor.activeID))))
+              (data.mt -> (filteredMap ++ Map(instId -> Record(now, Some(data.value), data.status, Monitor.activeId))))
             }
 
           context become handler(instrumentMap, collectorInstrumentMap,
@@ -718,7 +718,7 @@ class DataCollectManager @Inject()
 
         context become handler(instrumentMap, collectorInstrumentMap,
           latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap)
-        val f = recordOp.upsertRecord(RecordList(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeID))(recordOp.MinCollection)
+        val f = recordOp.upsertRecord(RecordList(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId))(recordOp.MinCollection)
         f onComplete {
           case Success(_) =>
             self ! ForwardMin
@@ -896,7 +896,7 @@ class DataCollectManager @Inject()
 
     case CheckInstruments =>
       val now = DateTime.now()
-      val f = recordOp.getRecordMapFuture(recordOp.MinCollection)(Monitor.SELF_ID, monitorTypeOp.realtimeMtvList,
+      val f = recordOp.getRecordMapFuture(recordOp.MinCollection)(Monitor.activeId, monitorTypeOp.realtimeMtvList,
         now.minusHours(1), now)
       for (minRecordMap <- f) {
         for (kv <- instrumentMap) {

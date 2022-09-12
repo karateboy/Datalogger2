@@ -132,7 +132,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
               }
             }
 
-          docList.append(RecordList(time = Date.from(dt.atZone(ZoneId.systemDefault()).toInstant), monitor = Monitor.SELF_ID,
+          docList.append(RecordList(time = Date.from(dt.atZone(ZoneId.systemDefault()).toInstant), monitor = Monitor.activeId,
             mtDataList = mtRecordOpts.flatten))
         } catch {
           case ex: Throwable =>
@@ -151,7 +151,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
         val end = new DateTime(Date.from(dataEnd.atZone(ZoneId.systemDefault()).toInstant))
 
         for (current <- getHourBetween(start, end))
-          dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
+          dataCollectManagerOp.recalculateHourData(Monitor.activeId, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
       }
     } finally {
       src.close()

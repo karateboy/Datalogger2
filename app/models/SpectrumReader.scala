@@ -118,7 +118,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
 
 
           for (current <- getPeriods(start, end, Period.hours(1)))
-            dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
+            dataCollectManagerOp.recalculateHourData(Monitor.activeId, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
         }
       }
       f onFailure errorHandler
@@ -168,7 +168,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
 
           if (dt.isAfter(dataEnd))
             dataEnd = dt
-          Some(RecordList(time = Date.from(dt), monitor = Monitor.SELF_ID,
+          Some(RecordList(time = Date.from(dt), monitor = Monitor.activeId,
             mtDataList = Seq(MtRecord(mtName, Some(value), MonitorStatus.NormalStat))))
         } catch {
           case ex: Throwable =>
