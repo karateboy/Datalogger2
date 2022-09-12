@@ -95,7 +95,7 @@ class AlarmOp @Inject()(mongodb: MongoDB) extends AlarmDB {
   }
 
   override def log(src: String, level: Int, desc: String, coldPeriod:Int = 30): Unit = {
-    val ar = Alarm(Date.from(Instant.now()), src, level, desc, Monitor.SELF_ID)
+    val ar = Alarm(Date.from(Instant.now()), src, level, desc, Monitor.activeId)
     logFilter(ar, coldPeriod)
   }
 

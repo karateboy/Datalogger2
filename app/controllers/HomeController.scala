@@ -471,17 +471,18 @@ class HomeController @Inject()(environment: play.api.Environment,
   }
 
   def deleteMonitor(id: String) = Security.Authenticated.async {
-    for (ret <- monitorOp.deleteMonitor(id)) yield
+    for (ret <- monitorOp.delete(id, sysConfig)) yield
       Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
   }
 
   def getActiveMonitorID = Security.Authenticated {
-    Ok(Monitor.activeID)
+    Ok(Monitor.activeId)
   }
 
   def setActiveMonitorID(id: String) = Security.Authenticated {
     if (monitorOp.map.contains(id)) {
-      Monitor.activeID = id
+      Monitor.activeId = id
+      sysConfig.setActiveMonitorId(id)
       Ok(Json.obj("ok" -> true))
     } else
       BadRequest("Invalid monitor ID")

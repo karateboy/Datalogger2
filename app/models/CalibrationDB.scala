@@ -12,7 +12,7 @@ case class CalibrationJSON(monitorType: String, startTime: Long, endTime: Long, 
                            span_std: Option[Double], span_val: Option[Double])
 
 case class Calibration(monitorType: String, startTime: Date, endTime: Date, zero_val: Option[Double],
-                       span_std: Option[Double], span_val: Option[Double], monitor:String = Monitor.SELF_ID) {
+                       span_std: Option[Double], span_val: Option[Double], monitor:String = Monitor.activeId) {
   def zero_dev: Option[Double] = zero_val.map(Math.abs)
 
   def span_dev_ratio = for (s_dev <- span_dev; std <- span_std)

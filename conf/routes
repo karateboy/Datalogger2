@@ -141,6 +141,9 @@ GET     /CdxMonitorTypes                        controllers.Cdx.getMonitorTypes
 PUT     /CdxMonitorTypes                        controllers.Cdx.putMonitorTypes
 GET     /CdxUpload/:start/:end                  controllers.Cdx.CdxUploadData(start:Long, end:Long)
 
+#AIS DATA
+GET     /LatestAisData                          controllers.Realtime.getLatestAisData
+
 # Data Logger
 GET      /HourRecordRange/:monitor                                                             controllers.DataLogger.getHourRecordRange(monitor)
 PUT      /HourRecord/:monitor                                                                  controllers.DataLogger.upsertHourRecord(monitor)

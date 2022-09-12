@@ -16,6 +16,7 @@ trait SysConfigDB {
   val AlertEmailTaget = "AlertEmailTarget"
   val CDX_CONFIG = "CdxConfig"
   val CDX_MONITOR_TYPES = "CdxMonitorTypes"
+  val ACTIVE_MONITOR_ID = "ActiveMonitorId"
   val ALARM_UPGRADED = "AlarmUpgraded"
   val CALIBRATION_UPGRADED = "CalibrationUpgraded"
   val INSTRUMENT_STATUS_UPGRADED = "InstrumentStatusUpgraded"
@@ -47,6 +48,10 @@ trait SysConfigDB {
   def getCdxMonitorTypes() : Future[Seq[CdxMonitorType]]
 
   def setCdxMonitorTypes(monitorTypes: Seq[CdxMonitorType]) : Future[UpdateResult]
+
+  def getActiveMonitorId() : Future[String]
+
+  def setActiveMonitorId(id:String) : Future[UpdateResult]
 
   def getAlarmUpgraded() : Future[Boolean]
   def setAlarmUpgraded(v:Boolean) : Future[UpdateResult]

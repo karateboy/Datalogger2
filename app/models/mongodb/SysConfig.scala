@@ -2,7 +2,7 @@ package models.mongodb
 
 import models.CdxUploader.{CdxConfig, CdxMonitorType}
 import models.ModelHelper.{errorHandler, waitReadyResult}
-import models.{CdxUploader, SysConfigDB}
+import models.{CdxUploader, Monitor, SysConfigDB}
 import org.mongodb.scala.bson.{BsonBoolean, BsonDateTime, BsonNumber, BsonString, BsonValue, Document}
 import org.mongodb.scala.model.{Filters, ReplaceOptions}
 import org.mongodb.scala.result.UpdateResult
@@ -30,6 +30,8 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     AlertEmailTaget -> Document(valueKey -> Seq("karateboy.tw@gmail.com")),
     EffectiveRatio -> Document(valueKey -> 0.75),
     CDX_CONFIG -> Document(valueKey -> Json.toJson(CdxUploader.defaultConfig).toString()),
+    CDX_MONITOR_TYPES -> Document(valueKey -> Json.toJson(CdxUploader.defaultMonitorTypes).toString()),
+    ACTIVE_MONITOR_ID -> Document(valueKey -> Monitor.activeId),
     CDX_MONITOR_TYPES -> Document(valueKey -> Json.toJson(CdxUploader.defaultMonitorTypes).toString()),
     ALARM_UPGRADED -> Document(valueKey -> false),
     CALIBRATION_UPGRADED -> Document(valueKey -> false),
@@ -133,6 +135,10 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
       }
     }
   }
+
+  override def getActiveMonitorId(): Future[String] = get(ACTIVE_MONITOR_ID).map(_.asString().getValue)
+
+  override def setActiveMonitorId(id: String): Future[UpdateResult] = set(ACTIVE_MONITOR_ID, BsonString(id))
 
   override def getAlarmUpgraded(): Future[Boolean] = get(ALARM_UPGRADED).map(_.asBoolean().getValue)
 

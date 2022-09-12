@@ -17,7 +17,7 @@ trait InstrumentStatusDB {
         statusList = statusList, monitor = monitor)
   }
 
-  case class InstrumentStatus(time: Date, instID: String, statusList: Seq[Status], monitor: String = Monitor.SELF_ID) {
+  case class InstrumentStatus(time: Date, instID: String, statusList: Seq[Status], monitor: String = Monitor.activeId) {
     def excludeNaN = {
       val validList = statusList.filter { s => !(s.value.isNaN() || s.value.isInfinite() || s.value.isNegInfinity) }
       InstrumentStatus(time, instID, validList)

@@ -56,7 +56,7 @@ class ManualAuditLogOp @Inject()(mongodb: MongoDB) extends ManualAuditLogDB {
     val operator = doc.get("operator").get.asString().getValue
     val changedStatus = doc.get("changedStatus").get.asString().getValue
     val reason = doc.get("reason").get.asString().getValue
-    val monitor = doc.get("monitor").getOrElse(BsonString(Monitor.SELF_ID)).asString().getValue
+    val monitor = doc.get("monitor").getOrElse(BsonString(Monitor.activeId)).asString().getValue
 
     ManualAuditLog2(dataTime = dataTime.getMillis, mt = mt, modifiedTime = modifiedTime.getMillis, operator = operator,
       changedStatus = changedStatus, reason = reason, monitor = monitor)

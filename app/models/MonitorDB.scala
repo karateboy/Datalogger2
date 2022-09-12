@@ -4,7 +4,7 @@ import org.mongodb.scala.result.DeleteResult
 import play.api.libs.json.Json
 
 import scala.concurrent.Future
-
+import scala.concurrent.ExecutionContext.Implicits.global
 trait MonitorDB {
 
   implicit val mWrite = Json.writes[Monitor]
@@ -27,15 +27,26 @@ trait MonitorDB {
 
   def upsert(m: Monitor): Unit
 
-  def deleteMonitor(_id: String): Future[DeleteResult]
+  protected def deleteMonitor(_id: String): Future[DeleteResult]
+
+  def delete(_id:String, sysConfigDB: SysConfigDB) : Future[DeleteResult] = {
+    for(ret<- deleteMonitor(_id)) yield {
+      refresh(sysConfigDB)
+      ret
+    }
+  }
 
   def mList: List[Monitor]
 
-  def refresh {
+  def refresh(sysConfigDB: SysConfigDB) {
     val pairs =
       for (m <- mList) yield {
         m._id -> m
       }
+
+    for(activeId <- sysConfigDB.getActiveMonitorId())
+      Monitor.setActiveMonitorId(activeId)
+
     map = pairs.toMap
   }
 }

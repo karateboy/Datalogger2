@@ -25,7 +25,7 @@ trait RecordDB {
 
   def upsertRecord(doc: RecordList)(colName: String): Future[UpdateResult]
 
-  def updateRecordStatus(dt: Long, mt: String, status: String, monitor: String = Monitor.SELF_ID)(colName: String): Future[UpdateResult]
+  def updateRecordStatus(dt: Long, mt: String, status: String, monitor: String = Monitor.activeId)(colName: String): Future[UpdateResult]
 
   def getRecordMap(colName: String)
                   (monitor: String, mtList: Seq[String], startTime: DateTime, endTime: DateTime): Map[String, Seq[Record]] = {
@@ -36,9 +36,9 @@ trait RecordDB {
   def getRecordMapFuture(colName: String)
                         (monitor: String, mtList: Seq[String], startTime: Imports.DateTime, endTime: Imports.DateTime): Future[Map[String, Seq[Record]]]
 
-  def getRecordListFuture(colName: String)(startTime: Imports.DateTime, endTime: Imports.DateTime, monitors: Seq[String] = Seq(Monitor.SELF_ID)): Future[Seq[RecordList]]
+  def getRecordListFuture(colName: String)(startTime: Imports.DateTime, endTime: Imports.DateTime, monitors: Seq[String] = Seq(Monitor.activeId)): Future[Seq[RecordList]]
 
-  def getRecordWithLimitFuture(colName: String)(startTime: Imports.DateTime, endTime: Imports.DateTime, limit: Int, monitor: String = Monitor.SELF_ID):
+  def getRecordWithLimitFuture(colName: String)(startTime: Imports.DateTime, endTime: Imports.DateTime, limit: Int, monitor: String = Monitor.activeId):
   Future[Seq[RecordList]]
 
   def getWindRose(colName: String)(monitor: String, monitorType: String,

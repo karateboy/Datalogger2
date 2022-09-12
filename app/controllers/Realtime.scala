@@ -2,15 +2,18 @@ package controllers
 
 import com.github.nscala_time.time.Imports._
 import models._
+import play.api.Configuration
 import play.api.libs.json._
 import play.api.mvc._
 
+import java.util.Date
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class Realtime @Inject()
 (monitorTypeOp: MonitorTypeDB, dataCollectManagerOp: DataCollectManagerOp, instrumentOp: InstrumentDB,
- monitorStatusOp: MonitorStatusDB) extends Controller {
+ monitorStatusOp: MonitorStatusDB, configuration:Configuration, aisDB: AisDB, monitorDB: MonitorDB) extends Controller {
   val overTimeLimit = 6
 
   case class MonitorTypeStatus(_id: String, desp: String, value: String, unit: String, instrument: String, status: String, classStr: Seq[String], order: Int)
@@ -82,5 +85,24 @@ class Realtime @Inject()
         }
 
       result
+  }
+
+  case class ParsedAisData(monitor: String, time: Date, ships: Seq[Map[String, String]])
+  case class LatestAisData(enable:Boolean, aisData:Seq[ParsedAisData])
+  def getLatestAisData(): Action[AnyContent] = Security.Authenticated.async {
+    implicit val w1 = Json.writes[ParsedAisData]
+    implicit val write = Json.writes[LatestAisData]
+    if(!AisDataCollector.enable){
+      Future.successful(Ok(Json.toJson(LatestAisData(false, Seq.empty[ParsedAisData]))))
+    }else {
+      val futures = monitorDB.mvList.map(m=>aisDB.getLatestData(m))
+      for(ret <- Future.sequence(futures)) yield {
+        val parsed = ret.flatten.map(ais=>{
+          val shipList = Json.parse(ais.json).validate[Seq[Map[String, String]]].get
+          ParsedAisData(ais.monitor, ais.time, shipList)
+        })
+        Ok(Json.toJson(LatestAisData(true, parsed)))
+      }
+    }
   }
 }

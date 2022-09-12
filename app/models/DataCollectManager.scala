@@ -8,6 +8,7 @@ import models.ModelHelper._
 import org.mongodb.scala.result.UpdateResult
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
+import play.api.libs.ws.WSClient
 
 import javax.inject._
 import scala.collection.mutable.ListBuffer
@@ -379,7 +380,9 @@ class DataCollectManager @Inject()
 (config: Configuration, recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
  dataCollectManagerOp: DataCollectManagerOp,
  instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentDB,
- sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
+ sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory,
+ WSClient: WSClient, aisDB: AisDB) extends Actor with InjectedActorSupport {
+
   val storeSecondData = config.getBoolean("logger.storeSecondData").getOrElse(false)
   Logger.info(s"store second data = $storeSecondData")
   DataCollectManager.updateEffectiveRatio(sysConfig)
@@ -410,12 +413,12 @@ class DataCollectManager @Inject()
   var calibratorOpt: Option[ActorRef] = None
   var digitalOutputOpt: Option[ActorRef] = None
   var onceTimer: Option[Cancellable] = None
-  var signalTypeHandlerMap = Map.empty[String, Map[ActorRef, Boolean => Unit]]
 
   def startReaders(): Unit = {
     SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
     WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
     VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self)
+    AisDataCollector.start(config, context.system, monitorOp, aisDB, WSClient)
   }
 
 
@@ -585,7 +588,7 @@ class DataCollectManager @Inject()
                 r.time >= DateTime.now() - 6.second
               }
 
-              (data.mt -> (filteredMap ++ Map(instId -> Record(now, Some(data.value), data.status, Monitor.activeID))))
+              (data.mt -> (filteredMap ++ Map(instId -> Record(now, Some(data.value), data.status, Monitor.activeId))))
             }
 
           context become handler(instrumentMap, collectorInstrumentMap,
@@ -718,7 +721,7 @@ class DataCollectManager @Inject()
 
         context become handler(instrumentMap, collectorInstrumentMap,
           latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap)
-        val f = recordOp.upsertRecord(RecordList.factory(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeID))(recordOp.MinCollection)
+        val f = recordOp.upsertRecord(RecordList.factory(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId))(recordOp.MinCollection)
         f onComplete {
           case Success(_) =>
             self ! ForwardMin
@@ -896,7 +899,7 @@ class DataCollectManager @Inject()
 
     case CheckInstruments =>
       val now = DateTime.now()
-      val f = recordOp.getRecordMapFuture(recordOp.MinCollection)(Monitor.SELF_ID, monitorTypeOp.realtimeMtvList,
+      val f = recordOp.getRecordMapFuture(recordOp.MinCollection)(Monitor.activeId, monitorTypeOp.realtimeMtvList,
         now.minusHours(1), now)
       for (minRecordMap <- f) {
         for (kv <- instrumentMap) {

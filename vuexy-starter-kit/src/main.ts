@@ -21,6 +21,7 @@ import store from './store';
 import App from './App.vue';
 import { ValidationProvider } from 'vee-validate';
 import vSelect from 'vue-select';
+import GmapVue from 'gmap-vue';
 
 // Global Components
 import './global-components';
@@ -130,6 +131,13 @@ router.beforeEach((to, from, next) => {
   }
 });
 
+Vue.use(GmapVue, {
+  load: {
+    key: 'AIzaSyDiE_K-p1_3V-lff9yXfD6KkC1SGpXVcKc',
+    libraries: 'places', // This is required if you use the Autocomplete plugin
+  },
+  installComponents: true,
+});
 new Vue({
   router,
   store,

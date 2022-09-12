@@ -2,7 +2,7 @@ package models.sql
 
 import com.mongodb.client.result.UpdateResult
 import models.CdxUploader.{CdxConfig, CdxMonitorType}
-import models.{CdxUploader, SysConfigDB}
+import models.{CdxUploader, Monitor, SysConfigDB}
 import play.api.libs.json.Json
 import scalikejdbc._
 
@@ -156,12 +156,26 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
 
   case class Value(v: String, blob: Option[Blob])
 
+  override def getActiveMonitorId(): Future[String] = Future {
+    val valueOpt = get(ACTIVE_MONITOR_ID)
+    val ret =
+      for (value <- valueOpt) yield
+        value.v
+    ret.getOrElse(Monitor.activeId)
+  }
+
   private def getBoolean(key:String, defaultValue:Boolean): Future[Boolean] = Future {
     val valueOpt = get(key)
     val ret: Option[Boolean] =
       for (value <- valueOpt) yield value.v.toBoolean
     ret.getOrElse(defaultValue)
   }
+
+  override def setActiveMonitorId(id: String): Future[UpdateResult] = Future {
+    val ret = set(ACTIVE_MONITOR_ID, id)
+    UpdateResult.acknowledged(ret, ret, null)
+  }
+
 
   private def setBoolean(key:String)(v:Boolean): Future[UpdateResult] = Future {
     val ret = set(key, v.toString())
