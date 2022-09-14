@@ -191,17 +191,15 @@ export default Vue.extend({
       highcharts.chart(`history_${mt}`, ret);
     },
     getMapCenter(data: AisData): any {
-      let count = 0;
-      let lat = 0;
-      let lng = 0;
-      for (let ship of data.ships) {
-        count++;
-        lat += ship.position!.lat;
-        lng += ship.position!.lng;
-      }
-      lat /= count;
-      lng /= count;
+      let lats = data.ships.map(ship => ship.position!.lat);
+      let lngs = data.ships.map(ship => ship.position!.lng);
 
+      let latMin = Math.min.apply(Math, lats);
+      let latMax = Math.max.apply(Math, lats);
+      let lngMin = Math.min.apply(Math, lngs);
+      let lngMax = Math.max.apply(Math, lngs);
+      let lat = (latMin + latMax) / 2;
+      let lng = (lngMin + lngMax) / 2;
       return { lat, lng };
     },
     getMtName(mt: string): string {
