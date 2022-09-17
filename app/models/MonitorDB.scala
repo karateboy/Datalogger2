@@ -14,16 +14,11 @@ trait MonitorDB {
 
   def mvList: Seq[String] = map.map(_._1).toSeq
 
-  def ensureMonitor(_id: String): Unit = {
+  def ensure(_id: String): Unit = {
     if (!map.contains(_id)) {
       upsert(Monitor(_id, _id))
     }
   }
-
-  def format(v: Option[Double]): String = if (v.isEmpty)
-    "-"
-  else
-    v.get.toString
 
   def upsert(m: Monitor): Unit
 

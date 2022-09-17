@@ -88,7 +88,7 @@ object AkDrv {
     val files = new File(docRoot).listFiles()
     for (file <- files) yield {
       val device: AkDeviceModel = getDeviceModel(file)
-      device.akModelReg.dataRegs.foreach(reg=>monitorTypeOp.ensureMonitorType(reg.monitorType))
+      device.akModelReg.dataRegs.foreach(reg=>monitorTypeOp.ensure(reg.monitorType))
       InstrumentType(
         new AkDrv(s"${deviceTypeHead}${device.id}", device.description, List(Protocol.serial), device.akModelReg), factory)
     }
