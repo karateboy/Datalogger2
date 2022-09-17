@@ -44,10 +44,10 @@ class DataLogger @Inject()(monitorTypeDB: MonitorTypeDB, monitorOp: MonitorDB, i
         BadRequest(Json.obj("ok" -> false, "msg" -> JsError(err).toString().toString()))
       },
         recordLists => {
-          monitorOp.ensureMonitor(monitor)
+          monitorOp.ensure(monitor)
           val monitorTypes = recordLists.map(_.mtMap.keySet).foldLeft(Set.empty[String])((a,b)=>a ++ b)
           monitorTypes.foreach(mt=>{
-            monitorTypeDB.ensureMonitorType(mt)
+            monitorTypeDB.ensure(mt)
             recordDB.ensureMonitorType(mt)
           })
 
@@ -79,10 +79,10 @@ class DataLogger @Inject()(monitorTypeDB: MonitorTypeDB, monitorOp: MonitorDB, i
         BadRequest(Json.obj("ok" -> false, "msg" -> JsError(err).toString()))
       },
         calibrations => {
-          monitorOp.ensureMonitor(monitor)
+          monitorOp.ensure(monitor)
           val monitorTypes = calibrations.map(_.monitorType).toSet
           monitorTypes.foreach(mt => {
-            monitorTypeDB.ensureMonitorType(mt)
+            monitorTypeDB.ensure(mt)
             recordDB.ensureMonitorType(mt)
           })
           calibrations.map(json => Calibration(monitorType = json.monitorType,
@@ -118,7 +118,7 @@ class DataLogger @Inject()(monitorTypeDB: MonitorTypeDB, monitorOp: MonitorDB, i
         BadRequest(Json.obj("ok" -> false, "msg" -> JsError(err).toString().toString()))
       },
         alarm2JsonSeq => {
-          monitorOp.ensureMonitor(monitor)
+          monitorOp.ensure(monitor)
           val alarms = alarm2JsonSeq.map { json =>
             Alarm(Date.from(Instant.ofEpochMilli(json.time)), json.src, json.level, json.info, monitor)
           }
@@ -140,7 +140,7 @@ class DataLogger @Inject()(monitorTypeDB: MonitorTypeDB, monitorOp: MonitorDB, i
 
   def insertInstrumentStatusRecord(monitor: String): Action[JsValue] = Action(BodyParsers.parse.json) {
     implicit request =>
-      monitorOp.ensureMonitor(monitor)
+      monitorOp.ensure(monitor)
       import instrumentStatusDB._
       val result = request.body.validate[Seq[InstrumentStatusJSON]]
       result.fold(err => {
@@ -148,7 +148,7 @@ class DataLogger @Inject()(monitorTypeDB: MonitorTypeDB, monitorOp: MonitorDB, i
         BadRequest(Json.obj("ok" -> false, "msg" -> JsError(err).toString().toString()))
       },
         isJsonList => {
-          monitorOp.ensureMonitor(monitor)
+          monitorOp.ensure(monitor)
           isJsonList.map(_.toInstrumentStatus(monitor)).foreach(instrumentStatusDB.log(_))
           Ok(Json.obj("ok" -> true))
         })

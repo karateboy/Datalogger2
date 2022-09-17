@@ -53,7 +53,7 @@ class AisDataCollector(config: AisDataCollectConfig, monitorDB: MonitorDB, aisDB
 
   val timer = context.system.scheduler.schedule(FiniteDuration(5, SECONDS), FiniteDuration(3, MINUTES), self, CollectData)
 
-  config.portConfigs.foreach(port => monitorDB.ensureMonitor(port.monitor))
+  config.portConfigs.foreach(port => monitorDB.ensure(port.monitor))
 
   override def receive: Receive = {
     case CollectData =>
