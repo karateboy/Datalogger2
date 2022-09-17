@@ -105,14 +105,14 @@ trait MonitorTypeDB {
 
   def exist(mt: MonitorType): Boolean = map.contains(mt._id)
 
-  def ensureMonitorType(id: String): Unit = {
+  def ensure(id: String): Unit = {
     if (!map.contains(id)) {
       val mt = rangeType(id, id, "??", 2)
       upsertMonitorType(mt)
     }
   }
 
-  def ensureMeasuring(id: String) = {
+  def activate(id: String) = {
     if (!map.contains(id)) {
       val mt = rangeType(id, id, "??", 2)
       mt.measuringBy = Some(List.empty[String])

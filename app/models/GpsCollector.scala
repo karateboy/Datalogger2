@@ -83,7 +83,7 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
   with ActorLogging with SentenceListener with ExceptionListener with PositionListener {
   Logger.info(s"$id $protocolParam")
 
-  monitorTypes.foreach(monitorTypeDB.ensureMonitorType(_))
+  monitorTypes.foreach(monitorTypeDB.ensure(_))
 
   val POS_IN_THE_RANGE = "POS_IN_THE_RANGE"
   val mtPOS_IN_THE_RANGE = monitorTypeDB.signalType(POS_IN_THE_RANGE, "位置在範圍內")
