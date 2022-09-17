@@ -204,8 +204,7 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
         val mtID = "_" + mtName.replace(",", "_").replace("-", "_")
         val mtCase = monitorTypeOp.rangeType(mtID, mtName, "ppb", 2)
         mtCase.measuringBy = Some(List.empty[String])
-        if (!monitorTypeOp.exist(mtCase))
-          monitorTypeOp.ensureMonitorType(mtCase)
+        monitorTypeOp.ensure(mtCase)
 
         try {
           val v = line(5).toDouble
