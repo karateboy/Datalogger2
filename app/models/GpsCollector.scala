@@ -87,7 +87,7 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
 
   val POS_IN_THE_RANGE = "POS_IN_THE_RANGE"
   val mtPOS_IN_THE_RANGE = monitorTypeDB.signalType(POS_IN_THE_RANGE, "位置在範圍內")
-  monitorTypeDB.ensureMonitorType(mtPOS_IN_THE_RANGE)
+  monitorTypeDB.ensure(mtPOS_IN_THE_RANGE)
 
   val comm: SerialComm =
     SerialComm.open(protocolParam.comPort.get, protocolParam.speed.getOrElse(SerialPort.BAUDRATE_9600))

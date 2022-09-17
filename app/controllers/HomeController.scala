@@ -172,10 +172,8 @@ class HomeController @Inject()(environment: play.api.Environment,
             val f3 = f2.map {
               _ =>
                 Future.sequence {
-                  for (mt <- mtList) yield {
-                    monitorTypeOp.ensure(mt)
+                  for (mt <- mtList) yield
                     monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog, recordDB)
-                  }
                 }
             }
             f3.map{
@@ -692,7 +690,7 @@ class HomeController @Inject()(environment: play.api.Environment,
                 Duo.ensureSpectrumTypes(t)(monitorTypeOp)
               } else {
                 if (Duo.map.contains(t.id))
-                  monitorTypeOp.ensureMonitorType(Duo.map(t.id))
+                  monitorTypeOp.ensure(Duo.map(t.id))
                 else
                   monitorTypeOp.ensure(t.id)
               })
@@ -717,7 +715,7 @@ class HomeController @Inject()(environment: play.api.Environment,
           Duo.ensureSpectrumTypes(t)(monitorTypeOp)
         } else {
           if (Duo.fixedMap.contains(t.id))
-            monitorTypeOp.ensureMonitorType(Duo.fixedMap(t.id))
+            monitorTypeOp.ensure(Duo.fixedMap(t.id))
           else
             monitorTypeOp.ensure(t.id)
         })

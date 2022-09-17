@@ -103,23 +103,26 @@ trait MonitorTypeDB {
 
   def getList: List[MonitorType]
 
-  def exist(mt: MonitorType): Boolean = map.contains(mt._id)
-
   def ensure(id: String): Unit = {
-    if (!map.contains(id)) {
-      val mt = rangeType(id, id, "??", 2)
-      upsertMonitorType(mt)
-    }
-  }
-
-  def activate(id: String) = {
     if (!map.contains(id)) {
       val mt = rangeType(id, id, "??", 2)
       mt.measuringBy = Some(List.empty[String])
       upsertMonitorType(mt)
-    }else{
+    } else {
       val mtCase = map(id)
-      if(mtCase.measuringBy.isEmpty){
+      if (mtCase.measuringBy.isEmpty) {
+        mtCase.measuringBy = Some(List.empty[String])
+        upsertMonitorType(mtCase)
+      }
+    }
+  }
+
+  def ensure(mtCase: MonitorType): Unit = {
+    if (!map.contains(mtCase._id)) {
+      mtCase.measuringBy = Some(List.empty[String])
+      upsertMonitorType(mtCase)
+    } else {
+      if (mtCase.measuringBy.isEmpty) {
         mtCase.measuringBy = Some(List.empty[String])
         upsertMonitorType(mtCase)
       }
@@ -129,11 +132,6 @@ trait MonitorTypeDB {
   def rangeType(_id: String, desp: String, unit: String, prec: Int, accumulated:Boolean = false): MonitorType = {
     rangeOrder += 1
     MonitorType(_id, desp, unit, prec, rangeOrder, accumulated = Some(accumulated))
-  }
-
-  def ensureMonitorType(mt: MonitorType): Unit = {
-    if (!map.contains(mt._id))
-      upsertMonitorType(mt)
   }
 
   def deleteMonitorType(_id: String) = {
@@ -153,14 +151,19 @@ trait MonitorTypeDB {
 
   def allMtvList: List[String] = mtvList ++ signalMtvList
 
-  def diMtvList: List[String] = List(RAIN) ++ signalMtvList
-
   def activeMtvList: List[String] = mtvList.filter { mt => map(mt).measuringBy.isDefined }
 
   def addMeasuring(mt: String, instrumentId: String, append: Boolean, recordDB: RecordDB): Future[UpdateResult] = {
     recordDB.ensureMonitorType(mt)
-    map(mt).addMeasuring(instrumentId, append)
-    upsertItemFuture(map(mt))
+    if (!map.contains(mt)) {
+      val mtCase = rangeType(mt, mt, "??", 2)
+      mtCase.addMeasuring(instrumentId, append)
+      upsertMonitorType(mtCase)
+    } else {
+      val mtCase = map(mt)
+      mtCase.addMeasuring(instrumentId, append)
+      upsertItemFuture(mtCase)
+    }
   }
 
   def upsertMonitorType(mt:MonitorType): Future[UpdateResult] = {
@@ -202,15 +205,6 @@ trait MonitorTypeDB {
     else {
       val prec = map(mt).prec
       s"%.${prec}f".format(v.get)
-    }
-  }
-
-  def getOverStd(mt: String, r: Option[Record]): Boolean = {
-    if (r.isEmpty)
-      false
-    else {
-      val (overInternal, overLaw) = overStd(mt, r.get.value)
-      overInternal || overLaw
     }
   }
 

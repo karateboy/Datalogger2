@@ -122,7 +122,7 @@ object Duo extends DriverOps {
 
   def ensureSpectrumTypes(duoMT: DuoMonitorType)(monitorTypeOp: MonitorTypeDB) =
     for (mt <- getSpectrumMonitorTypes(duoMT))
-      monitorTypeOp.ensureMonitorType(mt)
+      monitorTypeOp.ensure(mt)
 
   def getSpectrumMonitorTypes(duoMT: DuoMonitorType) = for (idx <- 0 to 35) yield
     MonitorType(_id = s"${duoMT.configID}_${idx}", desp = s"${duoMT.desc} ${ONE_THIRD_OCTAVE_BANDS_CENTER_FREQ(idx)}Hz",
