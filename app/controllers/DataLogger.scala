@@ -23,7 +23,7 @@ class DataLogger @Inject()(monitorTypeDB: MonitorTypeDB, monitorOp: MonitorDB, i
   implicit val CalibrationRead = Json.reads[CalibrationJSON]
 
   def getRecordRange(tabType: TableType.Value)(monitor: String) = Action.async {
-    for (timeOpt <- recordDB.getLatestMonitorRecordTimeAsync(TableType.map(tabType))(monitor)) yield {
+    for (timeOpt <- recordDB.getLatestMonitorRecordTimeAsync(TableType.mapCollection(tabType))(monitor)) yield {
       val latestRecordTime = timeOpt.map {
         time =>
           LatestRecordTime(time.getMillis)
@@ -51,7 +51,7 @@ class DataLogger @Inject()(monitorTypeDB: MonitorTypeDB, monitorOp: MonitorDB, i
             recordDB.ensureMonitorType(mt)
           })
 
-          val collection = TableType.map(tabType)
+          val collection = TableType.mapCollection(tabType)
           recordDB.upsertManyRecords(collection)(recordLists)
           Ok(Json.obj("ok" -> true))
         })

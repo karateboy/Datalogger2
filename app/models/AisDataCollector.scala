@@ -58,14 +58,16 @@ class AisDataCollector(config: AisDataCollectConfig, monitorDB: MonitorDB, aisDB
   override def receive: Receive = {
     case CollectData =>
       config.portConfigs.foreach(port => {
-        val url = s"https://services.marinetraffic.com/api/exportvessels/${port.apiKey}?v=1&msgtype=simple&protocol=jsono"
+        val url = s"https://services.marinetraffic.com/api/exportvessels/${port.apiKey}?v=8&msgtype=simple&protocol=jsono"
         val f = WSClient
           .url(url)
           .get()
 
         f onComplete {
           case Success(res) =>
-            aisDB.insertAisData(AisData(port.monitor, new Date(), res.json.toString()))
+            if(res.status == 200) {
+              aisDB.insertAisData(AisData(port.monitor, new Date(), res.json.toString()))
+            }
 
           case Failure(exception)=>
             Logger.error(s"get $url failed", exception)
