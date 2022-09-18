@@ -380,8 +380,7 @@ class DataCollectManager @Inject()
  dataCollectManagerOp: DataCollectManagerOp,
  instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentDB,
  sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
-  val storeSecondData = config.getBoolean("logger.storeSecondData").getOrElse(false)
-  Logger.info(s"store second data = $storeSecondData")
+  Logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
   DataCollectManager.updateEffectiveRatio(sysConfig)
 
   val timer = {
@@ -709,7 +708,7 @@ class DataCollectManager @Inject()
           }
         val priorityMtMap = priorityMtPair.toMap
 
-        if (storeSecondData)
+        if (LoggerConfig.config.storeSecondData)
           flushSecData(priorityMtMap)
 
         val minuteMtAvgList = calculateMinAvgMap(monitorTypeOp, priorityMtMap, false)
@@ -729,7 +728,7 @@ class DataCollectManager @Inject()
       }
 
       val current = DateTime.now().withSecondOfMinute(0).withMillisOfSecond(0)
-      if (monitorOp.hasSelfMonitor) {
+      if (LoggerConfig.config.selfMonitor) {
         val f = calculateMinData(current)
         f onComplete {
           case Success(_) =>

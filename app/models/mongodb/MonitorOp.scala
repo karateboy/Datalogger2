@@ -18,7 +18,6 @@ class MonitorOp @Inject()(mongodb: MongoDB, config: Configuration, sysConfig: Sy
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
 
-  override val hasSelfMonitor = config.getBoolean("logger.selfMonitor").getOrElse(true)
   lazy private val colName = "monitors"
   lazy private val codecRegistry = fromRegistries(fromProviders(classOf[Monitor]), DEFAULT_CODEC_REGISTRY)
   lazy private val collection = mongodb.database.getCollection[Monitor](colName).withCodecRegistry(codecRegistry)

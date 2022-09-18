@@ -9,7 +9,7 @@ trait MonitorDB {
 
   implicit val mWrite = Json.writes[Monitor]
   implicit val mRead = Json.reads[Monitor]
-  val hasSelfMonitor: Boolean = true
+
   var map: Map[String, Monitor] = Map.empty[String, Monitor]
 
   def mvList: Seq[String] = map.map(_._1).toSeq
