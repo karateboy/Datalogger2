@@ -1,5 +1,7 @@
 <template>
-  <div class="navbar-container d-flex content align-items-center">
+  <div
+    class="navbar-container d-flex content align-items-center justify-content-between"
+  >
     <!-- Nav Menu Toggler -->
     <ul class="nav navbar-nav d-xl-none">
       <li class="nav-item">
@@ -9,15 +11,10 @@
       </li>
     </ul>
 
-    <!-- Left Col -->
-    <div
-      class="bookmark-wrapper align-items-center flex-grow-1 d-none d-lg-flex"
-    >
-      <dark-Toggler class="d-none d-lg-block" />
-      <h2 class="m-0">空氣品質資料中控端</h2>
-    </div>
+    <dark-Toggler class="d-none d-lg-block" />
+    <h4 class="display-4 ml-3 mt-0 mb-0">空氣品質監測中心</h4>
 
-    <b-navbar-nav class="nav align-items-center ml-auto">
+    <b-navbar-nav class="nav align-items-center">
       <b-nav-item-dropdown
         right
         toggle-class="d-flex align-items-center dropdown-user-link"
