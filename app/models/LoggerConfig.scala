@@ -4,12 +4,17 @@ import play.api.Configuration
 
 import javax.inject.{Inject, Singleton}
 
-case class LoggerConfig(storeSecondData:Boolean, selfMonitor:Boolean,
-                        trendShowActual:Boolean, db:String, bypassLogin:Boolean)
+case class LoggerConfig(storeSecondData: Boolean, selfMonitor: Boolean,
+                        trendShowActual: Boolean, db: String, bypassLogin: Boolean)
 
-@Singleton
-class LoggerConfigOp @Inject()(configuration: Configuration){
-  def getConfig() : LoggerConfig = {
+object LoggerConfig {
+  var config: LoggerConfig = _
+
+  def init(configuration: Configuration): Unit = {
+    config = getConfig(configuration)
+  }
+
+  private def getConfig(configuration: Configuration): LoggerConfig = {
     val storeSecondData = configuration.getBoolean("logger.storeSecondData").getOrElse(false)
     val selfMonitor = configuration.getBoolean("logger.selfMonitor").getOrElse(true)
     val trendShowActual = configuration.getBoolean("logger.trendShowActual").getOrElse(true)
