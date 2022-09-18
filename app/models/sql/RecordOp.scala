@@ -202,17 +202,17 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
   }
 
   override def ensureMonitorType(mt: String): Unit = {
-    if (!mtList.contains(mt)) {
-      Logger.info(s"alter record table by adding $mt")
-      val tabList =
-        Seq(HourCollection, MinCollection, SecCollection)
-      tabList.foreach(tab => {
-        addMonitorType(tab, mt)
-      })
+    synchronized {
+      if (!mtList.contains(mt)) {
+        Logger.info(s"alter record table by adding $mt")
+        val tabList =
+          Seq(HourCollection, MinCollection, SecCollection)
+        tabList.foreach(tab => {
+          addMonitorType(tab, mt)
+        })
 
-      mtList = sqlServer.getColumnNames(HourCollection).filter(col => {
-        !col.endsWith("_s") && col != "monitor" && col != "time"
-      })
+        mtList = mtList:+ mt
+      }
     }
   }
 
