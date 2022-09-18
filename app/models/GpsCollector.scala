@@ -16,6 +16,7 @@ import java.io.BufferedReader
 case class GpsParam(lat: Option[Double], lon: Option[Double], radius: Option[Double], enableAlert: Option[Boolean])
 
 object GpsCollector extends DriverOps {
+  val POS_IN_THE_RANGE = "POS_IN_THE_RANGE"
   val monitorTypes = List(MonitorType.LAT, MonitorType.LNG, MonitorType.ALTITUDE, MonitorType.SPEED)
   var count = 0
 
@@ -82,10 +83,7 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
                                                            @Assisted gpsParam: GpsParam) extends Actor
   with ActorLogging with SentenceListener with ExceptionListener with PositionListener {
   Logger.info(s"$id $protocolParam")
-
-  monitorTypes.foreach(monitorTypeDB.ensure(_))
-
-  val POS_IN_THE_RANGE = "POS_IN_THE_RANGE"
+  import GpsCollector._
   val mtPOS_IN_THE_RANGE = monitorTypeDB.signalType(POS_IN_THE_RANGE, "位置在範圍內")
   monitorTypeDB.ensure(mtPOS_IN_THE_RANGE)
 
