@@ -96,4 +96,6 @@ trait RecordDB {
   def upsertManyRecords(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult]
 
   def getLatestMonitorRecordTimeAsync(colName: String)(monitor:String) : Future[Option[DateTime]]
+
+  def getLatestMonitorRecordAsync(colName: String)(monitor:String) : Future[Option[RecordList]]
 }

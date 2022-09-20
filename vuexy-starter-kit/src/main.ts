@@ -21,7 +21,7 @@ import store from './store';
 import App from './App.vue';
 import { ValidationProvider } from 'vee-validate';
 import vSelect from 'vue-select';
-import GmapVue from 'gmap-vue';
+const GmapVue = require('gmap-vue');
 
 // Global Components
 import './global-components';

@@ -107,8 +107,8 @@ class Realtime @Inject()
     }
   }
 
-/*  def getLatestMonitorData() = Security.Authenticated {
+def getLatestMonitorData() = Security.Authenticated {
     val futures = for(monitor<-monitorDB.mvList) yield
-      recordDB
-  }*/
+
+  }
 }
