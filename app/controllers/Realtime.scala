@@ -13,7 +13,8 @@ import scala.concurrent.Future
 
 class Realtime @Inject()
 (monitorTypeOp: MonitorTypeDB, dataCollectManagerOp: DataCollectManagerOp, instrumentOp: InstrumentDB,
- monitorStatusOp: MonitorStatusDB, configuration:Configuration, aisDB: AisDB, monitorDB: MonitorDB) extends Controller {
+ monitorStatusOp: MonitorStatusDB, configuration:Configuration, aisDB: AisDB,
+ monitorDB: MonitorDB, recordDB: RecordDB) extends Controller {
   val overTimeLimit = 6
 
   case class MonitorTypeStatus(_id: String, desp: String, value: String, unit: String, instrument: String, status: String, classStr: Seq[String], order: Int)
@@ -105,4 +106,9 @@ class Realtime @Inject()
       }
     }
   }
+
+/*  def getLatestMonitorData() = Security.Authenticated {
+    val futures = for(monitor<-monitorDB.mvList) yield
+      recordDB
+  }*/
 }
