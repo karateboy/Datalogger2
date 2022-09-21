@@ -241,13 +241,19 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
 
   override def ensureMonitorType(mt: String): Unit = {}
 
-  override def getLatestMonitorRecordTimeAsync(colName: String)(monitor: String): Future[Option[Imports.DateTime]] = {
+  private def getLatestRecord(colName: String)(monitor: String) = {
     val collection = getCollection(colName)
     val f = collection.find(Filters.equal("_id.monitor", monitor)).sort(Sorts.descending("_id.time")).limit(1).toFuture()
     for (ret <- f) yield
       if (ret.isEmpty)
         None
       else
-        Some(new DateTime(ret(0)._id.time))
+        Some(ret(0))
   }
+
+  override def getLatestMonitorRecordTimeAsync(colName: String)(monitor: String): Future[Option[Imports.DateTime]] =
+    getLatestRecord(colName)(monitor).map(ret=>ret.map(record => new DateTime(record._id.time)))
+
+  override def getLatestMonitorRecordAsync(colName: String)(monitor: String): Future[Option[RecordList]] =
+    getLatestRecord(colName)(monitor)
 }

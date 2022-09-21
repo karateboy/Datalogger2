@@ -90,6 +90,7 @@ class Realtime @Inject()
 
   case class ParsedAisData(monitor: String, time: Date, ships: Seq[Map[String, String]])
   case class LatestAisData(enable:Boolean, aisData:Seq[ParsedAisData])
+
   def getLatestAisData(): Action[AnyContent] = Security.Authenticated.async {
     implicit val w1 = Json.writes[ParsedAisData]
     implicit val write = Json.writes[LatestAisData]
@@ -107,8 +108,13 @@ class Realtime @Inject()
     }
   }
 
-def getLatestMonitorData() = Security.Authenticated {
-    val futures = for(monitor<-monitorDB.mvList) yield
+def getLatestMonitorData() = Security.Authenticated.async {
+    val retListF = Future.sequence(for(monitor<-monitorDB.mvList) yield
+      recordDB.getLatestMonitorRecordAsync(recordDB.MinCollection)(monitor))
 
+    for(retList<-retListF) yield {
+      val ret = retList.flatten
+      Ok(Json.toJson(ret))
+    }
   }
 }

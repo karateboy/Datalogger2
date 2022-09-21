@@ -103,3 +103,18 @@ export interface CdxConfig {
   siteCounty: string;
   siteID: string;
 }
+
+export interface MtRecord {
+  mtName: string;
+  value?: number;
+  status: string;
+}
+
+export interface RecordListID {
+  time: number;
+  monitor: string;
+}
+export interface RecordList {
+  mtDataList: Array<MtRecord>;
+  _id: RecordListID;
+}

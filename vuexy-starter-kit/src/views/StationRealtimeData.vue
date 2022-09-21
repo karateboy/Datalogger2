@@ -7,17 +7,34 @@
     </b-table>
   </b-card>
 </template>
-
-<script>
+<script lang="ts">
 import axios from 'axios';
+import { RecordList, RecordListID } from './types';
+import { mapGetters, mapActions, mapState } from 'vuex';
+import moment from 'moment';
 
-export default {
+import Vue from 'vue';
+export default Vue.extend({
   data() {
+    let items = Array<RecordList>();
+    let timer = 0;
     return {
-      fields: [
+      items,
+      timer,
+    };
+  },
+  computed: {
+    ...mapState('monitors', ['monitors', 'activeID']),
+    ...mapState('monitorTypes', ['monitorTypes']),
+    ...mapGetters('monitorTypes', ['mtMap']),
+    ...mapGetters('monitors', ['mMap']),
+    fields(): Array<any> {
+      return [
         {
-          key: 'index',
-          label: '序號',
+          key: '_id.',
+          label: '測站',
+          formatter: (r: RecordListID) =>
+            `${this.mMap(r.monitor).desc} ${moment(r.time).fromNow()}`,
         },
         {
           key: 'desp',
@@ -44,26 +61,25 @@ export default {
           label: '狀態',
           sortable: true,
         },
-      ],
-      items: [],
-      timer: 0,
-    };
+      ];
+    },
   },
   mounted() {
-    this.getRealtimeData();
-    this.timer = setInterval(this.getRealtimeData, 1000);
+    this.getMonitorRealtimeData();
+    let me = this;
+    this.timer = setInterval(me.getMonitorRealtimeData, 60 * 1000);
   },
   beforeDestroy() {
     clearInterval(this.timer);
   },
   methods: {
-    async getRealtimeData() {
-      const ret = await axios.get('/MonitorTypeStatusList');
+    ...mapActions('monitorTypes', ['fetchMonitorTypes']),
+    ...mapActions('monitors', ['fetchMonitors']),
+    async getMonitorRealtimeData() {
+      const ret = await axios.get('/LatestMonitorData');
       this.items.splice(0, this.items.length);
       this.items = ret.data;
     },
   },
-};
+});
 </script>
-
-<style></style>
