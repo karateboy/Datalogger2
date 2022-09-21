@@ -12,6 +12,7 @@ import play.api._
 import play.api.libs.json.{JsError, Json}
 
 import java.io.BufferedReader
+import scala.concurrent.duration.{FiniteDuration, MINUTES}
 
 case class GpsParam(lat: Option[Double], lon: Option[Double], radius: Option[Double], enableAlert: Option[Boolean])
 
@@ -53,6 +54,7 @@ object GpsCollector extends DriverOps {
     def apply(id: String, protocolParam: ProtocolParam, gpsParam: GpsParam): Actor
   }
 
+  case object OpenCom
 }
 
 import net.sf.marineapi.nmea.event.{SentenceEvent, SentenceListener}
@@ -87,22 +89,32 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
   val mtPOS_IN_THE_RANGE = monitorTypeDB.signalType(POS_IN_THE_RANGE, "位置在範圍內")
   monitorTypeDB.ensure(mtPOS_IN_THE_RANGE)
 
-  val comm: SerialComm =
-    SerialComm.open(protocolParam.comPort.get, protocolParam.speed.getOrElse(SerialPort.BAUDRATE_9600))
+  var comm: SerialComm = _
   var reader: SentenceReader = _
   var buffer: Option[BufferedReader] = None
   var timer: Option[Cancellable] = None
   @volatile var lastPositionOpt: Option[Position] = None
 
-  init
   @volatile var lastTimeOpt: Option[Long] = None
 
   def receive = handler(MonitorStatus.NormalStat)
 
+  self ! OpenCom
+
   def handler(collectorState: String): Receive = {
+    case OpenCom =>
+      try{
+        comm = SerialComm.open(protocolParam.comPort.get,
+          protocolParam.speed.getOrElse(SerialPort.BAUDRATE_9600))
+        init()
+      } catch {
+        case _ :Throwable =>
+          import context.dispatcher
+          Logger.error(s"failed to open ${protocolParam.comPort.get}")
+          context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, OpenCom)
+      }
     case SetState(id, state) =>
       Logger.warn(s"Ignore $self => $state")
-
   }
 
   def init() {
