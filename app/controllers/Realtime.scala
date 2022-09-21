@@ -108,13 +108,21 @@ class Realtime @Inject()
     }
   }
 
+  case class LatestMonitorData(monitorTypes:Seq[String], monitorData:Seq[RecordList])
 def getLatestMonitorData() = Security.Authenticated.async {
+    implicit val writes = Json.writes[LatestMonitorData]
     val retListF = Future.sequence(for(monitor<-monitorDB.mvList) yield
       recordDB.getLatestMonitorRecordAsync(recordDB.MinCollection)(monitor))
 
     for(retList<-retListF) yield {
-      val ret = retList.flatten
-      Ok(Json.toJson(ret))
+      val monitorRecordList = retList.flatten
+      import scala.collection.mutable.Set
+      val monitorTypeSet = Set.empty[String]
+      monitorRecordList.foreach(recordList=>
+        recordList.mtDataList.foreach(mtRecord=>
+          monitorTypeSet.add(mtRecord.mtName)))
+      val monitorTypes = monitorTypeSet.toList.sortBy(mt=>monitorTypeOp.map(mt).order)
+      Ok(Json.toJson(LatestMonitorData(monitorTypes, monitorRecordList)))
     }
   }
 }

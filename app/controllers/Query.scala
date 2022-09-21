@@ -640,16 +640,6 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
         Ok(Json.toJson(recordList))
   }
 
-  def calibrationReport(startNum: Long, endNum: Long) = Security.Authenticated {
-    import calibrationOp.jsonWrites
-    val (start, end) = (new DateTime(startNum), new DateTime(endNum))
-    val report: Seq[Calibration] = calibrationOp.calibrationReport(start, end)
-    val jsonReport = report map {
-      _.toJSON
-    }
-    Ok(Json.toJson(jsonReport))
-  }
-
   def alarmReport(level: Int, startNum: Long, endNum: Long) = Security.Authenticated.async {
     implicit val write = Json.writes[Alarm2JSON]
     val (start, end) = (new DateTime(startNum), new DateTime(endNum))
@@ -807,8 +797,29 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
               })
         }
       }
+  }
 
-
+  def monitorCalibrationRecords(monitorStr:String, start: Long, end: Long, outputTypeStr: String) = Action.async {
+    implicit request =>
+      val monitors = monitorStr.split(":").toList
+      val startTime = new DateTime(start)
+      val endTime = new DateTime(end)
+      val outputType = OutputType.withName(outputTypeStr)
+      val recordListF = calibrationOp.calibrationReportFuture(startTime, endTime)
+      implicit val w = Json.writes[Calibration]
+      for (records <- recordListF) yield {
+        outputType match {
+          case OutputType.html =>
+            Ok(Json.toJson(records))
+          case OutputType.excel =>
+            val excelFile = excelUtility.calibrationReport(startTime, endTime, records)
+            Ok.sendFile(excelFile, fileName = _ =>
+              s"校正紀錄.xlsx",
+              onClose = () => {
+                Files.deleteIfExists(excelFile.toPath())
+              })
+        }
+      }
   }
 
   def windRoseReport(monitor: String, monitorType: String, tabTypeStr: String, nWay: Int, start: Long, end: Long) = Security.Authenticated.async {

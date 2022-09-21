@@ -27,7 +27,7 @@ const router = new VueRouter({
     {
       path: '/realtime-data',
       name: 'realtime-data',
-      component: () => import('@/views/RealtimeData.vue'),
+      component: () => import('@/views/MonitorRealtimeData.vue'),
       meta: {
         pageTitle: '即時資料',
         breadcrumb: [
@@ -95,7 +95,7 @@ const router = new VueRouter({
     {
       path: '/calibration-query',
       name: 'calibration-query',
-      component: () => import('@/views/CalibrationQuery.vue'),
+      component: () => import('@/views/MonitorCalibrationQuery.vue'),
       meta: {
         pageTitle: '校正查詢',
         breadcrumb: [

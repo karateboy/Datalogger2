@@ -73,13 +73,10 @@ trait CalibrationDB {
   implicit val writes = Json.writes[Calibration]
   implicit val jsonWrites = Json.writes[CalibrationJSON]
 
-  def calibrationReport(start: DateTime, end: DateTime): Seq[Calibration]
-
   def calibrationReportFuture(start: DateTime, end: DateTime): Future[Seq[Calibration]]
 
+  def monitorCalibrationReport(monitors:Seq[String], start:Date, end:Date) :Future[Seq[Calibration]]
   def calibrationReportFuture(start: DateTime): Future[Seq[Calibration]]
-
-  def calibrationReport(mt: String, start: DateTime, end: DateTime): Seq[Calibration]
 
   def getCalibrationMap(startDate: DateTime, endDate: DateTime)
                        (implicit monitorTypeOp: MonitorTypeDB): Future[Map[String, List[(DateTime, Calibration)]]] = {

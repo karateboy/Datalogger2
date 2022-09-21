@@ -33,8 +33,6 @@ GET      /ScatterChart/:monitor/:monitorType/:tabType/:statusFilter/:start/:end 
 
 GET      /HistoryReport/:monitor/:monitorType/:tabType/:start/:end                controllers.Query.historyData(monitor, monitorType, tabType, start: Long, end: Long)
 
-GET      /CalibrationReport/:start/:end                                           controllers.Query.calibrationReport(start:Long, end:Long)
-
 GET      /AlarmReport/:level/:start/:end                                          controllers.Query.alarmReport(level:Int, start:Long, end:Long)
 GET      /Alarms/:src/:level/:start/:end                                          controllers.Query.getAlarms(src, level:Int, start:Long, end:Long)
 
@@ -111,6 +109,8 @@ GET      /HourRecord/:start/:end                controllers.Query.hourRecordList
 GET      /MinRecord/:start/:end                 controllers.Query.minRecordList(start:Long, end:Long)
 GET      /CalibrationRecord/:start/:end         controllers.Query.calibrationRecordList(start:Long, end:Long, outputTypeStr="html")
 GET      /Excel/CalibrationRecord/:start/:end   controllers.Query.calibrationRecordList(start:Long, end:Long, outputTypeStr="excel")
+GET      /MonitorCalibrationRecord/:monitor/:start/:end     controllers.Query.monitorCalibrationRecords(monitor, start:Long, end:Long, outputTypeStr="html")
+GET      /Excel/MonitorCalibrationRecord/:monitor/:start/:end   controllers.Query.monitorCalibrationRecords(monitor, start:Long, end:Long, outputTypeStr="excel")
 
 GET      /ProbeDuoMonitorTypes                      controllers.HomeController.probeDuoMonitorTypes(host)
 POST     /ConfigDuoMonitorTypes/:host               controllers.HomeController.configureDuoMonitorTypes(host)

@@ -5,6 +5,7 @@ import com.github.nscala_time.time.Imports
 import models.{Calibration, CalibrationDB}
 import scalikejdbc._
 
+import java.util.Date
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -15,20 +16,16 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
 
   override def calibrationReportFuture(start: Imports.DateTime, end: Imports.DateTime): Future[Seq[Calibration]] =
     Future {
-      calibrationReport(start, end)
+      implicit val session: DBSession = ReadOnlyAutoSession
+      sql"""
+           Select *
+           From calibration
+           Where startTime >= ${start.toDate} and startTime < ${end.toDate}
+           Order by startTime
+           """.map(mapper).list().apply()
     }
 
   init()
-
-  override def calibrationReport(start: Imports.DateTime, end: Imports.DateTime): Seq[Calibration] = {
-    implicit val session: DBSession = ReadOnlyAutoSession
-    sql"""
-         Select *
-         From calibration
-         Where startTime >= ${start.toDate} and startTime < ${end.toDate}
-         Order by startTime
-         """.map(mapper).list().apply()
-  }
 
   override def calibrationReportFuture(start: Imports.DateTime): Future[Seq[Calibration]] =
     Future {
@@ -48,16 +45,6 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
     rs.doubleOpt("span_std"),
     rs.doubleOpt("span_val"),
     rs.string("monitor"))
-
-  override def calibrationReport(mt: String, start: Imports.DateTime, end: Imports.DateTime): Seq[Calibration] = {
-    implicit val session: DBSession = ReadOnlyAutoSession
-    sql"""
-         Select *
-         From calibration
-         Where startTime >= ${start.toDate} and startTime < ${end.toDate} and monitorType = $mt
-         Order by startTime
-         """.map(mapper).list().apply()
-  }
 
   override def insertFuture(cal: Calibration): Unit = {
     implicit val session: DBSession = AutoSession
@@ -106,4 +93,6 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
 
   override def getLatestMonitorRecordTimeAsync(monitor: String): Future[Option[time.Imports.DateTime]] =
     sqlServer.getLatestMonitorRecordTimeAsync(tabName, monitor, "startTime")
+
+  override def monitorCalibrationReport(monitors: Seq[String], start: Date, end: Date): Future[Seq[Calibration]] = ???
 }

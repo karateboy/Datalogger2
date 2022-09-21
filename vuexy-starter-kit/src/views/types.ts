@@ -49,16 +49,14 @@ export interface MonitorType {
   order: number;
   signalType: boolean;
   std_law?: number;
-  std_internal?: number;
-  zd_internal?: number;
   zd_law?: number;
   span?: number;
-  span_dev_internal?: number;
   span_dev_law?: number;
   measuringBy?: Array<string>;
   acoustic?: boolean;
   spectrum?: boolean;
   levels?: Array<number>;
+  calibrate?: boolean;
   accumulated?: boolean;
   fixedM?: number;
   fixedB?: number;

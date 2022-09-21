@@ -97,7 +97,7 @@ export default Vue.extend({
           this.supportedMonitorTypes = res.data;
         }
       } catch (err) {
-        throw new Error(err);
+        throw new Error(`${err}`);
       }
     },
     onSelected(items: Array<DuoMonitorType>) {
@@ -116,7 +116,7 @@ export default Vue.extend({
         const res = await axios.post(url, this.config.monitorTypes);
         if (res.status !== 200) this.$bvModal.msgBoxOk('無法設定Duo');
       } catch (err) {
-        throw new Error(err);
+        throw new Error(`${err}`);
       }
     },
   },

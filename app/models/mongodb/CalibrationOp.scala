@@ -7,6 +7,7 @@ import models.ModelHelper._
 import models._
 import org.mongodb.scala.model._
 
+import java.util.Date
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -24,14 +25,6 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
   import org.mongodb.scala._
   import org.mongodb.scala.model.Indexes._
 
-  override def calibrationReport(start: DateTime, end: DateTime): Seq[Calibration] = {
-    import org.mongodb.scala.model.Filters._
-    import org.mongodb.scala.model.Sorts._
-
-    val f = collection.find(and(gte("startTime", start.toDate()), lt("startTime", end.toDate()))).sort(ascending("startTime")).toFuture()
-    waitReadyResult(f)
-  }
-
   init
 
 
@@ -47,14 +40,6 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
     import org.mongodb.scala.model.Sorts._
 
     collection.find(gte("startTime", start.toDate())).sort(ascending("startTime")).toFuture()
-  }
-
-  override def calibrationReport(mt: String, start: DateTime, end: DateTime): Seq[Calibration] = {
-    import org.mongodb.scala.model.Filters._
-    import org.mongodb.scala.model.Sorts._
-
-    val f = collection.find(and(equal("monitorType", mt), gte("startTime", start.toDate()), lt("startTime", end.toDate()))).sort(ascending("startTime")).toFuture()
-    waitReadyResult(f)
   }
 
   override def insertFuture(cal: Calibration) = {
@@ -85,4 +70,6 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
       else
         Some(new DateTime(ret(0).startTime))
   }
+
+  override def monitorCalibrationReport(monitors: Seq[String], start: Date, end: Date): Future[Seq[Calibration]] = ???
 }
