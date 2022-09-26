@@ -288,10 +288,15 @@ object DataCollectManager {
           }
         }
 
-        val roundedAvg =
-          for (avg <- avgOpt) yield
-            BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
-        (roundedAvg, statusKV._1)
+        try{
+          val roundedAvg =
+            for (avg <- avgOpt) yield
+              BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
+          (roundedAvg, statusKV._1)
+        }catch {
+          case _:Throwable =>
+            (None, statusKV._1)
+        }
       }
 
       MtRecord(mt, minuteAvg._1, minuteAvg._2)
