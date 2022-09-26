@@ -641,25 +641,25 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
   }
 
   def alarmReport(level: Int, startNum: Long, endNum: Long) = Security.Authenticated.async {
-    implicit val write = Json.writes[Alarm2JSON]
+    implicit val write = Json.writes[Alarm]
     val (start, end) = (new DateTime(startNum), new DateTime(endNum))
     for (report <- alarmOp.getAlarmsFuture(level, start, end + 1.day)) yield {
-      val jsonReport = report map {
-        _.toJson
-      }
-      Ok(Json.toJson(jsonReport))
+      Ok(Json.toJson(report))
     }
   }
 
-  def getAlarms(src: String, level: Int, startNum: Long, endNum: Long) = Security.Authenticated.async {
-    implicit val write = Json.writes[Alarm2JSON]
+  def monitorAlarmReport(monitorStr:String, level: Int, startNum: Long, endNum: Long) = Security.Authenticated.async {
+    val monitors = monitorStr.split(":").toList
+    implicit val write = Json.writes[Alarm]
     val (start, end) = (new DateTime(startNum), new DateTime(endNum))
-    for (report <- alarmOp.getAlarmsFuture(src, level, start, end + 1.day)) yield {
-      val jsonReport = report map {
-        _.toJson
-      }
-      Ok(Json.toJson(jsonReport))
-    }
+    for (report <- alarmOp.getAlarmsFuture(level, start, end + 1.day)) yield
+      Ok(Json.toJson(report))
+  }
+  def getAlarms(src: String, level: Int, startNum: Long, endNum: Long) = Security.Authenticated.async {
+    implicit val write = Json.writes[Alarm]
+    val (start, end) = (new DateTime(startNum), new DateTime(endNum))
+    for (report <- alarmOp.getAlarmsFuture(src, level, start, end + 1.day)) yield
+      Ok(Json.toJson(report))
   }
 
   def instrumentStatusReport(id: String, startNum: Long, endNum: Long) = Security.Authenticated {
@@ -836,7 +836,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
             recordOp.MinCollection
         }
         val f = recordOp.getWindRose(colName)(monitor, monitorType, new DateTime(start), new DateTime(end), levels.toList, nWay)
-        f onFailure (errorHandler)
+        f onFailure errorHandler
         for (windMap <- f) yield {
           assert(windMap.nonEmpty)
 

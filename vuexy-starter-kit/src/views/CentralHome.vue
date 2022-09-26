@@ -1,5 +1,17 @@
 <template>
   <b-row class="match-height">
+    <b-col
+      v-for="mt in userInfo.monitorTypeOfInterest"
+      :key="mt"
+      cols="12"
+      md="6"
+      lg="4"
+      xl="3"
+    >
+      <b-card border-variant="primary">
+        <div :id="`history_${mt}`"></div>
+      </b-card>
+    </b-col>
     <b-col v-for="data in aisData" :key="data.monitor" cols="12">
       <b-card border-variant="primary" :title="getAisTitle(data)">
         <div class="map_container">
@@ -16,21 +28,9 @@
               :position="m.position"
               :clickable="true"
               :title="m.MMSI"
-            />
+            /><font-awesome-icon icon="fa-solid fa-user-secret" />
           </GmapMap>
         </div>
-      </b-card>
-    </b-col>
-    <b-col
-      v-for="mt in userInfo.monitorTypeOfInterest"
-      :key="mt"
-      cols="12"
-      md="6"
-      lg="4"
-      xl="3"
-    >
-      <b-card border-variant="primary">
-        <div :id="`history_${mt}`"></div>
       </b-card>
     </b-col>
   </b-row>
@@ -39,7 +39,7 @@
 import Vue from 'vue';
 import { mapActions, mapGetters, mapState } from 'vuex';
 import axios from 'axios';
-import { MonitorType, MonitorTypeStatus, CdxConfig } from './types';
+import { MonitorType } from './types';
 import highcharts from 'highcharts';
 import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
@@ -117,7 +117,7 @@ export default Vue.extend({
     async query(mt: string) {
       const now = new Date().getTime();
       const oneHourBefore = now - 60 * 60 * 1000;
-      const monitors = 'me';
+      const monitors = this.monitors.map(m => m._id).join(':');
       const url = `/HistoryTrend/${monitors}/${mt}/Min/all/${oneHourBefore}/${now}`;
       const res = await axios.get(url);
       const ret: highcharts.Options = res.data;
@@ -133,7 +133,7 @@ export default Vue.extend({
       };
 
       let mtInfo = this.mtMap.get(mt) as MonitorType;
-      ret.title!.text = `${mtInfo.desp}測站比較圖`;
+      ret.title!.text = `${mtInfo.desp}趨勢圖`;
 
       ret.colors = [
         '#7CB5EC',

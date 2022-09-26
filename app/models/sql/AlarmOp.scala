@@ -8,7 +8,7 @@ import models.{Alarm, AlarmDB, Monitor}
 import scalikejdbc._
 
 import java.time.Instant
-import java.time.temporal.{ChronoUnit, TemporalAmount}
+import java.time.temporal.ChronoUnit
 import java.util.Date
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -124,5 +124,16 @@ class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
     }
     val sum = ret.sum
     UpdateResult.acknowledged(sum, sum,null)
+  }
+
+  override def getMonitorAlarmsFuture(monitors: Seq[String], start: Date, end: Date): Future[Seq[Alarm]] = Future {
+    implicit val session: DBSession = ReadOnlyAutoSession
+    val monitorInClause = SQLSyntax.in(SQLSyntax.createUnsafely("monitor"), monitors)
+      sql"""
+          SELECT *
+          FROM [dbo].[alarms]
+          Where time >= ${start} and time < ${end} and $monitorInClause
+          Order by time desc
+         """.map(mapper).list().apply()
   }
 }

@@ -334,7 +334,10 @@ export default Vue.extend({
     },
   },
   async mounted() {
+    await this.fetchMonitors();
     await this.fetchMonitorTypes();
+    if (this.monitors.length !== 0)
+      this.form.monitors.push(this.monitors[0]._id);
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
@@ -345,8 +348,7 @@ export default Vue.extend({
         const monitors = this.form.monitors.join(':');
         const url = `/MonitorCalibrationRecord/${monitors}/${this.form.range[0]}/${this.form.range[1]}`;
         const res = await axios.get(url);
-        const ret = res.data;
-        this.rows = ret;
+        this.rows = res.data;
       } catch (err) {
         throw new Error('failed');
       } finally {
@@ -390,7 +392,7 @@ export default Vue.extend({
     },
     selectAllMonitors() {
       this.form.monitors = [];
-      for (let m of this.monitors) this.form.monitors.push(m);
+      for (let m of this.monitors) this.form.monitors.push(m._id);
     },
   },
 });

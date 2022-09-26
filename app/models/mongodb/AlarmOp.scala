@@ -114,4 +114,11 @@ class AlarmOp @Inject()(mongodb: MongoDB) extends AlarmDB {
   override def insertAlarms(alarms: Seq[Alarm]): Future[UpdateResult] =
     for(ret<-collection.insertMany(alarms).toFuture()) yield
       UpdateResult.acknowledged(alarms.length, alarms.length, null)
+
+  override def getMonitorAlarmsFuture(monitors: Seq[String], start: Date, end: Date): Future[Seq[Alarm]] = {
+    val filter = Filters.and(Filters.in("monitor", monitors:_*),
+      Filters.gt("time", start), Filters.lt("time", end))
+
+    collection.find(filter).toFuture()
+  }
 }

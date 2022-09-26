@@ -16,7 +16,6 @@ case class Alarm(time: Date, src: String, level: Int, desc: String, monitor:Stri
 }
 
 
-
 trait AlarmDB {
 
   def src(mt: String) = s"T:$mt"
@@ -30,6 +29,8 @@ trait AlarmDB {
   def srcCDX() = "S:CDX"
 
   def getAlarmsFuture(level: Int, start: Imports.DateTime, end: Imports.DateTime): Future[Seq[Alarm]]
+
+  def getMonitorAlarmsFuture(monitors:Seq[String], start: Date, end: Date): Future[Seq[Alarm]]
 
   def getAlarmsFuture(src:String, level: Int, start: Imports.DateTime, end: Imports.DateTime): Future[Seq[Alarm]]
 
