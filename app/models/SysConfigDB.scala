@@ -4,6 +4,7 @@ import models.CdxUploader.{CdxConfig, CdxMonitorType}
 import org.mongodb.scala.result.UpdateResult
 
 import java.time.Instant
+import java.util.Date
 import scala.concurrent.Future
 
 trait SysConfigDB {
@@ -20,6 +21,7 @@ trait SysConfigDB {
   val ALARM_UPGRADED = "AlarmUpgraded"
   val CALIBRATION_UPGRADED = "CalibrationUpgraded"
   val INSTRUMENT_STATUS_UPGRADED = "InstrumentStatusUpgraded"
+  val EPA_LAST_RECORD_TIME = "EPA_Last_Record_Time"
 
   def getSpectrumLastParseTime(): Future[Instant]
 
@@ -63,4 +65,8 @@ trait SysConfigDB {
   def getInstrumentStatusUpgraded(): Future[Boolean]
 
   def setInstrumentStatusUpgraded(v: Boolean): Future[UpdateResult]
+
+  def getEpaLastRecordTime() : Future[Date]
+
+  def setEpaLastRecordTime(v:Date) : Future[UpdateResult]
 }

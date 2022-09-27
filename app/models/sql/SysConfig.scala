@@ -8,6 +8,7 @@ import scalikejdbc._
 
 import java.sql.Blob
 import java.time.Instant
+import java.util.Date
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -182,6 +183,19 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
     UpdateResult.acknowledged(ret, ret, null)
   }
 
+  private def getDate(key: String, defaultValue: Date): Future[Date] = Future {
+    val valueOpt = get(key)
+    val ret: Option[Date] =
+      for (value <- valueOpt) yield Date.from(Instant.ofEpochMilli(value.v.toLong))
+    ret.getOrElse(defaultValue)
+  }
+
+  private def setDate(key: String)(v: Date): Future[UpdateResult] = Future {
+    val ret = set(key, v.getTime.toString)
+    UpdateResult.acknowledged(ret, ret, null)
+  }
+
+  private def setDate
   override def getAlarmUpgraded(): Future[Boolean] = getBoolean(ALARM_UPGRADED, false)
 
   override def setAlarmUpgraded(v: Boolean): Future[UpdateResult] = setBoolean(ALARM_UPGRADED)(v)
@@ -193,4 +207,9 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
   override def getInstrumentStatusUpgraded(): Future[Boolean] = getBoolean(INSTRUMENT_STATUS_UPGRADED, false)
 
   override def setInstrumentStatusUpgraded(v: Boolean): Future[UpdateResult] = setBoolean(INSTRUMENT_STATUS_UPGRADED)(v)
+
+  override def getEpaLastRecordTime(): Future[Date] =
+    getDate(EPA_LAST_RECORD_TIME, Date.from(Instant.ofEpochMilli(0)))
+
+  override def setEpaLastRecordTime(v: Date): Future[UpdateResult] = setDate(EPA_LAST_RECORD_TIME)(v)
 }

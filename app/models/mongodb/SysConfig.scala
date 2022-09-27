@@ -151,4 +151,9 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
   override def getInstrumentStatusUpgraded(): Future[Boolean] = get(INSTRUMENT_STATUS_UPGRADED).map(_.asBoolean().getValue)
 
   override def setInstrumentStatusUpgraded(v: Boolean): Future[UpdateResult] = set(INSTRUMENT_STATUS_UPGRADED, BsonBoolean(v))
+
+  override def getEpaLastRecordTime(): Future[Date] = get(EPA_LAST_RECORD_TIME)
+    .map(v=>Date.from(Instant.ofEpochMilli(v.asDateTime().getValue)))
+
+  override def setEpaLastRecordTime(v: Date): Future[UpdateResult] = set(EPA_LAST_RECORD_TIME, BsonDateTime(v))
 }
