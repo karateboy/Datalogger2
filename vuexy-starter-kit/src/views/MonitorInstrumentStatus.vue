@@ -19,8 +19,7 @@
               <v-select
                 id="instrument"
                 v-model="form.instrument"
-                label="_id"
-                :reduce="inst => inst._id"
+                :reduce="inst => inst"
                 :options="instruments"
               />
             </b-form-group>
@@ -53,6 +52,7 @@
               type="submit"
               variant="primary"
               class="mr-1"
+              :disabled="!canQuery"
               @click="query"
             >
               查詢
@@ -89,6 +89,8 @@
           :current-page="currentPage"
           bordered
           sticky-header="800px"
+          empty-text="沒有資料"
+          small
         >
           <template #custom-foot>
             <b-tr v-for="stat in statRows" :key="stat.name">
@@ -157,10 +159,14 @@ export default Vue.extend({
     ...mapState('monitors', ['monitors']),
     ...mapGetters('monitors', ['mMap']),
     ...mapGetters('monitorTypes', ['mtMap']),
+    canQuery(): boolean {
+      if (this.form.monitor && this.form.instrument) return true;
+
+      return false;
+    },
   },
   watch: {
     'form.monitor': async function (newOne: string, oldOne: string) {
-      console.info(`${oldOne} => ${newOne}`);
       await this.getMonitorInstruments();
     },
   },
@@ -179,10 +185,9 @@ export default Vue.extend({
         if (res.status === 200) {
           const ret = res.data;
           this.instruments = ret;
-          console.log(ret);
           if (this.instruments.length !== 0) {
-            this.form.instrument = this.instruments[0]._id;
-          }
+            this.form.instrument = this.instruments[0];
+          } else this.form.instrument = '';
         }
       } catch (err) {
         console.error(`$err`);
@@ -190,9 +195,16 @@ export default Vue.extend({
     },
     async query() {
       this.display = true;
-      const url = `/MonitorInstrumentStatusReport/${this.form.monitor}/${this.form.instrument}/${this.form.range[0]}/${this.form.range[1]}`;
-      const res = await axios.get(url);
-      this.handleReport(res.data);
+      try {
+        this.setLoading({ loading: true });
+        const url = `/MonitorInstrumentStatusReport/${this.form.monitor}/${this.form.instrument}/${this.form.range[0]}/${this.form.range[1]}`;
+        const res = await axios.get(url);
+        this.handleReport(res.data);
+      } catch (err) {
+        console.error(`${err}`);
+      } finally {
+        this.setLoading({ loading: false });
+      }
     },
     handleReport(report: any) {
       this.columns.splice(0, this.columns.length);

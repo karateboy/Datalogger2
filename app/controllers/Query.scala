@@ -53,6 +53,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
                       instrumentStatusOp: InstrumentStatusDB, instrumentOp: InstrumentDB,
                       alarmOp: AlarmDB, calibrationOp: CalibrationDB,
                       manualAuditLogOp: ManualAuditLogDB, excelUtility: ExcelUtility,
+                      instrumentStatusTypeDB: InstrumentStatusTypeDB,
                       configuration: Configuration) extends Controller {
 
   implicit val cdWrite = Json.writes[CellData]
@@ -159,7 +160,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
   import models.ModelHelper._
 
   def scatterChart(monitorStr: String, monitorTypeStr: String, tabTypeStr: String, statusFilterStr: String,
-                                 startNum: Long, endNum: Long) = Security.Authenticated.async {
+                   startNum: Long, endNum: Long) = Security.Authenticated.async {
     implicit request =>
       val monitors = monitorStr.split(':')
       val monitorTypeStrArray = monitorTypeStr.split(':')
@@ -176,8 +177,8 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
 
       assert(monitorTypes.length == 2)
 
-      for(chart <- compareChartHelper(monitors, monitorTypes, tabType, start, end)(statusFilter)) yield
-          Results.Ok(Json.toJson(chart))
+      for (chart <- compareChartHelper(monitors, monitorTypes, tabType, start, end)(statusFilter)) yield
+        Results.Ok(Json.toJson(chart))
   }
 
 
@@ -528,9 +529,9 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     val mt1 = monitorTypeOp.map(monitorTypes(0))
     val mt2 = monitorTypeOp.map(monitorTypes(1))
 
-    for(series<-getSeriesFuture()) yield
-      ScatterChart(Map("type"->"scatter", "zoomType"->"xy"),
-        Map("text"-> title),
+    for (series <- getSeriesFuture()) yield
+      ScatterChart(Map("type" -> "scatter", "zoomType" -> "xy"),
+        Map("text" -> title),
         ScatterAxis(Title(true, s"${mt1.desp}(${mt1.unit})"), getAxisLines(monitorTypes(0))),
         ScatterAxis(Title(true, s"${mt2.desp}(${mt2.unit})"), getAxisLines(monitorTypes(1))),
         series, Some(downloadFileName))
@@ -648,13 +649,14 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     }
   }
 
-  def monitorAlarmReport(monitorStr:String, level: Int, startNum: Long, endNum: Long) = Security.Authenticated.async {
+  def monitorAlarmReport(monitorStr: String, level: Int, startNum: Long, endNum: Long) = Security.Authenticated.async {
     val monitors = monitorStr.split(":").toList
     implicit val write = Json.writes[Alarm]
     val (start, end) = (new DateTime(startNum), new DateTime(endNum))
     for (report <- alarmOp.getAlarmsFuture(level, start, end + 1.day)) yield
       Ok(Json.toJson(report))
   }
+
   def getAlarms(src: String, level: Int, startNum: Long, endNum: Long) = Security.Authenticated.async {
     implicit val write = Json.writes[Alarm]
     val (start, end) = (new DateTime(startNum), new DateTime(endNum))
@@ -664,90 +666,94 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
 
   def instrumentStatusReport(id: String, startNum: Long, endNum: Long) =
     Security.Authenticated.async {
-    val (start, end) = (new DateTime(startNum).withMillisOfDay(0),
-      new DateTime(endNum).withMillisOfDay(0))
+      val (start, end) = (new DateTime(startNum).withMillisOfDay(0),
+        new DateTime(endNum).withMillisOfDay(0))
 
-    for(report <- instrumentStatusOp.queryAsync(id, start, end + 1.day)) yield {
-      val keyList: Seq[String] = if (report.isEmpty)
-        List.empty[String]
-      else
-        report.map {
-          _.statusList
-        }.maxBy {
-          _.length
-        }.map {
-          _.key
+      for (report <- instrumentStatusOp.queryAsync(id, start, end + 1.day)) yield {
+        val keyList: Seq[String] = if (report.isEmpty)
+          List.empty[String]
+        else
+          report.map {
+            _.statusList
+          }.maxBy {
+            _.length
+          }.map {
+            _.key
+          }
+
+        val reportMap = for {
+          record <- report
+          time = record.time
+        } yield {
+          (time, record.statusList.map { s => (s.key -> s.value) }.toMap)
         }
 
-      val reportMap = for {
-        record <- report
-        time = record.time
-      } yield {
-        (time, record.statusList.map { s => (s.key -> s.value) }.toMap)
-      }
+        val statusTypeMap = instrumentOp.getStatusTypeMap(id)
 
-      val statusTypeMap = instrumentOp.getStatusTypeMap(id)
-
-      val columnNames: Seq[String] = keyList.map(statusTypeMap).map(_.desc)
-      val rows = for (report <- reportMap) yield {
-        val cellData = for (key <- keyList) yield {
-          val instrumentStatusType = statusTypeMap(key)
-          if (report._2.contains(key))
-            CellData(instrumentStatusOp.formatValue(report._2(key), instrumentStatusType.prec.getOrElse(2)), Seq.empty[String])
-          else
-            CellData("-", Seq.empty[String])
+        val columnNames: Seq[String] = keyList.map(statusTypeMap).map(_.desc)
+        val rows = for (report <- reportMap) yield {
+          val cellData = for (key <- keyList) yield {
+            val instrumentStatusType = statusTypeMap(key)
+            if (report._2.contains(key))
+              CellData(instrumentStatusOp.formatValue(report._2(key), instrumentStatusType.prec.getOrElse(2)), Seq.empty[String])
+            else
+              CellData("-", Seq.empty[String])
+          }
+          RowData(report._1.getTime, cellData)
         }
-        RowData(report._1.getTime, cellData)
-      }
 
-      implicit val write = Json.writes[InstrumentReport]
-      Ok(Json.toJson(InstrumentReport(columnNames, rows)))
+        implicit val write = Json.writes[InstrumentReport]
+        Ok(Json.toJson(InstrumentReport(columnNames, rows)))
+      }
     }
-  }
 
 
-  def monitorInstrumentStatusReport(monitor:String, id: String, startNum: Long, endNum: Long) =
+  //This is for central server
+  def monitorInstrumentStatusReport(monitor: String, id: String, startNum: Long, endNum: Long) =
     Security.Authenticated.async {
-    val (start, end) = (new DateTime(startNum).withMillisOfDay(0),
-      new DateTime(endNum).withMillisOfDay(0))
+      val (start, end) = (new DateTime(startNum).withMillisOfDay(0),
+        new DateTime(endNum).withMillisOfDay(0))
 
-    for(report <- instrumentStatusOp.queryMonitorAsync(monitor, id, start, end + 1.day)) yield {
-      val keyList: Seq[String] = if (report.isEmpty)
-        List.empty[String]
-      else
-        report.map {
-          _.statusList
-        }.maxBy {
-          _.length
-        }.map {
-          _.key
+
+      for {report <- instrumentStatusOp.queryMonitorAsync(monitor, id, start, end + 1.day)
+           statusTypeList <- instrumentStatusTypeDB.getAllInstrumentStatusTypeListAsync(monitor)
+           } yield {
+        val keyList: Seq[String] = if (report.isEmpty)
+          List.empty[String]
+        else
+          report.map {
+            _.statusList
+          }.maxBy {
+            _.length
+          }.map {
+            _.key
+          }
+
+        val reportMap = for {
+          record <- report
+          time = record.time
+        } yield {
+          (time, record.statusList.map { s => (s.key -> s.value) }.toMap)
         }
 
-      val reportMap = for {
-        record <- report
-        time = record.time
-      } yield {
-        (time, record.statusList.map { s => (s.key -> s.value) }.toMap)
-      }
-
-      val statusTypeMap = instrumentOp.getStatusTypeMap(id)
-
-      val columnNames: Seq[String] = keyList.map(statusTypeMap).map(_.desc)
-      val rows = for (report <- reportMap) yield {
-        val cellData = for (key <- keyList) yield {
-          val instrumentStatusType = statusTypeMap(key)
-          if (report._2.contains(key))
-            CellData(instrumentStatusOp.formatValue(report._2(key), instrumentStatusType.prec.getOrElse(2)), Seq.empty[String])
-          else
-            CellData("-", Seq.empty[String])
+        val instrumentStatusTypeMap = statusTypeList.find(istMap => istMap.instrumentId == id).get
+        val statusTypeMap = instrumentStatusTypeMap.statusTypeSeq.map(pair => pair.key -> pair).toMap
+        val columnNames: Seq[String] = keyList.map(statusTypeMap).map(_.desc)
+        val rows = for (report <- reportMap) yield {
+          val cellData = for (key <- keyList) yield {
+            val instrumentStatusType = statusTypeMap(key)
+            if (report._2.contains(key))
+              CellData(instrumentStatusOp.formatValue(report._2(key), instrumentStatusType.prec.getOrElse(2)), Seq.empty[String])
+            else
+              CellData("-", Seq.empty[String])
+          }
+          RowData(report._1.getTime, cellData)
         }
-        RowData(report._1.getTime, cellData)
-      }
 
-      implicit val write = Json.writes[InstrumentReport]
-      Ok(Json.toJson(InstrumentReport(columnNames, rows)))
+        implicit val write = Json.writes[InstrumentReport]
+        Ok(Json.toJson(InstrumentReport(columnNames, rows)))
+      }
     }
-  }
 
   implicit val write = Json.writes[InstrumentReport]
 
@@ -845,7 +851,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
       }
   }
 
-  def monitorCalibrationRecords(monitorStr:String, start: Long, end: Long, outputTypeStr: String) = Action.async {
+  def monitorCalibrationRecords(monitorStr: String, start: Long, end: Long, outputTypeStr: String) = Action.async {
     implicit request =>
       val monitors = monitorStr.split(":").toList
       val startTime = new DateTime(start)

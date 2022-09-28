@@ -88,7 +88,7 @@ class InstrumentStatusOp @Inject()(sqlServer: SqlServer) extends InstrumentStatu
       sql"""
          Select *
          From [dbo].[instrumentStatus]
-         Where [time] >= ${start.toDate} and [time] < ${end.toDate} and [monitor] = $monitor
+         Where [time] >= ${start.toDate} and [time] < ${end.toDate} and [monitor] = $monitor and [instID] = $id
          """.map(mapper).list().apply()
     }
 }
