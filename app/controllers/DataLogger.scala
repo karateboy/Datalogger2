@@ -45,8 +45,8 @@ class DataLogger @Inject()(monitorTypeDB: MonitorTypeDB, monitorOp: MonitorDB, i
       },
         recordLists => {
           monitorOp.ensure(monitor)
-          val monitorTypes = recordLists.map(_.mtMap.keySet).foldLeft(Set.empty[String])((a,b)=>a ++ b)
-          monitorTypes.foreach(mt=>{
+          val monitorTypes = recordLists.map(_.mtMap.keySet).foldLeft(Set.empty[String])((a, b) => a ++ b)
+          monitorTypes.foreach(mt => {
             monitorTypeDB.ensure(mt)
             recordDB.ensureMonitorType(mt)
           })
@@ -159,6 +159,7 @@ class DataLogger @Inject()(monitorTypeDB: MonitorTypeDB, monitorOp: MonitorDB, i
       val instrumentStatusTypeIds = instrumentStatusTypeLists.map { istList =>
         istList.instrumentId + istList.statusTypeSeq.mkString("")
       }.mkString("")
+      Logger.info(s"$monitor=>ist = $instrumentStatusTypeIds")
       Ok(Json.toJson(instrumentStatusTypeIds))
     }
   }

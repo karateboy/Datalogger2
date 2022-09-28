@@ -1,9 +1,12 @@
 package models.mongodb
 
+import com.github.nscala_time.time
 import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import models.InstrumentStatusDB
 import models.ModelHelper.{errorHandler, waitReadyResult}
+import org.mongodb.scala.model.Filters.{and, equal, gte, lt}
+import org.mongodb.scala.model.Sorts.ascending
 import play.api.libs.json._
 
 import javax.inject._
@@ -24,14 +27,13 @@ class InstrumentStatusOp @Inject()(mongodb: MongoDB) extends InstrumentStatusDB 
   lazy private val collection = mongodb.database.getCollection[InstrumentStatus](colName).withCodecRegistry(codecRegistry)
 
   private def init() {
-    import org.mongodb.scala.model.Indexes._
     for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(colName)) {
         val f = mongodb.database.createCollection(colName).toFuture()
         f.onFailure(errorHandler)
         f.onSuccess({
           case _ =>
-            collection.createIndex(ascending("time", "instID"))
+            collection.createIndex(Indexes.ascending("time", "instID"))
         })
       }
     }
@@ -44,13 +46,12 @@ class InstrumentStatusOp @Inject()(mongodb: MongoDB) extends InstrumentStatusDB 
     collection.insertOne(is).toFuture()
   }
 
-  override def query(id: String, start: DateTime, end: DateTime): Seq[InstrumentStatus] = {
+  override def queryAsync(id: String, start: DateTime, end: DateTime): Future[Seq[InstrumentStatus]] = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
-    val f = collection.find(and(equal("instID", id), gte("time", start.toDate()), lt("time", end.toDate())))
+    collection.find(and(equal("instID", id), gte("time", start.toDate()), lt("time", end.toDate())))
       .sort(ascending("time")).toFuture()
-    waitReadyResult(f)
   }
 
   override def queryFuture(start: DateTime, end: DateTime): Future[Seq[InstrumentStatus]] = {
@@ -68,4 +69,11 @@ class InstrumentStatusOp @Inject()(mongodb: MongoDB) extends InstrumentStatusDB 
       else
         Some(new DateTime(ret(0).time))
   }
+
+  override def queryMonitorAsync(monitor: String, id: String, start: time.Imports.DateTime, end: time.Imports.DateTime):
+  Future[Seq[InstrumentStatus]] =
+    collection.find(and(equal("monitor", monitor),
+      equal("instID", id),
+      gte("time", start.toDate()), lt("time", end.toDate())))
+      .sort(ascending("time")).toFuture()
 }

@@ -1,7 +1,6 @@
 package models.sql
 
-import com.github.nscala_time.time
-import com.github.nscala_time.time.Imports
+import com.github.nscala_time.time.Imports._
 import models.InstrumentStatusDB
 import play.api.libs.json.Json
 import scalikejdbc._
@@ -33,7 +32,7 @@ class InstrumentStatusOp @Inject()(sqlServer: SqlServer) extends InstrumentStatu
 
   init()
 
-  override def queryAsync(id: String, start: Imports.DateTime, end: Imports.DateTime) = Future{
+  override def queryAsync(id: String, start: DateTime, end: DateTime): Future[List[InstrumentStatus]] = Future{
     implicit val session: DBSession = ReadOnlyAutoSession
     sql"""
          Select *
@@ -42,7 +41,7 @@ class InstrumentStatusOp @Inject()(sqlServer: SqlServer) extends InstrumentStatu
          """.map(mapper).list().apply()
   }
 
-  override def queryFuture(start: Imports.DateTime, end: Imports.DateTime): Future[Seq[InstrumentStatus]] =
+  override def queryFuture(start: DateTime, end: DateTime): Future[Seq[InstrumentStatus]] =
     Future {
       implicit val session: DBSession = ReadOnlyAutoSession
       sql"""
@@ -79,6 +78,17 @@ class InstrumentStatusOp @Inject()(sqlServer: SqlServer) extends InstrumentStatu
     sqlServer.addMonitorIfNotExist(tabName)
   }
 
-  override def getLatestMonitorRecordTimeAsync(monitor: String): Future[Option[time.Imports.DateTime]] =
+  override def getLatestMonitorRecordTimeAsync(monitor: String): Future[Option[DateTime]] =
     sqlServer.getLatestMonitorRecordTimeAsync(tabName, monitor, "time")
+
+  override def queryMonitorAsync(monitor: String, id: String,
+                                 start: DateTime, end: DateTime): Future[Seq[InstrumentStatus]] =
+    Future {
+      implicit val session: DBSession = ReadOnlyAutoSession
+      sql"""
+         Select *
+         From [dbo].[instrumentStatus]
+         Where [time] >= ${start.toDate} and [time] < ${end.toDate} and [monitor] = $monitor
+         """.map(mapper).list().apply()
+    }
 }

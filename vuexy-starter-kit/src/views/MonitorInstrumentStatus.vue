@@ -3,7 +3,7 @@
     <b-card>
       <b-form @submit.prevent>
         <b-row>
-          <b-col cols="10">
+          <b-col cols="12">
             <b-form-group label="測點" label-for="monitor" label-cols-md="3">
               <v-select
                 id="monitor"
@@ -158,22 +158,35 @@ export default Vue.extend({
     ...mapGetters('monitors', ['mMap']),
     ...mapGetters('monitorTypes', ['mtMap']),
   },
+  watch: {
+    'form.monitor': async function (newOne: string, oldOne: string) {
+      console.info(`${oldOne} => ${newOne}`);
+      await this.getMonitorInstruments();
+    },
+  },
   async mounted() {
     await this.fetchMonitors();
     await this.fetchMonitorTypes();
+    if (this.monitors.length !== 0) this.form.monitor = this.monitors[0]._id;
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapActions('monitors', ['fetchMonitors']),
     ...mapMutations(['setLoading']),
-    getMonitorInstruments() {
-      axios.get('/Instruments').then(res => {
-        const ret = res.data;
-        this.instruments = ret;
-        if (this.instruments.length !== 0) {
-          this.form.instrument = this.instruments[0]._id;
+    async getMonitorInstruments() {
+      try {
+        let res = await axios.get(`/MonitorInstrument/${this.form.monitor}`);
+        if (res.status === 200) {
+          const ret = res.data;
+          this.instruments = ret;
+          console.log(ret);
+          if (this.instruments.length !== 0) {
+            this.form.instrument = this.instruments[0]._id;
+          }
         }
-      });
+      } catch (err) {
+        console.error(`$err`);
+      }
     },
     async query() {
       this.display = true;

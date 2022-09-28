@@ -203,7 +203,7 @@ const router = new VueRouter({
     {
       path: '/instrument-status',
       name: 'instrument-status',
-      component: () => import('@/views/InstrumentStatus.vue'),
+      component: () => import('@/views/MonitorInstrumentStatus.vue'),
       meta: {
         pageTitle: '儀器狀態查詢',
         breadcrumb: [
