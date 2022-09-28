@@ -21,13 +21,16 @@ class MonitorOp @Inject()(mongodb: MongoDB, config: Configuration, sysConfig: Sy
   lazy private val colName = "monitors"
   lazy private val codecRegistry = fromRegistries(fromProviders(classOf[Monitor]), DEFAULT_CODEC_REGISTRY)
   lazy private val collection = mongodb.database.getCollection[Monitor](colName).withCodecRegistry(codecRegistry)
-  map = {
-    val pairs =
-      for (m <- mList) yield {
-        m._id -> m
-      }
-    pairs.toMap
+  synchronized{
+    map = {
+      val pairs =
+        for (m <- mList) yield {
+          m._id -> m
+        }
+      pairs.toMap
+    }
   }
+
 
 
   for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
@@ -56,11 +59,15 @@ class MonitorOp @Inject()(mongodb: MongoDB, config: Configuration, sysConfig: Sy
   override def upsert(m: Monitor): Unit = {
     val f = collection.replaceOne(Filters.equal("_id", m._id), m, ReplaceOptions().upsert(true)).toFuture()
     f.onFailure(errorHandler)
-    map = map + (m._id -> m)
+    synchronized{
+      map = map + (m._id -> m)
+    }
   }
 
   override def deleteMonitor(_id: String): Future[DeleteResult] = {
-    map = map - _id
+    synchronized{
+      map = map - _id
+    }
     val f = collection.deleteOne(Filters.equal("_id", _id)).toFuture()
     f.onFailure(errorHandler)
     f

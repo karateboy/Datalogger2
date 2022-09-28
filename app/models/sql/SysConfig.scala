@@ -195,7 +195,6 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
     UpdateResult.acknowledged(ret, ret, null)
   }
 
-  private def setDate
   override def getAlarmUpgraded(): Future[Boolean] = getBoolean(ALARM_UPGRADED, false)
 
   override def setAlarmUpgraded(v: Boolean): Future[UpdateResult] = setBoolean(ALARM_UPGRADED)(v)

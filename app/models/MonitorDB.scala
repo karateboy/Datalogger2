@@ -12,13 +12,25 @@ trait MonitorDB {
 
   var map: Map[String, Monitor] = Map.empty[String, Monitor]
 
-  def mvList: Seq[String] = map.map(_._1).toSeq
+  def mvList: Seq[String] = synchronized(map.map(_._1).toSeq)
 
   def ensure(_id: String): Unit = {
-    if (!map.contains(_id)) {
-      upsert(Monitor(_id, _id))
+    synchronized{
+      if (!map.contains(_id)) {
+        val monitor = Monitor(_id, _id)
+        upsert(monitor)
+      }
     }
   }
+
+  def ensure(m:Monitor):Unit = {
+    synchronized{
+      if (!map.contains(m._id))
+        upsert(m)
+    }
+  }
+
+
 
   def upsert(m: Monitor): Unit
 
@@ -42,6 +54,8 @@ trait MonitorDB {
     for(activeId <- sysConfigDB.getActiveMonitorId())
       Monitor.setActiveMonitorId(activeId)
 
-    map = pairs.toMap
+    synchronized{
+      map = pairs.toMap
+    }
   }
 }

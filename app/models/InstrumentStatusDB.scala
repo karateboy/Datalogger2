@@ -39,9 +39,10 @@ trait InstrumentStatusDB {
 
   def log(is: InstrumentStatus): Unit
 
-  def query(id: String, start: Imports.DateTime, end: Imports.DateTime): Seq[InstrumentStatus]
-
   def queryFuture(start: Imports.DateTime, end: Imports.DateTime): Future[Seq[InstrumentStatus]]
 
+  def queryAsync(id:String, start: Imports.DateTime, end: Imports.DateTime): Future[Seq[InstrumentStatus]]
+
+  def queryMonitorAsync(monitor:String, id:String, start:DateTime, end:DateTime) : Future[Seq[InstrumentStatus]]
   def formatValue(v: Double, prec: Int = 2): String =s"%.${prec}f".format(v)
 }

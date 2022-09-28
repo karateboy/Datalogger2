@@ -12,7 +12,7 @@
     </ul>
 
     <dark-Toggler class="d-none d-lg-block" />
-    <h4 class="display-4 ml-3 mt-0 mb-0">空氣品質監測中心</h4>
+    <h1 class="ml-3 mt-0 mb-0"><strong>空氣品質監測中心</strong></h1>
 
     <b-navbar-nav class="nav align-items-center">
       <b-nav-item-dropdown

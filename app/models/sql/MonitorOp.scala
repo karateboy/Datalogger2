@@ -46,6 +46,7 @@ class MonitorOp @Inject()(sqlServer: SqlServer, sysConfig: SysConfig) extends Mo
 	          [name] [nvarchar](256) NOT NULL,
 	          [lat] [float] NULL,
 	          [lng] [float] NULL,
+            [epaId] [int] NULL,
           CONSTRAINT [PK_monitor] PRIMARY KEY CLUSTERED
           (
 	          [id] ASC
@@ -53,9 +54,16 @@ class MonitorOp @Inject()(sqlServer: SqlServer, sysConfig: SysConfig) extends Mo
           ) ON [PRIMARY]
            """.execute().apply()
       upsert(Monitor.defaultMonitor)
-      refresh(sysConfig)
-    } else
-      refresh(sysConfig)
+    }
+
+    if (!sqlServer.getColumnNames(tabName).contains("epaId")) {
+      sql"""
+          Alter Table monitor
+          Add [epaId] int;
+         """.execute().apply()
+    }
+
+    refresh(sysConfig)
   }
 
   override def upsert(m: Monitor): Unit = {
@@ -66,6 +74,7 @@ class MonitorOp @Inject()(sqlServer: SqlServer, sysConfig: SysConfig) extends Mo
             SET [name] = ${m.desc}
                 ,[lat] = ${m.lat}
                 ,[lng] = ${m.lng}
+                ,[epaId] = ${m.epaId}
                 Where [id] = ${m._id}
             IF(@@ROWCOUNT = 0)
             BEGIN
@@ -73,12 +82,14 @@ class MonitorOp @Inject()(sqlServer: SqlServer, sysConfig: SysConfig) extends Mo
               ([id]
                 ,[name]
                 ,[lat]
-                ,[lng])
+                ,[lng]
+                ,[epaId])
               VALUES
               (${m._id}
               ,${m.desc}
               ,${m.lat}
-              ,${m.lng})
+              ,${m.lng}
+              ,${m.epaId})
             END
          """.update().apply()
   }

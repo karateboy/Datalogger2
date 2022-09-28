@@ -22,6 +22,7 @@ class HomeController @Inject()(environment: play.api.Environment,
                                sensorOp: MqttSensorDB, WSClient: WSClient,
                                emailTargetOp: EmailTargetDB,
                                sysConfig: SysConfigDB, recordDB: RecordDB,
+                               instrumentStatusTypeDB: InstrumentStatusTypeDB,
                                @Named("dataCollectManager") manager: ActorRef) extends Controller {
 
   val title = "資料擷取器"
@@ -249,6 +250,13 @@ class HomeController @Inject()(environment: play.api.Environment,
     val ret = instrumentOp.getInstrumentList()
 
     Ok(Json.toJson(ret))
+  }
+
+  def getMonitorInstrumentList(monitor:String) = Security.Authenticated.async {
+    for(statusTypeMaps <- instrumentStatusTypeDB.getAllInstrumentStatusTypeListAsync(monitor)) yield{
+      val instruments = statusTypeMaps.map(_.instrumentId)
+      Ok(Json.toJson(instruments))
+    }
   }
 
   def getDoInstrumentList: Action[AnyContent] = Security.Authenticated {

@@ -1,6 +1,7 @@
 package models
 
-case class Monitor(_id: String, desc: String, lat: Option[Double] = None, lng: Option[Double] = None)
+case class Monitor(_id: String, desc: String,
+                   lat: Option[Double] = None, lng: Option[Double] = None, epaId: Option[Int] = None)
 
 object Monitor {
   @volatile var activeId = "me"

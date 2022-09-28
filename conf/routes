@@ -48,7 +48,7 @@ GET      /Instruments/DO                                                        
 GET      /Instrument/:id                                                          controllers.HomeController.getInstrument(id)
 DELETE   /Instrument/:ids                                                         controllers.HomeController.removeInstrument(ids)
 
-
+GET      /MonitorInstrument/:monitor                                              controllers.HomeController.getMonitorInstrumentList(monitor)
 
 PUT      /DeactivateInstrument/:ids                                               controllers.HomeController.deactivateInstrument(ids)
 PUT      /ActivateInstrument/:ids                                                 controllers.HomeController.activateInstrument(ids)
@@ -63,6 +63,8 @@ GET      /ExecuteSeq/:seq/:on                                                   
 
 GET      /InstrumentStatusReport/:id/:start/:end                                  controllers.Query.instrumentStatusReport(id, start:Long, end:Long)
 GET      /ManualAuditHistory/:start/:end                                          controllers.Query.manualAuditHistoryReport(start:Long, end:Long)
+
+GET      /MonitorInstrumentStatusReport/:monitor/:id/:start/:end                  controllers.Query.monitorInstrumentStatusReport(monitor, id, start:Long, end:Long)
 
 GET      /Sensors                                                                 controllers.HomeController.getSensors
 POST     /Sensor/:id                                                              controllers.HomeController.upsertSensor(id)

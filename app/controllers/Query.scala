@@ -662,45 +662,91 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
       Ok(Json.toJson(report))
   }
 
-  def instrumentStatusReport(id: String, startNum: Long, endNum: Long) = Security.Authenticated {
+  def instrumentStatusReport(id: String, startNum: Long, endNum: Long) =
+    Security.Authenticated.async {
     val (start, end) = (new DateTime(startNum).withMillisOfDay(0),
       new DateTime(endNum).withMillisOfDay(0))
 
-    val report = instrumentStatusOp.query(id, start, end + 1.day)
-    val keyList: Seq[String] = if (report.isEmpty)
-      List.empty[String]
-    else
-      report.map {
-        _.statusList
-      }.maxBy {
-        _.length
-      }.map {
-        _.key
+    for(report <- instrumentStatusOp.queryAsync(id, start, end + 1.day)) yield {
+      val keyList: Seq[String] = if (report.isEmpty)
+        List.empty[String]
+      else
+        report.map {
+          _.statusList
+        }.maxBy {
+          _.length
+        }.map {
+          _.key
+        }
+
+      val reportMap = for {
+        record <- report
+        time = record.time
+      } yield {
+        (time, record.statusList.map { s => (s.key -> s.value) }.toMap)
       }
 
-    val reportMap = for {
-      record <- report
-      time = record.time
-    } yield {
-      (time, record.statusList.map { s => (s.key -> s.value) }.toMap)
-    }
+      val statusTypeMap = instrumentOp.getStatusTypeMap(id)
 
-    val statusTypeMap = instrumentOp.getStatusTypeMap(id)
-
-    val columnNames: Seq[String] = keyList.map(statusTypeMap).map(_.desc)
-    val rows = for (report <- reportMap) yield {
-      val cellData = for (key <- keyList) yield {
-        val instrumentStatusType = statusTypeMap(key)
-        if (report._2.contains(key))
-          CellData(instrumentStatusOp.formatValue(report._2(key), instrumentStatusType.prec.getOrElse(2)), Seq.empty[String])
-        else
-          CellData("-", Seq.empty[String])
+      val columnNames: Seq[String] = keyList.map(statusTypeMap).map(_.desc)
+      val rows = for (report <- reportMap) yield {
+        val cellData = for (key <- keyList) yield {
+          val instrumentStatusType = statusTypeMap(key)
+          if (report._2.contains(key))
+            CellData(instrumentStatusOp.formatValue(report._2(key), instrumentStatusType.prec.getOrElse(2)), Seq.empty[String])
+          else
+            CellData("-", Seq.empty[String])
+        }
+        RowData(report._1.getTime, cellData)
       }
-      RowData(report._1.getTime, cellData)
-    }
 
-    implicit val write = Json.writes[InstrumentReport]
-    Ok(Json.toJson(InstrumentReport(columnNames, rows)))
+      implicit val write = Json.writes[InstrumentReport]
+      Ok(Json.toJson(InstrumentReport(columnNames, rows)))
+    }
+  }
+
+
+  def monitorInstrumentStatusReport(monitor:String, id: String, startNum: Long, endNum: Long) =
+    Security.Authenticated.async {
+    val (start, end) = (new DateTime(startNum).withMillisOfDay(0),
+      new DateTime(endNum).withMillisOfDay(0))
+
+    for(report <- instrumentStatusOp.queryMonitorAsync(monitor, id, start, end + 1.day)) yield {
+      val keyList: Seq[String] = if (report.isEmpty)
+        List.empty[String]
+      else
+        report.map {
+          _.statusList
+        }.maxBy {
+          _.length
+        }.map {
+          _.key
+        }
+
+      val reportMap = for {
+        record <- report
+        time = record.time
+      } yield {
+        (time, record.statusList.map { s => (s.key -> s.value) }.toMap)
+      }
+
+      val statusTypeMap = instrumentOp.getStatusTypeMap(id)
+
+      val columnNames: Seq[String] = keyList.map(statusTypeMap).map(_.desc)
+      val rows = for (report <- reportMap) yield {
+        val cellData = for (key <- keyList) yield {
+          val instrumentStatusType = statusTypeMap(key)
+          if (report._2.contains(key))
+            CellData(instrumentStatusOp.formatValue(report._2(key), instrumentStatusType.prec.getOrElse(2)), Seq.empty[String])
+          else
+            CellData("-", Seq.empty[String])
+        }
+        RowData(report._1.getTime, cellData)
+      }
+
+      implicit val write = Json.writes[InstrumentReport]
+      Ok(Json.toJson(InstrumentReport(columnNames, rows)))
+    }
   }
 
   implicit val write = Json.writes[InstrumentReport]

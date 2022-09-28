@@ -1,94 +1,50 @@
 package models
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
-import com.github.nscala_time.time.Imports.DateTime
+import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
+import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
-import models.OpenDataReceiver.OpenDataConfig
 import play.api._
 import play.api.libs.ws._
 
-import java.time.Instant
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
 object OpenDataReceiver {
-  case class OpenDataConfig(enable:Boolean, monitors:Seq[Monitor])
-  def start(configuration: Configuration, actorSystem: ActorSystem,
-            monitorOp: MonitorDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB) = {
-    def getConfig: Option[OpenDataConfig] = {
-      def toMonitor(config: Configuration) = {
-        val id = config.getString("id").get
-        val name = config.getString("name").get
-        val lat = config.getDouble("lat").get
-        val lng = config.getDouble("lng").get
-        Monitor(id, name, Some(lat), Some(lng))
-      }
-
-      for {config <- configuration.getConfig("openData")
-           enable <- config.getBoolean("enable") if enable
-           monitors <- config.getConfigSeq("monitors")
-           }
-      yield
-        OpenDataConfig(enable, monitors.map(toMonitor(_)))
-    }
-
-    for (config <- getConfig if config.enable) {
-      Logger.info(config.toString)
-      config.monitors.foreach(monitor => monitorOp.upsert(monitor))
-      actorSystem.actorOf(props(config, monitorTypeOp, recordOp), s"vocReader${count}")
-    }
-  }
-
-  def props(config: OpenDataConfig, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, sysConfigDB: SysConfigDB) =
-    Props(classOf[OpenDataReceiver], config, monitorTypeOp, recordOp, sysConfigDB)
-
-
   case object GetEpaHourData
-  case class ReloadEpaData(start:Instant, end:Instant)
+  case class ReloadEpaData(start:DateTime, end:DateTime)
 }
 
-import java.util.Date
-
-case class HourData(
-                     SiteId: String,
-                     SiteName: String,
-                     ItemId: String,
-                     ItemName: String,
-                     ItemEngName: String,
-                     ItemUnit: String,
-                     MonitorDate: Date,
-                     MonitorValues: Seq[Double])
-
-class OpenDataReceiver(config: OpenDataConfig, monitorTypeOp: MonitorTypeDB,
-                       recordOp: RecordDB, sysConfigDB: SysConfigDB) extends Actor with ActorLogging {
+@Singleton
+class OpenDataReceiver @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB, recordOp: RecordDB,
+                                 WSClient: WSClient,
+                                 sysConfigDB: SysConfigDB, epaMonitorOp: EpaMonitorOp) extends Actor {
 
   import OpenDataReceiver._
   import com.github.nscala_time.time.Imports._
 
+  val epaMonitorOpt = epaMonitorOp.getEpaMonitors()
+
+  epaMonitorOpt.foreach(monitors => monitors.foreach(monitorOp.ensure))
+
   val timer = {
     import scala.concurrent.duration._
-    context.system.scheduler.schedule(FiniteDuration(5, SECONDS), Duration(3, HOURS), self, GetEpaHourData)
+    context.system.scheduler.schedule(FiniteDuration(5, SECONDS), FiniteDuration(1, HOURS), self, GetEpaHourData)
   }
 
   import scala.xml._
 
   def receive = {
     case GetEpaHourData =>
-      for{start <- sysConfigDB.getEpaLastRecordTime()
-          end = Instant.now()
+      for{startDate <- sysConfigDB.getEpaLastRecordTime()
+          start = new DateTime(startDate)
+          end = DateTime.now()
           }{
-        if(end.isAfter(start.toInstant)){
+
+        if(end.minusDays(1) > start){
           Logger.info(s"Get EpaData ${start.toString("yyyy-MM-d")} => ${end.toString("yyyy-MM-d")}")
           getEpaHourData(start, end)
         }
-      }
-      val start = sysConfigDB.getEpaLastRecordTime()
-      val end = DateTime.now().withMillisOfDay(0)
-      if (start < end) {
-        Logger.info(s"Get EpaData ${start.toString("yyyy-MM-d")} => ${end.toString("yyyy-MM-d")}")
-        getEpaHourData(start, end)
       }
 
     case ReloadEpaData(start, end) =>
@@ -102,7 +58,7 @@ class OpenDataReceiver(config: OpenDataConfig, monitorTypeOp: MonitorTypeDB,
     def parser(node: Elem) = {
       import scala.collection.mutable.Map
       import scala.xml.Node
-      val recordMap = Map.empty[EpaMonitor.Value, Map[DateTime, Map[MonitorType.Value, Double]]]
+      val recordMap = Map.empty[String, Map[DateTime, Map[String, Double]]]
 
       def filter(dataNode: Node) = {
         val monitorDateOpt = dataNode \ "MonitorDate".toUpperCase
@@ -125,10 +81,10 @@ class OpenDataReceiver(config: OpenDataConfig, monitorTypeOp: MonitorTypeDB,
 
         try {
           //Filter interested EPA monitor
-          if (EpaMonitor.idMap.contains(siteID) &&
-            MonitorType.eapIdMap.contains(itemId.text.trim().toInt)) {
-            val epaMonitor = EpaMonitor.withName(siteName.text.trim())
-            val monitorType = MonitorType.eapIdMap(itemId.text.trim().toInt)
+          if (epaMonitorOp.map.contains(siteID) &&
+            monitorTypeOp.epaToMtMap.contains(itemId.text.trim().toInt)) {
+            val epaMonitor = epaMonitorOp.map(siteID)
+            val monitorType = monitorTypeOp.epaToMtMap(itemId.text.trim().toInt)
             val mDate = try {
               DateTime.parse(s"${monitorDateOpt.text.trim()}", DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss"))
             }catch {
@@ -147,9 +103,9 @@ class OpenDataReceiver(config: OpenDataConfig, monitorTypeOp: MonitorTypeDB,
                 (mDate + v.hour, monitorValue)
               }
 
-            val timeMap = recordMap.getOrElseUpdate(epaMonitor, Map.empty[DateTime, Map[MonitorType.Value, Double]])
+            val timeMap = recordMap.getOrElseUpdate(epaMonitor._id, Map.empty[DateTime, Map[String, Double]])
             for {(mDate, mtValueOpt) <- monitorNodeValueSeq} {
-              val mtMap = timeMap.getOrElseUpdate(mDate, Map.empty[MonitorType.Value, Double])
+              val mtMap = timeMap.getOrElseUpdate(mDate, Map.empty[String, Double])
               for (mtValue <- mtValueOpt)
                 mtMap.put(monitorType, mtValue)
             }
@@ -168,34 +124,18 @@ class OpenDataReceiver(config: OpenDataConfig, monitorTypeOp: MonitorTypeDB,
         processData
       }
 
-      val updateCounts =
+      val recordLists =
         for {
           monitorMap <- recordMap
           monitor = monitorMap._1
           timeMaps = monitorMap._2
           dateTime <- timeMaps.keys.toList.sorted
-          mtValue <- timeMaps(dateTime)
         } yield {
-          val MStation = EpaMonitor.map(monitor)
-          val MItem = MonitorType.map(mtValue._1).epa_mapping.get
-          val MDate: java.sql.Timestamp = dateTime
-          DB autoCommit { implicit session =>
-            sql"""
-              UPDATE dbo.hour_data
-              SET MValue = ${mtValue._2}
-              WHERE MStation=${MStation.id} and MDate=${MDate} and MItem=${MItem};
-
-              IF(@@ROWCOUNT = 0)
-              BEGIN
-                INSERT INTO dbo.hour_data (MStation, MDate, MItem, MValue)
-                VALUES(${MStation.id}, ${MDate}, ${MItem}, ${mtValue._2})
-              END
-            """.update.apply
-          }
+          val mtRecords = timeMaps(dateTime).map(pair=>MtRecord(pair._1, Some(pair._2), MonitorStatus.NormalStat)).toSeq
+          RecordList(_id = RecordListID(dateTime.toDate, monitor), mtDataList = mtRecords)
         }
 
-      if(updateCounts.sum != 0)
-        Logger.debug(s"EPA ${updateCounts.sum} records have been upserted.")
+      recordOp.upsertManyRecords(recordOp.HourCollection)(recordLists.toSeq)
 
       qualifiedData.size
     }
@@ -203,7 +143,7 @@ class OpenDataReceiver(config: OpenDataConfig, monitorTypeOp: MonitorTypeDB,
     def getThisMonth(skip: Int) {
       val url = s"https://data.epa.gov.tw/api/v2/aqx_p_15?format=xml&offset=${skip}&limit=${limit}&api_key=1f4ca8f8-8af9-473d-852b-b8f2d575f26a&&sort=MonitorDate%20desc"
       val future =
-        WS.url(url).get().map {
+        WSClient.url(url).get().map {
           response =>
             try {
               parser(response.xml)
@@ -225,15 +165,15 @@ class OpenDataReceiver(config: OpenDataConfig, monitorTypeOp: MonitorTypeDB,
 
     def getMonthData(year:Int, month:Int, skip: Int) {
       val url = f"https://data.epa.gov.tw/api/v2/aqx_p_15?format=xml&offset=$skip%d&limit=$limit&year_month=$year%d_$month%02d&api_key=1f4ca8f8-8af9-473d-852b-b8f2d575f26a"
-      val f = WS.url(url).get()
-      f onFailure (errorHandler())
+      val f = WSClient.url(url).get()
+      f onFailure errorHandler()
       for(resp <- f) {
         try {
           val updateCount = parser(resp.xml)
           if (updateCount < limit) {
             Logger.info(f"Import EPA $year/$month%02d complete")
             val dataLast = new DateTime(year, month, 1, 0, 0).plusMonths(1)
-            SystemConfig.setEpaLast(dataLast)
+            sysConfigDB.setEpaLastRecordTime(dataLast.toDate)
             if(dataLast < end)
               self ! ReloadEpaData(dataLast, end)
           } else
@@ -252,7 +192,6 @@ class OpenDataReceiver(config: OpenDataConfig, monitorTypeOp: MonitorTypeDB,
       getMonthData(start.getYear(), start.getMonthOfYear(), 0)
     }
   }
-
 
   override def postStop = {
     timer.cancel()

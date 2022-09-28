@@ -116,7 +116,7 @@ export default Vue.extend({
   data() {
     let monitors = Array<string>();
     const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
-    let me = this;
+    let me: any = this;
     return {
       display: false,
       alarmLevels: [
@@ -176,7 +176,7 @@ export default Vue.extend({
           },
         },
         {
-          key: 'info',
+          key: 'desc',
           label: '詳細資訊',
           sortable: true,
         },

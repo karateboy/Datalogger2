@@ -45,6 +45,7 @@ import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
 import highchartMore from 'highcharts/highcharts-more';
 import moment from 'moment';
+import { Monitor } from '../store/monitors/types';
 
 interface AisShip {
   MMSI: string;
@@ -82,7 +83,7 @@ export default Vue.extend({
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap']),
     ...mapGetters('monitors', ['mMap']),
-    skin() {
+    skin(): any {
       const { skin } = useAppConfig();
       return skin;
     },
@@ -117,7 +118,7 @@ export default Vue.extend({
     async query(mt: string) {
       const now = new Date().getTime();
       const oneHourBefore = now - 60 * 60 * 1000;
-      const monitors = this.monitors.map(m => m._id).join(':');
+      const monitors = this.monitors.map((m: Monitor) => m._id).join(':');
       const url = `/HistoryTrend/${monitors}/${mt}/Min/all/${oneHourBefore}/${now}`;
       const res = await axios.get(url);
       const ret: highcharts.Options = res.data;

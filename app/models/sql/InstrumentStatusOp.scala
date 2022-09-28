@@ -33,7 +33,7 @@ class InstrumentStatusOp @Inject()(sqlServer: SqlServer) extends InstrumentStatu
 
   init()
 
-  override def query(id: String, start: Imports.DateTime, end: Imports.DateTime): Seq[InstrumentStatus] = {
+  override def queryAsync(id: String, start: Imports.DateTime, end: Imports.DateTime) = Future{
     implicit val session: DBSession = ReadOnlyAutoSession
     sql"""
          Select *
