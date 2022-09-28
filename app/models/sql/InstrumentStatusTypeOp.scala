@@ -53,24 +53,25 @@ class InstrumentStatusTypeOp @Inject()(sqlServer: SqlServer) extends InstrumentS
 
   override def upsertInstrumentStatusTypeMapAsync(monitor: String, maps: Seq[InstrumentStatusTypeMap]): Future[UpdateResult] =
     Future {
-      val ret =
-        DB localTx { implicit session =>
-          sql"""
+      implicit val session: DBSession = AutoSession
+
+      sql"""
            DELETE FROM [dbo].[instrumentStatusTypes]
            WHERE monitor = $monitor
            """.execute().apply()
 
-          val batchParams: Seq[Seq[Any]] = maps.map(map =>
-            Seq(Seq(monitor, map.instrumentId, Json.toJson(map.statusTypeSeq).toString())))
-          sql"""
+      val batchParams: Seq[Seq[String]] = maps.map(istMap =>
+        Seq(monitor, istMap.instrumentId, Json.toJson(istMap.statusTypeSeq).toString()))
+
+      sql"""
             INSERT INTO [dbo].[instrumentStatusTypes]
                      ([monitor]
                      ,[instrumentId]
                      ,[statusTypeSeq])
                VALUES
                      (?, ?, ?)""".batch(batchParams: _*).apply()
-        }
-      val sum = ret.sum
-      UpdateResult.acknowledged(sum, sum, null)
+
+
+      UpdateResult.acknowledged(maps.size, maps.size, null)
     }
 }
