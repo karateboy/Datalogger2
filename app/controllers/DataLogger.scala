@@ -1,5 +1,6 @@
 package controllers
 
+import akka.actor.ActorRef
 import com.github.nscala_time.time.Imports._
 import models._
 import play.api.Logger
@@ -8,14 +9,15 @@ import play.api.mvc._
 
 import java.time.Instant
 import java.util.Date
-import javax.inject.Inject
+import javax.inject.{Inject, Named}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class DataLogger @Inject()(monitorTypeDB: MonitorTypeDB, monitorOp: MonitorDB, instrumentStatusDB: InstrumentStatusDB,
                            instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusDB,
                            instrumentStatusTypeDB: InstrumentStatusTypeDB,
-                           recordDB: RecordDB, calibrationDB: CalibrationDB, alarmDB: AlarmDB) extends Controller {
+                           recordDB: RecordDB, calibrationDB: CalibrationDB, alarmDB: AlarmDB,
+                           @Named("openDataReceiver") openDataReceiver: ActorRef) extends Controller {
 
   import RecordList._
 

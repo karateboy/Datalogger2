@@ -7,3 +7,5 @@ val pattern1(a) =  topic
 val str= "\02"
 val v = str.getBytes
 print(v(0))
+import java.time.Instant
+Instant.parse("2022-01-01T00:00:00.000Z").toString

@@ -23,13 +23,19 @@ class OpenDataReceiver @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: Monito
   import OpenDataReceiver._
   import com.github.nscala_time.time.Imports._
 
-  val epaMonitorOpt = epaMonitorOp.getEpaMonitors()
+  val epaMonitors: Seq[Monitor] = epaMonitorOp.getEpaMonitors().getOrElse(Seq.empty[Monitor])
 
-  epaMonitorOpt.foreach(monitors => monitors.foreach(monitorOp.ensure))
+  for(epaMonitor <- epaMonitors)
+    Logger.info(s"OpenDataReceiver set up to receive $epaMonitor")
 
-  val timer = {
+  epaMonitors.foreach(monitorOp.ensure)
+
+  val timerOpt = {
     import scala.concurrent.duration._
-    context.system.scheduler.schedule(FiniteDuration(5, SECONDS), FiniteDuration(1, HOURS), self, GetEpaHourData)
+    if(epaMonitors.nonEmpty)
+      Some(context.system.scheduler.schedule(FiniteDuration(5, SECONDS), FiniteDuration(1, HOURS), self, GetEpaHourData))
+    else
+      None
   }
 
   import scala.xml._
@@ -194,7 +200,8 @@ class OpenDataReceiver @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: Monito
   }
 
   override def postStop = {
-    timer.cancel()
+    for(timer<-timerOpt)
+      timer.cancel()
   }
 
 }

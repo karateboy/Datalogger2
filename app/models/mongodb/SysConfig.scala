@@ -35,7 +35,8 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     CDX_MONITOR_TYPES -> Document(valueKey -> Json.toJson(CdxUploader.defaultMonitorTypes).toString()),
     ALARM_UPGRADED -> Document(valueKey -> false),
     CALIBRATION_UPGRADED -> Document(valueKey -> false),
-    INSTRUMENT_STATUS_UPGRADED -> Document(valueKey -> false)
+    INSTRUMENT_STATUS_UPGRADED -> Document(valueKey -> false),
+    EPA_LAST_RECORD_TIME -> Document(valueKey -> Date.from(Instant.parse("2022-01-01T00:00:00.000Z")))
     )
 
   override def getSpectrumLastParseTime(): Future[Instant] = getInstant(SpectrumLastParseTime)()
