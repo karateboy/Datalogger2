@@ -97,6 +97,7 @@ export default Vue.extend({
     await this.fetchMonitorTypes();
     await this.fetchMonitors();
     await this.getUserInfo();
+    console.log(this.monitors);
     const me = this;
     for (const mt of this.userInfo.monitorTypeOfInterest) this.query(mt);
 
@@ -118,7 +119,10 @@ export default Vue.extend({
     async query(mt: string) {
       const now = new Date().getTime();
       const oneHourBefore = now - 60 * 60 * 1000;
-      const monitors = this.monitors.map((m: Monitor) => m._id).join(':');
+      const monitors = this.monitors
+        .filter((m: Monitor) => m.epaId === undefined)
+        .map((m: Monitor) => m._id)
+        .join(':');
       const url = `/HistoryTrend/${monitors}/${mt}/Min/all/${oneHourBefore}/${now}`;
       const res = await axios.get(url);
       const ret: highcharts.Options = res.data;

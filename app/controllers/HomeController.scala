@@ -23,8 +23,7 @@ class HomeController @Inject()(environment: play.api.Environment,
                                emailTargetOp: EmailTargetDB,
                                sysConfig: SysConfigDB, recordDB: RecordDB,
                                instrumentStatusTypeDB: InstrumentStatusTypeDB,
-                               @Named("dataCollectManager") manager: ActorRef,
-                               @Named("openDataReceiver") openDataReceiver: ActorRef) extends Controller {
+                               @Named("dataCollectManager") manager: ActorRef) extends Controller {
 
   val title = "資料擷取器"
 
