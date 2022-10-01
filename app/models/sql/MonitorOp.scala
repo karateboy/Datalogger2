@@ -35,7 +35,8 @@ class MonitorOp @Inject()(sqlServer: SqlServer, sysConfig: SysConfig) extends Mo
   private def mapper(rs: WrappedResultSet) = Monitor(rs.string("id"),
     rs.string("name"),
     rs.doubleOpt("lat"),
-    rs.doubleOpt("lng")
+    rs.doubleOpt("lng"),
+    rs.intOpt("epaId")
   )
 
   private def init()(implicit session: DBSession = AutoSession): Unit = {

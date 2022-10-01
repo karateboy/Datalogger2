@@ -29,7 +29,10 @@ class OpenDataReceiver @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: Monito
     Logger.info(s"OpenDataReceiver set up to receive $epaMonitor")
 
   epaMonitors.foreach(monitorOp.ensure)
-  monitorTypeOp.epaToMtMap.values.foreach(recordOp.ensureMonitorType)
+  monitorTypeOp.epaToMtMap.values.foreach(mt=>{
+    monitorTypeOp.ensure(mt)
+    recordOp.ensureMonitorType(mt)
+  })
 
   val timerOpt = {
     import scala.concurrent.duration._
