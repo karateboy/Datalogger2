@@ -10,8 +10,7 @@
                 v-model="form.monitor"
                 label="desc"
                 :reduce="mt => mt._id"
-                :options="monitors"
-                multiple
+                :options="monitorOfNoEPA"
               />
             </b-form-group>
           </b-col>
@@ -83,7 +82,14 @@
     </b-card>
     <b-card v-show="display">
       <div>
-        <b-table responsive hover :fields="columns" :items="rows" bordered>
+        <b-table
+          responsive
+          hover
+          :fields="columns"
+          :items="rows"
+          bordered
+          small
+        >
           <template #custom-foot>
             <b-tr v-for="stat in statRows" :key="stat.name">
               <b-th>{{ stat.name }}</b-th>
@@ -138,8 +144,7 @@ export default Vue.extend({
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['activatedMonitorTypes', 'mtMap']),
-    ...mapState('monitors', ['monitors']),
-    ...mapGetters('monitors', ['mMap']),
+    ...mapGetters('monitors', ['mMap', 'monitorOfNoEPA']),
   },
   async mounted() {
     await this.fetchMonitors();
@@ -147,7 +152,8 @@ export default Vue.extend({
     if (this.monitorTypes.length !== 0)
       this.form.monitorType = this.monitorTypes[0]._id;
 
-    if (this.monitors.length !== 0) this.form.monitor = this.monitors[0]._id;
+    if (this.monitorOfNoEPA.length !== 0)
+      this.form.monitor = this.monitorOfNoEPA[0]._id;
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),

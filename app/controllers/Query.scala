@@ -210,7 +210,8 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
 
       if (outputType == OutputType.excel) {
         import java.nio.file.Files
-        val excelFile = excelUtility.exportChartData(chart, monitorTypes, true)
+        val exportMonitorTypes = List.fill(3)(monitorTypes).flatten
+        val excelFile = excelUtility.exportChartData(chart, exportMonitorTypes.toArray, true)
         val downloadFileName =
           if (chart.downloadFileName.isDefined)
             chart.downloadFileName.get
@@ -256,11 +257,11 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     val timeSeq = getPeriods(start, end, period)
 
     val downloadFileName = {
-      val startName = start.toString("YYMMdd")
-      val mtNames = monitorTypes.map {
-        monitorTypeOp.map(_).desp
-      }
-      startName + mtNames.mkString
+      val startStr = start.toString("YYMMdd")
+      val endStr = end.toString("YYMMdd")
+      val monitorNames = monitors.map(monitorOp.map(_).desc).mkString
+      val mtNames = monitorTypes.map(monitorTypeOp.map(_).desp).mkString
+      s"${monitorNames}${mtNames}${startStr}_${endStr}"
     }
 
     val title =

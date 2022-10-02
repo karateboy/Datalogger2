@@ -14,6 +14,8 @@ trait MonitorDB {
 
   def mvList: Seq[String] = synchronized(map.map(_._1).toSeq)
 
+  def mvListOfNoEpa = synchronized(map.values.filter(_.epaId.isEmpty).map(_._id).toSeq)
+
   def ensure(_id: String): Unit = {
     synchronized{
       if (!map.contains(_id)) {

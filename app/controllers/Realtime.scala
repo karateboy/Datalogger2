@@ -88,7 +88,8 @@ class Realtime @Inject()
       result
   }
 
-  case class ParsedAisData(monitor: String, time: Date, ships: Seq[Map[String, String]])
+  case class ParsedAisData(monitor: String, time: Date, ships: Seq[Map[String, String]],
+                           lat:Option[Double], lng:Option[Double])
   case class LatestAisData(enable:Boolean, aisData:Seq[ParsedAisData])
 
   def getLatestAisData(): Action[AnyContent] = Security.Authenticated.async {
@@ -97,11 +98,19 @@ class Realtime @Inject()
     if(!AisDataCollector.enable){
       Future.successful(Ok(Json.toJson(LatestAisData(false, Seq.empty[ParsedAisData]))))
     }else {
-      val futures = monitorDB.mvList.map(m=>aisDB.getLatestData(m))
-      for(ret <- Future.sequence(futures)) yield {
-        val parsed = ret.flatten.map(ais=>{
+      val monitorsLatestFuture = Future.sequence(monitorDB.mvListOfNoEpa.map(
+        recordDB.getLatestMonitorRecordAsync(recordDB.MinCollection)(_)))
+      val aisFutures = Future.sequence(monitorDB.mvListOfNoEpa.map(m=>aisDB.getLatestData(m)))
+      for{
+        monitorLatestData <- monitorsLatestFuture
+        aisData <- aisFutures
+          } yield {
+        val monitorDataMap: Map[String, Map[String, MtRecord]] = monitorLatestData.flatten.map(record=> record._id.monitor->record.mtMap).toMap
+        val parsed = aisData.flatten.map(ais=>{
           val shipList = Json.parse(ais.json).validate[Seq[Map[String, String]]].get
-          ParsedAisData(ais.monitor, ais.time, shipList)
+          val monitorLat = monitorDataMap.get(ais.monitor).flatMap(_.get(MonitorType.LAT).flatMap(_.value))
+          val monitorLng = monitorDataMap.get(ais.monitor).flatMap(_.get(MonitorType.LNG).flatMap(_.value))
+          ParsedAisData(monitor=ais.monitor, time = ais.time, ships = shipList, lat = monitorLat, lng = monitorLng)
         })
         Ok(Json.toJson(LatestAisData(true, parsed)))
       }
@@ -111,7 +120,7 @@ class Realtime @Inject()
   case class LatestMonitorData(monitorTypes:Seq[String], monitorData:Seq[RecordList])
 def getLatestMonitorData() = Security.Authenticated.async {
     implicit val writes = Json.writes[LatestMonitorData]
-    val retListF = Future.sequence(for(monitor<-monitorDB.mvList) yield
+    val retListF = Future.sequence(for(monitor<-monitorDB.mvListOfNoEpa) yield
       recordDB.getLatestMonitorRecordAsync(recordDB.MinCollection)(monitor))
 
     for(retList<-retListF) yield {

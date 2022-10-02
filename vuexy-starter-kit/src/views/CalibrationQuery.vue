@@ -21,7 +21,7 @@
             </b-form-group>
           </b-col>
           <!-- submit and reset -->
-          <b-col offset-md="3">
+          <b-col>
             <b-button
               type="submit"
               variant="gradient-primary"

@@ -3,26 +3,19 @@
     <b-card>
       <b-form @submit.prevent>
         <b-row>
-          <b-col cols="10">
+          <b-col cols="12">
             <b-form-group label="測點" label-for="monitor" label-cols-md="3">
               <v-select
                 id="monitor"
                 v-model="form.monitors"
                 label="desc"
                 :reduce="mt => mt._id"
-                :options="monitors"
+                :options="monitorOfNoEPA"
                 multiple
               />
             </b-form-group>
           </b-col>
-          <b-col cols="2"
-            ><b-button variant="primary" @click="selectAllMonitors"
-              >全選</b-button
-            ></b-col
-          >
-        </b-row>
-        <b-row>
-          <b-col cols="10">
+          <b-col cols="12">
             <b-form-group
               label="警報等級"
               label-for="alarmLevel"
@@ -37,10 +30,7 @@
               />
             </b-form-group>
           </b-col>
-        </b-row>
-
-        <b-row>
-          <b-col cols="10">
+          <b-col cols="12">
             <b-form-group
               label="資料區間"
               label-for="dataRange"
@@ -57,8 +47,6 @@
               />
             </b-form-group>
           </b-col>
-        </b-row>
-        <b-row>
           <b-col offset-md="3">
             <b-button
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
@@ -190,15 +178,14 @@ export default Vue.extend({
     };
   },
   computed: {
-    ...mapState('monitors', ['monitors']),
-    ...mapGetters('monitors', ['mMap']),
+    ...mapGetters('monitors', ['mMap', 'monitorOfNoEPA']),
     ...mapGetters('monitorTypes', ['mtMap']),
   },
   async mounted() {
     await this.fetchMonitors();
     await this.fetchMonitorTypes();
-    if (this.monitors.length !== 0)
-      this.form.monitors.push(this.monitors[0]._id);
+    if (this.monitorOfNoEPA.length !== 0)
+      this.form.monitors.push(this.monitorOfNoEPA[0]._id);
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
@@ -231,7 +218,7 @@ export default Vue.extend({
     },
     selectAllMonitors() {
       this.form.monitors = [];
-      for (let m of this.monitors) this.form.monitors.push(m._id);
+      for (let m of this.monitorOfNoEPA) this.form.monitors.push(m._id);
     },
   },
 });

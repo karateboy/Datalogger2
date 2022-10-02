@@ -10,8 +10,7 @@
                 v-model="form.monitor"
                 label="desc"
                 :reduce="mt => mt._id"
-                :options="monitors"
-                multiple
+                :options="monitorOfNoEPA"
               />
             </b-form-group>
           </b-col>
@@ -90,6 +89,7 @@
           :fields="columns"
           :items="rows"
           bordered
+          small
         >
           <template #custom-foot>
             <b-tr v-for="stat in statRows" :key="stat.name">
@@ -146,8 +146,7 @@ export default Vue.extend({
     };
   },
   computed: {
-    ...mapState('monitors', ['monitors']),
-    ...mapGetters('monitors', ['mMap']),
+    ...mapGetters('monitors', ['mMap', 'monitorOfNoEPA']),
     ...mapGetters('monitorTypes', ['mtMap']),
     pickerType() {
       if (this.form.reportType === 'daily') return 'date';
@@ -157,7 +156,8 @@ export default Vue.extend({
   async mounted() {
     await this.fetchMonitors();
     await this.fetchMonitorTypes();
-    if (this.monitors.length !== 0) this.form.monitor = this.monitors[0]._id;
+    if (this.monitorOfNoEPA.length !== 0)
+      this.form.monitor = this.monitorOfNoEPA[0]._id;
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),

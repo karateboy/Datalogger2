@@ -22,6 +22,7 @@ class AisOp @Inject()(sqlServer: SqlServer) extends AisDB {
         [monitor] [nvarchar](50) NOT NULL,
         [time] [datetime2](7) NOT NULL,
         [json] [nvarchar](max) NOT NULL,
+        [respType] [nvarchar](50) NOT NULL,
        CONSTRAINT [PK_ais_data] PRIMARY KEY CLUSTERED
       (
         [monitor] ASC,
@@ -30,6 +31,13 @@ class AisOp @Inject()(sqlServer: SqlServer) extends AisDB {
       ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
        """.execute().apply()
     }
+
+    if (!sqlServer.getColumnNames(tabName).contains("respType")) {
+      sql"""
+          Alter Table ais_data
+          Add [respType] [nvarchar](50);
+         """.execute().apply()
+    }
   }
 
   init()
@@ -37,7 +45,8 @@ class AisOp @Inject()(sqlServer: SqlServer) extends AisDB {
   private def mapper(rs: WrappedResultSet) =
     AisData(rs.string("monitor"),
       rs.date("time"),
-      rs.string("json"))
+      rs.string("json"),
+      rs.stringOpt("respType").getOrElse("simple"))
 
   override def getAisData(monitor: String, start: Date, end: Date): Future[Seq[AisData]] = Future {
     implicit val session: DBSession = ReadOnlyAutoSession
@@ -56,11 +65,13 @@ class AisOp @Inject()(sqlServer: SqlServer) extends AisDB {
             INSERT INTO [dbo].[ais_data]
                  ([monitor]
                  ,[time]
-                 ,[json])
+                 ,[json]
+                 ,[respType])
            VALUES
                  (${aisData.monitor}
                  ,${aisData.time}
-                 ,${aisData.json})
+                 ,${aisData.json}
+                 ,${aisData.respType})
         """.execute().apply()
     }
 

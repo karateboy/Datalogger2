@@ -20,6 +20,11 @@ const getters: GetterTree<MonitorState, RootState> = {
     }
     return map;
   },
+
+  monitorOfNoEPA(state): Array<Monitor> {
+    const monitors = state.monitors as Array<Monitor>;
+    return monitors.filter(m => m.epaId === undefined);
+  },
 };
 
 const actions: ActionTree<MonitorState, RootState> = {

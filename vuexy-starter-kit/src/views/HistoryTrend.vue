@@ -122,6 +122,11 @@
     </b-card>
   </div>
 </template>
+<style>
+.highcharts-container, .highcharts-container svg {
+  width: 100% !important;
+}
+</style>
 <style lang="scss">
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
@@ -200,7 +205,7 @@ export default Vue.extend({
       form: {
         monitors: Array<string>(),
         monitorTypes: Array<string>(),
-        reportUnit: 'Min',
+        reportUnit: 'Hour',
         statusFilter: 'all',
         chartType: 'line',
         range,

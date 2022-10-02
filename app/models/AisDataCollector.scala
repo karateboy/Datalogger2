@@ -7,7 +7,7 @@ import play.api.libs.ws.WSClient
 
 import java.util.Date
 import scala.collection.JavaConverters.asScalaBufferConverter
-import scala.concurrent.duration.{FiniteDuration, MINUTES, SECONDS}
+import scala.concurrent.duration.{FiniteDuration, HOURS, MINUTES, SECONDS}
 import scala.util.{Failure, Success}
 
 case class PortConfig(monitor: String, apiKey: String)
@@ -19,6 +19,7 @@ object AisDataCollector {
   implicit val read = Json.reads[AisData]
 
   @volatile var enable = false
+
   private def getConfig(configuration: Configuration): Option[AisDataCollectConfig] = {
     for {config <- configuration.getConfig("aisCollector")
          enable <- config.getBoolean("enable")
@@ -43,6 +44,8 @@ object AisDataCollector {
   }
 
   case object CollectData
+
+  case object CollectFullData
 }
 
 class AisDataCollector(config: AisDataCollectConfig, monitorDB: MonitorDB, aisDB: AisDB, WSClient: WSClient) extends Actor {
@@ -53,6 +56,7 @@ class AisDataCollector(config: AisDataCollectConfig, monitorDB: MonitorDB, aisDB
 
   val timer = context.system.scheduler.schedule(FiniteDuration(5, SECONDS), FiniteDuration(3, MINUTES), self, CollectData)
 
+  val fullTimer = context.system.scheduler.schedule(FiniteDuration(5, SECONDS), FiniteDuration(3, MINUTES), self, CollectFullData)
   config.portConfigs.foreach(port => monitorDB.ensure(port.monitor))
 
   override def receive: Receive = {
@@ -65,14 +69,33 @@ class AisDataCollector(config: AisDataCollectConfig, monitorDB: MonitorDB, aisDB
 
         f onComplete {
           case Success(res) =>
-            if(res.status == 200) {
-              aisDB.insertAisData(AisData(port.monitor, new Date(), res.json.toString()))
+            if (res.status == 200) {
+              aisDB.insertAisData(AisData(port.monitor, new Date(), res.json.toString(), aisDB.respSimpleType))
             }
 
-          case Failure(exception)=>
+          case Failure(exception) =>
             Logger.error(s"get $url failed", exception)
         }
       })
+
+    case CollectFullData =>
+      config.portConfigs.foreach(port => {
+        val url = s"https://services.marinetraffic.com/api/exportvessels/${port.apiKey}?v=8&msgtype=full&protocol=jsono"
+        val f = WSClient
+          .url(url)
+          .get()
+
+        f onComplete {
+          case Success(res) =>
+            if (res.status == 200) {
+              aisDB.insertAisData(AisData(port.monitor, new Date(), res.json.toString(), aisDB.respFullType))
+            }
+
+          case Failure(exception) =>
+            Logger.error(s"get $url failed", exception)
+        }
+      })
+
   }
 
   override def postStop(): Unit = {

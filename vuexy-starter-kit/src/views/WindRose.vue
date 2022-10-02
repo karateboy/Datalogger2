@@ -10,7 +10,7 @@
                 v-model="form.monitor"
                 label="desc"
                 :reduce="mt => mt._id"
-                :options="monitors"
+                :options="monitorOfNoEPA"
               />
             </b-form-group>
           </b-col>
@@ -134,9 +134,9 @@ export default Vue.extend({
     };
   },
   computed: {
-    ...mapState('monitorTypes', ['monitorTypes']),
-    ...mapState('monitors', ['monitors']),
+    ...mapState('monitorTypes', ['monitorTypes']),    
     ...mapGetters('monitorTypes', ['mtMap', 'activatedMonitorTypes']),
+    ...mapGetters('monitors', ['monitorOfNoEPA']),
     canQuery(): boolean {
       if (this.form.monitorType == undefined) return false;
 
@@ -161,8 +161,8 @@ export default Vue.extend({
       this.form.monitorType = this.activatedMonitorTypes[0]._id;
     }
 
-    if (this.monitors.length !== 0) {
-      this.form.monitor = this.monitors[0]._id;
+    if (this.monitorOfNoEPA.length !== 0) {
+      this.form.monitor = this.monitorOfNoEPA[0]._id;
     }
   },
   methods: {
