@@ -84,7 +84,7 @@ class AisOp @Inject()(sqlServer: SqlServer) extends AisDB {
          SELECT TOP 1 *
          FROM [dbo].[ais_data]
          WHERE [monitor] = $monitor
-         ORDER BY [time]
+         ORDER BY [time] desc
          """.map(mapper).first().apply()
   }
 }
