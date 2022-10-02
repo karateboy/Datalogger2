@@ -642,24 +642,23 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
         Ok(Json.toJson(recordList))
   }
 
+
   def alarmReport(level: Int, startNum: Long, endNum: Long) = Security.Authenticated.async {
-    implicit val write = Json.writes[Alarm]
     val (start, end) = (new DateTime(startNum), new DateTime(endNum))
     for (report <- alarmOp.getAlarmsFuture(level, start, end + 1.day)) yield {
       Ok(Json.toJson(report))
     }
   }
 
+
   def monitorAlarmReport(monitorStr: String, level: Int, startNum: Long, endNum: Long) = Security.Authenticated.async {
     val monitors = monitorStr.split(":").toList
-    implicit val write = Json.writes[Alarm]
     val (start, end) = (new DateTime(startNum), new DateTime(endNum))
-    for (report <- alarmOp.getAlarmsFuture(level, start, end + 1.day)) yield
+    for (report <- alarmOp.getMonitorAlarmsFuture(monitors, start.toDate, end.plusDays(1).toDate)) yield
       Ok(Json.toJson(report))
   }
 
   def getAlarms(src: String, level: Int, startNum: Long, endNum: Long) = Security.Authenticated.async {
-    implicit val write = Json.writes[Alarm]
     val (start, end) = (new DateTime(startNum), new DateTime(endNum))
     for (report <- alarmOp.getAlarmsFuture(src, level, start, end + 1.day)) yield
       Ok(Json.toJson(report))
@@ -758,6 +757,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
 
   implicit val write = Json.writes[InstrumentReport]
 
+  import Alarm._
   def recordList(mtStr: String, startLong: Long, endLong: Long) = Security.Authenticated {
     val monitorType = (mtStr)
     implicit val w = Json.writes[Record]

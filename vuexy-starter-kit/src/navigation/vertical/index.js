@@ -53,6 +53,12 @@ export default [
         action: 'read',
         resource: 'Data',
       },
+      {
+        title: '船期查詢',
+        route: 'ship-query',
+        action: 'read',
+        resource: 'Data',
+      },
     ],
   },
   {

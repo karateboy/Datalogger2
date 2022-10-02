@@ -5,7 +5,6 @@ import com.github.nscala_time.time.Imports.DateTime
 import org.mongodb.scala.result.UpdateResult
 import play.api.libs.json.Json
 
-import java.time.Instant
 import java.util.Date
 import scala.concurrent.Future
 
@@ -15,6 +14,11 @@ case class Alarm(time: Date, src: String, level: Int, desc: String, monitor:Stri
   def toJson = Alarm2JSON(time.getTime, src, level, desc)
 }
 
+object Alarm {
+  implicit val write = Json.writes[Alarm]
+  implicit val jsonWrite = Json.writes[Alarm2JSON]
+
+}
 
 trait AlarmDB {
 
@@ -33,9 +37,6 @@ trait AlarmDB {
   def getMonitorAlarmsFuture(monitors:Seq[String], start: Date, end: Date): Future[Seq[Alarm]]
 
   def getAlarmsFuture(src:String, level: Int, start: Imports.DateTime, end: Imports.DateTime): Future[Seq[Alarm]]
-
-  implicit val write = Json.writes[Alarm]
-  implicit val jsonWrite = Json.writes[Alarm2JSON]
 
   def getAlarmsFuture(start: Imports.DateTime, end: Imports.DateTime): Future[Seq[Alarm]]
 

@@ -14,6 +14,8 @@ trait AisDB {
 
   def getAisData(monitor: String, start: Date, end: Date): Future[Seq[AisData]]
 
+  def getNearestAisDataInThePast(monitor: String, respType:String, start: Date) : Future[Option[AisData]]
+
   def getLatestData(monitor: String): Future[Option[AisData]]
 
   def insertAisData(aisData: AisData): Future[InsertOneResult]

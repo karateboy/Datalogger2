@@ -62,4 +62,18 @@ class AisOp @Inject()(mongodb: MongoDB) extends AisDB {
         Some(ret(0))
     })
   }
+
+  override def getNearestAisDataInThePast(monitor: String, respType: String, start: Date): Future[Option[AisData]] = {
+    val filter = Filters.and(Filters.equal("monitor", monitor), Filters.lt("time", start),
+      Filters.equal("respType", respType))
+    val f = collection.find(filter).sort(Sorts.descending("time"))
+      .limit(1).toFuture()
+    f onFailure errorHandler
+    f map (ret => {
+      if (ret.isEmpty)
+        None
+      else
+        Some(ret(0))
+    })
+  }
 }

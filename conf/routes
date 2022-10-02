@@ -154,6 +154,7 @@ GET     /CdxUpload/:start/:end                  controllers.Cdx.CdxUploadData(st
 
 #AIS DATA
 GET     /LatestAisData                          controllers.Realtime.getLatestAisData
+GET     /NearestAisDataInThePast/:monitor/:respType/:start  controllers.Realtime.getNearestAisDataInThePast(monitor, respType, start:Long)
 
 # Data Logger
 GET      /HourRecordRange/:monitor                                                             controllers.DataLogger.getHourRecordRange(monitor)

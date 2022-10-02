@@ -62,7 +62,7 @@ class AlarmForwarder @Inject()(alarmOp: AlarmDB, ws: WSClient)
           _.toJson
         }
         val url = s"http://$server/AlarmRecord/$monitor"
-        import alarmOp.jsonWrite
+        import Alarm._
         val f = ws.url(url).put(Json.toJson(recordJSON))
         f onSuccess {
           case response =>

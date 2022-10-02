@@ -87,4 +87,14 @@ class AisOp @Inject()(sqlServer: SqlServer) extends AisDB {
          ORDER BY [time] desc
          """.map(mapper).first().apply()
   }
+
+  override def getNearestAisDataInThePast(monitor: String, respType: String, start: Date): Future[Option[AisData]] = Future {
+    implicit val session: DBSession = ReadOnlyAutoSession
+    sql"""
+         SELECT TOP 1 *
+         FROM [dbo].[ais_data]
+         WHERE [monitor] = $monitor and [respType] = $respType and [time] <= $start
+         ORDER BY [time] desc
+         """.map(mapper).first().apply()
+  }
 }
