@@ -66,7 +66,6 @@ import { MonitorType } from './types';
 import highcharts from 'highcharts';
 import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
-import highchartMore from 'highcharts/highcharts-more';
 import moment from 'moment';
 import { Monitor } from '../store/monitors/types';
 import { faShip, faFerry } from '@fortawesome/free-solid-svg-icons';
@@ -348,7 +347,7 @@ export default Vue.extend({
             `<strong>${ship.MMSI}</strong>` +
             `<p>速度:${getValue(ship.SPEED)}<br/>
                 方向:${getValue(ship.HEADING)}<br/>
-                時間:${moment(ship.TIMESTAMP).format('lll')}
+                時間:${moment(ship.TIMESTAMP).add(8, 'hour').format('lll')}
             </p>`;
           this.infoWindoContent = new Map(
             this.infoWindoContent.set(monitor, content),
