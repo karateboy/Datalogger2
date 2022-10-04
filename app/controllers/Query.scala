@@ -52,12 +52,12 @@ case class UpdateRecordParam(time: Long, mt: String, status: String)
 class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
                       instrumentStatusOp: InstrumentStatusDB, instrumentOp: InstrumentDB,
                       alarmOp: AlarmDB, calibrationOp: CalibrationDB,
-                      manualAuditLogOp: ManualAuditLogDB, excelUtility: ExcelUtility, configuration: Configuration) extends Controller {
+                      manualAuditLogOp: ManualAuditLogDB, excelUtility: ExcelUtility,
+                      configuration: Configuration) extends Controller {
 
   implicit val cdWrite = Json.writes[CellData]
   implicit val rdWrite = Json.writes[RowData]
   implicit val dtWrite = Json.writes[DataTab]
-  val trendShowActual = configuration.getBoolean("logger.trendShowActual").getOrElse(true)
 
   def getPeriodCount(start: DateTime, endTime: DateTime, p: Period) = {
     var count = 0
@@ -205,7 +205,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
 
       val outputType = OutputType.withName(outputTypeStr)
       val chart = trendHelper(monitors, monitorTypes, tabType,
-        reportUnit, start, end, trendShowActual)(statusFilter)
+        reportUnit, start, end, LoggerConfig.config.trendShowActual)(statusFilter)
 
       if (outputType == OutputType.excel) {
         import java.nio.file.Files
@@ -720,7 +720,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     implicit val w = Json.writes[Record]
     val (start, end) = (new DateTime(startLong), new DateTime(endLong))
 
-    val recordMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.SELF_ID, List(monitorType), start, end)
+    val recordMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, List(monitorType), start, end)
     Ok(Json.toJson(recordMap(monitorType)))
   }
 

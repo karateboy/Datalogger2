@@ -15,7 +15,8 @@ import play.api.libs.concurrent.AkkaGuiceSupport
 class Module(environment: Environment,
              configuration: Configuration) extends AbstractModule with AkkaGuiceSupport {
   override def configure() = {
-    val db = configuration.getString("logger.db").getOrElse("nosql")
+    LoggerConfig.init(configuration)
+    val db = LoggerConfig.config.db
     if(db == "sql"){
       import models.sql._
       //scalikejdbc.config.DBs.setupAll()

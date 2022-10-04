@@ -172,10 +172,8 @@ class HomeController @Inject()(environment: play.api.Environment,
             val f3 = f2.map {
               _ =>
                 Future.sequence {
-                  for (mt <- mtList) yield {
-                    monitorTypeOp.ensureMonitorType(mt)
+                  for (mt <- mtList) yield
                     monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog, recordDB)
-                  }
                 }
             }
             f3.map{
@@ -471,17 +469,18 @@ class HomeController @Inject()(environment: play.api.Environment,
   }
 
   def deleteMonitor(id: String) = Security.Authenticated.async {
-    for (ret <- monitorOp.deleteMonitor(id)) yield
+    for (ret <- monitorOp.delete(id, sysConfig)) yield
       Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
   }
 
   def getActiveMonitorID = Security.Authenticated {
-    Ok(Monitor.activeID)
+    Ok(Monitor.activeId)
   }
 
   def setActiveMonitorID(id: String) = Security.Authenticated {
     if (monitorOp.map.contains(id)) {
-      Monitor.activeID = id
+      Monitor.activeId = id
+      sysConfig.setActiveMonitorId(id)
       Ok(Json.obj("ok" -> true))
     } else
       BadRequest("Invalid monitor ID")
@@ -600,7 +599,7 @@ class HomeController @Inject()(environment: play.api.Environment,
         sensor => {
           for (ret <- sensorOp.upsert(sensor)) yield {
             //insert case
-            monitorOp.ensureMonitor(id)
+            monitorOp.ensure(id)
 
             Ok(Json.obj("ok" -> ret.wasAcknowledged()))
           }
@@ -691,9 +690,9 @@ class HomeController @Inject()(environment: play.api.Environment,
                 Duo.ensureSpectrumTypes(t)(monitorTypeOp)
               } else {
                 if (Duo.map.contains(t.id))
-                  monitorTypeOp.ensureMonitorType(Duo.map(t.id))
+                  monitorTypeOp.ensure(Duo.map(t.id))
                 else
-                  monitorTypeOp.ensureMonitorType(t.id)
+                  monitorTypeOp.ensure(t.id)
               })
 
             Ok(Json.obj("ok" -> true))
@@ -716,9 +715,9 @@ class HomeController @Inject()(environment: play.api.Environment,
           Duo.ensureSpectrumTypes(t)(monitorTypeOp)
         } else {
           if (Duo.fixedMap.contains(t.id))
-            monitorTypeOp.ensureMonitorType(Duo.fixedMap(t.id))
+            monitorTypeOp.ensure(Duo.fixedMap(t.id))
           else
-            monitorTypeOp.ensureMonitorType(t.id)
+            monitorTypeOp.ensure(t.id)
         })
 
       val spectrumMonitorTypes =

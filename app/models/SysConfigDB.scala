@@ -16,6 +16,7 @@ trait SysConfigDB {
   val AlertEmailTaget = "AlertEmailTarget"
   val CDX_CONFIG = "CdxConfig"
   val CDX_MONITOR_TYPES = "CdxMonitorTypes"
+  val ACTIVE_MONITOR_ID = "ActiveMonitorId"
 
   // def getLogo: Future[LogoImage]
 
@@ -48,4 +49,8 @@ trait SysConfigDB {
   def getCdxMonitorTypes() : Future[Seq[CdxMonitorType]]
 
   def setCdxMonitorTypes(monitorTypes: Seq[CdxMonitorType]) : Future[UpdateResult]
+
+  def getActiveMonitorId() : Future[String]
+
+  def setActiveMonitorId(id:String) : Future[UpdateResult]
 }

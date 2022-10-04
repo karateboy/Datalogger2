@@ -51,7 +51,7 @@ object TcpModbusDrv2 {
     val files = new File(docRoot).listFiles()
     for (file <- files) yield {
       val device: TcpModbusDeviceModel = getDeviceModel(file)
-      device.tcpModelReg.dataRegs.foreach(reg => monitorTypeOp.ensureMonitorType(reg.monitorType))
+
       InstrumentType(
         new TcpModbusDrv2(s"${deviceTypeHead}${device.id}", device.description, device.protocols.toList, device.tcpModelReg), factory)
     }
