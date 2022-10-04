@@ -287,10 +287,15 @@ object DataCollectManager {
           }
         }
 
-        val roundedAvg =
-          for (avg <- avgOpt) yield
-            BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
-        (roundedAvg, statusKV._1)
+        try{
+          val roundedAvg =
+            for (avg <- avgOpt) yield
+              BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
+          (roundedAvg, statusKV._1)
+        }catch {
+          case _:Throwable =>
+            (None, statusKV._1)
+        }
       }
 
       MtRecord(mt, minuteAvg._1, minuteAvg._2)
@@ -380,8 +385,7 @@ class DataCollectManager @Inject()
  dataCollectManagerOp: DataCollectManagerOp,
  instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentDB,
  sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
-  val storeSecondData = config.getBoolean("logger.storeSecondData").getOrElse(false)
-  Logger.info(s"store second data = $storeSecondData")
+  Logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
   DataCollectManager.updateEffectiveRatio(sysConfig)
 
   val timer = {
@@ -585,7 +589,7 @@ class DataCollectManager @Inject()
                 r.time >= DateTime.now() - 6.second
               }
 
-              (data.mt -> (filteredMap ++ Map(instId -> Record(now, Some(data.value), data.status, Monitor.activeID))))
+              (data.mt -> (filteredMap ++ Map(instId -> Record(now, Some(data.value), data.status, Monitor.activeId))))
             }
 
           context become handler(instrumentMap, collectorInstrumentMap,
@@ -709,7 +713,7 @@ class DataCollectManager @Inject()
           }
         val priorityMtMap = priorityMtPair.toMap
 
-        if (storeSecondData)
+        if (LoggerConfig.config.storeSecondData)
           flushSecData(priorityMtMap)
 
         val minuteMtAvgList = calculateMinAvgMap(monitorTypeOp, priorityMtMap, false)
@@ -718,7 +722,7 @@ class DataCollectManager @Inject()
 
         context become handler(instrumentMap, collectorInstrumentMap,
           latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap)
-        val f = recordOp.upsertRecord(RecordList(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeID))(recordOp.MinCollection)
+        val f = recordOp.upsertRecord(RecordList(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId))(recordOp.MinCollection)
         f onComplete {
           case Success(_) =>
             self ! ForwardMin
@@ -729,7 +733,7 @@ class DataCollectManager @Inject()
       }
 
       val current = DateTime.now().withSecondOfMinute(0).withMillisOfSecond(0)
-      if (monitorOp.hasSelfMonitor) {
+      if (LoggerConfig.config.selfMonitor) {
         val f = calculateMinData(current)
         f onComplete {
           case Success(_) =>
@@ -896,7 +900,7 @@ class DataCollectManager @Inject()
 
     case CheckInstruments =>
       val now = DateTime.now()
-      val f = recordOp.getRecordMapFuture(recordOp.MinCollection)(Monitor.SELF_ID, monitorTypeOp.realtimeMtvList,
+      val f = recordOp.getRecordMapFuture(recordOp.MinCollection)(Monitor.activeId, monitorTypeOp.realtimeMtvList,
         now.minusHours(1), now)
       for (minRecordMap <- f) {
         for (kv <- instrumentMap) {

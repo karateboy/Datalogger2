@@ -41,7 +41,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
         case PeriodReport.DailyReport =>
           val startDate = new DateTime(startNum).withMillisOfDay(0)
           val mtList = monitorTypeOp.realtimeMtvList
-          val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.SELF_ID, mtList, startDate, startDate + 1.day)
+          val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, mtList, startDate, startDate + 1.day)
           val mtTimeMap: Map[String, Map[DateTime, Record]] = periodMap.map { pair =>
             val k = pair._1
             val v = pair._2
@@ -111,7 +111,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
         case PeriodReport.MonthlyReport =>
           val start = new DateTime(startNum).withMillisOfDay(0).withDayOfMonth(1)
           val mtList = monitorTypeOp.realtimeMtvList
-          val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.SELF_ID, monitorTypeOp.activeMtvList, start, start + 1.month)
+          val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, monitorTypeOp.activeMtvList, start, start + 1.month)
           val statMap = query.getPeriodStatReportMap(periodMap, 1.day)(start, start + 1.month)
           val overallStatMap = getOverallStatMap(statMap, 20)
           val avgRow = {
@@ -179,7 +179,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
         case PeriodReport.YearlyReport =>
           val start = new DateTime(startNum)
           val startDate = start.withMillisOfDay(0).withDayOfMonth(1).withMonthOfYear(1)
-          val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.SELF_ID, monitorTypeOp.activeMtvList, startDate, startDate + 1.year)
+          val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, monitorTypeOp.activeMtvList, startDate, startDate + 1.year)
           val statMap = query.getPeriodStatReportMap(periodMap, 1.month)(start, start + 1.year)
           val overallStatMap = getOverallStatMap(statMap, 12)
           Ok("")
@@ -285,7 +285,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
     val mt = monitorTypeStr
     val start = new DateTime(startDate).withMillisOfDay(0).withDayOfMonth(1)
     val outputType = OutputType.withName(outputTypeStr)
-    val recordList = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.SELF_ID, List(mt), start, start + 1.month)(mt)
+    val recordList = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, List(mt), start, start + 1.month)(mt)
     val timePair = recordList.map { r => r.time -> r }
     val timeMap = Map(timePair: _*)
 

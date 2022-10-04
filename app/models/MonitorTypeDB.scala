@@ -103,25 +103,32 @@ trait MonitorTypeDB {
 
   def getList: List[MonitorType]
 
-  def exist(mt: MonitorType): Boolean = map.contains(mt._id)
-
-  def ensureMonitorType(id: String): Unit = {
-    if (!map.contains(id)) {
-      val mt = rangeType(id, id, "??", 2)
-      upsertMonitorType(mt)
+  def ensure(id: String): Unit = {
+    synchronized {
+      if (!map.contains(id)) {
+        val mt = rangeType(id, id, "??", 2)
+        mt.measuringBy = Some(List.empty[String])
+        upsertMonitorType(mt)
+      } else {
+        val mtCase = map(id)
+        if (mtCase.measuringBy.isEmpty) {
+          mtCase.measuringBy = Some(List.empty[String])
+          upsertMonitorType(mtCase)
+        }
+      }
     }
   }
 
-  def ensureMeasuring(id: String) = {
-    if (!map.contains(id)) {
-      val mt = rangeType(id, id, "??", 2)
-      mt.measuringBy = Some(List.empty[String])
-      upsertMonitorType(mt)
-    }else{
-      val mtCase = map(id)
-      if(mtCase.measuringBy.isEmpty){
+  def ensure(mtCase: MonitorType): Unit = {
+    synchronized {
+      if (!map.contains(mtCase._id)) {
         mtCase.measuringBy = Some(List.empty[String])
         upsertMonitorType(mtCase)
+      } else {
+        if (mtCase.measuringBy.isEmpty) {
+          mtCase.measuringBy = Some(List.empty[String])
+          upsertMonitorType(mtCase)
+        }
       }
     }
   }
@@ -131,21 +138,18 @@ trait MonitorTypeDB {
     MonitorType(_id, desp, unit, prec, rangeOrder, accumulated = Some(accumulated))
   }
 
-  def ensureMonitorType(mt: MonitorType): Unit = {
-    if (!map.contains(mt._id))
-      upsertMonitorType(mt)
-  }
-
   def deleteMonitorType(_id: String) = {
-    if (map.contains(_id)) {
-      val mt = map(_id)
-      map = map - _id
-      if (mt.signalType)
-        signalMtvList = signalMtvList.filter(p => p != _id)
-      else
-        mtvList = mtvList.filter(p => p != _id)
+    synchronized {
+      if (map.contains(_id)) {
+        val mt = map(_id)
+        map = map - _id
+        if (mt.signalType)
+          signalMtvList = signalMtvList.filter(p => p != _id)
+        else
+          mtvList = mtvList.filter(p => p != _id)
 
-      deleteItemFuture(_id)
+        deleteItemFuture(_id)
+      }
     }
   }
 
@@ -153,27 +157,36 @@ trait MonitorTypeDB {
 
   def allMtvList: List[String] = mtvList ++ signalMtvList
 
-  def diMtvList: List[String] = List(RAIN) ++ signalMtvList
-
   def activeMtvList: List[String] = mtvList.filter { mt => map(mt).measuringBy.isDefined }
 
   def addMeasuring(mt: String, instrumentId: String, append: Boolean, recordDB: RecordDB): Future[UpdateResult] = {
     recordDB.ensureMonitorType(mt)
-    map(mt).addMeasuring(instrumentId, append)
-    upsertItemFuture(map(mt))
+    synchronized {
+      if (!map.contains(mt)) {
+        val mtCase = rangeType(mt, mt, "??", 2)
+        mtCase.addMeasuring(instrumentId, append)
+        upsertMonitorType(mtCase)
+      } else {
+        val mtCase = map(mt)
+        mtCase.addMeasuring(instrumentId, append)
+        upsertItemFuture(mtCase)
+      }
+    }
   }
 
   def upsertMonitorType(mt:MonitorType): Future[UpdateResult] = {
-    map = map + (mt._id -> mt)
-    if (mt.signalType) {
-      if (!signalMtvList.contains(mt._id))
-        signalMtvList = signalMtvList :+ mt._id
-    } else {
-      if (!mtvList.contains(mt._id))
-        mtvList = mtvList :+ mt._id
-    }
+    synchronized {
+      map = map + (mt._id -> mt)
+      if (mt.signalType) {
+        if (!signalMtvList.contains(mt._id))
+          signalMtvList = signalMtvList :+ mt._id
+      } else {
+        if (!mtvList.contains(mt._id))
+          mtvList = mtvList :+ mt._id
+      }
 
-    upsertItemFuture(mt)
+      upsertItemFuture(mt)
+    }
   }
 
   protected def upsertItemFuture(mt: MonitorType): Future[UpdateResult]
@@ -202,15 +215,6 @@ trait MonitorTypeDB {
     else {
       val prec = map(mt).prec
       s"%.${prec}f".format(v.get)
-    }
-  }
-
-  def getOverStd(mt: String, r: Option[Record]): Boolean = {
-    if (r.isEmpty)
-      false
-    else {
-      val (overInternal, overLaw) = overStd(mt, r.get.value)
-      overInternal || overLaw
     }
   }
 

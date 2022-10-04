@@ -14,7 +14,7 @@ object RecordList {
   def apply(time: Date, mtDataList: Seq[MtRecord], monitor: String): RecordList =
     RecordList(mtDataList, RecordListID(time, monitor))
 
-  def apply(dt: DateTime, dataList: List[(String, (Double, String))], monitor: String = Monitor.SELF_ID): RecordList = {
+  def apply(dt: DateTime, dataList: List[(String, (Double, String))], monitor: String = Monitor.activeId): RecordList = {
     val mtDataList = dataList map { t => MtRecord(t._1, Some(t._2._1), t._2._2) }
     RecordList(mtDataList, RecordListID(dt, monitor))
   }

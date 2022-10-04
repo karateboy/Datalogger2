@@ -11,14 +11,13 @@ import scala.collection.immutable
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 @Singleton
-class MonitorOp @Inject()(mongodb: MongoDB, config: Configuration) extends MonitorDB {
+class MonitorOp @Inject()(mongodb: MongoDB, config: Configuration, sysConfig: SysConfig) extends MonitorDB {
 
   import Monitor._
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
 
-  override val hasSelfMonitor = config.getBoolean("logger.selfMonitor").getOrElse(true)
   lazy private val colName = "monitors"
   lazy private val codecRegistry = fromRegistries(fromProviders(classOf[Monitor]), DEFAULT_CODEC_REGISTRY)
   lazy private val collection = mongodb.database.getCollection[Monitor](colName).withCodecRegistry(codecRegistry)
@@ -38,12 +37,12 @@ class MonitorOp @Inject()(mongodb: MongoDB, config: Configuration) extends Monit
       for (_ <- f) {
         for (ret <- collection.countDocuments(Filters.exists("_id")).toFuture())
           if (ret == 0) {
-            for (_ <- collection.insertOne(selfMonitor).toFuture())
-              refresh
+            for (_ <- collection.insertOne(defaultMonitor).toFuture())
+              refresh(sysConfig)
           }
       }
     } else
-      refresh
+      refresh(sysConfig)
   }
 
   override def mvList: immutable.Seq[String] = mList.map(_._id)
