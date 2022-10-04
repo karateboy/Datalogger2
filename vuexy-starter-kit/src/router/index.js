@@ -111,6 +111,42 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/ground-gas',
+      name: 'ground-gas',
+      component: () => import('@/views/GroundGas.vue'),
+      meta: {
+        pageTitle: '土壤氣體圖',
+        breadcrumb: [
+          {
+            text: '數據查詢',
+            active: true,
+          },
+          {
+            text: '土壤氣體圖',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
+      path: '/underground-water',
+      name: 'underground-water',
+      component: () => import('@/views/UndergroundWater.vue'),
+      meta: {
+        pageTitle: '地下水質圖',
+        breadcrumb: [
+          {
+            text: '數據查詢',
+            active: true,
+          },
+          {
+            text: '地下水質圖',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/calibration-query',
       name: 'calibration-query',
       component: () => import('@/views/CalibrationQuery.vue'),

@@ -41,6 +41,18 @@ export default [
         resource: 'Data',
       },
       {
+        title: '土壤氣體圖',
+        route: 'ground-gas',
+        action: 'read',
+        resource: 'Data',
+      },
+      {
+        title: '地下水質圖',
+        route: 'underground-water',
+        action: 'read',
+        resource: 'Data',
+      },
+      {
         title: '玫瑰圖查詢',
         route: 'wind-rose-query',
       },
