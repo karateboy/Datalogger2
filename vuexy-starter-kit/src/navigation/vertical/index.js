@@ -118,7 +118,7 @@ export default [
         route: 'audit-config',
       },
       {
-        title: '資料管理',
+        title: '資料上傳',
         route: 'data-management',
       },
       {
