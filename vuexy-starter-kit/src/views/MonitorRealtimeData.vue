@@ -72,6 +72,8 @@ export default Vue.extend({
 
             return `${mtData.value.toFixed(mtCase.prec)}`;
           },
+          thClass: ['text-wrap'],
+          thStyle: 'text-transform: none',
           sortable: true,
           tdClass: (value: any, key: string, item: DisplayRecordList) => {
             let mtCase = this.mtMap.get(mt) as MonitorType;
@@ -134,7 +136,7 @@ export default Vue.extend({
       return `${this.mMap.get(_id.monitor).desc}`;
     },
     getUpdateTime(_id: RecordListID): string {
-      return `${moment(_id.time).fromNow()}更新`;
+      return `${moment(_id.time).fromNow()}`;
     },
   },
 });

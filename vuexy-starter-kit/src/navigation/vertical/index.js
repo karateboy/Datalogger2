@@ -124,14 +124,6 @@ export default [
         route: 'audit-config',
       },
       {
-        title: '資料管理',
-        route: 'data-management',
-      },
-      {
-        title: 'CDX上傳設定',
-        route: 'cdx-upload-config',
-      },
-      {
         title: '參數設定',
         route: 'system-config',
       },

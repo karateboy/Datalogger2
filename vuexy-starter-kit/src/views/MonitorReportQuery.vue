@@ -10,7 +10,7 @@
                 v-model="form.monitor"
                 label="desc"
                 :reduce="mt => mt._id"
-                :options="monitorOfNoEPA"
+                :options="monitors"
               />
             </b-form-group>
           </b-col>
@@ -146,7 +146,7 @@ export default Vue.extend({
     };
   },
   computed: {
-    ...mapGetters('monitors', ['mMap', 'monitorOfNoEPA']),
+    ...mapState('monitors', ['monitors']),
     ...mapGetters('monitorTypes', ['mtMap']),
     pickerType() {
       if (this.form.reportType === 'daily') return 'date';
@@ -156,8 +156,7 @@ export default Vue.extend({
   async mounted() {
     await this.fetchMonitors();
     await this.fetchMonitorTypes();
-    if (this.monitorOfNoEPA.length !== 0)
-      this.form.monitor = this.monitorOfNoEPA[0]._id;
+    if (this.monitors.length !== 0) this.form.monitor = this.monitors[0]._id;
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),

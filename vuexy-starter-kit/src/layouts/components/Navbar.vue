@@ -12,7 +12,7 @@
     </ul>
 
     <dark-Toggler class="d-none d-lg-block" />
-    <h1 class="ml-3 mt-0 mb-0"><strong>空氣品質監測中心</strong></h1>
+    <h1 class="ml-3 mt-0 mb-0"><strong>台灣海域空氣品質監測系統</strong></h1>
 
     <b-navbar-nav class="nav align-items-center">
       <b-nav-item-dropdown
