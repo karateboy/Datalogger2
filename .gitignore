@@ -25,3 +25,4 @@ server.pid
 .tmpBin
 parsed.list
 /cdxUpload
+/null
