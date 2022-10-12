@@ -7,7 +7,9 @@ import jssc.SerialPort
 import models.Protocol.ProtocolParam
 import play.api.Logger
 import play.api.libs.json.Json
+import sun.nio.cs.StandardCharsets
 
+import java.util
 import javax.inject.Inject
 import scala.concurrent.{Future, blocking}
 
@@ -155,7 +157,8 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
   }
 
   def makeCmd(cmd: String): Array[Byte] = {
-    val cmdTxt = s"${STX}0${deviceConfig.slaveID}$cmd$ETX"
+    val slaveID = deviceConfig.slaveID.get
+    val cmdTxt = s"${STX}0$slaveID$cmd$ETX"
     val buffer: Array[Byte] = cmdTxt.getBytes
     val BCC = buffer.foldLeft(0: Byte)((a, b) => (a ^ b).toByte)
     buffer :+ BCC
