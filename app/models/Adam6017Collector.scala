@@ -2,6 +2,7 @@ package models
 
 import akka.actor._
 import com.google.inject.assistedinject.Assisted
+import models.Adam6017Collector.defaultSignalConfigs
 import models.ModelHelper._
 import models.Protocol.ProtocolParam
 import play.api._
@@ -10,7 +11,7 @@ import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object Adam6017Collector {
-
+  val defaultSignalConfigs = Seq[SignalConfig](SignalConfig(None), SignalConfig(None))
   var count = 0
 
   def start(id: String, protocolParam: ProtocolParam, param: Adam6017Param)(implicit context: ActorContext) = {
@@ -43,7 +44,7 @@ class Adam6017Collector @Inject()
   import MoxaE1212Collector._
 
 
-  for {(cfg, idx) <- param.doChannels.zipWithIndex
+  for {(cfg, idx) <- param.doChannels.getOrElse(defaultSignalConfigs).zipWithIndex
        monitorTypeId <- cfg.monitorType}
     context.parent ! AddSignalTypeHandler(monitorTypeId, bit => {
       self ! WriteDO(idx, bit)
