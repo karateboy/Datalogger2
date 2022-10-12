@@ -7,7 +7,7 @@ import play.api.libs.json._
 
 import javax.inject._
 
-case class Adam6017Param(chs: Seq[AiChannelCfg], doChannels: Seq[SignalConfig])
+case class Adam6017Param(chs: Seq[AiChannelCfg], doChannels: Option[Seq[SignalConfig]])
 
 @Singleton
 class Adam6017 @Inject()(monitorTypeOp: MonitorTypeDB) extends DriverOps {
@@ -15,6 +15,7 @@ class Adam6017 @Inject()(monitorTypeOp: MonitorTypeDB) extends DriverOps {
   implicit val signalConfigRead = Json.reads[SignalConfig]
   implicit val cfgReads = Json.reads[AiChannelCfg]
   implicit val reads = Json.reads[Adam6017Param]
+  import Adam6017Collector._
 
   override def getMonitorTypes(param: String) = {
     val adam6017Param = validateParam(param)
@@ -23,7 +24,8 @@ class Adam6017 @Inject()(monitorTypeOp: MonitorTypeDB) extends DriverOps {
     }.flatMap {
       _.mt
     }.toList.filter { mt => monitorTypeOp.allMtvList.contains(mt) }
-    val doMonitorTypes = adam6017Param.doChannels.flatMap(_.monitorType)
+    val doMonitorTypes = adam6017Param.doChannels.getOrElse(defaultSignalConfigs)
+      .flatMap(_.monitorType)
     aiMonitorTypes ++ doMonitorTypes
   }
 
@@ -60,7 +62,7 @@ class Adam6017 @Inject()(monitorTypeOp: MonitorTypeDB) extends DriverOps {
           }
         }
 
-        if(param.doChannels.length != 2) {
+        if(param.doChannels.getOrElse(defaultSignalConfigs).length != 2) {
           throw new Exception("DO # shall be 2")
         }
 
