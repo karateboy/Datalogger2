@@ -148,7 +148,7 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
     val altValue = MonitorTypeData(MonitorType.ALTITUDE, evt.getPosition.getAltitude, MonitorStatus.NormalStat)
     val now = DateTime.now().getMillis
     val speedValue = for (lastTime <- lastTimeOpt; distance <- getDistance(evt.getPosition)) yield
-      distance / (now - lastTime)
+      distance * 3600 / (now - lastTime)
 
     //Update time and pos
     lastTimeOpt = Some(now)

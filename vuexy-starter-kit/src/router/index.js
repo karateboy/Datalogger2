@@ -367,14 +367,14 @@ const router = new VueRouter({
       name: 'data-management',
       component: () => import('@/views/DataManagement.vue'),
       meta: {
-        pageTitle: '資料管理',
+        pageTitle: '資料上傳',
         breadcrumb: [
           {
             text: '系統管理',
             active: true,
           },
           {
-            text: '資料管理',
+            text: '資料上傳',
             active: true,
           },
         ],
