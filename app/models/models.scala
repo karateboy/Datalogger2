@@ -56,21 +56,7 @@ object ModelHelper {
       throw ex
   }
 
-  def windAvg(windSpeed: Seq[Record], windDir: Seq[Record]): Option[Double] = {
-    if (windSpeed.length != windDir.length)
-      Logger.error(s"windSpeed #=${windSpeed.length} windDir #=${windDir.length}")
-
-    val windRecord = windSpeed.zip(windDir).filter(p => p._1.value.isDefined && p._2.value.isDefined)
-    if (windRecord.nonEmpty) {
-      val wind_sin = windRecord.map(v => v._1.value.get * Math.sin(Math.toRadians(v._2.value.get))).sum
-      val wind_cos = windRecord.map(v => v._1.value.get * Math.cos(Math.toRadians(v._2.value.get))).sum
-      Some(windAvg(wind_sin, wind_cos))
-    }
-    else
-      None
-  }
-
-  def windAvg(sum_sin: Double, sum_cos: Double) = {
+  def directionAvg(sum_sin: Double, sum_cos: Double): Double = {
     val degree = Math.toDegrees(Math.atan2(sum_sin, sum_cos))
     if (degree >= 0)
       degree
@@ -78,15 +64,36 @@ object ModelHelper {
       degree + 360
   }
 
-  def windAvg(windSpeed: List[Double], windDir: List[Double]): Option[Double] = {
-    if (windSpeed.length != windDir.length)
-      Logger.error(s"windSpeed #=${windSpeed.length} windDir #=${windDir.length}")
+  private def getSinCosSum(speedList: Seq[Double], directionList: Seq[Double]): Option[(Double, Double)] = {
+    if (speedList.length != directionList.length)
+      Logger.error(s"speed #=${speedList.length} dir #=${directionList.length}")
 
-    val windRecord = windSpeed.zip(windDir)
-    if (windRecord.nonEmpty) {
-      val wind_sin = windRecord.map(v => v._1 * Math.sin(Math.toRadians(v._2))).sum
-      val wind_cos = windRecord.map(v => v._1 * Math.cos(Math.toRadians(v._2))).sum
-      Some(windAvg(wind_sin, wind_cos))
+    val speedDirections = speedList.zip(directionList)
+    if (speedDirections.nonEmpty) {
+      val sinSum = speedDirections.map(v => v._1 * Math.sin(Math.toRadians(v._2))).sum
+      val cosSum = speedDirections.map(v => v._1 * Math.cos(Math.toRadians(v._2))).sum
+      Some((sinSum, cosSum))
+    } else
+      None
+  }
+
+  def directionAvg(speedList: Seq[Double], directionList: Seq[Double]): Option[Double] =
+    for((sinSum, cosSum) <- getSinCosSum(speedList, directionList)) yield
+      directionAvg(sinSum, cosSum)
+
+  def speedAvg(speedList: List[Double], directionList: List[Double]): Option[Double] =
+    for ((sinSum, cosSum) <- getSinCosSum(speedList, directionList)) yield
+      Math.sqrt(sinSum*sinSum + cosSum*cosSum)
+
+  def speedDirectionAvg(speedList: List[Double], directionList: List[Double]): Option[(Double, Double)] = {
+    if (speedList.length != directionList.length)
+      Logger.error(s"speed #=${speedList.length} dir #=${directionList.length}")
+
+    val speedDirections = speedList.zip(directionList)
+    if (speedDirections.nonEmpty) {
+      val sinSum = speedDirections.map(v => v._1 * Math.sin(Math.toRadians(v._2))).sum
+      val cosSum = speedDirections.map(v => v._1 * Math.cos(Math.toRadians(v._2))).sum
+      Some((directionAvg(sinSum, cosSum), Math.sqrt(sinSum*sinSum + cosSum*cosSum)))
     } else
       None
   }

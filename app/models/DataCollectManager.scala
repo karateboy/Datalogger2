@@ -230,8 +230,7 @@ object DataCollectManager {
 
   def calculateMinAvgMap(monitorTypeDB: MonitorTypeDB, mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
     for {
-      mt <- mtMap.keys
-      statusMap = mtMap(mt)
+      (mt, statusMap) <- mtMap
       total = statusMap.map {
         _._2.size
       }.sum if total != 0
@@ -254,22 +253,30 @@ object DataCollectManager {
         val avgOpt = if (values.length == 0)
           None
         else {
+          val mtCase = monitorTypeDB.map(mt)
           mt match {
             case MonitorType.WIN_DIRECTION =>
               val windDir = values
-              val windSpeedStatusMap = mtMap.get(MonitorType.WIN_SPEED)
-              if (windSpeedStatusMap.isDefined) {
-                val windSpeedMostStatus = windSpeedStatusMap.get.maxBy(kv => kv._2.length)
-                val windSpeed = windSpeedMostStatus._2.map(_._2)
-                windAvg(windSpeed.toList, windDir.toList)
+              if (mtMap.contains(MonitorType.WIN_SPEED)) {
+                val speedStatusMap = mtMap(MonitorType.WIN_SPEED)
+                val speedMostStatus = speedStatusMap.maxBy(kv => kv._2.length)
+                val speeds = speedMostStatus._2.map(_._2)
+                directionAvg(speeds.toList, windDir.toList)
               } else { //assume wind speed is all equal
-                val windSpeed =
-                  for (r <- 1 to windDir.length)
-                    yield 1.0
-                windAvg(windSpeed.toList, windDir.toList)
+                val speeds = List.fill(windDir.length)(1.0)
+                directionAvg(speeds, windDir.toList)
+              }
+            case MonitorType.DIRECTION =>
+              val directions = values
+              if (mtMap.contains(MonitorType.SPEED)) {
+                val speedMostStatus = mtMap(MonitorType.SPEED).maxBy(kv => kv._2.length)
+                val speeds = speedMostStatus._2.map(_._2)
+                directionAvg(speeds.toList, directions.toList)
+              } else { //assume wind speed is all equal
+                val speeds = List.fill(directions.length)(1.0)
+                directionAvg(speeds, directions.toList)
               }
             case MonitorType.RAIN =>
-              val mtCase = monitorTypeDB.map(MonitorType.RAIN)
               if (mtCase.accumulated.contains(true))
                 Some(values.max)
               else
@@ -306,8 +313,7 @@ object DataCollectManager {
                           alwaysValid: Boolean,
                           monitorTypeDB: MonitorTypeDB) = {
     for {
-      mt <- mtMap.keys
-      statusMap = mtMap(mt)
+      (mt, statusMap) <- mtMap
       total = statusMap.map {
         _._2.size
       }.sum if total != 0
@@ -334,22 +340,22 @@ object DataCollectManager {
         val avgOpt = if (values.length == 0)
           None
         else {
+          val mtCase = monitorTypeDB.map(mt)
           mt match {
             case MonitorType.WIN_DIRECTION =>
               val windDir = values
-              val windSpeedStatusMap = mtMap.get(MonitorType.WIN_SPEED)
-              if (windSpeedStatusMap.isDefined) {
-                val windSpeedMostStatus = windSpeedStatusMap.get.maxBy(kv => kv._2.length)
+              if (mtMap.contains(MonitorType.WIN_SPEED)) {
+                val windSpeedMostStatus = mtMap(MonitorType.WIN_SPEED).maxBy(kv => kv._2.length)
                 val windSpeed = windSpeedMostStatus._2.map(_._2)
-                windAvg(windSpeed.toList, windDir)
+                directionAvg(windSpeed.toList, windDir)
               } else { //assume wind speed is all equal
                 val windSpeed =
                   for (r <- 1 to windDir.length)
                     yield 1.0
-                windAvg(windSpeed.toList, windDir)
+
+                directionAvg(windSpeed.toList, windDir)
               }
             case MonitorType.RAIN =>
-              val mtCase = monitorTypeDB.map(MonitorType.RAIN)
               if (mtCase.accumulated.contains(true))
                 Some(values.max)
               else
