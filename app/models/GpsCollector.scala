@@ -18,7 +18,7 @@ case class GpsParam(lat: Option[Double], lon: Option[Double], radius: Option[Dou
 
 object GpsCollector extends DriverOps {
   val POS_IN_THE_RANGE = "POS_IN_THE_RANGE"
-  val monitorTypes = List(MonitorType.LAT, MonitorType.LNG, MonitorType.ALTITUDE, MonitorType.SPEED)
+  val monitorTypes = List(MonitorType.LAT, MonitorType.LNG, MonitorType.ALTITUDE, MonitorType.SPEED, MonitorType.DIRECTION)
   var count = 0
 
   override def getMonitorTypes(param: String) = monitorTypes
@@ -88,6 +88,7 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
   import GpsCollector._
   val mtPOS_IN_THE_RANGE = monitorTypeDB.signalType(POS_IN_THE_RANGE, "位置在範圍內")
   monitorTypeDB.ensure(mtPOS_IN_THE_RANGE)
+  monitorTypes.foreach(monitorTypeDB.ensure)
 
   var comm: SerialComm = _
   var reader: SentenceReader = _
@@ -110,7 +111,7 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
       } catch {
         case _ :Throwable =>
           import context.dispatcher
-          Logger.error(s"failed to open ${protocolParam.comPort.get}")
+          Logger.error(s"failed to open COM${protocolParam.comPort.get}")
           context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, OpenCom)
       }
     case SetState(id, state) =>
@@ -147,8 +148,8 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
     val lngValue = MonitorTypeData(MonitorType.LNG, evt.getPosition.getLongitude, MonitorStatus.NormalStat)
     val altValue = MonitorTypeData(MonitorType.ALTITUDE, evt.getPosition.getAltitude, MonitorStatus.NormalStat)
     val now = DateTime.now().getMillis
-    val speedValue = for (lastTime <- lastTimeOpt; distance <- getDistance(evt.getPosition)) yield
-      distance * 3600 / (now - lastTime)
+    val speedValue = MonitorTypeData(MonitorType.SPEED, evt.getSpeed, MonitorStatus.NormalStat)
+    val directionValue = MonitorTypeData(MonitorType.DIRECTION, evt.getCourse, MonitorStatus.NormalStat)
 
     //Update time and pos
     lastTimeOpt = Some(now)
@@ -156,11 +157,8 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
 
     checkWithinRange(evt.getPosition)
 
-    val fullList = if (speedValue.nonEmpty) {
-      val speed = MonitorTypeData(MonitorType.SPEED, speedValue.get, MonitorStatus.NormalStat)
-      List(latValue, lngValue, altValue, speed)
-    } else
-      List(latValue, lngValue, altValue)
+    val fullList =
+      List(latValue, lngValue, altValue, speedValue, directionValue)
 
     context.parent ! ReportData(fullList)
   }

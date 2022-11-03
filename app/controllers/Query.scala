@@ -3,7 +3,7 @@ package controllers
 import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import controllers.Highchart._
-import models.ModelHelper.windAvg
+import models.ModelHelper.directionAvg
 import models._
 import play.api._
 import play.api.libs.json._
@@ -113,7 +113,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
         val avg = if (mt == MonitorType.WIN_DIRECTION) {
           val windDir = records
           val windSpeed = periodSlice(recordListMap(MonitorType.WIN_SPEED), period_start, period_start + period)
-          windAvg(windSpeed, windDir)
+          directionAvg(windSpeed.flatMap(_.value), windDir.flatMap(_.value))
         } else {
           if (count != 0)
             Some(sum / count)
@@ -430,7 +430,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
               if (mt == MonitorType.WIN_DIRECTION) {
                 val windDir = records
                 val windSpeed = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitor, List(MonitorType.WIN_SPEED), period_start, period_start + period)(MonitorType.WIN_SPEED)
-                period_start -> (windAvg(windSpeed, windDir), None)
+                period_start -> (directionAvg(windSpeed.flatMap(_.value), windDir.flatMap(_.value)), None)
               } else {
                 val values = records.flatMap { r => r.value }
                 if (values.nonEmpty)
