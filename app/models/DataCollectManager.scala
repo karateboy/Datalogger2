@@ -743,7 +743,7 @@ class DataCollectManager @Inject()
       self ! CheckConstantSensor
       // It is tricky less than 90% is calculated based on beginnning of today.
       val sensorCountFuture = recordOp
-        .getSensorCount(recordOp.MinCollection)()
+        .getSensorCount(recordOp.MinCollection)(today)
       sensorCountFuture onFailure errorHandler("sensorCountFuture failed")
 
       for (ret: Seq[MonitorRecord] <- sensorCountFuture) {
