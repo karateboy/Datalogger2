@@ -92,5 +92,12 @@ object MonitorType {
   var rangeOrder = 0
   var signalOrder = 1000
 
+  //Calculated types
+  val TRUE_WIND_SPEED = "TRUE_WIND_SPEED"
+  val TRUE_WIND_DIR = "TRUE_WIND_DIR"
+  val RELATIVE_WIND_SPEED = "RELATIVE_WIND_SPEED"
+  val RELATIVE_WIND_DIR = "RELATIVE_WIND_DIR"
+  val DIRECTION = "DIRECTION"
+
 }
 

@@ -263,7 +263,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
               }.sum
 
               val wind_cos = windRecord.map(v => v._1.avg.get * Math.cos(Math.toRadians(v._2.avg.get))).sum
-              Some(windAvg(wind_sin, wind_cos))
+              Some(directionAvg(wind_sin, wind_cos))
             }
           }
 
@@ -310,7 +310,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
         val avg = if (mt == MonitorType.WIN_DIRECTION) {
           val windDir = records
           val windSpeed = hourList.map(timeMap)
-          windAvg(windSpeed, windDir)
+          directionAvg(windSpeed.flatMap(_.value), windDir.flatMap(_.value))
         } else {
           if (count != 0)
             Some(sum / count)
