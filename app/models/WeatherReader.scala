@@ -78,10 +78,11 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
         blocking {
           try {
             fileParser(new File(config.dir))
-            timer = context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, ParseReport)
           } catch {
             case ex: Throwable =>
               Logger.error("fail to process weather file", ex)
+          } finally {
+            timer = context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, ParseReport)
           }
         }
       }
