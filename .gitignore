@@ -21,7 +21,3 @@ server.pid
 /conf/server.conf
 /node_modules
 .idea
-/importEPA
-.tmpBin
-parsed.list
-/vuexy-starter-kit/yarn.lock

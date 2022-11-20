@@ -39,6 +39,5 @@ mappings in Universal ++= Seq((baseDirectory.value / "cleanup.bat", "cleanup.bat
  	
 //libraryDependencies += "com.google.guava" % "guava" % "19.0"
 scalacOptions += "-feature"
-resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
 
 routesGenerator := InjectedRoutesGenerator
