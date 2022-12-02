@@ -6,6 +6,7 @@ import com.serotonin.modbus4j.locator.BaseLocator
 import com.serotonin.modbus4j.serial.SerialPortWrapper
 import models.ModelHelper._
 import models.Protocol.ProtocolParam
+import models.TapiTxx.T700_STANDBY_SEQ
 import play.api._
 
 import javax.inject._
@@ -538,6 +539,8 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
         seq =>
           context.parent ! ExecuteSeq(seq, false)
       }
+
+      context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
 
       if (deviceConfig.skipInternalVault != Some(true)) {
         for (reg <- modelReg.calibrationReg) {

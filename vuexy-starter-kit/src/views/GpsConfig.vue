@@ -45,7 +45,7 @@ export default Vue.extend({
     },
   },
   data() {
-    let paramObj = { };
+    let paramObj = {};
 
     if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr);
 
