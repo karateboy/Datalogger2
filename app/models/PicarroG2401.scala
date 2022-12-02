@@ -76,9 +76,9 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
 
   import PicarroG2401._
 
-  var socketOpt: Option[Socket] = None
-  var outOpt: Option[OutputStream] = None
-  var inOpt: Option[BufferedReader] = None
+  @volatile var socketOpt: Option[Socket] = None
+  @volatile var outOpt: Option[OutputStream] = None
+  @volatile var inOpt: Option[BufferedReader] = None
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = predefinedIST
 

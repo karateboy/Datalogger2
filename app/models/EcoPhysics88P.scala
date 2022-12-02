@@ -93,7 +93,7 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
   Logger.info(s"EcoPhysics88P collector start")
   Logger.info(deviceConfig.toString)
   val ETX = "\u0003"
-  var serialOpt: Option[SerialComm] = None
+  @volatile var serialOpt: Option[SerialComm] = None
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] =
     EcoPhysics88P.instrumentStatusKeyList

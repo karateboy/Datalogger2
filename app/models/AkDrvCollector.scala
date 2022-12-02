@@ -19,9 +19,9 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
                                alarmOp: AlarmDB, instrumentStatusOp: InstrumentStatusDB)
                               (@Assisted instId: String, @Assisted protocol: ProtocolParam, @Assisted modelReg: AkModelReg,
                                @Assisted deviceConfig: AkDeviceConfig) extends Actor {
-  var timerOpt: Option[Cancellable] = None
+  @volatile var timerOpt: Option[Cancellable] = None
 
-  var (collectorState: String, instrumentStatusTypesOpt) = {
+  @volatile var (collectorState: String, instrumentStatusTypesOpt) = {
     val instList = instrumentOp.getInstrument(instId)
     if (instList.nonEmpty) {
       val inst: Instrument = instList(0)
@@ -96,8 +96,8 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
     AkModelRegValue(inputs, modes, warnings)
   }
 
-  var connected = false
-  var oldModelReg: Option[AkModelRegValue] = None
+  @volatile var connected = false
+  @volatile var oldModelReg: Option[AkModelRegValue] = None
 
   def receive = normalReceive
 
@@ -135,7 +135,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
 
   self ! OpenCom
 
-  var comm: SerialComm = _
+  @volatile var comm: SerialComm = _
 
   def normalReceive(): Receive = {
     case OpenCom =>
@@ -187,7 +187,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
     case ExecuteSeq(seq, on) =>
   }
 
-  var nextLoggingStatusTime = {
+  @volatile var nextLoggingStatusTime = {
     def getNextTime(period: Int) = {
       val now = DateTime.now()
       val residual = (now.getMinuteOfHour + period) % period

@@ -70,7 +70,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
   for(mt<-mtList)
     recordOp.ensureMonitorType(mt)
 
-  var timer: Cancellable = context.system.scheduler.scheduleOnce(FiniteDuration(5, SECONDS), self, ParseReport)
+  @volatile var timer: Cancellable = context.system.scheduler.scheduleOnce(FiniteDuration(5, SECONDS), self, ParseReport)
 
   override def receive: Receive = {
     case ParseReport =>

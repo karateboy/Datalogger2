@@ -110,13 +110,13 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB,alarmOp: AlarmDB,
       |""".stripMargin
 
   implicit val reads = Json.reads[Message]
-  var mqttClientOpt: Option[MqttAsyncClient] = None
-  var lastDataArrival: DateTime = DateTime.now
+  @volatile var mqttClientOpt: Option[MqttAsyncClient] = None
+  @volatile var lastDataArrival: DateTime = DateTime.now
 
   val watchDog = context.system.scheduler.schedule(Duration(1, MINUTES),
     Duration(timeout, MINUTES), self, CheckTimeout)
 
-  var sensorMap: Map[String, Sensor] = {
+  @volatile var sensorMap: Map[String, Sensor] = {
     waitReadyResult(mqttSensorOp.getSensorMap)
   }
   self ! CreateClient

@@ -28,8 +28,8 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
 
   self ! ConnectHost
   val WarnKey = "Warn"
-  var timerOpt: Option[Cancellable] = None
-  var masterOpt: Option[ModbusMaster] = None
+  @volatile var timerOpt: Option[Cancellable] = None
+  @volatile var masterOpt: Option[ModbusMaster] = None
   @volatile var (collectorState: String, instrumentStatusTypesOpt) = {
     val instList = instrumentOp.getInstrument(instId)
     if (instList.nonEmpty) {
@@ -38,9 +38,9 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
     } else
       (MonitorStatus.NormalStat, None)
   }
-  var connected = false
-  var oldModelReg: Option[ModelRegValue] = None
-  var nextLoggingStatusTime = {
+  @volatile var connected = false
+  @volatile var oldModelReg: Option[ModelRegValue] = None
+  @volatile var nextLoggingStatusTime = {
     def getNextTime(period: Int) = {
       import com.github.nscala_time.time.Imports._
       val now = DateTime.now()
