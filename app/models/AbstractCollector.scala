@@ -423,6 +423,8 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           context.parent ! ExecuteSeq(seq, false)
       }
 
+      context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+
       if (!deviceConfig.skipInternalVault.contains(true)) {
         for (reg <- getCalibrationReg) {
           setCalibrationReg(reg.zeroAddress, false)

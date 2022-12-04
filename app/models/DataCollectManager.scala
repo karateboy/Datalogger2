@@ -5,6 +5,7 @@ import com.github.nscala_time.time.Imports._
 import models.DataCollectManager.{calculateHourAvgMap, calculateMinAvgMap}
 import models.ForwardManager.{ForwardHour, ForwardHourRecord, ForwardMin, ForwardMinRecord}
 import models.ModelHelper._
+import models.TapiTxx.T700_STANDBY_SEQ
 import org.mongodb.scala.result.UpdateResult
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
@@ -417,6 +418,7 @@ class DataCollectManager @Inject()
   val forwardManagerOpt =
     for (serverConfig <- ForwardManager.getConfig(config)) yield
       injectedChild(forwardManagerFactory(serverConfig.server, serverConfig.monitor), "forwardManager")
+  var isT700Calibrator = true
   var calibratorOpt: Option[ActorRef] = None
   var digitalOutputOpt: Option[ActorRef] = None
   var onceTimer: Option[Cancellable] = None
@@ -526,6 +528,7 @@ class DataCollectManager @Inject()
 
         val instrumentParam = InstrumentParam(collector, monitorTypes, timerOpt, calibrateTimeOpt)
         if (instType.driver.isCalibrator) {
+          isT700Calibrator = instType.driver.id == T700Collector.id
           calibratorOpt = Some(collector)
         } else if (instType.driver.isDoInstrument) {
           digitalOutputOpt = Some(collector)
@@ -824,9 +827,13 @@ class DataCollectManager @Inject()
           sender ! ret
       }
     case msg: ExecuteSeq =>
-      if (calibratorOpt.isDefined)
-        calibratorOpt.get ! msg
-      else {
+      if (calibratorOpt.nonEmpty) {
+        if(msg.seqName == T700_STANDBY_SEQ) {
+          if(isT700Calibrator)
+            calibratorOpt.get ! msg
+        }else
+          calibratorOpt.get ! msg
+      } else {
         Logger.warn(s"Calibrator is not online! Ignore execute (${msg.seqName} - ${msg.on}).")
       }
 
