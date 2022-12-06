@@ -8,6 +8,7 @@ import scalikejdbc._
 
 import java.sql.Blob
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -156,7 +157,7 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
 
   case class Value(v: String, blob: Option[Blob])
 
-  override def getActiveMonitorId(): Future[String] = Future {
+  override def getActiveMonitorId: Future[String] = Future {
     val valueOpt = get(ACTIVE_MONITOR_ID)
     val ret =
       for (value <- valueOpt) yield
@@ -166,6 +167,20 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
 
   override def setActiveMonitorId(id: String): Future[UpdateResult] = Future {
     val ret = set(ACTIVE_MONITOR_ID, id)
+    UpdateResult.acknowledged(ret, ret, null)
+  }
+
+  override def getLastDataTime: Future[Instant] = Future {
+    val valueOpt = get(LAST_DATA_TIME)
+    val ret =
+      for (value <- valueOpt) yield
+        Instant.parse(value.v)
+
+    ret.getOrElse(Instant.now().minus(3, ChronoUnit.DAYS))
+  }
+
+  override def setLastDataTime(dt: Instant): Future[UpdateResult] = Future {
+    val ret = set(LAST_DATA_TIME, dt.toString)
     UpdateResult.acknowledged(ret, ret, null)
   }
 }

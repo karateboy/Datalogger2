@@ -208,7 +208,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
           f onComplete {
             case Success(_) =>
               manager ! ForwardHour
-              for (cdxConfig <- sysConfigDB.getCdxConfig() if cdxConfig.enable; cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes())
+              for (cdxConfig <- sysConfigDB.getCdxConfig if cdxConfig.enable; cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes)
                 cdxUploader.upload(recordList = recordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
 
             case Failure(exception) =>
@@ -430,7 +430,7 @@ class DataCollectManager @Inject()
     SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
     WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
     VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self)
-    NextDriveReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp, WSClient)
+    NextDriveReader.start(config, context.system, sysConfig, monitorOp, monitorTypeOp, recordOp, dataCollectManagerOp, WSClient)
   }
 
 

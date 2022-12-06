@@ -44,7 +44,7 @@ trait MonitorDB {
         m._id -> m
       }
 
-    for(activeId <- sysConfigDB.getActiveMonitorId())
+    for(activeId <- sysConfigDB.getActiveMonitorId)
       Monitor.setActiveMonitorId(activeId)
 
     map = pairs.toMap

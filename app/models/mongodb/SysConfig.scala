@@ -9,6 +9,7 @@ import org.mongodb.scala.result.UpdateResult
 import play.api.libs.json.Json
 
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.Date
 import javax.inject.{Inject, Singleton}
 import scala.collection.JavaConversions.asScalaBuffer
@@ -31,7 +32,9 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     EffectiveRatio -> Document(valueKey -> 0.75),
     CDX_CONFIG -> Document(valueKey -> Json.toJson(CdxUploader.defaultConfig).toString()),
     CDX_MONITOR_TYPES -> Document(valueKey -> Json.toJson(CdxUploader.defaultMonitorTypes).toString()),
-    ACTIVE_MONITOR_ID -> Document(valueKey -> Monitor.activeId)
+    ACTIVE_MONITOR_ID -> Document(valueKey -> Monitor.activeId),
+    LAST_DATA_TIME -> Document(valueKey ->
+      Date.from(Instant.now().minus(4, ChronoUnit.DAYS)))
   )
 
   override def getSpectrumLastParseTime(): Future[Instant] = getInstant(SpectrumLastParseTime)()
@@ -122,7 +125,7 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
   override def setCdxMonitorTypes(monitorTypes: Seq[CdxMonitorType]): Future[UpdateResult] =
     set(CDX_MONITOR_TYPES, BsonString(Json.toJson(monitorTypes).toString()))
 
-  private def init() {
+  private def init(): Unit = {
     for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(ColName)) {
         val f = mongodb.database.createCollection(ColName).toFuture()
@@ -132,7 +135,11 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     }
   }
 
-  override def getActiveMonitorId(): Future[String] = get(ACTIVE_MONITOR_ID).map(_.asString().getValue)
+  override def getActiveMonitorId: Future[String] = get(ACTIVE_MONITOR_ID).map(_.asString().getValue)
 
   override def setActiveMonitorId(id: String): Future[UpdateResult] = set(ACTIVE_MONITOR_ID, BsonString(id))
+
+  override def getLastDataTime: Future[Instant] = getInstant(LAST_DATA_TIME)()
+
+  override def setLastDataTime(dt: Instant): Future[UpdateResult] = setInstant(LAST_DATA_TIME)(dt)
 }

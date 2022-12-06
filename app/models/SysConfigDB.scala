@@ -17,6 +17,7 @@ trait SysConfigDB {
   val CDX_CONFIG = "CdxConfig"
   val CDX_MONITOR_TYPES = "CdxMonitorTypes"
   val ACTIVE_MONITOR_ID = "ActiveMonitorId"
+  val LAST_DATA_TIME = "LastDataTime"
 
   // def getLogo: Future[LogoImage]
 
@@ -38,19 +39,23 @@ trait SysConfigDB {
 
   def setEffectiveRation(v: Double): Future[UpdateResult]
 
-  def getAlertEmailTarget(): Future[Seq[String]]
+  def getAlertEmailTarget: Future[Seq[String]]
 
   def setAlertEmailTarget(emails: Seq[String]): Future[UpdateResult]
 
-  def getCdxConfig(): Future[CdxConfig]
+  def getCdxConfig: Future[CdxConfig]
 
   def setCdxConfig(config:CdxConfig): Future[UpdateResult]
 
-  def getCdxMonitorTypes() : Future[Seq[CdxMonitorType]]
+  def getCdxMonitorTypes: Future[Seq[CdxMonitorType]]
 
   def setCdxMonitorTypes(monitorTypes: Seq[CdxMonitorType]) : Future[UpdateResult]
 
-  def getActiveMonitorId() : Future[String]
+  def getActiveMonitorId: Future[String]
 
   def setActiveMonitorId(id:String) : Future[UpdateResult]
+
+  def getLastDataTime : Future[Instant]
+
+  def setLastDataTime(dt:Instant) :Future[UpdateResult]
 }

@@ -10,10 +10,11 @@ import play.api.libs.ws.WSClient
 
 import java.io.File
 import java.time.format.{DateTimeFormatter, DateTimeParseException}
-import java.time.{LocalDateTime, ZoneId}
+import java.time.{Instant, LocalDateTime, ZoneId}
 import java.util.Date
 import scala.concurrent.duration.{FiniteDuration, MINUTES}
 import scala.io.{Codec, Source}
+import scala.util.Success
 
 case class NextDriveConfig(enable: Boolean, key: String, productID: String)
 
@@ -44,6 +45,17 @@ object NextDriveReader {
   case object GetDevice
 
   case object GetSensorData
+
+  case class TimeParam(startTime: Long, endTime: Long)
+
+  case class Sensor(deviceUuid: String, scopes: Seq[String])
+
+  case class SensorQueryParam(query: Seq[Sensor], time: TimeParam, maxCount: Int)
+
+  implicit val timeParamWrite: OWrites[TimeParam] = Json.writes[TimeParam]
+  implicit val sensorWrite: OWrites[Sensor] = Json.writes[Sensor]
+  implicit val sensorQueryParamWrite: OWrites[SensorQueryParam] = Json.writes[SensorQueryParam]
+
 }
 
 class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB: MonitorDB,
@@ -92,20 +104,19 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
   }
 
 
-  case class TimeParam(startTime:Long, endTime:Long)
-  case class Sensor(deviceUuid:String, scopes:Seq[String])
-  case class SensorQueryParam(query:Seq[Sensor], time:TimeParam, maxCount:Int)
-  implicit val timeParamWrite: OWrites[TimeParam] = Json.writes[TimeParam]
-  implicit val sensorWrite: OWrites[Sensor] = Json.writes[Sensor]
-  implicit val sensorQueryParamWrite: OWrites[SensorQueryParam] = Json.writes[SensorQueryParam]
-
   def getSensorDataPhase(devices: Seq[Device]): Receive = {
     case GetSensorData =>
       try{
+        val dtF = sysConfig.getLastDataTime
+        for(dt<-dtF){
+          val queryParam = SensorQueryParam(query = devices.map(device=>Sensor(device.deviceUuid, mtList)),
+            time = TimeParam(dt.getEpochSecond*1000, Instant.now.getEpochSecond * 1000),
+            maxCount = 500)
+          val f = WSClient.url("https://ioeapi.nextdrive.io/v1/device-data/query")
+            .withHeaders(("X-ND-TOKEN", config.key))
+            .post(Json.toJson(queryParam))
+        }
 
-        val f = WSClient.url("https://ioeapi.nextdrive.io/v1/device-data/query")
-          .withHeaders(("X-ND-TOKEN", config.key))
-          .post()
       }catch{
         case ex:Throwable=>
           Logger.error("failed to get sensor data", ex)
