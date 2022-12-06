@@ -51,10 +51,10 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
 
   import WeatherReader._
 
-  val CR800_MT_LIST = Seq(MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION, MonitorType.TEMP, MonitorType.HUMID,
+  val CR800_MT_LIST: Seq[String] = Seq(MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION, MonitorType.TEMP, MonitorType.HUMID,
     MonitorType.PRESS, MonitorType.SOLAR, "Photometric", MonitorType.RAIN, "Visible", "Battery")
 
-  val CR300_MT_LIST = Seq(MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION, "WINSPEED_MAX", MonitorType.TEMP, MonitorType.HUMID, MonitorType.RAIN)
+  val CR300_MT_LIST: Seq[String] = Seq(MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION, "WINSPEED_MAX", MonitorType.TEMP, MonitorType.HUMID, MonitorType.RAIN)
 
   val mtList: Seq[String] = config.model match {
     case CR300_MODEL =>

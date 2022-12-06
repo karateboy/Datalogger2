@@ -9,6 +9,7 @@ import models.TapiTxx.T700_STANDBY_SEQ
 import org.mongodb.scala.result.UpdateResult
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
+import play.api.libs.ws.WSClient
 
 import javax.inject._
 import scala.collection.mutable.ListBuffer
@@ -391,7 +392,8 @@ class DataCollectManager @Inject()
 (config: Configuration, recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
  dataCollectManagerOp: DataCollectManagerOp,
  instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentDB,
- sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
+ sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory,
+ WSClient: WSClient) extends Actor with InjectedActorSupport {
   Logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
   DataCollectManager.updateEffectiveRatio(sysConfig)
 
@@ -428,6 +430,7 @@ class DataCollectManager @Inject()
     SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
     WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
     VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self)
+    NextDriveReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp, WSClient)
   }
 
 
