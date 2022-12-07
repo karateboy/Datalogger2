@@ -33,7 +33,7 @@ class EmailTargetOp @Inject()(mongodb: MongoDB, sysConfig: SysConfigDB) extends 
   }
 
   private def importFromSysConfig(): Unit ={
-    for(targets <- sysConfig.getAlertEmailTarget()){
+    for(targets <- sysConfig.getAlertEmailTarget){
       val emailTargets = targets.map(email=>{
         EmailTarget(email, Seq.empty)
       })
@@ -41,7 +41,7 @@ class EmailTargetOp @Inject()(mongodb: MongoDB, sysConfig: SysConfigDB) extends 
     }
   }
 
-  init
+  init()
 
   override def upsert(et: EmailTarget): Future[UpdateResult] = {
     val f = collection.replaceOne(Filters.equal("_id", et._id), et, ReplaceOptions().upsert(true)).toFuture()

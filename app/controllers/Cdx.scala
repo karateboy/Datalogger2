@@ -17,7 +17,7 @@ class Cdx @Inject()(cdxUploader: CdxUploader, monitorTypeDB: MonitorTypeDB, sysC
   import CdxUploader._
 
   def getConfig: Action[AnyContent] = Security.Authenticated.async {
-    val f = sysConfigDB.getCdxConfig()
+    val f = sysConfigDB.getCdxConfig
     f onFailure errorHandler
     for (config <- f) yield
       Ok(Json.toJson(config))
@@ -38,7 +38,7 @@ class Cdx @Inject()(cdxUploader: CdxUploader, monitorTypeDB: MonitorTypeDB, sysC
   }
 
   def getMonitorTypes = Security.Authenticated.async {
-    val f = sysConfigDB.getCdxMonitorTypes()
+    val f = sysConfigDB.getCdxMonitorTypes
     f onFailure errorHandler()
     for (monitorTypes <- f) yield
       Ok(Json.toJson(monitorTypes))
@@ -69,8 +69,8 @@ class Cdx @Inject()(cdxUploader: CdxUploader, monitorTypeDB: MonitorTypeDB, sysC
     val recordFuture = recordDB.getRecordListFuture(recordDB.HourCollection)(start, end)
     val uploadPath = environment.rootPath.toPath.resolve("cdxUpload")
     for{records<-recordFuture
-        cdxConfig <- sysConfigDB.getCdxConfig()
-        cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes()
+        cdxConfig <- sysConfigDB.getCdxConfig
+        cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes
         } yield {
       records.filter(record=>record.mtDataList.nonEmpty).foreach(record=>cdxUploader.upload(record, cdxConfig, cdxMtConfigs))
       Ok(Json.obj("ok"->true))
