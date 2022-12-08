@@ -2,20 +2,18 @@ package models
 
 import akka.actor._
 import com.github.nscala_time.time.Imports.DateTime
-import models.ModelHelper.{getHourBetween, waitReadyResult}
+import models.ModelHelper.getHourBetween
 import org.apache.http.HttpStatus
 import play.api._
-import play.api.libs.json.{Json, OWrites, Reads}
+import play.api.libs.json.JsError.toJson
+import play.api.libs.json.{JsError, Json, OWrites, Reads}
 import play.api.libs.ws.WSClient
 
-import java.io.File
-import java.time.format.{DateTimeFormatter, DateTimeParseException}
-import java.time.{Instant, LocalDateTime, ZoneId}
+import java.time.Instant
 import java.util.Date
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, MINUTES}
-import scala.io.{Codec, Source}
 import scala.util.{Failure, Success}
 
 case class NextDriveConfig(enable: Boolean, key: String, productID: String)
@@ -52,7 +50,7 @@ object NextDriveReader {
 
   case class Sensor(deviceUuid: String, scopes: Seq[String])
 
-  case class SensorQueryParam(query: Seq[Sensor], time: TimeParam, maxCount: Int, offset: Option[Int] = None)
+  case class SensorQueryParam(queries: Seq[Sensor], time: TimeParam, maxCount: Int, offset: Option[Int] = None)
 
   implicit val timeParamWrite: OWrites[TimeParam] = Json.writes[TimeParam]
   implicit val sensorWrite: OWrites[Sensor] = Json.writes[Sensor]
@@ -62,7 +60,7 @@ object NextDriveReader {
                         generatedTime: Option[Long], uploadedTime: Option[Long],
                         value: String)
 
-  case class QueryResponse(results: Seq[SensorData], offset: Int, totalCount: Int)
+  case class QueryResponse(results: Seq[SensorData], offset: Option[Int], totalCount: Option[Int])
 
   implicit val sensorDataRead: Reads[SensorData] = Json.reads[SensorData]
   implicit val queryResponseRead: Reads[QueryResponse] = Json.reads[QueryResponse]
@@ -95,21 +93,41 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
 
   implicit val deviceReads: Reads[Device] = Json.reads[Device]
 
+  case class GetDeviceResponse(devices: Seq[Device])
+
+  implicit val getDeviceResponseReads: Reads[GetDeviceResponse] = Json.reads[GetDeviceResponse]
+
   def getDevicePhase: Receive = {
     case GetDevice =>
       try {
         val f = WSClient.url(s"https://ioeapi.nextdrive.io/v1/gateways/${config.productID}/devices")
           .withHeaders(("X-ND-TOKEN", config.key))
           .get()
-        for (resp <- f if resp.status == HttpStatus.SC_OK) {
-          for (deviceList <- resp.json.validate[Seq[Device]].asOpt) {
-            val noCameraList = deviceList.filter(dev => dev.model != "Camera")
-            noCameraList.foreach(device => monitorDB.ensure(Monitor(device.deviceUuid, device.name)))
-            context become getSensorDataPhase(noCameraList)
-            Logger.info("NextDrive Collector enter GetSensorDataPhase")
-            self ! GetSensorData
-          }
-        }
+
+        f.onComplete({
+          case Success(resp) =>
+            if (resp.status != HttpStatus.SC_OK) {
+              Logger.error(s"get device failed ${resp.status}")
+              context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, GetDevice)
+            } else {
+              val deviceResponseOpt = resp.json.validate[GetDeviceResponse].asOpt
+              if (deviceResponseOpt.isEmpty) {
+                Logger.error(s"invalid response ${resp.json.toString()}")
+                context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, GetDevice)
+              } else {
+                val deviceResponse = deviceResponseOpt.get
+                val noCameraList = deviceResponse.devices.filter(dev => dev.model != "Camera")
+                noCameraList.foreach(device => monitorDB.ensure(Monitor(device.deviceUuid, device.name)))
+                context become getSensorDataPhase(noCameraList)
+                Logger.info("NextDrive Collector enter GetSensorDataPhase")
+                self ! GetSensorData
+              }
+            }
+
+          case Failure(exception) =>
+            Logger.error("fail to get devices ", exception)
+            context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, GetDevice)
+        })
       } catch {
         case ex: Throwable =>
           Logger.error("fail to get devices ", ex)
@@ -117,7 +135,7 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
       }
   }
 
-  private def updateMinRecords(sensorData: Seq[SensorData]):Future[Unit] = {
+  private def updateMinRecords(sensorData: Seq[SensorData]): Future[Unit] = {
     val docList = ListBuffer.empty[RecordList]
     sensorData.foreach(sensor => {
       for {
@@ -135,59 +153,73 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
       }
     })
     if (docList.nonEmpty)
-      recordOp.upsertManyRecords(recordOp.MinCollection)(docList).map(_=>Unit)
+      recordOp.upsertManyRecords(recordOp.MinCollection)(docList).map(_ => Unit)
     else
       Future.successful(Unit)
   }
 
-  def getSensorData(lastDataTime: Instant, devices: Seq[Device], offset: Int = 0): Future[Unit] = {
-    val queryParam = SensorQueryParam(query = devices.map(device => Sensor(device.deviceUuid, mtList)),
+  def getSensorData(lastDataTime: Instant, devices: Seq[Device], offset: Option[Int], totalCount:Option[Int]): Future[Unit] = {
+    val queryParam = SensorQueryParam(queries = devices.map(device => Sensor(device.deviceUuid, mtList)),
       time = TimeParam(lastDataTime.getEpochSecond * 1000, Instant.now.getEpochSecond * 1000),
-      offset = Some(offset),
+      offset = offset,
       maxCount = 500)
+    Logger.info(queryParam.toString)
     val f = WSClient.url("https://ioeapi.nextdrive.io/v1/device-data/query")
       .withHeaders(("X-ND-TOKEN", config.key))
       .post(Json.toJson(queryParam))
 
-    for {res <- f
-         } yield {
-      val ret = res.json.validate[QueryResponse].get
-      if (res.status != HttpStatus.SC_OK)
-        Logger.error(s"getSensorData resp code =${res.status}")
+    f onComplete({
+      case Success(response)=>
+        if (response.status != HttpStatus.SC_OK) {
+          Logger.error(s"getSensorData resp code=${response.status} body=${response.json}")
+        }else{
+          response.json.validate[QueryResponse].fold(
+            err => {
+              Logger.error(toJson(JsError(err)).toString())
+              Logger.error(response.json.toString())
+            },
+            ret => {
+              //Store DB
+              updateMinRecords(ret.results).andThen({
+                case Success(_) =>
+                  //Recursive if offset != totalCount
+                  if ((totalCount.nonEmpty && totalCount != ret.offset)||
+                    (ret.totalCount.nonEmpty && ret.totalCount != ret.offset))
+                    getSensorData(lastDataTime, devices, ret.offset, ret.totalCount)
+                  else {
+                    // Update last data
+                    val lastEpochMs = ret.results.flatMap(_.generatedTime).max
+                    val start = new DateTime(Date.from(lastDataTime))
+                    val end = new DateTime(Date.from(Instant.ofEpochMilli(lastEpochMs)))
+                    for (m <- monitorDB.mvList; current <- getHourBetween(start, end))
+                      dataCollectManagerOp.recalculateHourData(m, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
 
-      //Store DB
-      updateMinRecords(ret.results).andThen({
-        case Success(_)=>
-          //Recursive if offset != maxCount
-          if (ret.offset != ret.totalCount)
-            getSensorData(lastDataTime, devices, ret.offset)
-          else {
-            // Update last data
-            val lastEpochMs = ret.results.flatMap(_.generatedTime).max
-            val start = new DateTime(Date.from(lastDataTime))
-            val end = new DateTime(Date.from(Instant.ofEpochMilli(lastEpochMs)))
-            for (m<-monitorDB.mvList;current <- getHourBetween(start, end))
-              dataCollectManagerOp.recalculateHourData(m, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
+                    sysConfig.setLastDataTime(Instant.ofEpochMilli(lastEpochMs)).map(Success(_))
+                  }
+                case Failure(exception) =>
+                  Logger.error(s"fail to update min data", exception)
+              })
+            }
+          )
+        }
 
-            sysConfig.setLastDataTime(Instant.ofEpochMilli(lastEpochMs)).map(Success(_))
-          }
-        case Failure(exception)  =>
-          Logger.error(s"fail to update min data", exception)
-      })
-    }
+      case Failure(exception)=>
+        Logger.error("fail to getSensorData", exception)
+    })
+    f.map(_=>Unit)
   }
 
   def getSensorDataPhase(devices: Seq[Device]): Receive = {
     case GetSensorData =>
       try {
         val ret: Future[Unit] = {
-        for (lastDataTime <- sysConfig.getLastDataTime) yield {
-          getSensorData(lastDataTime, devices)
-        } recover({
-          case ex=>
-            Logger.error("failed to get sensor data", ex)
-        })
-        } flatMap(x=>x)
+          for (lastDataTime <- sysConfig.getLastDataTime) yield {
+            getSensorData(lastDataTime = lastDataTime, devices = devices, offset = None, totalCount = None)
+          } recover ({
+            case ex =>
+              Logger.error("failed to get sensor data", ex)
+          })
+        } flatMap (x => x)
         ret.andThen({
           case Success(_) =>
 
