@@ -101,6 +101,12 @@
 <style lang="scss">
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
+<style>
+.highcharts-container,
+.highcharts-container svg {
+  width: 100% !important;
+}
+</style>
 <script lang="ts">
 import Vue from 'vue';
 import DatePicker from 'vue2-datepicker';

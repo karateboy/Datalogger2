@@ -1,11 +1,6 @@
 package models
-import play.api._
-import com.github.nscala_time.time.Imports._
-import models.ModelHelper._
-import models._
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
 import play.api.libs.json.Json
+
 import scala.collection.JavaConversions._
 import scala.language.implicitConversions
 

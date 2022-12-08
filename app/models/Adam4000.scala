@@ -169,9 +169,9 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
   } else
     None
 
-  var comm: SerialComm = _
-  var timerOpt: Option[Cancellable] = None
-  var resetTimerOpt: Option[Cancellable] = None
+  @volatile var comm: SerialComm = _
+  @volatile var timerOpt: Option[Cancellable] = None
+  @volatile var resetTimerOpt: Option[Cancellable] = None
 
   override def receive: Receive = {
     case OpenCom =>
