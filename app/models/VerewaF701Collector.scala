@@ -95,14 +95,14 @@ class VerewaF701Collector @Inject()
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: F701_20Config) extends Actor {
   import VerewaF701Collector._
   import scala.concurrent.duration._
-  var cancelable = system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort)
-  var serialOpt: Option[SerialComm] = None
+  @volatile var cancelable = system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort)
+  @volatile var serialOpt: Option[SerialComm] = None
 
   import scala.concurrent.Future
   import scala.concurrent.blocking
 
-  var collectorStatus = MonitorStatus.NormalStat
-  var instrumentStatus: Byte = 0
+  @volatile var collectorStatus = MonitorStatus.NormalStat
+  @volatile var instrumentStatus: Byte = 0
   def checkStatus(status: Byte) {
     import alarmOp._
     if ((instrumentStatus & 0x1) != (status & 0x1)) {

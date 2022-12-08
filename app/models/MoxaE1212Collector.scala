@@ -48,7 +48,7 @@ class MoxaE1212Collector @Inject()
     context.system.scheduler.schedule(FiniteDuration(duration.getStandardSeconds, SECONDS),
       scala.concurrent.duration.Duration(1, HOURS), self, ResetCounter)
   }
-  var cancelable: Cancellable = _
+  @volatile var cancelable: Cancellable = _
 
   self ! ConnectHost
 

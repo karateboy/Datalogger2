@@ -63,7 +63,7 @@ class UpsCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monito
   })
 
 
-  var serialOpt: Option[SerialComm] = None
+  @volatile var serialOpt: Option[SerialComm] = None
 
   override def onWriteSignal(mt: String, bit: Boolean): Unit = {
     Logger.info(s"UPS receive $mt signal cmd")

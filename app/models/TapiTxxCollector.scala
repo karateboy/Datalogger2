@@ -40,8 +40,8 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
 
   self ! ConnectHost
   val WarnKey = "Warn"
-  var timerOpt: Option[Cancellable] = None
-  var masterOpt: Option[ModbusMaster] = None
+  @volatile var timerOpt: Option[Cancellable] = None
+  @volatile var masterOpt: Option[ModbusMaster] = None
   @volatile var (collectorState: String, instrumentStatusTypesOpt) = {
     val instList = instrumentOp.getInstrument(instId)
     if (!instList.isEmpty) {
@@ -50,9 +50,9 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
     } else
       (MonitorStatus.NormalStat, None)
   }
-  var connected = false
-  var oldModelReg: Option[ModelRegValue] = None
-  var nextLoggingStatusTime = {
+  @volatile var connected = false
+  @volatile var oldModelReg: Option[ModelRegValue] = None
+  @volatile var nextLoggingStatusTime = {
     import com.github.nscala_time.time.Imports._
     def getNextTime(period: Int) = {
       val now = DateTime.now()

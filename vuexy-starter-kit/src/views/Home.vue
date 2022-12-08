@@ -81,6 +81,12 @@
     </b-col>
   </b-row>
 </template>
+<style>
+.highcharts-container,
+.highcharts-container svg {
+  width: 100% !important;
+}
+</style>
 <script lang="ts">
 import Vue from 'vue';
 import { mapActions, mapGetters, mapState } from 'vuex';
