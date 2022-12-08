@@ -13,7 +13,7 @@ object AkProtocol {
   }
   object AskRegCmd{
     def apply(station:String, channel:String, code:Int): AskRegCmd = {
-      var addrStr = code.toString
+      val addrStr = code.toString
       AskRegCmd(station, channel, addrStr)
     }
   }

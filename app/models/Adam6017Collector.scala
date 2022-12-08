@@ -52,7 +52,7 @@ class Adam6017Collector @Inject()
 
 
   self ! ConnectHost
-  var cancelable: Cancellable = _
+  @volatile var cancelable: Cancellable = _
 
   def decodeAi(values: Seq[Double], collectorState: String)(param: Adam6017Param) = {
     val ret = for (v <- values) yield
