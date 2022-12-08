@@ -65,7 +65,7 @@ class Ma350Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
 
 
-  var serialOpt: Option[SerialComm] = None
+  @volatile var serialOpt: Option[SerialComm] = None
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = Ma350Drv.predefinedIST
 

@@ -105,7 +105,7 @@ class Tca08Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
     }
 
 
-  var serialOpt: Option[SerialComm] = None
+  @volatile var serialOpt: Option[SerialComm] = None
 
   override def connectHost: Unit = {
     serialOpt =

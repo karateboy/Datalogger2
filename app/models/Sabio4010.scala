@@ -103,9 +103,9 @@ class Sabio4010Collector @Inject()(instrumentOp: InstrumentDB, instrumentStatusO
   val statusTimerOpt: Option[Cancellable] = None
   //val statusTimerOpt: Option[Cancellable] = Some(system.scheduler.schedule(Duration(5, MINUTES), Duration(10, MINUTES),
   //  self, CollectStatus))
-  var cancelable: Cancellable = _
-  var comm: SerialComm = _
-  var (collectorState, instrumentStatusTypesOpt) = {
+  @volatile var cancelable: Cancellable = _
+  @volatile var comm: SerialComm = _
+  @volatile var (collectorState, instrumentStatusTypesOpt) = {
     val instrument = instrumentOp.getInstrument(id)
     val inst = instrument(0)
     (inst.state, inst.statusType)

@@ -14,7 +14,7 @@ case class Adam6066ChannelCfg(enable: Boolean, mt: Option[String], repairMode: O
 case class Adam6066Param(chs: Seq[Adam6066ChannelCfg])
 
 object Adam6066Collector {
-  var count = 0
+  @volatile var count = 0
 
   trait Factory {
     def apply(id: String, protocol: ProtocolParam, param: Adam6066Param): Actor

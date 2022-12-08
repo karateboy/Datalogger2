@@ -90,10 +90,10 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
   monitorTypeDB.ensure(mtPOS_IN_THE_RANGE)
   monitorTypes.foreach(monitorTypeDB.ensure)
 
-  var comm: SerialComm = _
-  var reader: SentenceReader = _
-  var buffer: Option[BufferedReader] = None
-  var timer: Option[Cancellable] = None
+  @volatile var comm: SerialComm = _
+  @volatile var reader: SentenceReader = _
+  @volatile var buffer: Option[BufferedReader] = None
+  @volatile var timer: Option[Cancellable] = None
   @volatile var lastPositionOpt: Option[Position] = None
 
   @volatile var lastTimeOpt: Option[Long] = None

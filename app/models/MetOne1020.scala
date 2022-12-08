@@ -68,7 +68,7 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
     alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
 
-  var serialOpt: Option[SerialComm] = None
+  @volatile var serialOpt: Option[SerialComm] = None
 
 
   Logger.info(s"MetOne1020 collector start with protocolType ${deviceConfig.slaveID}")
