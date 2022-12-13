@@ -450,6 +450,38 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       }
   }
 
+  def queryData(group: Int, monitorTypeStr:String, tabTypeStr: String, startNum: Long, endNum: Long): Action[AnyContent] = Action.async {
+    val monitors =
+      if (group == 1) {
+        Seq("355001090059923", "355001090037531", "355001090024034", "355001090010884", "355001090037515",
+          "352818662095834", "352818662094654")
+      }else{
+        Seq.empty[String]
+      }
+
+    val monitorTypes = monitorTypeStr.split(':')
+    val tabType = TableType.withName(tabTypeStr)
+    val (start, end) =
+      if (tabType == TableType.hour) {
+        val original_start = new DateTime(startNum)
+        val original_end = new DateTime(endNum)
+        (original_start.withMinuteOfHour(0), original_end.withMinute(0) + 1.hour)
+      } else {
+        (new DateTime(startNum), new DateTime(endNum))
+      }
+
+    Logger.info(s"start=$start end=$end")
+    val resultFuture: Future[Seq[RecordList]] = recordOp.getRecordListFuture(TableType.mapCollection(tabType))(start, end, monitors)
+    implicit val recordListIDwrite: OWrites[RecordListID] = Json.writes[RecordListID]
+    implicit val mtDataWrite: OWrites[MtRecord] = Json.writes[MtRecord]
+    implicit val recordListWrite: OWrites[RecordList] = Json.writes[RecordList]
+    for(result<-resultFuture) yield {
+      Logger.info(s"total ${result.size}")
+      result.foreach(rs=>rs.mtDataList=rs.mtDataList.filter(mtData=>monitorTypes.contains(mtData.mtName)))
+      Ok(Json.toJson(result))
+    }
+  }
+
   def latestData(monitorStr: String, monitorTypeStr: String, tabTypeStr: String) = Security.Authenticated.async {
     implicit request =>
       val groupID = request.user.group

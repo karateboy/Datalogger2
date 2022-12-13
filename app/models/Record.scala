@@ -23,7 +23,7 @@ case class MonitorRecord(time: Date, mtDataList: Seq[MtRecord], _id: String, var
                          var shortCode: Option[String], var code: Option[String], var tags: Option[Seq[String]],
                          var locationDesc: Option[String])
 
-case class RecordList(mtDataList: Seq[MtRecord], _id: RecordListID) {
+case class RecordList(var mtDataList: Seq[MtRecord], _id: RecordListID) {
   def mtMap = {
     val pairs =
       mtDataList map { data => data.mtName -> data }
