@@ -1,7 +1,7 @@
 package models.mongodb
 
 import models.ModelHelper.{errorHandler, waitReadyResult}
-import models.{Monitor, MonitorDB, MqttSensorDB}
+import models.{LoggerConfig, Monitor, MonitorDB, MqttSensorDB}
 import org.mongodb.scala.model.{Filters, ReplaceOptions, Sorts}
 import org.mongodb.scala.result.DeleteResult
 import play.api.Configuration
@@ -36,7 +36,7 @@ class MonitorOp @Inject()(mongodb: MongoDB, config: Configuration, sysConfig: Sy
       f.onFailure(errorHandler)
       for (_ <- f) {
         for (ret <- collection.countDocuments(Filters.exists("_id")).toFuture())
-          if (ret == 0) {
+          if (ret == 0 && LoggerConfig.config.selfMonitor) {
             for (_ <- collection.insertOne(defaultMonitor).toFuture())
               refresh(sysConfig)
           }
