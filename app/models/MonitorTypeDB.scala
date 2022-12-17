@@ -47,6 +47,9 @@ trait MonitorTypeDB {
     rangeType(NOISE, "NOISE", "dB", 2),
     rangeType(H2S, "H2S", "ppb", 2),
     rangeType(H2, "H2", "ppb", 2),
+    rangeType("normalUsage", desp="用電量", "kW", prec=2),
+    rangeType("reverseUsage", desp="逆用電量", "kW", prec=2),
+    rangeType("totalSoldElectricity", desp="售電量", "kW", prec=2),
     /////////////////////////////////////////////////////
     signalType(DOOR, "門禁"),
     signalType(SMOKE, "煙霧"),

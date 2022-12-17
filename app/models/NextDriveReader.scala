@@ -163,7 +163,7 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
       time = TimeParam(lastDataTime.getEpochSecond * 1000, Instant.now.getEpochSecond * 1000),
       offset = offset,
       maxCount = 500)
-    Logger.info(queryParam.toString)
+    Logger.debug(queryParam.toString)
     val f = WSClient.url("https://ioeapi.nextdrive.io/v1/device-data/query")
       .withHeaders(("X-ND-TOKEN", config.key))
       .post(Json.toJson(queryParam))

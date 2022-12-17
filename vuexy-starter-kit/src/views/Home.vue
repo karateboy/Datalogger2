@@ -1,82 +1,8 @@
 <template>
   <b-row class="match-height">
-    <b-col v-if="isRealtimeMeasuring" lg="9" md="12">
-      <b-card
-        class="text-center"
-        header="即時監測資訊"
-        header-class="h4 display text-center"
-        border-variant="primary"
-        header-bg-variant="primary"
-        header-text-variant="white"
-      >
-        <div id="realtimeChart"></div>
-      </b-card>
-    </b-col>
-    <b-col v-if="isRealtimeMeasuring" lg="3" class="text-center">
-      <b-card no-body border-variant="primary">
-        <b-table
-          :fields="fields"
-          :items="realTimeStatus"
-          small
-          head-variant="light"
-          head-row-variant="success"
-          responsive
-          :sticky-header="true"
-          :no-border-collapse="true"
-          style="max-height: 500px"
-        >
-          <template #cell(index)="data">
-            {{ data.index + 1 }}
-          </template>
-        </b-table>
-      </b-card>
-    </b-col>
-    <b-col
-      v-if="cdxConfig.enable"
-      cols="12"
-      md="6"
-      lg="6"
-      xl="6"
-      style="max-height: 400px"
-    >
-      <b-table
-        small
-        striped
-        responsive
-        sticky-header
-        :fields="cdxUploadColumns"
-        :items="cdxUploadLogs"
-        :tbody-tr-class="rowClass"
-      />
-    </b-col>
-    <b-col
-      v-for="mt in userInfo.monitorTypeOfInterest"
-      :key="mt"
-      cols="12"
-      md="6"
-      lg="4"
-      xl="3"
-    >
+    <b-col v-for="m in monitors" :key="m._id" cols="12" md="6" lg="4" xl="3">
       <b-card border-variant="primary">
-        <div :id="`history_${mt}`"></div>
-      </b-card>
-    </b-col>
-    <b-col
-      v-for="mt in windRoseList"
-      :key="`rose${mt}`"
-      cols="12"
-      md="6"
-      lg="4"
-      xl="3"
-    >
-      <b-card
-        :header="`${getMtName(mt)}玫瑰圖`"
-        header-class="h4 display text-center"
-        border-variant="success"
-        header-bg-variant="success"
-        header-text-variant="white"
-      >
-        <div :id="`rose_${mt}`">尚無資料</div>
+        <div :id="`history_${m._id}`"></div>
       </b-card>
     </b-col>
   </b-row>
@@ -92,6 +18,7 @@ import Vue from 'vue';
 import { mapActions, mapGetters, mapState } from 'vuex';
 import axios from 'axios';
 import { MonitorType, MonitorTypeStatus, CdxConfig } from './types';
+import { Monitor } from '../store/monitors/types';
 import highcharts from 'highcharts';
 import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
@@ -198,7 +125,7 @@ export default Vue.extend({
     ...mapState('user', ['userInfo']),
     ...mapState('monitors', ['monitors', 'activeID']),
     ...mapState('monitorTypes', ['monitorTypes']),
-    ...mapGetters('monitorTypes', ['mtMap']),
+    ...mapGetters('monitorTypes', ['mtMap', 'activatedMonitorTypes']),
     skin() {
       const { skin } = useAppConfig();
       return skin;
@@ -224,12 +151,10 @@ export default Vue.extend({
     await this.getUserInfo();
 
     const me = this;
-    for (const mt of this.userInfo.monitorTypeOfInterest) this.query(mt);
-    for (const mt of me.windRoseList) me.queryWindRose(mt);
+    for (const m of this.monitors) this.query(m);
 
     this.mtInterestTimer = setInterval(() => {
-      for (const mt of me.userInfo.monitorTypeOfInterest) me.query(mt);
-      for (const mt of me.windRoseList) me.queryWindRose(mt);
+      for (const m of this.monitors) this.query(m);
     }, 60000);
 
     await this.getCdxConfig();
@@ -396,10 +321,12 @@ export default Vue.extend({
         me.chart = highcharts.chart('realtimeChart', chartOption);
       });
     },
-    async query(mt: string) {
+    async query(m: Monitor) {
       const now = new Date().getTime();
       const oneHourBefore = now - 60 * 60 * 1000;
-      const url = `/HistoryTrend/${this.activeID}/${mt}/Min/all/${oneHourBefore}/${now}`;
+      let mtList = this.activatedMonitorTypes as Array<MonitorType>;
+      let mtStr = mtList.map(mt => mt._id).join(':');
+      const url = `/HistoryTrend/${m._id}/${mtStr}/Min/all/${oneHourBefore}/${now}`;
       const res = await axios.get(url);
       const ret: highcharts.Options = res.data;
 
@@ -413,8 +340,7 @@ export default Vue.extend({
         alignTicks: false,
       };
 
-      let mtInfo = this.mtMap.get(mt) as MonitorType;
-      ret.title!.text = `${mtInfo.desp}分鐘趨勢圖`;
+      ret.title!.text = `${m.desc}分鐘趨勢圖`;
 
       ret.colors = [
         '#7CB5EC',
@@ -454,12 +380,12 @@ export default Vue.extend({
       ret.plotOptions = {
         spline: {
           tooltip: {
-            valueDecimals: this.mtMap.get(mt).prec,
+            valueDecimals: 2,
           },
         },
         scatter: {
           tooltip: {
-            valueDecimals: this.mtMap.get(mt).prec,
+            valueDecimals: 2,
           },
         },
       };
@@ -469,7 +395,7 @@ export default Vue.extend({
       ret.exporting = {
         enabled: false,
       };
-      highcharts.chart(`history_${mt}`, ret);
+      highcharts.chart(`history_${m._id}`, ret);
     },
     getMtName(mt: string): string {
       let mtInfo = this.mtMap.get(mt) as MonitorType;

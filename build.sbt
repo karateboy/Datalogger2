@@ -1,6 +1,6 @@
 name := """DataLogger2"""
 val mainVersion = "1.4.22"
-val distVersion = ""
+val distVersion = "-next"
 version := s"$mainVersion$distVersion"
 
 lazy val root = (project in file("."))

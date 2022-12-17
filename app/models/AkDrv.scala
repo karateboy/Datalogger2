@@ -82,7 +82,8 @@ object AkDrv {
   val deviceTypeHead = "AkProtocol."
   def getInstrumentTypeList(environment: play.api.Environment, factory: AkDrv.Factory, monitorTypeOp: MonitorTypeDB): Array[InstrumentType] = {
     val docRoot = environment.rootPath + "/conf/AkProtocol/"
-    val files = new File(docRoot).listFiles()
+    val filesOpt = Option(new File(docRoot).listFiles())
+    val files = filesOpt.getOrElse(Array.empty[File])
     for (file <- files) yield {
       val device: AkDeviceModel = getDeviceModel(file)
 
