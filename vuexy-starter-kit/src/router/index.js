@@ -115,14 +115,14 @@ const router = new VueRouter({
       name: 'ground-gas',
       component: () => import('@/views/GroundGas.vue'),
       meta: {
-        pageTitle: '土壤氣體圖',
+        pageTitle: '土壤氣體查詢',
         breadcrumb: [
           {
             text: '數據查詢',
             active: true,
           },
           {
-            text: '土壤氣體圖',
+            text: '土壤氣體查詢',
             active: true,
           },
         ],
@@ -133,14 +133,14 @@ const router = new VueRouter({
       name: 'underground-water',
       component: () => import('@/views/UndergroundWater.vue'),
       meta: {
-        pageTitle: '地下水質圖',
+        pageTitle: '地下水查詢',
         breadcrumb: [
           {
             text: '數據查詢',
             active: true,
           },
           {
-            text: '地下水質圖',
+            text: '地下水查詢',
             active: true,
           },
         ],
@@ -205,14 +205,14 @@ const router = new VueRouter({
       name: 'earthquake-event-query',
       component: () => import('@/views/EarthquakeEventQuery.vue'),
       meta: {
-        pageTitle: '年度地震查詢',
+        pageTitle: '地震資料查詢',
         breadcrumb: [
           {
             text: '數據查詢',
             active: true,
           },
           {
-            text: '年度地震查詢',
+            text: '地震資料查詢',
             active: true,
           },
         ],
