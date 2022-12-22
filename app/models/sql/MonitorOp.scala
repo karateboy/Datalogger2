@@ -1,7 +1,7 @@
 package models.sql
 
 import com.mongodb.client.result.DeleteResult
-import models.{Monitor, MonitorDB}
+import models.{LoggerConfig, Monitor, MonitorDB}
 import scalikejdbc._
 
 import javax.inject.{Inject, Singleton}
@@ -52,7 +52,10 @@ class MonitorOp @Inject()(sqlServer: SqlServer, sysConfig: SysConfig) extends Mo
           )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
           ) ON [PRIMARY]
            """.execute().apply()
-      upsert(Monitor.defaultMonitor)
+
+      if(LoggerConfig.config.selfMonitor)
+        upsert(Monitor.defaultMonitor)
+
       refresh(sysConfig)
     } else
       refresh(sysConfig)
