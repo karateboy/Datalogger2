@@ -16,7 +16,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, MINUTES}
 import scala.util.{Failure, Success}
 
-case class NextDriveConfig(enable: Boolean, key: String, productID: String)
+case class NextDriveConfig(enable: Boolean, key: String, productIDs: Seq[String])
 
 object NextDriveReader {
   def start(configuration: Configuration, actorSystem: ActorSystem,
@@ -27,10 +27,10 @@ object NextDriveReader {
       for {config <- configuration.getConfig("nextDriveReader")
            enable <- config.getBoolean("enable")
            dir <- config.getString("key")
-           productID <- config.getString("productID")
+           productIDs <- config.getStringSeq("productIDs")
            }
       yield
-        NextDriveConfig(enable, dir, productID)
+        NextDriveConfig(enable, dir, productIDs)
     }
 
     for (config <- getConfig if config.enable)
@@ -74,7 +74,7 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
   import NextDriveReader._
   import context.dispatcher
 
-  val mtList: Seq[String] = Seq("normalUsage", "reverseUsage", "totalSoldElectricity")
+  val mtList: Seq[String] = Seq("normalUsage")
 
 
   for (mt <- mtList) {
@@ -100,23 +100,32 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
   def getDevicePhase: Receive = {
     case GetDevice =>
       try {
-        val f = WSClient.url(s"https://ioeapi.nextdrive.io/v1/gateways/${config.productID}/devices")
-          .withHeaders(("X-ND-TOKEN", config.key))
-          .get()
+        val futures = config.productIDs.map(productID =>{
+          WSClient.url(s"https://ioeapi.nextdrive.io/v1/gateways/${productID}/devices")
+            .withHeaders(("X-ND-TOKEN", config.key))
+            .get()
+        })
+        val f = Future.sequence(futures)
 
         f.onComplete({
-          case Success(resp) =>
-            if (resp.status != HttpStatus.SC_OK) {
-              Logger.error(s"get device failed ${resp.status}")
-              context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, GetDevice)
-            } else {
-              val deviceResponseOpt = resp.json.validate[GetDeviceResponse].asOpt
-              if (deviceResponseOpt.isEmpty) {
-                Logger.error(s"invalid response ${resp.json.toString()}")
+          case Success(responses) =>
+            if (!responses.forall(resp=> resp.status == HttpStatus.SC_OK)) {
+              val noOK = responses.zip(config.productIDs)
+                .filter(t=>
+                   t._1.status != HttpStatus.SC_OK).map(t=>(t._2, t._1.status))
+
+              Logger.error(s"some get device failed ${noOK}")
+              //context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, GetDevice)
+            }
+
+            {
+              val getDevices = responses.flatMap(_.json.validate[GetDeviceResponse].asOpt)
+              if (getDevices.isEmpty) {
+                Logger.error(s"invalid response: no device!")
                 context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, GetDevice)
               } else {
-                val deviceResponse = deviceResponseOpt.get
-                val noCameraList = deviceResponse.devices.filter(dev => dev.model != "Camera")
+                val noCameraList = getDevices.flatMap(getDevice => getDevice.devices.filter(_.model != "Camera"))
+                Logger.info(s"no camer List #=${noCameraList.size}")
                 noCameraList.foreach(device => monitorDB.ensure(Monitor(device.deviceUuid, device.name)))
                 context become getSensorDataPhase(noCameraList)
                 Logger.info("NextDrive Collector enter GetSensorDataPhase")
@@ -163,7 +172,7 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
       time = TimeParam(lastDataTime.getEpochSecond * 1000, Instant.now.getEpochSecond * 1000),
       offset = offset,
       maxCount = 500)
-    Logger.debug(queryParam.toString)
+    Logger.info(Json.toJson(queryParam).toString())
     val f = WSClient.url("https://ioeapi.nextdrive.io/v1/device-data/query")
       .withHeaders(("X-ND-TOKEN", config.key))
       .post(Json.toJson(queryParam))

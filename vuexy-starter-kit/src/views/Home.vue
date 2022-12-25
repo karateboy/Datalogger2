@@ -130,11 +130,6 @@ export default Vue.extend({
       const { skin } = useAppConfig();
       return skin;
     },
-    windRoseList(): Array<string> {
-      let mtInterest = this.userInfo.monitorTypeOfInterest as Array<string>;
-      let ret = mtInterest.filter(mt => mt !== 'WD_DIR');
-      return ret;
-    },
     isRealtimeMeasuring(): boolean {
       return this.realTimeStatus.length !== 0;
     },
