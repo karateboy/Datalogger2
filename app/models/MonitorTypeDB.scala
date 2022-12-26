@@ -14,47 +14,21 @@ trait MonitorTypeDB {
   implicit val mtWrite = Json.writes[MonitorType]
   implicit val mtRead = Json.reads[MonitorType]
   val defaultMonitorTypes = List(
-    rangeType(SO2, "二氧化硫", "ppb", 2),
-    rangeType(NOX, "氮氧化物", "ppb", 2),
-    rangeType(NO2, "二氧化氮", "ppb", 2),
-    rangeType(NO, "一氧化氮", "ppb", 2),
-    rangeType(NOY, "NOY", "ppb", 2),
-    rangeType(NOY_NO, "NOY-NO", "ppb", 2),
-    rangeType(CO, "一氧化碳", "ppm", 2),
-    rangeType(CO2, "二氧化碳", "ppm", 2),
-    rangeType(O3, "臭氧", "ppb", 2),
-    rangeType(THC, "總碳氫化合物", "ppm", 2),
-    rangeType(TS, "總硫", "ppb", 2),
-    rangeType(CH4, "甲烷", "ppm", 2),
-    rangeType(NMHC, "非甲烷碳氫化合物", "ppm", 2),
-    rangeType(NH3, "氨", "ppb", 2),
-    rangeType("TSP", "TSP", "μg/m3", 2),
-    rangeType(PM10, "PM10懸浮微粒", "μg/m3", 2),
-    rangeType(PM25, "PM2.5細懸浮微粒", "μg/m3", 2),
+    rangeType("KW1", "用電量1", "kW", 2),
+    rangeType("KW2", "用電量2", "kW", 2),
+    rangeType("KW3", "用電量3", "kW", 2),
+    rangeType("KW4", "用電量4", "kW", 2),
+    rangeType("KW5", "用電量5", "kW", 2),
+    rangeType("KW6", "用電量6", "kW", 2),
     rangeType(WIN_SPEED, "風速", "m/sec", 2),
     rangeType(WIN_DIRECTION, "風向", "degrees", 2),
-    rangeType(TEMP, "溫度", "℃", 2),
-    rangeType(HUMID, "濕度", "%", 2),
-    rangeType(PRESS, "氣壓", "hPa", 2),
-    rangeType(RAIN, "雨量", "mm/h", 2),
     rangeType(LAT, "緯度", "度", 5),
     rangeType(LNG, "經度", "度", 5),
-    rangeType("RT", "室內溫度", "℃", 1),
-    rangeType("O2", "氧氣 ", "%", 1),
-    rangeType(SOLAR, "日照", "W/m2", 2),
-    rangeType(CH2O, "CH2O", "ppb", 2),
-    rangeType(TVOC, "TVOC", "ppb", 2),
-    rangeType(NOISE, "NOISE", "dB", 2),
-    rangeType(H2S, "H2S", "ppb", 2),
-    rangeType(H2, "H2", "ppb", 2),
     rangeType("normalUsage", desp="用電量", "kW", prec=2),
     rangeType("reverseUsage", desp="逆用電量", "kW", prec=2),
-    rangeType("totalSoldElectricity", desp="售電量", "kW", prec=2),
+    rangeType("totalSoldElectricity", desp="售電量", "kW", prec=2)
     /////////////////////////////////////////////////////
-    signalType(DOOR, "門禁"),
-    signalType(SMOKE, "煙霧"),
-    signalType(FLOW, "採樣流量"),
-    signalType("SPRAY", "灑水"))
+    )
   var mtvList = List.empty[String]
   var signalMtvList = List.empty[String]
   var map = Map.empty[String, MonitorType]

@@ -1,6 +1,18 @@
 <template>
   <b-row class="match-height">
-    <b-col v-for="m in monitors" :key="m._id" cols="12" md="6" lg="4" xl="3">
+    <b-col v-if="isRealtimeMeasuring" cols="12">
+      <b-card
+        class="text-center"
+        header="九份子電力監測"
+        header-class="h4 display text-center"
+        border-variant="primary"
+        header-bg-variant="primary"
+        header-text-variant="white"
+      >
+        <div id="realtimeChart"></div>
+      </b-card>
+    </b-col>
+    <b-col v-for="m in monitorNoMe" :key="m._id" cols="12" md="6" lg="4" xl="3">
       <b-card border-variant="primary">
         <div :id="`history_${m._id}`"></div>
       </b-card>
@@ -133,6 +145,10 @@ export default Vue.extend({
     isRealtimeMeasuring(): boolean {
       return this.realTimeStatus.length !== 0;
     },
+    monitorNoMe(): Array<Monitor> {
+      let monitors = this.monitors as Array<Monitor>;
+      return monitors.filter(m => m._id !== 'me');
+    },
   },
   async mounted() {
     const { skin } = useAppConfig();
@@ -216,7 +232,7 @@ export default Vue.extend({
         if (activeMonitorTypes.length !== 0)
           selectedMt.push(activeMonitorTypes[0]._id);
 
-        const visible = selectedMt.indexOf(mtStatus._id) !== -1;
+        const visible = true;
         if (wind.indexOf(mtStatus._id) === -1) {
           let yAxisIndex: number;
           if (yAxisMap.has(mtStatus.unit)) {
@@ -269,7 +285,7 @@ export default Vue.extend({
       return new Promise(function (resolve, reject) {
         const chartOption: highcharts.Options = {
           chart: {
-            type: 'spline',
+            type: 'area',
             marginRight: 10,
             //height: 300,
             events: {
@@ -310,6 +326,18 @@ export default Vue.extend({
                 pointFormatter,
               },
             },
+            column: {
+              stacking: 'normal',
+            },
+            area: {
+              stacking: 'normal',
+              lineColor: '#666666',
+              lineWidth: 0.5,
+              marker: {
+                lineWidth: 1,
+                lineColor: '#666666',
+              },
+            },
           },
           series: me.chartSeries,
         };
@@ -318,10 +346,10 @@ export default Vue.extend({
     },
     async query(m: Monitor) {
       const now = new Date().getTime();
-      const oneHourBefore = now - 60 * 60 * 1000;
+      const oneHourBefore = now - 24 * 60 * 60 * 1000;
       let mtList = this.activatedMonitorTypes as Array<MonitorType>;
       let mtStr = mtList.map(mt => mt._id).join(':');
-      const url = `/HistoryTrend/${m._id}/${mtStr}/Min/all/${oneHourBefore}/${now}`;
+      const url = `/HistoryTrend/${m._id}/normalUsage/Min/all/${oneHourBefore}/${now}`;
       const res = await axios.get(url);
       const ret: highcharts.Options = res.data;
 
@@ -335,7 +363,7 @@ export default Vue.extend({
         alignTicks: false,
       };
 
-      ret.title!.text = `${m.desc}分鐘趨勢圖`;
+      ret.title!.text = `${m.desc}用電量趨勢圖`;
 
       ret.colors = [
         '#7CB5EC',

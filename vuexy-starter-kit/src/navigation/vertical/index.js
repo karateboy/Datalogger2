@@ -33,26 +33,6 @@ export default [
         action: 'read',
         resource: 'Data',
       },
-      {
-        title: '雙測項對比圖',
-        route: 'scatter-chart',
-        action: 'read',
-        resource: 'Data',
-      },
-      {
-        title: '玫瑰圖查詢',
-        route: 'wind-rose-query',
-      },
-      {
-        title: '校正資料查詢',
-        route: 'calibration-query',
-      },
-      {
-        title: '警報記錄查詢',
-        route: 'alarm-query',
-        action: 'read',
-        resource: 'Data',
-      },
     ],
   },
   {
