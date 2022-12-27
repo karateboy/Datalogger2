@@ -349,7 +349,7 @@ export default Vue.extend({
       const oneHourBefore = now - 24 * 60 * 60 * 1000;
       let mtList = this.activatedMonitorTypes as Array<MonitorType>;
       let mtStr = mtList.map(mt => mt._id).join(':');
-      const url = `/HistoryTrend/${m._id}/normalUsage/Min/all/${oneHourBefore}/${now}`;
+      const url = `/HistoryTrend/${m._id}/POWER/Min/all/${oneHourBefore}/${now}`;
       const res = await axios.get(url);
       const ret: highcharts.Options = res.data;
 

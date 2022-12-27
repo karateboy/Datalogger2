@@ -14,19 +14,12 @@ trait MonitorTypeDB {
   implicit val mtWrite = Json.writes[MonitorType]
   implicit val mtRead = Json.reads[MonitorType]
   val defaultMonitorTypes = List(
-    rangeType("KW1", "用電量1", "kW", 2),
-    rangeType("KW2", "用電量2", "kW", 2),
-    rangeType("KW3", "用電量3", "kW", 2),
-    rangeType("KW4", "用電量4", "kW", 2),
-    rangeType("KW5", "用電量5", "kW", 2),
-    rangeType("KW6", "用電量6", "kW", 2),
+    rangeType(POWER, "用電量", unit="度", 2),
     rangeType(WIN_SPEED, "風速", "m/sec", 2),
     rangeType(WIN_DIRECTION, "風向", "degrees", 2),
     rangeType(LAT, "緯度", "度", 5),
     rangeType(LNG, "經度", "度", 5),
-    rangeType("normalUsage", desp="用電量", "kW", prec=2),
-    rangeType("reverseUsage", desp="逆用電量", "kW", prec=2),
-    rangeType("totalSoldElectricity", desp="售電量", "kW", prec=2)
+    rangeType(NORMAL_USAGE, desp="電表值", "kWh", prec=2)
     /////////////////////////////////////////////////////
     )
   var mtvList = List.empty[String]

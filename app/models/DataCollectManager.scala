@@ -296,13 +296,13 @@ object DataCollectManager {
           }
         }
 
-        try{
+        try {
           val roundedAvg =
             for (avg <- avgOpt) yield
               BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
           (roundedAvg, statusKV._1)
-        }catch {
-          case _:Throwable =>
+        } catch {
+          case _: Throwable =>
             (None, statusKV._1)
         }
       }
@@ -362,6 +362,10 @@ object DataCollectManager {
                 Some(values.max)
               else
                 Some(values.sum)
+            case MonitorType.POWER =>
+              Some(values.sum)
+            case MonitorType.NORMAL_USAGE =>
+              Some(values.max)
             case MonitorType.PM10 =>
               Some(values.last)
             case MonitorType.PM25 =>
@@ -459,7 +463,9 @@ class DataCollectManager @Inject()
             val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, value)}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
             alarmOp.log(alarmOp.src(mt), alarmOp.Level.INFO, msg)
             overThreshold = true
-            mtCase.overLawSignalType.foreach(signalType=>{ self ! WriteSignal(signalType, true)})
+            mtCase.overLawSignalType.foreach(signalType => {
+              self ! WriteSignal(signalType, true)
+            })
           }
         }
     }
@@ -831,10 +837,10 @@ class DataCollectManager @Inject()
       }
     case msg: ExecuteSeq =>
       if (calibratorOpt.nonEmpty) {
-        if(msg.seqName == T700_STANDBY_SEQ) {
-          if(isT700Calibrator)
+        if (msg.seqName == T700_STANDBY_SEQ) {
+          if (isT700Calibrator)
             calibratorOpt.get ! msg
-        }else
+        } else
           calibratorOpt.get ! msg
       } else {
         Logger.warn(s"Calibrator is not online! Ignore execute (${msg.seqName} - ${msg.on}).")

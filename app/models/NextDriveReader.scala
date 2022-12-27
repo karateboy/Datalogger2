@@ -74,7 +74,7 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
   import NextDriveReader._
   import context.dispatcher
 
-  val mtList: Seq[String] = Seq("normalUsage")
+  val mtList: Seq[String] = Seq(MonitorType.NORMAL_USAGE, MonitorType.POWER)
 
 
   for (mt <- mtList) {
@@ -100,7 +100,7 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
   def getDevicePhase: Receive = {
     case GetDevice =>
       try {
-        val futures = config.productIDs.map(productID =>{
+        val futures = config.productIDs.map(productID => {
           WSClient.url(s"https://ioeapi.nextdrive.io/v1/gateways/${productID}/devices")
             .withHeaders(("X-ND-TOKEN", config.key))
             .get()
@@ -109,10 +109,10 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
 
         f.onComplete({
           case Success(responses) =>
-            if (!responses.forall(resp=> resp.status == HttpStatus.SC_OK)) {
+            if (!responses.forall(resp => resp.status == HttpStatus.SC_OK)) {
               val noOK = responses.zip(config.productIDs)
-                .filter(t=>
-                   t._1.status != HttpStatus.SC_OK).map(t=>(t._2, t._1.status))
+                .filter(t =>
+                  t._1.status != HttpStatus.SC_OK).map(t => (t._2, t._1.status))
 
               Logger.error(s"some get device failed ${noOK}")
               //context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, GetDevice)
@@ -167,8 +167,8 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
       Future.successful(Unit)
   }
 
-  def getSensorData(lastDataTime: Instant, devices: Seq[Device], offset: Option[Int], totalCount:Option[Int]): Future[Unit] = {
-    val queryParam = SensorQueryParam(queries = devices.map(device => Sensor(device.deviceUuid, mtList)),
+  def getSensorData(lastDataTime: Instant, devices: Seq[Device], offset: Option[Int], totalCount: Option[Int]): Future[Unit] = {
+    val queryParam = SensorQueryParam(queries = devices.map(device => Sensor(device.deviceUuid, Seq(MonitorType.NORMAL_USAGE))),
       time = TimeParam(lastDataTime.getEpochSecond * 1000, Instant.now.getEpochSecond * 1000),
       offset = offset,
       maxCount = 500)
@@ -177,11 +177,11 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
       .withHeaders(("X-ND-TOKEN", config.key))
       .post(Json.toJson(queryParam))
 
-    f onComplete({
-      case Success(response)=>
+    f onComplete ({
+      case Success(response) =>
         if (response.status != HttpStatus.SC_OK) {
           Logger.error(s"getSensorData resp code=${response.status} body=${response.json}")
-        }else{
+        } else {
           response.json.validate[QueryResponse].fold(
             err => {
               Logger.error(toJson(JsError(err)).toString())
@@ -192,7 +192,7 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
               updateMinRecords(ret.results).andThen({
                 case Success(_) =>
                   //Recursive if offset != totalCount
-                  if ((totalCount.nonEmpty && totalCount != ret.offset)||
+                  if ((totalCount.nonEmpty && totalCount != ret.offset) ||
                     (ret.totalCount.nonEmpty && ret.totalCount != ret.offset))
                     getSensorData(lastDataTime, devices, ret.offset, ret.totalCount)
                   else {
@@ -200,8 +200,39 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
                     val lastEpochMs = ret.results.flatMap(_.generatedTime).max
                     val start = new DateTime(Date.from(lastDataTime))
                     val end = new DateTime(Date.from(Instant.ofEpochMilli(lastEpochMs)))
-                    for (m <- monitorDB.mvList; current <- getHourBetween(start, end))
-                      dataCollectManagerOp.recalculateHourData(m, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
+
+                    def upsertPower(m: String) = {
+                      val ret =
+                        for (data <- recordOp.getRecordListFuture(recordOp.MinCollection)(start, end.plusMinutes(1), Seq(m))) yield {
+                          val powerData = data.sliding(2).flatMap(slice => {
+                            val head = slice.head
+                            for (headRecord <- head.mtDataList.find(mtRecord => mtRecord.mtName == MonitorType.NORMAL_USAGE);
+                                 tailRecord <- slice.last.mtDataList.find(mtRecord => mtRecord.mtName == MonitorType.NORMAL_USAGE);
+                                 headValue <- headRecord.value;
+                                 tailValue <- tailRecord.value) yield {
+                              val mtDataList = head.mtDataList.filter(mtRecord => mtRecord.mtName != MonitorType.POWER) :+
+                                MtRecord(MonitorType.POWER, Some(tailValue - headValue), MonitorStatus.NormalStat)
+                              RecordList(_id = head._id, mtDataList = mtDataList)
+                            }
+                          })
+                          val powerDataList = powerData.toSeq
+                          if(powerDataList.nonEmpty)
+                            recordOp.upsertManyRecords(recordOp.MinCollection)(powerData.toSeq)
+                          else
+                            Future.successful(Unit)
+                        }
+                      ret.flatMap(x => x)
+                    }
+
+                    for (m <- monitorDB.mvList) {
+                      upsertPower(m).andThen({
+                        case Success(_) =>
+                          for (current <- getHourBetween(start, end))
+                            dataCollectManagerOp.recalculateHourData(m, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
+                        case Failure(exception) =>
+                          Logger.error("failed to upsert Power", exception)
+                      })
+                    }
 
                     sysConfig.setLastDataTime(Instant.ofEpochMilli(lastEpochMs)).map(Success(_))
                   }
@@ -212,10 +243,10 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
           )
         }
 
-      case Failure(exception)=>
+      case Failure(exception) =>
         Logger.error("fail to getSensorData", exception)
     })
-    f.map(_=>Unit)
+    f.map(_ => Unit)
   }
 
   def getSensorDataPhase(devices: Seq[Device]): Receive = {
