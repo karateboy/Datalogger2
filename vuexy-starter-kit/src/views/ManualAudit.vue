@@ -15,6 +15,7 @@
                 label="desp"
                 :reduce="mt => mt._id"
                 :options="monitorTypes"
+                :close-on-select="false"
                 multiple
               />
             </b-form-group>
