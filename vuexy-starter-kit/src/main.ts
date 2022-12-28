@@ -40,6 +40,17 @@ moment.locale('zh_tw');
 ex(Highcharts);
 csv(Highcharts);
 offlineExport(Highcharts);
+const colors = [
+  '#00FF00',
+  '#FFD700',
+  '#6495ED',
+  '#FF4500',
+  '#800080',
+  '#800000',
+  '#FF9655',
+  '#FFF263',
+  '#6AF9C4',
+];
 Highcharts.setOptions({
   lang: {
     contextButtonTitle: '圖表功能表',
@@ -94,6 +105,7 @@ Highcharts.setOptions({
       '星期六',
     ],
   },
+  colors,
 });
 
 Vue.use(VueFormWizard);
