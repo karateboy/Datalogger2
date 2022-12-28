@@ -80,7 +80,7 @@ class Adam6017Collector @Inject()
         }
         // val rawMt = monitorTypeOp.getRawMonitorType(mt)
         // List(MonitorTypeData(mt, v, status), MonitorTypeData(rawMt, rawValue, status))
-        List(MonitorTypeData(mt, v, status))
+        List(MonitorTypeData(mt, v, status, chCfg.monitor.getOrElse(Monitor.activeId)))
       }
     val dataList = dataPairList.flatMap { x => x }
     context.parent ! ReportData(dataList.toList)

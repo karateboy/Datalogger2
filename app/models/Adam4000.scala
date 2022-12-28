@@ -17,7 +17,7 @@ case class SignalConfig(monitorType: Option[String])
 case class CounterConfig(enable: Boolean, monitorType: Option[String], multiplier: Option[Double], repairMode: Option[Boolean])
 
 case class AiChannelCfg(enable: Boolean, mt: Option[String], max: Option[Double], mtMax: Option[Double],
-                        min: Option[Double], mtMin: Option[Double], repairMode: Option[Boolean])
+                        min: Option[Double], mtMin: Option[Double], repairMode: Option[Boolean], monitor: Option[String])
 
 case class Adam4069Cfg(address: String, channelList: Seq[SignalConfig])
 

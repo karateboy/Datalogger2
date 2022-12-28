@@ -79,12 +79,12 @@ GET      /Upload/:start/:end                                                    
 GET      /MonitorTypeStatusList                                                   controllers.Realtime.MonitorTypeStatusList()
 
 #Report
-GET      /monitorReport/:reportType/:reportDate                                   controllers.Report.getMonitorReport(reportType, reportDate:Long, outputTypeStr="html")
-GET      /PDF/monitorReport/:reportType/:reportDate                               controllers.Report.getMonitorReport(reportType, reportDate:Long, outputTypeStr="pdf")
-GET      /Excel/monitorReport/:reportType/:reportDate                             controllers.Report.getMonitorReport(reportType, reportDate:Long, outputTypeStr="excel")
+GET      /Report/:monitor/:reportType/:reportDate                                 controllers.Report.getReport(monitor, reportType, reportDate:Long, outputTypeStr="html")
+GET      /PDF/Report/:monitor/:reportType/:reportDate                             controllers.Report.getReport(monitor, reportType, reportDate:Long, outputTypeStr="pdf")
+GET      /Excel/Report/:monitor/:reportType/:reportDate                           controllers.Report.getReport(monitor, reportType, reportDate:Long, outputTypeStr="excel")
 
-GET      /MonthlyHourReport/:monitorType/:reportDate                              controllers.Report.monthlyHourReport(monitorType, reportDate:Long, outputTypeStr="html")
-GET      /Excel/MonthlyHourReport/:monitorType/:reportDate                        controllers.Report.monthlyHourReport(monitorType, reportDate:Long, outputTypeStr="excel")
+GET      /MonitorMonthlyHourReport/:monitor/:monitorType/:reportDate              controllers.Report.monitorMonthlyHourReport(monitor, monitorType, reportDate:Long, outputTypeStr="html")
+GET      /Excel/MonitorMonthlyHourReport/:monitor/:monitorType/:reportDate        controllers.Report.monitorMonthlyHourReport(monitor, monitorType, reportDate:Long, outputTypeStr="excel")
 
 #JSON
 GET      /MonitorType                                                             controllers.HomeController.monitorTypeList

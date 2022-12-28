@@ -1,17 +1,5 @@
 <template>
   <b-row class="match-height">
-    <b-col v-if="isRealtimeMeasuring" cols="12">
-      <b-card
-        class="text-center"
-        header="九份子電力監測"
-        header-class="h4 display text-center"
-        border-variant="primary"
-        header-bg-variant="primary"
-        header-text-variant="white"
-      >
-        <div id="realtimeChart"></div>
-      </b-card>
-    </b-col>
     <b-col v-for="m in monitorNoMe" :key="m._id" cols="12" md="6" lg="4" xl="3">
       <b-card border-variant="primary">
         <div :id="`history_${m._id}`"></div>
@@ -169,7 +157,7 @@ export default Vue.extend({
     }, 60000);
 
     await this.getCdxConfig();
-    await this.initRealtimeChart();
+    //await this.initRealtimeChart();
   },
   beforeDestroy() {
     clearInterval(this.refreshTimer);

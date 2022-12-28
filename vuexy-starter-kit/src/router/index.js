@@ -149,7 +149,7 @@ const router = new VueRouter({
     {
       path: '/report',
       name: 'report',
-      component: () => import('@/views/ReportQuery.vue'),
+      component: () => import('@/views/MonitorReportQuery.vue'),
       meta: {
         pageTitle: '監測報表',
         breadcrumb: [
@@ -167,7 +167,7 @@ const router = new VueRouter({
     {
       path: '/monthly-hour-report',
       name: 'monthly-hour-report',
-      component: () => import('@/views/MonthlyHourReportQuery.vue'),
+      component: () => import('@/views/MonitorMonthlyHourReportQuery.vue'),
       meta: {
         pageTitle: '月份時報表',
         breadcrumb: [

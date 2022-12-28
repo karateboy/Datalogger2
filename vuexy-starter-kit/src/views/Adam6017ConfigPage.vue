@@ -18,6 +18,16 @@
       <template #cell(repairMode)="row">
         <b-form-checkbox v-model="row.item.repairMode" @change="onChange" />
       </template>
+      <template #cell(monitor)="row">
+        <v-select
+          id="monitor"
+          v-model="row.item.monitor"
+          label="desc"
+          :reduce="mt => mt._id"
+          :options="monitors"
+          @input="onChange"
+        />
+      </template>
       <template #cell(mt)="row">
         <v-select
           id="monitorType"
@@ -89,6 +99,7 @@ export default Vue.extend({
         min: undefined,
         mtMin: undefined,
         repairMode: false,
+        monitor: undefined,
       });
     }
     let doChannels = [];
@@ -110,6 +121,10 @@ export default Vue.extend({
       {
         key: 'repairMode',
         label: '維修模式',
+      },
+      {
+        key: 'monitor',
+        label: '測站',
       },
       {
         key: 'mt',
@@ -149,6 +164,7 @@ export default Vue.extend({
     };
   },
   computed: {
+    ...mapState('monitors', ['monitors']),
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap']),
   },

@@ -76,11 +76,21 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
 
   val mtList: Seq[String] = Seq(MonitorType.NORMAL_USAGE, MonitorType.POWER)
 
-
+  val monitors = Seq(
+    Monitor(_id="site1", "九份子1"),
+    Monitor(_id="site2", "九份子2"),
+    Monitor(_id="site3", "九份子3"),
+    Monitor(_id="site4", "九份子4"),
+    Monitor(_id="site5", "九份子5"),
+    Monitor(_id="site6", "九份子6")
+  )
   for (mt <- mtList) {
     monitorTypeOp.ensure(mt)
     recordOp.ensureMonitorType(mt)
   }
+
+  for(m<-monitors)
+    monitorDB.ensure(m)
 
   @volatile var timerOpt: Option[Cancellable] = None
 
@@ -217,7 +227,7 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
                           })
                           val powerDataList = powerData.toSeq
                           if(powerDataList.nonEmpty)
-                            recordOp.upsertManyRecords(recordOp.MinCollection)(powerData.toSeq)
+                            recordOp.upsertManyRecords(recordOp.MinCollection)(powerDataList)
                           else
                             Future.successful(Unit)
                         }

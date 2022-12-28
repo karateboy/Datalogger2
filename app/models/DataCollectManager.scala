@@ -12,6 +12,7 @@ import play.api.libs.concurrent.InjectedActorSupport
 import play.api.libs.ws.WSClient
 
 import javax.inject._
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -33,7 +34,7 @@ case class SetState(instId: String, state: String)
 
 case class SetMonitorTypeState(instId: String, mt: String, state: String)
 
-case class MonitorTypeData(mt: String, value: Double, status: String)
+case class MonitorTypeData(mt: String, value: Double, status: String, monitor: String = Monitor.defaultMonitor._id)
 
 case class ReportData(dataList: List[MonitorTypeData])
 
@@ -230,7 +231,7 @@ object DataCollectManager {
       effectiveRatio = ratio
   }
 
-  def calculateMinAvgMap(monitorTypeDB: MonitorTypeDB, mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
+  def calculateMinAvgMap(monitorTypeDB: MonitorTypeDB, mtMap: mutable.Map[String, mutable.Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
     for {
       (mt, statusMap) <- mtMap
       total = statusMap.map {
@@ -596,8 +597,7 @@ class DataCollectManager @Inject()
     case ReportData(dataList) =>
       val now = DateTime.now
 
-      val instIdOpt = collectorInstrumentMap.get(sender)
-      instIdOpt map {
+      collectorInstrumentMap.get(sender).foreach {
         instId =>
           val pairs =
             for (data <- dataList) yield {
@@ -607,7 +607,7 @@ class DataCollectManager @Inject()
                 r.time >= DateTime.now() - 6.second
               }
 
-              (data.mt -> (filteredMap ++ Map(instId -> Record(now, Some(data.value), data.status, Monitor.activeId))))
+              data.mt -> (filteredMap ++ Map(instId -> Record(now, Some(data.value), data.status, Monitor.activeId)))
             }
 
           context become handler(instrumentMap, collectorInstrumentMap,
@@ -618,11 +618,10 @@ class DataCollectManager @Inject()
     case CalculateData => {
       import scala.collection.mutable.ListBuffer
 
-      def flushSecData(recordMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]]) {
+      def flushSecData(recordMap: mutable.Map[String, mutable.Map[String, ListBuffer[(DateTime, Double)]]]) {
 
         if (recordMap.nonEmpty) {
-          import scala.collection.mutable.Map
-          val secRecordMap = Map.empty[DateTime, ListBuffer[(String, (Double, String))]]
+          val secRecordMap = mutable.Map.empty[DateTime, ListBuffer[(String, (Double, String))]]
           for {
             mt_pair <- recordMap
             mt = mt_pair._1
@@ -678,9 +677,9 @@ class DataCollectManager @Inject()
         }
       }
 
-      def calculateMinData(current: DateTime): Future[UpdateResult] = {
+      def calculateMinData(current: DateTime) = {
         import scala.collection.mutable.Map
-        val mtMap = Map.empty[String, Map[String, ListBuffer[(String, DateTime, Double)]]]
+        val monitorMtMap = Map.empty[String, Map[String, Map[String, ListBuffer[(String, DateTime, Double)]]]]
 
         val currentData = mtDataList.takeWhile(d => d._1 >= current)
         val minDataList = mtDataList.drop(currentData.length)
@@ -690,64 +689,62 @@ class DataCollectManager @Inject()
           instrumentId = dl._2
           data <- dl._3
         } {
-          val statusMap = mtMap.getOrElse(data.mt, {
-            val map = Map.empty[String, ListBuffer[(String, DateTime, Double)]]
-            mtMap.put(data.mt, map)
-            map
-          })
-
+          val mtMap = monitorMtMap.getOrElseUpdate(data.monitor, Map.empty[String, Map[String, ListBuffer[(String, DateTime, Double)]]])
+          val statusMap = mtMap.getOrElseUpdate(data.mt, Map.empty[String, ListBuffer[(String, DateTime, Double)]])
           val lb = statusMap.getOrElseUpdate(data.status, ListBuffer.empty[(String, DateTime, Double)])
           lb.append((instrumentId, dl._1, data.value))
         }
 
-        val priorityMtPair =
+        val monitorPriorityMtMap = Map.empty[String, Map[String, Map[String, ListBuffer[(DateTime, Double)]]]]
+        for {
+          (monitor, mtMap) <- monitorMtMap
+          (mt, statusMap) <- mtMap
+        } {
+          val winOutStatusMap = Map.empty[String, ListBuffer[(DateTime, Double)]]
+
           for {
-            mt_statusMap <- mtMap
-            mt = mt_statusMap._1
-            statusMap = mt_statusMap._2
-          } yield {
-            val winOutStatusPair =
-              for {
-                status_lb <- statusMap
-                status = status_lb._1
-                lb = status_lb._2
-                measuringInstrumentList <- monitorTypeOp.map(mt).measuringBy
-              } yield {
-                val winOutInstrumentOpt = measuringInstrumentList.find { instrumentId =>
-                  lb.exists { id_value =>
-                    val id = id_value._1
-                    instrumentId == id
-                  }
-                }
-                val winOutLbOpt = winOutInstrumentOpt.map {
-                  winOutInstrument =>
-                    lb.filter(_._1 == winOutInstrument).map(r => (r._2, r._3))
-                }
-
-                status -> winOutLbOpt.getOrElse(ListBuffer.empty[(DateTime, Double)])
+            status_lb <- statusMap
+            status = status_lb._1
+            lb = status_lb._2
+            measuringInstrumentList <- monitorTypeOp.map(mt).measuringBy
+          } {
+            val winOutInstrumentOpt = measuringInstrumentList.find { instrumentId =>
+              lb.exists { id_value =>
+                val id = id_value._1
+                instrumentId == id
               }
-            val winOutStatusMap = winOutStatusPair.toMap
-            mt -> winOutStatusMap
+            }
+            val winOutLbOpt = winOutInstrumentOpt.map {
+              winOutInstrument =>
+                lb.filter(_._1 == winOutInstrument).map(r => (r._2, r._3))
+            }
+            winOutStatusMap.update(status, winOutLbOpt.getOrElse(ListBuffer.empty[(DateTime, Double)]))
           }
-        val priorityMtMap = priorityMtPair.toMap
 
-        if (LoggerConfig.config.storeSecondData)
-          flushSecData(priorityMtMap)
-
-        val minuteMtAvgList = calculateMinAvgMap(monitorTypeOp, priorityMtMap, false)
-
-        checkMinDataAlarm(minuteMtAvgList)
+          val priorityMtMap = monitorPriorityMtMap.getOrElseUpdate(monitor, Map.empty[String, Map[String, ListBuffer[(DateTime, Double)]]])
+          priorityMtMap.update(mt, winOutStatusMap)
+        }
 
         context become handler(instrumentMap, collectorInstrumentMap,
           latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap)
-        val f = recordOp.upsertRecord(RecordList(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId))(recordOp.MinCollection)
-        f onComplete {
-          case Success(_) =>
-            self ! ForwardMin
-          case Failure(exception) =>
-            errorHandler(exception)
-        }
-        f
+
+        val updateMinFutures =
+          for ((monitor, priorityMtMap) <- monitorPriorityMtMap) yield {
+            if (LoggerConfig.config.storeSecondData)
+              flushSecData(priorityMtMap)
+
+            val minuteMtAvgList = calculateMinAvgMap(monitorTypeOp, priorityMtMap, alwaysValid = false)
+            checkMinDataAlarm(minuteMtAvgList)
+            val f = recordOp.upsertRecord(RecordList(current.minusMinutes(1), minuteMtAvgList.toList, monitor))(recordOp.MinCollection)
+            f onComplete {
+              case Success(_) =>
+                self ! ForwardMin
+              case Failure(exception) =>
+                errorHandler(exception)
+            }
+            f
+          }
+        Future.sequence(updateMinFutures)
       }
 
       val current = DateTime.now().withSecondOfMinute(0).withMillisOfSecond(0)
