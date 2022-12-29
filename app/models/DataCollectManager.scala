@@ -9,6 +9,7 @@ import models.TapiTxx.T700_STANDBY_SEQ
 import org.mongodb.scala.result.UpdateResult
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
+import play.api.libs.ws.WSClient
 
 import javax.inject._
 import scala.collection.mutable.ListBuffer
@@ -391,7 +392,9 @@ class DataCollectManager @Inject()
 (config: Configuration, recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
  dataCollectManagerOp: DataCollectManagerOp,
  instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentDB,
- sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
+ sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory,
+ WSClient: WSClient
+) extends Actor with InjectedActorSupport {
   Logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
   DataCollectManager.updateEffectiveRatio(sysConfig)
 
@@ -731,9 +734,11 @@ class DataCollectManager @Inject()
 
         context become handler(instrumentMap, collectorInstrumentMap,
           latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap)
-        val f = recordOp.upsertRecord(RecordList(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId))(recordOp.MinCollection)
+        val recordList: RecordList = RecordList(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId)
+        val f = recordOp.upsertRecord(recordList)(recordOp.MinCollection)
         f onComplete {
           case Success(_) =>
+            Uploader.upload(WSClient)(recordList, monitorOp.map(Monitor.activeId))
             self ! ForwardMin
           case Failure(exception) =>
             errorHandler(exception)
