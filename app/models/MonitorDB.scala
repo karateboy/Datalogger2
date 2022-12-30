@@ -20,6 +20,11 @@ trait MonitorDB {
     }
   }
 
+  def ensure(m: Monitor): Unit = synchronized {
+    if (!map.contains(m._id)) {
+      upsert(m)
+    }
+  }
   protected def upsert(m: Monitor): Unit
 
   def upsertMonitor(m: Monitor): Unit = {
