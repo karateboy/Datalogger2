@@ -295,13 +295,13 @@ object DataCollectManager {
           }
         }
 
-        try{
+        try {
           val roundedAvg =
             for (avg <- avgOpt) yield
               BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
           (roundedAvg, statusKV._1)
-        }catch {
-          case _:Throwable =>
+        } catch {
+          case _: Throwable =>
             (None, statusKV._1)
         }
       }
@@ -456,7 +456,9 @@ class DataCollectManager @Inject()
             val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, value)}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
             alarmOp.log(alarmOp.src(mt), alarmOp.Level.INFO, msg)
             overThreshold = true
-            mtCase.overLawSignalType.foreach(signalType=>{ self ! WriteSignal(signalType, true)})
+            mtCase.overLawSignalType.foreach(signalType => {
+              self ! WriteSignal(signalType, true)
+            })
           }
         }
     }
@@ -590,19 +592,21 @@ class DataCollectManager @Inject()
       val instIdOpt = collectorInstrumentMap.get(sender)
       instIdOpt map {
         instId =>
+          val adjustedDataList: List[MonitorTypeData] = monitorTypeOp.getAdjustedData(dataList)
+
           val pairs =
-            for (data <- dataList) yield {
+            for (data <- adjustedDataList) yield {
               val currentMap = latestDataMap.getOrElse(data.mt, Map.empty[String, Record])
               val filteredMap = currentMap.filter { kv =>
                 val r = kv._2
                 r.time >= DateTime.now() - 6.second
               }
 
-              (data.mt -> (filteredMap ++ Map(instId -> Record(now, Some(data.value), data.status, Monitor.activeId))))
+              data.mt -> (filteredMap ++ Map(instId -> Record(now, Some(data.value), data.status, Monitor.activeId)))
             }
 
           context become handler(instrumentMap, collectorInstrumentMap,
-            latestDataMap ++ pairs, (DateTime.now, instId, dataList) :: mtDataList, restartList,
+            latestDataMap ++ pairs, (DateTime.now, instId, adjustedDataList) :: mtDataList, restartList,
             signalTypeHandlerMap, signalDataMap)
       }
 
@@ -646,7 +650,7 @@ class DataCollectManager @Inject()
             }
 
             val mtSortedList = mtList.toList.sortBy(_._1)
-            val completeList = if (!mtSortedList.isEmpty) {
+            val completeList = if (mtSortedList.nonEmpty) {
               val head = mtSortedList.head
               if (head._1.getSecondOfMinute == 0)
                 fillList(head, mtSortedList.tail)
@@ -656,8 +660,8 @@ class DataCollectManager @Inject()
               List.empty[(DateTime, Double, String)]
 
             for (record <- completeList) {
-              val mtSecListbuffer = secRecordMap.getOrElseUpdate(record._1, ListBuffer.empty[(String, (Double, String))])
-              mtSecListbuffer.append((mt, (record._2, record._3)))
+              val mtSecListBuffer = secRecordMap.getOrElseUpdate(record._1, ListBuffer.empty[(String, (Double, String))])
+              mtSecListBuffer.append((mt, (record._2, record._3)))
             }
           }
 
@@ -828,10 +832,10 @@ class DataCollectManager @Inject()
       }
     case msg: ExecuteSeq =>
       if (calibratorOpt.nonEmpty) {
-        if(msg.seqName == T700_STANDBY_SEQ) {
-          if(isT700Calibrator)
+        if (msg.seqName == T700_STANDBY_SEQ) {
+          if (isT700Calibrator)
             calibratorOpt.get ! msg
-        }else
+        } else
           calibratorOpt.get ! msg
       } else {
         Logger.warn(s"Calibrator is not online! Ignore execute (${msg.seqName} - ${msg.on}).")
