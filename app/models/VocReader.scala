@@ -49,7 +49,7 @@ object VocReader {
       Logger.info(config.toString)
       config.monitors.foreach(config=>{
         val m = Monitor(_id = config.id, desc = config.name, lat = Some(config.lat), lng = Some(config.lng))
-        monitorOp.upsert(m)
+        monitorOp.upsertMonitor(m)
       })
       count = count + 1
       actorSystem.actorOf(props(config, monitorTypeOp, recordOp, dataCollectManager), s"vocReader${count}")

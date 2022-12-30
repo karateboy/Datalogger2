@@ -10,22 +10,25 @@ trait MonitorDB {
   implicit val mWrite: OWrites[Monitor] = Json.writes[Monitor]
   implicit val mRead: Reads[Monitor] = Json.reads[Monitor]
 
-  var map: Map[String, Monitor] = Map.empty[String, Monitor]
+  @volatile var map: Map[String, Monitor] = Map.empty[String, Monitor]
 
-  def mvList: Seq[String] = map.keys.toSeq
+  def mvList: Seq[String] = synchronized(map.keys.toSeq)
 
-  def ensure(_id: String): Unit = {
+  def ensure(_id: String): Unit = synchronized{
     if (!map.contains(_id)) {
       upsert(Monitor(_id, _id))
     }
   }
 
-  def ensure(m:Monitor): Unit = {
-    if (!map.contains(m._id))
-      upsert(m)
-  }
+  protected def upsert(m: Monitor): Unit
 
-  def upsert(m: Monitor): Unit
+  def upsertMonitor(m: Monitor): Unit = {
+    synchronized {
+      map = map + (m._id -> m)
+    }
+
+    upsert(m)
+  }
 
   protected def deleteMonitor(_id: String): Future[DeleteResult]
 

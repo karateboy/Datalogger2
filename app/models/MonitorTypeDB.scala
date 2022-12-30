@@ -5,8 +5,8 @@ import org.mongodb.scala.result.UpdateResult
 import play.api.Logger
 import play.api.libs.json.Json
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 trait MonitorTypeDB {
   implicit val configWrite = Json.writes[ThresholdConfig]
@@ -103,7 +103,7 @@ trait MonitorTypeDB {
     }
   }
 
-  def rangeType(_id: String, desp: String, unit: String, prec: Int, accumulated:Boolean = false): MonitorType = {
+  def rangeType(_id: String, desp: String, unit: String, prec: Int, accumulated: Boolean = false): MonitorType = {
     rangeOrder += 1
     MonitorType(_id, desp, unit, prec, rangeOrder, accumulated = Some(accumulated))
   }
@@ -123,7 +123,7 @@ trait MonitorTypeDB {
     }
   }
 
-  def deleteItemFuture(_id:String):Unit
+  def deleteItemFuture(_id: String): Unit
 
   def allMtvList: List[String] = mtvList ++ signalMtvList
 
@@ -144,7 +144,7 @@ trait MonitorTypeDB {
     }
   }
 
-  def upsertMonitorType(mt:MonitorType): Future[UpdateResult] = {
+  def upsertMonitorType(mt: MonitorType): Future[UpdateResult] = {
     synchronized {
       map = map + (mt._id -> mt)
       if (mt.signalType) {
@@ -164,13 +164,13 @@ trait MonitorTypeDB {
   def stopMeasuring(instrumentId: String): Future[Seq[UpdateResult]] = {
     val mtSet = realtimeMtvList.toSet ++ signalMtvList.toSet
     val allF: Seq[Future[UpdateResult]] =
-    for{mt<-mtSet.toSeq
-        instrumentList <- map(mt).measuringBy if instrumentList.contains(instrumentId)
-        } yield {
-      val newMt = map(mt).stopMeasuring(instrumentId)
-      map = map + (mt -> newMt)
-      upsertItemFuture(newMt)
-    }
+      for {mt <- mtSet.toSeq
+           instrumentList <- map(mt).measuringBy if instrumentList.contains(instrumentId)
+           } yield {
+        val newMt = map(mt).stopMeasuring(instrumentId)
+        map = map + (mt -> newMt)
+        upsertItemFuture(newMt)
+      }
     Future.sequence(allF)
   }
 
@@ -223,4 +223,12 @@ trait MonitorTypeDB {
           false
     (overLaw.getOrElse(false), overLaw.getOrElse(false))
   }
+
+  def getAdjustedData(dataList: List[MonitorTypeData]): List[MonitorTypeData] =
+    dataList map { mtData =>
+      val mtCase = map(mtData.mt)
+      val b = mtCase.fixedB.getOrElse(0d)
+      val m: Double = mtCase.fixedM.getOrElse(1)
+      MonitorTypeData(mtData.mt, (mtData.value + b) * m, mtData.status)
+    }
 }

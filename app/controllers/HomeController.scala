@@ -463,7 +463,7 @@ class HomeController @Inject()(environment: play.api.Environment,
           BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
         },
         m => {
-          monitorOp.upsert(m)
+          monitorOp.upsertMonitor(m)
           Ok(Json.obj("ok" -> true))
         })
   }
