@@ -431,6 +431,7 @@ class DataCollectManager @Inject()
     SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
     WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
     VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self)
+    GcReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, WSClient, monitorOp)
   }
 
 
