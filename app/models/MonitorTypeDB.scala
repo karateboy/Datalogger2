@@ -224,11 +224,12 @@ trait MonitorTypeDB {
     (overLaw.getOrElse(false), overLaw.getOrElse(false))
   }
 
-  def getAdjustedData(dataList: List[MonitorTypeData]): List[MonitorTypeData] =
-    dataList map { mtData =>
+  def calibrateDataByFixedMB(dataList: List[MonitorTypeData]): Unit =
+    dataList.foreach( mtData => {
       val mtCase = map(mtData.mt)
       val b = mtCase.fixedB.getOrElse(0d)
       val m: Double = mtCase.fixedM.getOrElse(1)
-      MonitorTypeData(mtData.mt, (mtData.value + b) * m, mtData.status)
-    }
+      mtData.value = (mtData.value + b) * m
+      mtData
+    })
 }
