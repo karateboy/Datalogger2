@@ -32,7 +32,7 @@ case class SetState(instId: String, state: String)
 
 case class SetMonitorTypeState(instId: String, mt: String, state: String)
 
-case class MonitorTypeData(mt: String, value: Double, status: String)
+case class MonitorTypeData(mt: String, var value: Double, status: String)
 
 case class ReportData(dataList: List[MonitorTypeData])
 
@@ -589,25 +589,23 @@ class DataCollectManager @Inject()
     case ReportData(dataList) =>
       val now = DateTime.now
 
-      val instIdOpt = collectorInstrumentMap.get(sender)
-      instIdOpt map {
-        instId =>
-          val adjustedDataList: List[MonitorTypeData] = monitorTypeOp.getAdjustedData(dataList)
+      for (instId <- collectorInstrumentMap.get(sender)) {
+        monitorTypeOp.calibrateDataByFixedMB(dataList)
 
-          val pairs =
-            for (data <- adjustedDataList) yield {
-              val currentMap = latestDataMap.getOrElse(data.mt, Map.empty[String, Record])
-              val filteredMap = currentMap.filter { kv =>
-                val r = kv._2
-                r.time >= DateTime.now() - 6.second
-              }
-
-              data.mt -> (filteredMap ++ Map(instId -> Record(now, Some(data.value), data.status, Monitor.activeId)))
+        val pairs =
+          for (data <- dataList) yield {
+            val currentMap = latestDataMap.getOrElse(data.mt, Map.empty[String, Record])
+            val filteredMap = currentMap.filter { kv =>
+              val r = kv._2
+              r.time >= DateTime.now() - 6.second
             }
 
-          context become handler(instrumentMap, collectorInstrumentMap,
-            latestDataMap ++ pairs, (DateTime.now, instId, adjustedDataList) :: mtDataList, restartList,
-            signalTypeHandlerMap, signalDataMap)
+            data.mt -> (filteredMap ++ Map(instId -> Record(now, Some(data.value), data.status, Monitor.activeId)))
+          }
+
+        context become handler(instrumentMap, collectorInstrumentMap,
+          latestDataMap ++ pairs, (DateTime.now, instId, dataList) :: mtDataList, restartList,
+          signalTypeHandlerMap, signalDataMap)
       }
 
     case CalculateData => {
