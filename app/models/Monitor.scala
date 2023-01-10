@@ -1,6 +1,9 @@
 package models
 
-case class Monitor(_id: String, desc: String, lat: Option[Double] = None, lng: Option[Double] = None)
+import java.util.Date
+
+case class Monitor(_id: String, desc: String, lat: Option[Double] = None, lng: Option[Double] = None,
+                   var lastDataTime : Option[Date] = None)
 
 object Monitor {
   @volatile var activeId = "me"

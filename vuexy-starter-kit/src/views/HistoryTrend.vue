@@ -50,21 +50,6 @@
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="狀態"
-              label-for="statusFilter"
-              label-cols-md="3"
-            >
-              <v-select
-                id="statusFilter"
-                v-model="form.statusFilter"
-                label="txt"
-                :reduce="dt => dt.id"
-                :options="statusFilters"
-              />
-            </b-form-group>
-          </b-col>
-          <b-col cols="12">
-            <b-form-group
               label="圖表類型"
               label-for="chartType"
               label-cols-md="3"
@@ -208,7 +193,7 @@ export default Vue.extend({
       form: {
         monitors: Array<string>(),
         monitorTypes: Array<string>(),
-        reportUnit: 'Min',
+        reportUnit: 'Hour',
         statusFilter: 'all',
         chartType: 'line',
         range,

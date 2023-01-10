@@ -10,6 +10,7 @@ import play.api.libs.json.{JsError, Json, OWrites, Reads}
 import play.api.libs.ws.WSClient
 
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.Date
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
@@ -39,7 +40,7 @@ object NextDriveReader {
   }
 
   def props(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB: MonitorDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp, WSClient: WSClient) =
+            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp, WSClient: WSClient): Props =
     Props(new NextDriveReader(config, sysConfig, monitorDB, monitorTypeOp, recordOp, dataCollectManagerOp, WSClient))
 
   case object GetDevice
@@ -77,19 +78,19 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
   val mtList: Seq[String] = Seq(MonitorType.NORMAL_USAGE, MonitorType.POWER)
 
   val monitors = Seq(
-    Monitor(_id="site1", "九份子1"),
-    Monitor(_id="site2", "九份子2"),
-    Monitor(_id="site3", "九份子3"),
-    Monitor(_id="site4", "九份子4"),
-    Monitor(_id="site5", "九份子5"),
-    Monitor(_id="site6", "九份子6")
+    Monitor(_id = "site1", "九份子1"),
+    Monitor(_id = "site2", "九份子2"),
+    Monitor(_id = "site3", "九份子3"),
+    Monitor(_id = "site4", "九份子4"),
+    Monitor(_id = "site5", "九份子5"),
+    Monitor(_id = "site6", "九份子6")
   )
   for (mt <- mtList) {
     monitorTypeOp.ensure(mt)
     recordOp.ensureMonitorType(mt)
   }
 
-  for(m<-monitors)
+  for (m <- monitors)
     monitorDB.ensure(m)
 
   @volatile var timerOpt: Option[Cancellable] = None
@@ -177,8 +178,8 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
       Future.successful(Unit)
   }
 
-  def getSensorData(lastDataTime: Instant, devices: Seq[Device], offset: Option[Int], totalCount: Option[Int]): Future[Unit] = {
-    val queryParam = SensorQueryParam(queries = devices.map(device => Sensor(device.deviceUuid, Seq(MonitorType.NORMAL_USAGE))),
+  private def getSensorData(lastDataTime: Instant, device: Device, offset: Option[Int], totalCount: Option[Int]): Future[Unit] = {
+    val queryParam = SensorQueryParam(queries = Seq(Sensor(device.deviceUuid, Seq(MonitorType.NORMAL_USAGE))),
       time = TimeParam(lastDataTime.getEpochSecond * 1000, Instant.now.getEpochSecond * 1000),
       offset = offset,
       maxCount = 500)
@@ -204,8 +205,8 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
                   //Recursive if offset != totalCount
                   if ((totalCount.nonEmpty && totalCount != ret.offset) ||
                     (ret.totalCount.nonEmpty && ret.totalCount != ret.offset))
-                    getSensorData(lastDataTime, devices, ret.offset, ret.totalCount)
-                  else {
+                    getSensorData(lastDataTime, device, ret.offset, ret.totalCount)
+                  else if (ret.results.flatMap(_.generatedTime).nonEmpty) {
                     // Update last data
                     val lastEpochMs = ret.results.flatMap(_.generatedTime).max
                     val start = new DateTime(Date.from(lastDataTime))
@@ -226,7 +227,7 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
                             }
                           })
                           val powerDataList = powerData.toSeq
-                          if(powerDataList.nonEmpty)
+                          if (powerDataList.nonEmpty)
                             recordOp.upsertManyRecords(recordOp.MinCollection)(powerDataList)
                           else
                             Future.successful(Unit)
@@ -234,17 +235,16 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
                       ret.flatMap(x => x)
                     }
 
-                    for (m <- monitorDB.mvList) {
-                      upsertPower(m).andThen({
-                        case Success(_) =>
-                          for (current <- getHourBetween(start, end))
-                            dataCollectManagerOp.recalculateHourData(m, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
-                        case Failure(exception) =>
-                          Logger.error("failed to upsert Power", exception)
-                      })
-                    }
-
-                    sysConfig.setLastDataTime(Instant.ofEpochMilli(lastEpochMs)).map(Success(_))
+                    val monitor = monitorDB.map(device.deviceUuid)
+                    upsertPower(monitor._id).andThen({
+                      case Success(_) =>
+                        for (current <- getHourBetween(start, end))
+                          dataCollectManagerOp.recalculateHourData(monitor._id, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
+                      case Failure(exception) =>
+                        Logger.error("failed to upsert Power", exception)
+                    })
+                    monitor.lastDataTime = Some(end.toDate)
+                    monitorDB.upsertMonitor(monitor)
                   }
                 case Failure(exception) =>
                   Logger.error(s"fail to update min data", exception)
@@ -259,26 +259,27 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
     f.map(_ => Unit)
   }
 
-  def getSensorDataPhase(devices: Seq[Device]): Receive = {
+  private def getSensorDataPhase(devices: Seq[Device]): Receive = {
     case GetSensorData =>
       try {
-        val ret: Future[Unit] = {
-          for (lastDataTime <- sysConfig.getLastDataTime) yield {
-            getSensorData(lastDataTime = lastDataTime, devices = devices, offset = None, totalCount = None)
-          } recover ({
-            case ex =>
-              Logger.error("failed to get sensor data", ex)
+        val futures: Seq[Future[Unit]] =
+          devices.map(device => {
+            val monitor = monitorDB.map(device.deviceUuid)
+            val lastDataTime = monitor.lastDataTime
+              .getOrElse(Date.from(Instant.now().minus(5, ChronoUnit.DAYS))).toInstant
+            getSensorData(lastDataTime = lastDataTime, device = device, offset = None, totalCount = None)
           })
-        } flatMap (x => x)
-        ret.andThen({
+        Future.sequence(futures).andThen({
           case Success(_) =>
-
+            timerOpt = Some(context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, GetSensorData))
+          case Failure(exception) =>
+            Logger.error("failed", exception)
+            timerOpt = Some(context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, GetSensorData))
         })
       } catch {
         case ex: Throwable =>
           Logger.error("failed to get sensor data", ex)
-      } finally {
-        timerOpt = Some(context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, GetSensorData))
+          timerOpt = Some(context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, GetSensorData))
       }
   }
 
