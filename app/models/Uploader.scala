@@ -31,7 +31,7 @@ object Uploader {
         value = mtData.value.map(_.toString).getOrElse(""),
         InstrumentCode = mtData.status)
     })
-    val f = ws.url("https://testyunlinmonitor.pstcom.com.tw/WebService/MointorCarData.ashx")
+    val f = ws.url("https://www.yesylepb.com.tw/WebService/MonitorCarData.ashx")
       .withHeaders(("RequiredValidateToken", "Z3iPhVKyKTvJAfhS0jzB"), ("method", "UploadMonitorCarData"))
       .post(Json.toJson(UploadData(itemData)))
 
