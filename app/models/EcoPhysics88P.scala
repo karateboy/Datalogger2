@@ -183,8 +183,8 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
     for (serial <- serialOpt) {
       Logger.info(s"$instId Switch to Remote mode")
       serial.port.writeBytes(makeCmd("HR1"))
-      Thread.sleep(1000)
-      serial.port.readHexString()
+      Thread.sleep(2000)
+      Logger.info(s"response=>${serial.port.readHexString()}")
     }
   }
 
@@ -192,8 +192,8 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
     for (serial <- serialOpt) {
       Logger.info(s"$instId Switch to Local mode")
       serial.port.writeBytes(makeCmd("HR0"))
-      Thread.sleep(1000)
-      serial.port.readHexString()
+      Thread.sleep(2000)
+      Logger.info(s"response=>${serial.port.readHexString()}")
     }
   }
   override def setCalibrationReg(address: Int, on: Boolean): Unit = {
