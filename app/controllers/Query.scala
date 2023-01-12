@@ -159,7 +159,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
   import models.ModelHelper._
 
   def scatterChart(monitorStr: String, monitorTypeStr: String, tabTypeStr: String, statusFilterStr: String,
-                                 startNum: Long, endNum: Long) = Security.Authenticated.async {
+                   startNum: Long, endNum: Long) = Security.Authenticated.async {
     implicit request =>
       val monitors = monitorStr.split(':')
       val monitorTypeStrArray = monitorTypeStr.split(':')
@@ -176,8 +176,8 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
 
       assert(monitorTypes.length == 2)
 
-      for(chart <- compareChartHelper(monitors, monitorTypes, tabType, start, end)(statusFilter)) yield
-          Results.Ok(Json.toJson(chart))
+      for (chart <- compareChartHelper(monitors, monitorTypes, tabType, start, end)(statusFilter)) yield
+        Results.Ok(Json.toJson(chart))
   }
 
 
@@ -286,7 +286,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
           s"趨勢圖 (${start.toString("YYYY年")}~${end.toString("YYYY年")})"
       }
 
-    def getAxisLines(mt: String) = {
+    def getAxisLines(mt: String, m: String) = {
       val mtCase = monitorTypeOp.map(mt)
       val std_law_line =
         if (mtCase.std_law.isEmpty)
@@ -294,23 +294,25 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
         else
           Some(AxisLine("#FF0000", 2, mtCase.std_law.get, Some(AxisLineLabel("right", "法規值"))))
 
-      val lines = Seq(std_law_line, None).filter {
-        _.isDefined
-      }.map {
-        _.get
-      }
-      if (lines.length > 0)
+      val monitor = monitorOp.map(m)
+      val maxUsageLine = Some(AxisLine("#FF0000", 2, monitor.lastWeekPowerUsageMax.getOrElse(0d), Some(AxisLineLabel("left", "周最大用電量"))))
+      val lines = Seq(std_law_line, maxUsageLine).flatten
+      if (lines.nonEmpty)
         Some(lines)
       else
         None
     }
 
-    val yAxisGroup: Map[String, Seq[(String, Option[Seq[AxisLine]])]] = monitorTypes.map(mt => {
-      (monitorTypeOp.map(mt).unit, getAxisLines(mt))
-    }).groupBy(_._1)
+    val yAxisGroup: Map[String, Seq[(String, Option[Seq[AxisLine]])]] = {
+      val pairs =
+        for(m<-monitors;mt<-monitorTypes) yield
+          (monitorTypeOp.map(mt).unit, getAxisLines(mt, m))
+        pairs.groupBy(_._1)
+    }
+
     val yAxisGroupMap = yAxisGroup map {
       kv =>
-        val lines: Seq[AxisLine] = kv._2.map(_._2).flatten.flatten
+        val lines: Seq[AxisLine] = kv._2.flatMap(_._2).flatten
         if (lines.nonEmpty)
           kv._1 -> YAxis(None, AxisTitle(Some(Some(s"${kv._1}"))), Some(lines))
         else
@@ -320,7 +322,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     val yAxisUnitMap = yAxisIndexList.map(kv => kv._1._1 -> kv._2).toMap
     val yAxisList = yAxisIndexList.map(_._1._2)
 
-    def getSeries() = {
+    def getSeries(): Seq[seqData] = {
 
       val monitorReportPairs =
         for {
@@ -365,7 +367,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
       }
     }
 
-    val series = getSeries()
+    val series = getSeries
 
     val xAxis = {
       val duration = new Duration(start, end)
@@ -376,16 +378,16 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     }
 
     val chart =
-      if (monitorTypes.length == 1) {
-        val mt = monitorTypes(0)
+      if (monitorTypes.length == 1 && monitors.length == 1) {
+        val mt = monitorTypes.head
+        val m = monitors.head
         val mtCase = monitorTypeOp.map(monitorTypes(0))
 
         HighchartData(
           Map("type" -> "line"),
           Map("text" -> title),
           xAxis,
-
-          Seq(YAxis(None, AxisTitle(Some(Some(s"${mtCase.desp} (${mtCase.unit})"))), getAxisLines(mt))),
+          Seq(YAxis(None, AxisTitle(Some(Some(s"${mtCase.desp} (${mtCase.unit})"))), getAxisLines(mt, m))),
           series,
           Some(downloadFileName))
       } else {
@@ -528,9 +530,9 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     val mt1 = monitorTypeOp.map(monitorTypes(0))
     val mt2 = monitorTypeOp.map(monitorTypes(1))
 
-    for(series<-getSeriesFuture()) yield
-      ScatterChart(Map("type"->"scatter", "zoomType"->"xy"),
-        Map("text"-> title),
+    for (series <- getSeriesFuture()) yield
+      ScatterChart(Map("type" -> "scatter", "zoomType" -> "xy"),
+        Map("text" -> title),
         ScatterAxis(Title(true, s"${mt1.desp}(${mt1.unit})"), getAxisLines(monitorTypes(0))),
         ScatterAxis(Title(true, s"${mt2.desp}(${mt2.unit})"), getAxisLines(monitorTypes(1))),
         series, Some(downloadFileName))

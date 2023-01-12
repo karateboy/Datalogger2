@@ -2,7 +2,7 @@ package models
 
 import akka.actor._
 import com.github.nscala_time.time.Imports._
-import models.DataCollectManager.{calculateHourAvgMap, calculateMinAvgMap}
+import models.DataCollectManager.{calculateHourAvgMap, calculateMinAvgMap, updateLastWeekPowerMaxUsage}
 import models.ForwardManager.{ForwardHour, ForwardHourRecord, ForwardMin, ForwardMinRecord}
 import models.ModelHelper._
 import models.TapiTxx.T700_STANDBY_SEQ
@@ -390,6 +390,17 @@ object DataCollectManager {
     }
   }
 
+  def updateLastWeekPowerMaxUsage(m: String)(recordDB: RecordDB, monitorDB: MonitorDB) = {
+
+    val now: DateTime = DateTime.now()
+    for {records <- recordDB.getRecordListFuture(recordDB.MinCollection)(now.minusDays(7), now, Seq(m))
+         usages = records.flatMap(_.mtMap.get(MonitorType.POWER).flatMap(_.value)) if usages.nonEmpty
+         } {
+      val monitor: Monitor = monitorDB.map(m)
+      monitor.lastWeekPowerUsageMax = Some(usages.max)
+      monitorDB.upsertMonitor(monitor)
+    }
+  }
 }
 
 @Singleton
@@ -739,6 +750,7 @@ class DataCollectManager @Inject()
             val f = recordOp.upsertRecord(RecordList(current.minusMinutes(1), minuteMtAvgList.toList, monitor))(recordOp.MinCollection)
             f onComplete {
               case Success(_) =>
+                updateLastWeekPowerMaxUsage(monitor)(recordOp, monitorOp)
                 self ! ForwardMin
               case Failure(exception) =>
                 errorHandler(exception)
@@ -749,21 +761,20 @@ class DataCollectManager @Inject()
       }
 
       val current = DateTime.now().withSecondOfMinute(0).withMillisOfSecond(0)
-      if (LoggerConfig.config.selfMonitor) {
-        val f = calculateMinData(current)
-        f onComplete {
-          case Success(_) =>
-            if (current.getMinuteOfHour == 0) {
-              for (m <- monitorOp.mvList) {
-                dataCollectManagerOp.recalculateHourData(monitor = m,
-                  current = current)(monitorTypeOp.activeMtvList, monitorTypeOp)
-              }
-              self ! CheckInstruments
+      val f = calculateMinData(current)
+      f onComplete {
+        case Success(_) =>
+          if (current.getMinuteOfHour == 0) {
+            for (m <- monitorOp.mvList) {
+              dataCollectManagerOp.recalculateHourData(monitor = m,
+                current = current)(monitorTypeOp.activeMtvList, monitorTypeOp)
             }
-          case Failure(exception) =>
-            errorHandler(exception)
-        }
+            self ! CheckInstruments
+          }
+        case Failure(exception) =>
+          errorHandler(exception)
       }
+
     }
 
     case SetState(instId, state) =>

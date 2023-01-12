@@ -172,9 +172,9 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
           mtDataList = mtDataList))
       }
     })
-    if (docList.nonEmpty)
+    if (docList.nonEmpty) {
       recordOp.upsertManyRecords(recordOp.MinCollection)(docList).map(_ => Unit)
-    else
+    } else
       Future.successful(Unit)
   }
 
@@ -183,7 +183,7 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
       time = TimeParam(lastDataTime.getEpochSecond * 1000, Instant.now.getEpochSecond * 1000),
       offset = offset,
       maxCount = 500)
-    Logger.info(Json.toJson(queryParam).toString())
+    Logger.debug(Json.toJson(queryParam).toString())
     val f = WSClient.url("https://ioeapi.nextdrive.io/v1/device-data/query")
       .withHeaders(("X-ND-TOKEN", config.key))
       .post(Json.toJson(queryParam))
@@ -227,9 +227,9 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
                             }
                           })
                           val powerDataList = powerData.toSeq
-                          if (powerDataList.nonEmpty)
+                          if (powerDataList.nonEmpty) {
                             recordOp.upsertManyRecords(recordOp.MinCollection)(powerDataList)
-                          else
+                          } else
                             Future.successful(Unit)
                         }
                       ret.flatMap(x => x)
@@ -238,6 +238,7 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
                     val monitor = monitorDB.map(device.deviceUuid)
                     upsertPower(monitor._id).andThen({
                       case Success(_) =>
+                        DataCollectManager.updateLastWeekPowerMaxUsage(monitor._id)(recordOp, monitorDB)
                         for (current <- getHourBetween(start, end))
                           dataCollectManagerOp.recalculateHourData(monitor._id, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
                       case Failure(exception) =>

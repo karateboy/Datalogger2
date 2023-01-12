@@ -77,7 +77,7 @@ GET      /Upload/:start/:end                                                    
 
 #Realtime
 GET      /MonitorTypeStatusList                                                   controllers.Realtime.MonitorTypeStatusList()
-
+GET      /PowerUsageList                                                          controllers.Realtime.getPowerUsageList()
 #Report
 GET      /Report/:monitor/:reportType/:reportDate                                 controllers.Report.getReport(monitor, reportType, reportDate:Long, outputTypeStr="html")
 GET      /PDF/Report/:monitor/:reportType/:reportDate                             controllers.Report.getReport(monitor, reportType, reportDate:Long, outputTypeStr="pdf")
@@ -101,6 +101,7 @@ PUT      /Monitor/:id                                                           
 DELETE   /Monitor/:id                                                             controllers.HomeController.deleteMonitor(id)
 GET      /ActiveMonitor                                                           controllers.HomeController.getActiveMonitorID
 PUT      /ActiveMonitor/:id                                                       controllers.HomeController.setActiveMonitorID(id)
+
 
 
 GET      /Record/:monitorType/:start/:end                                         controllers.Query.recordList(monitorType, start:Long, end:Long)
