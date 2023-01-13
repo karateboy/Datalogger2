@@ -295,7 +295,8 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
           Some(AxisLine("#FF0000", 2, mtCase.std_law.get, Some(AxisLineLabel("right", "法規值"))))
 
       val monitor = monitorOp.map(m)
-      val maxUsageLine = Some(AxisLine("#FF0000", 2, monitor.lastWeekPowerUsageMax.getOrElse(0d), Some(AxisLineLabel("left", "周最大用電量"))))
+      val maxUsageLine = Some(AxisLine("#FF0000", 2, monitor.lastWeekPowerUsageMax.getOrElse(0d),
+        Some(AxisLineLabel("left", "周最大用電量", Some(Style("white"))))))
       val lines = Seq(std_law_line, maxUsageLine).flatten
       if (lines.nonEmpty)
         Some(lines)

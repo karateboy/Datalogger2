@@ -12,7 +12,8 @@ import play.api.Play.current
 
 object Highchart {
   case class XAxis(categories: Option[Seq[String]], gridLineWidth: Option[Int]=None, tickInterval:Option[Int]=None)
-  case class AxisLineLabel(align: String, text: String)
+  case class Style(color:String)
+  case class AxisLineLabel(align: String, text: String, style:Option[Style] = None)
   case class AxisLine(color: String, width: Int, value: Double, label: Option[AxisLineLabel])
   case class AxisTitle(text: Option[Option[String]])
   case class Tooltip(valueDecimals:Int)
@@ -32,6 +33,7 @@ object Highchart {
   case class FrequencyTab(header:Seq[String], body:Seq[Seq[String]], footer:Seq[String])                         
   case class WindRoseReport(chart:HighchartData, table:FrequencyTab)
   implicit val xaWrite = Json.writes[XAxis]
+  implicit val styleWrites = Json.writes[Style]
   implicit val axisLineLabelWrite = Json.writes[AxisLineLabel]
   implicit val axisLineWrite = Json.writes[AxisLine]
   implicit val axisTitleWrite = Json.writes[AxisTitle]

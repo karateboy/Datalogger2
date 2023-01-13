@@ -91,7 +91,7 @@ export default Vue.extend({
       return monitors.filter(m => m._id !== 'me');
     },
     widgetCols(): number {
-      if (this.monitorNoMe === 1) return 12;
+      if (this.monitorNoMe.length === 1) return 12;
       else return 4;
     },
   },
