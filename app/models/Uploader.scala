@@ -31,14 +31,19 @@ object Uploader {
         value = mtData.value.map(_.toString).getOrElse(""),
         InstrumentCode = mtData.status)
     })
+    val uploadData = UploadData(itemData)
+    val url = "https://www.yesylepb.com.tw/WebService/MonitorCarData.ashx"
+    Logger.info(s"upload to $url")
+    Logger.info(Json.toJson(UploadData(itemData)).toString())
     val f = ws.url("https://www.yesylepb.com.tw/WebService/MonitorCarData.ashx")
-      .withHeaders(("RequiredValidateToken", "Z3iPhVKyKTvJAfhS0jzB"), ("method", "UploadMonitorCarData"))
+      .withHeaders(("RequiredValidateToken", "OwEsu5KJAAAMPdPpZfYN"), ("method", "UploadMonitorCarData"))
       .post(Json.toJson(UploadData(itemData)))
 
     f.onComplete({
       case Success(resp) =>
         if (resp.status == HttpStatus.SC_OK) {
           Logger.info(s"Success upload ${recordList._id.time}")
+          Logger.info(s"${resp.json.toString()}")
         } else {
           Logger.error(s"Failed to upload ${resp.status} ${resp.json.toString()}")
         }
