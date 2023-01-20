@@ -85,7 +85,7 @@ class Realtime @Inject()
       result
   }
 
-  case class PowerUsage(name: String, usageThisMonth: Double, usageToday: Double)
+  case class PowerUsage(name: String, averageUsageLastWeek: Double, usageToday: Double)
 
   private def getUsageMap(recordLists: Seq[RecordList]): mutable.Map[String, Double] = {
     val usageMap = mutable.Map.empty[String, Double]
@@ -106,9 +106,10 @@ class Realtime @Inject()
       val group = groupDB.getGroupByID(userInfo.group).get
 
       val now = DateTime.now()
-      val monthStart = now.withTimeAtStartOfDay().withDayOfMonth(1)
-      val monthUsageMapFuture =
-        for (monthRecords <- recordDB.getRecordListFuture(recordDB.HourCollection)(monthStart, DateTime.now, monitorDB.mvList)) yield
+      val weekEnd = now.withTimeAtStartOfDay().withTimeAtStartOfDay()
+      val weekStart = weekEnd.minusDays(7)
+      val weekUsageMapFuture =
+        for (monthRecords <- recordDB.getRecordListFuture(recordDB.HourCollection)(weekStart, weekEnd, monitorDB.mvList)) yield
           getUsageMap(monthRecords)
 
       val dayUsageMapFuture =
@@ -116,14 +117,14 @@ class Realtime @Inject()
           getUsageMap(dayRecords)
       val retFuture =
         for {
-          monthUsageMap <- monthUsageMapFuture
+          weekUsageMap <- weekUsageMapFuture
           dayUsageMap <- dayUsageMapFuture} yield {
-          for ((m, idx) <- monitorDB.mvList.zipWithIndex) yield {
-            if (group.monitors.contains(m) || userInfo.isAdmin)
-              PowerUsage(monitorDB.map(m).desc, monthUsageMap.getOrElse(m, 0d), dayUsageMap.getOrElse(m, 0d))
-            else
-              PowerUsage(s"用戶${idx + 1}", monthUsageMap.getOrElse(m, 0d), dayUsageMap.getOrElse(m, 0d))
-          }
+          val mine = monitorDB.mvList.filter(group.monitors.contains(_) || userInfo.isAdmin)
+            .map(m=>PowerUsage(monitorDB.map(m).desc, weekUsageMap.getOrElse(m, 0d)/7, dayUsageMap.getOrElse(m, 0d)))
+
+          val other = monitorDB.mvList.filter(!group.monitors.contains(_) && !userInfo.isAdmin)
+            .map(m=>PowerUsage("N/A", weekUsageMap.getOrElse(m, 0d)/7, dayUsageMap.getOrElse(m, 0d)))
+          mine ++ other
         }
 
       implicit val writes: OWrites[PowerUsage] = Json.writes[PowerUsage]

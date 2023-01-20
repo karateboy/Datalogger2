@@ -1,22 +1,40 @@
 <template>
-  <b-row class="match-height">
-    <b-col cols="3">
-      <b-table :fields="fields" :items="powerUsageList" class="text-center">
+  <b-row v-if="userInfo.isAdmin">
+    <b-col cols="12">
+      <b-table
+        class="text-center"
+        :fields="transposeFields"
+        :items="transposePowerUsageList"
+        stacked="sm"
+        responsive
+        striped
+      >
       </b-table>
     </b-col>
-    <b-col cols="9">
+    <b-col v-for="m in monitorNoMe" :key="m._id" xl="3" lg="6" sm="12">
+      <b-card border-variant="primary">
+        <div :id="`history_${m._id}`"></div>
+      </b-card>
+    </b-col>
+  </b-row>
+  <b-row v-else class="match-height">
+    <b-col xl="3" lg="6" sm="12">
+      <b-table
+        :fields="fields"
+        :items="powerUsageList"
+        class="text-center"
+        stacked="sm"
+      >
+      </b-table>
+    </b-col>
+    <b-col xl="9" lg="6" sm="12">
       <b-row>
-        <b-col v-for="m in monitorNoMe" :key="m._id" :cols="widgetCols">
+        <b-col v-for="m in monitorNoMe" :key="m._id" cols="12">
           <b-card border-variant="primary">
             <div :id="`history_${m._id}`"></div>
           </b-card>
         </b-col>
         <b-col cols="12"> </b-col>
-      </b-row>
-      <b-row>
-        <b-col>
-          <div id="powerCompare"></div>
-        </b-col>
       </b-row>
     </b-col>
   </b-row>
@@ -25,6 +43,10 @@
 .highcharts-container,
 .highcharts-container svg {
   width: 100% !important;
+}
+.verticaltext {
+  word-wrap: break-word;
+  white-space: pre-wrap;
 }
 </style>
 <script lang="ts">
@@ -36,8 +58,13 @@ import { Monitor } from '../store/monitors/types';
 import highcharts from 'highcharts';
 import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
-import highchartMore from 'highcharts/highcharts-more';
 import moment from 'moment';
+
+interface PowerUsage {
+  name: string;
+  averageUsageLastWeek: number;
+  usageToday: number;
+}
 
 export default Vue.extend({
   data() {
@@ -47,8 +74,8 @@ export default Vue.extend({
         label: '用戶名稱',
       },
       {
-        key: 'usageThisMonth',
-        label: '本月用電量(度)',
+        key: 'averageUsageLastWeek',
+        label: '上週日均用電量(度)',
         formatter: (v: number) => {
           if (isNaN(v)) return `-`;
           else return `${v.toFixed(0)}`;
@@ -63,11 +90,15 @@ export default Vue.extend({
         },
       },
     ];
-    let powerUsageList = Array<any>();
+    let transposeFields = Array<any>();
+    let powerUsageList = Array<PowerUsage>();
+    let transposePowerUsageList = Array<any>();
     return {
       maxPoints: 30,
       fields,
       powerUsageList,
+      transposeFields,
+      transposePowerUsageList,
       refreshTimer: 0,
       mtInterestTimer: 0,
       realTimeStatus: Array<MonitorTypeStatus>(),
@@ -226,6 +257,28 @@ export default Vue.extend({
         let res = await axios.get('/PowerUsageList');
         if (res.status == 200) {
           this.powerUsageList = res.data;
+          // update transposeFields
+          this.transposeFields.splice(0, this.transposeFields.length);
+          this.transposeFields.push({
+            key: 'title',
+            label: '',
+          });
+          let usageThisMonth: any = {
+            title: '上週日均用電量(度)',
+          };
+          let usageToday: any = {
+            title: '本日用電量(度)',
+          };
+          for (let entry of this.powerUsageList) {
+            this.transposeFields.push({
+              key: entry.name,
+              label: entry.name,
+            });
+            usageThisMonth[entry.name] = entry.averageUsageLastWeek.toFixed(0);
+            usageToday[entry.name] = entry.usageToday.toFixed(0);
+          }
+          this.transposePowerUsageList.push(usageThisMonth);
+          this.transposePowerUsageList.push(usageToday);
         }
       } catch (err) {
         throw new Error(`${err}`);

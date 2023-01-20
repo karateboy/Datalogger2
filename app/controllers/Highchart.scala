@@ -18,7 +18,11 @@ object Highchart {
   case class AxisTitle(text: Option[Option[String]])
   case class Tooltip(valueDecimals:Int)
   case class YAxis(labels: Option[String], title: AxisTitle, plotLines: Option[Seq[AxisLine]], opposite:Boolean=false, 
-      floor:Option[Int]=None, ceiling:Option[Int]=None, min:Option[Int]=None, max:Option[Int]=None, tickInterval:Option[Int]=None, 
+      floor:Option[Int]=None, ceiling:Option[Int]=None,
+                   min:Option[Double]=None, max:Option[Double]=None,
+                   softMax:Option[Int]=None,
+                   softMin:Option[Int]=None,
+                   tickInterval:Option[Int]=None,
       gridLineWidth:Option[Int]=None, gridLineColor:Option[String]=None)
       
   case class seqData(name: String, data: Seq[(Long, Option[Double])], yAxis:Int=0,

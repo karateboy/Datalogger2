@@ -238,9 +238,9 @@ class NextDriveReader(config: NextDriveConfig, sysConfig: SysConfigDB, monitorDB
                     val monitor = monitorDB.map(device.deviceUuid)
                     upsertPower(monitor._id).andThen({
                       case Success(_) =>
-                        DataCollectManager.updateLastWeekPowerMaxUsage(monitor._id)(recordOp, monitorDB)
                         for (current <- getHourBetween(start, end))
                           dataCollectManagerOp.recalculateHourData(monitor._id, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
+
                       case Failure(exception) =>
                         Logger.error("failed to upsert Power", exception)
                     })

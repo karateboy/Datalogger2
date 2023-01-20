@@ -13,6 +13,7 @@ import java.nio.file.Files
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.math.BigDecimal.RoundingMode
 
 case class Stat(avg: Option[Double],
                 min: Option[Double],
@@ -226,8 +227,8 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
       }
   }
 
-  def trendHelper(monitors: Seq[String], monitorTypes: Seq[String], tabType: TableType.Value,
-                  reportUnit: ReportUnit.Value, start: DateTime, end: DateTime, showActual: Boolean)(statusFilter: MonitorStatusFilter.Value) = {
+  private def trendHelper(monitors: Seq[String], monitorTypes: Seq[String], tabType: TableType.Value,
+                          reportUnit: ReportUnit.Value, start: DateTime, end: DateTime, showActual: Boolean)(statusFilter: MonitorStatusFilter.Value) = {
     val period: Period =
       reportUnit match {
         case ReportUnit.Sec =>
@@ -286,6 +287,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
           s"趨勢圖 (${start.toString("YYYY年")}~${end.toString("YYYY年")})"
       }
 
+    var maxUsage : Option[Double] = Some(0d)
     def getAxisLines(mt: String, m: String) = {
       val mtCase = monitorTypeOp.map(mt)
       val std_law_line =
@@ -294,9 +296,18 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
         else
           Some(AxisLine("#FF0000", 2, mtCase.std_law.get, Some(AxisLineLabel("right", "法規值"))))
 
-      val monitor = monitorOp.map(m)
-      val maxUsageLine = Some(AxisLine("#FF0000", 2, monitor.lastWeekPowerUsageMax.getOrElse(0d),
-        Some(AxisLineLabel("left", "周最大用電量", Some(Style("white"))))))
+      val maxUsageFuture = if(tabType == TableType.hour)
+        DataCollectManager.getLastWeekPowerMaxUsage(m, recordOp.HourCollection)(recordOp)
+      else
+        DataCollectManager.getLastWeekPowerMaxUsage(m, recordOp.MinCollection)(recordOp)
+
+      maxUsage = waitReadyResult(maxUsageFuture)
+      val maxUsageLine = if(tabType == TableType.hour)
+        Some(AxisLine("#FF0000", 2, maxUsage.getOrElse(0d),
+        Some(AxisLineLabel("left", "上週小時最大用電量", Some(Style("white"))))))
+      else
+        Some(AxisLine("#FF0000", 2, maxUsage.getOrElse(0d),
+          Some(AxisLineLabel("left", "上週分鐘最大用電量", Some(Style("white"))))))
       val lines = Seq(std_law_line, maxUsageLine).flatten
       if (lines.nonEmpty)
         Some(lines)
@@ -355,12 +366,12 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
           t =>
             val time = t._1
             val valueOpt = for (x <- t._2) yield x._1
-            (time, valueOpt.getOrElse(None))
+            (time, valueOpt.flatten)
         }
         val timeStatus = timeData.map {
           t =>
             val statusOpt = for (x <- t._2) yield x._2
-            statusOpt.getOrElse(None)
+            statusOpt.flatten
         }
         seqData(name = s"${monitorOp.map(m).desc}_${monitorTypeOp.map(mt).desp}",
           data = timeValues, yAxis = yAxisUnitMap(monitorTypeOp.map(mt).unit),
@@ -382,14 +393,14 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
       if (monitorTypes.length == 1 && monitors.length == 1) {
         val mt = monitorTypes.head
         val m = monitors.head
-        val mtCase = monitorTypeOp.map(monitorTypes(0))
-
+        val mtCase = monitorTypeOp.map(monitorTypes.head)
         HighchartData(
           Map("type" -> "line"),
           Map("text" -> title),
           xAxis,
-          Seq(YAxis(None, AxisTitle(Some(Some(s"${mtCase.desp} (${mtCase.unit})"))), getAxisLines(mt, m))),
-          series,
+          Seq(YAxis(labels=None, title=AxisTitle(Some(Some(s"${mtCase.desp} (${mtCase.unit})"))), plotLines = getAxisLines(mt, m),
+            max = maxUsage.map(v=>BigDecimal(v/3*4).setScale(mtCase.prec, RoundingMode.HALF_EVEN).doubleValue()), min = Some(0))),
+            series,
           Some(downloadFileName))
       } else {
         HighchartData(

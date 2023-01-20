@@ -2,7 +2,7 @@ package models
 
 import akka.actor._
 import com.github.nscala_time.time.Imports._
-import models.DataCollectManager.{calculateHourAvgMap, calculateMinAvgMap, updateLastWeekPowerMaxUsage}
+import models.DataCollectManager.{calculateHourAvgMap, calculateMinAvgMap}
 import models.ForwardManager.{ForwardHour, ForwardHourRecord, ForwardMin, ForwardMinRecord}
 import models.ModelHelper._
 import models.TapiTxx.T700_STANDBY_SEQ
@@ -390,16 +390,15 @@ object DataCollectManager {
     }
   }
 
-  def updateLastWeekPowerMaxUsage(m: String)(recordDB: RecordDB, monitorDB: MonitorDB) = {
-
-    val now: DateTime = DateTime.now()
-    for {records <- recordDB.getRecordListFuture(recordDB.MinCollection)(now.minusDays(7), now, Seq(m))
-         usages = records.flatMap(_.mtMap.get(MonitorType.POWER).flatMap(_.value)) if usages.nonEmpty
-         } {
-      val monitor: Monitor = monitorDB.map(m)
-      monitor.lastWeekPowerUsageMax = Some(usages.max)
-      monitorDB.upsertMonitor(monitor)
-    }
+  def getLastWeekPowerMaxUsage(m: String, collection: String)(recordDB: RecordDB): Future[Option[Double]] = {
+    val end: DateTime = DateTime.now().withTimeAtStartOfDay()
+    val begin = end.minusDays(7)
+    for {records <- recordDB.getRecordListFuture(collection)(end.minusDays(7), end, Seq(m))
+         usages = records.flatMap(_.mtMap.get(MonitorType.POWER).flatMap(_.value))} yield
+      if (usages.nonEmpty)
+        Some(usages.max)
+      else
+        None
   }
 }
 
@@ -750,7 +749,6 @@ class DataCollectManager @Inject()
             val f = recordOp.upsertRecord(RecordList(current.minusMinutes(1), minuteMtAvgList.toList, monitor))(recordOp.MinCollection)
             f onComplete {
               case Success(_) =>
-                updateLastWeekPowerMaxUsage(monitor)(recordOp, monitorOp)
                 self ! ForwardMin
               case Failure(exception) =>
                 errorHandler(exception)
@@ -769,7 +767,7 @@ class DataCollectManager @Inject()
               dataCollectManagerOp.recalculateHourData(monitor = m,
                 current = current)(monitorTypeOp.activeMtvList, monitorTypeOp)
             }
-            self ! CheckInstruments
+            //self ! CheckInstruments
           }
         case Failure(exception) =>
           errorHandler(exception)
