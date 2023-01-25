@@ -72,12 +72,8 @@ export default [
         route: 'signal-type-config',
       },
       {
-        title: '人工資料註記',
-        route: 'manual-audit',
-      },
-      {
-        title: '人工註記查詢',
-        route: 'audit-log-query',
+        title: '用戶用電輸入',
+        route: 'power-usage-edit',
       },
       {
         title: '使用者管理',
@@ -90,14 +86,6 @@ export default [
       {
         title: '資料檢核設定',
         route: 'audit-config',
-      },
-      {
-        title: '資料上傳',
-        route: 'data-management',
-      },
-      {
-        title: 'CDX上傳設定',
-        route: 'cdx-upload-config',
       },
       {
         title: '參數設定',

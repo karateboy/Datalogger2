@@ -291,6 +291,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/power-usage-edit',
+      name: 'power-usage-edit',
+      component: () => import('@/views/PowerUsageEditor.vue'),
+      meta: {
+        pageTitle: '用戶用電輸入',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '用戶用電輸入',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/manual-audit',
       name: 'manual-audit',
       component: () => import('@/views/ManualAudit.vue'),
