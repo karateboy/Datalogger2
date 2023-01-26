@@ -89,6 +89,8 @@ GET      /Excel/MonitorMonthlyHourReport/:monitor/:monitorType/:reportDate      
 # EDIT Power Usage
 GET     /MonitorPowerUsage/:monitor/:year                                         controllers.Realtime.loadMonitorPowerUsage(monitor, year:Int)
 PUT     /MonitorPowerUsage                                                        controllers.Realtime.upsertPowerUsage()
+GET     /PowerCompareChart/:monitor                                               controllers.Realtime.getYearCompareChart(monitor)
+
 #JSON
 GET      /MonitorType                                                             controllers.HomeController.monitorTypeList
 GET      /MonitorType/activated                                                   controllers.HomeController.activatedMonitorTypes

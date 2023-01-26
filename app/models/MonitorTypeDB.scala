@@ -17,6 +17,7 @@ trait MonitorTypeDB {
     rangeType(POWER, "用電量", unit="度", 2),
     rangeType(WIN_SPEED, "風速", "m/sec", 2),
     rangeType(WIN_DIRECTION, "風向", "degrees", 2),
+    rangeType(TEMP, "溫度", "℃", 2),
     rangeType(LAT, "緯度", "度", 5),
     rangeType(LNG, "經度", "度", 5),
     rangeType(NORMAL_USAGE, desp="電表值", "kWh", prec=2)

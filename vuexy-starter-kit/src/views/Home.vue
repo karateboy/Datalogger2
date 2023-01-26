@@ -16,6 +16,17 @@
         <div :id="`history_${m._id}`"></div>
       </b-card>
     </b-col>
+    <b-col
+      v-for="m in monitorNoMe"
+      :key="`compare_${m._id}`"
+      xl="3"
+      lg="6"
+      sm="12"
+    >
+      <b-card border-variant="primary">
+        <div :id="`year_compare_${m._id}`"></div>
+      </b-card>
+    </b-col>
   </b-row>
   <b-row v-else class="match-height">
     <b-col xl="3" lg="6" sm="12">
@@ -34,7 +45,17 @@
             <div :id="`history_${m._id}`"></div>
           </b-card>
         </b-col>
-        <b-col cols="12"> </b-col>
+        <b-col
+          v-for="m in monitorNoMe"
+          :key="`compare_${m._id}`"
+          xl="3"
+          lg="6"
+          sm="12"
+        >
+          <b-card border-variant="primary">
+            <div :id="`year_compare_${m._id}`"></div>
+          </b-card>
+        </b-col>
       </b-row>
     </b-col>
   </b-row>
@@ -139,10 +160,15 @@ export default Vue.extend({
     await this.getPowerUsage();
 
     const me = this;
-    for (const m of this.monitors) this.query(m);
-
+    for (const m of this.monitors) {
+      this.query(m);
+      this.drawCompareChart(m);
+    }
     this.mtInterestTimer = setInterval(() => {
-      for (const m of this.monitors) this.query(m);
+      for (const m of this.monitors) {
+        this.query(m);
+        this.drawCompareChart(m);
+      }
     }, 60000);
   },
   beforeDestroy() {
@@ -233,6 +259,62 @@ export default Vue.extend({
         enabled: false,
       };
       highcharts.chart(`history_${m._id}`, ret);
+    },
+    async drawCompareChart(m: Monitor) {
+      const url = `/PowerCompareChart/${m._id}`;
+      const res = await axios.get(url);
+      const ret: highcharts.Options = res.data;
+
+      ret.chart = {
+        type: 'column',
+        zoomType: 'x',
+        panning: {
+          enabled: true,
+        },
+        panKey: 'shift',
+        alignTicks: false,
+      };
+
+      //ret.title!.text = `${m.desc}即時用電量`;
+
+      ret.tooltip = { valueDecimals: 2 };
+      ret.legend = { enabled: true };
+      ret.credits = {
+        enabled: false,
+        href: 'http://www.wecc.com.tw/',
+      };
+
+      ret.exporting = {
+        enabled: false,
+      };
+      /*
+      let xAxis: highcharts.XAxisOptions = ret.xAxis as highcharts.XAxisOptions;
+      xAxis.type = 'datetime';
+
+      xAxis!.dateTimeLabelFormats = {
+        day: '%b%e日',
+        week: '%b%e日',
+        month: '%y年%b',
+      };
+      */
+
+      ret.plotOptions = {
+        spline: {
+          tooltip: {
+            valueDecimals: 2,
+          },
+        },
+        scatter: {
+          tooltip: {
+            valueDecimals: 2,
+          },
+        },
+      };
+      ret.time = {
+        timezoneOffset: -480,
+      };
+      console.info(ret);
+      highcharts.chart(`year_compare_${m._id}`, ret);
     },
     getMtName(mt: string): string {
       let mtInfo = this.mtMap.get(mt) as MonitorType;

@@ -27,12 +27,22 @@ object Highchart {
       
   case class seqData(name: String, data: Seq[(Long, Option[Double])], yAxis:Int=0,
                      chartType:Option[String]=None, tooltip: Tooltip= Tooltip(2), statusList: Seq[Option[String]] =Seq.empty[Option[String]])
+
+  case class CategorySeqData(name: String, data: Seq[Option[Double]], chartType: Option[String], yAxis: Int = 0,
+                             tooltip: Tooltip = Tooltip(2), statusList: Seq[Option[String]] = Seq.empty[Option[String]])
+
   case class HighchartData(chart: Map[String, String],
                            title: Map[String, String],
                            xAxis: XAxis,
                            yAxis: Seq[YAxis],
                            series: Seq[seqData],
                            downloadFileName: Option[String]=None)
+
+  case class HighchartCategoryData(chart: Map[String, String],
+                           title: Map[String, String],
+                           xAxis: XAxis,
+                           yAxis: Seq[YAxis],
+                           series: Seq[CategorySeqData])
 
   case class FrequencyTab(header:Seq[String], body:Seq[Seq[String]], footer:Seq[String])                         
   case class WindRoseReport(chart:HighchartData, table:FrequencyTab)
@@ -71,6 +81,16 @@ object Highchart {
       (__ \ "tooltip").write[Tooltip] and
       (__ \ "statusList").write[Seq[Option[String]]]
   )(unlift(seqData.unapply))
+
+  implicit val categorySeqDataWrite: Writes[CategorySeqData] = (
+    (__ \ "name").write[String] and
+      (__ \ "data").write[Seq[Option[Double]]] and
+      (__ \ "type").write[Option[String]] and
+      (__ \ "yAxis").write[Int] and
+      (__ \ "tooltip").write[Tooltip] and
+      (__ \ "statusList").write[Seq[Option[String]]]
+    )(unlift(CategorySeqData.unapply))
+
   implicit val hcWrite = Json.writes[HighchartData]
   implicit val feqWrite = Json.writes[FrequencyTab]
   implicit val wrWrite = Json.writes[WindRoseReport]

@@ -9,6 +9,7 @@ import scalikejdbc._
 import java.sql.Blob
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.Date
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -155,6 +156,17 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
     }
   }
 
+  private def getDate(key: String, defaultValue: Date): Future[Date] = Future {
+    val valueOpt = get(key)
+    val ret: Option[Date] =
+      for (value <- valueOpt) yield Date.from(Instant.ofEpochMilli(value.v.toLong))
+    ret.getOrElse(defaultValue)
+  }
+
+  private def setDate(key: String)(v: Date): Future[UpdateResult] = Future {
+    val ret = set(key, v.getTime.toString)
+    UpdateResult.acknowledged(ret, ret, null)
+  }
   case class Value(v: String, blob: Option[Blob])
 
   override def getActiveMonitorId: Future[String] = Future {
@@ -183,4 +195,9 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
     val ret = set(LAST_DATA_TIME, dt.toString)
     UpdateResult.acknowledged(ret, ret, null)
   }
+
+  override def getEpaLastRecordTime: Future[Date] =
+    getDate(EPA_LAST_RECORD_TIME, Date.from(Instant.parse("2021-01-01T00:00:00.000Z")))
+
+  override def setEpaLastRecordTime(v: Date): Future[UpdateResult] = setDate(EPA_LAST_RECORD_TIME)(v)
 }

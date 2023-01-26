@@ -4,6 +4,7 @@ import models.CdxUploader.{CdxConfig, CdxMonitorType}
 import org.mongodb.scala.result.UpdateResult
 
 import java.time.Instant
+import java.util.Date
 import scala.concurrent.Future
 
 trait SysConfigDB {
@@ -18,7 +19,7 @@ trait SysConfigDB {
   val CDX_MONITOR_TYPES = "CdxMonitorTypes"
   val ACTIVE_MONITOR_ID = "ActiveMonitorId"
   val LAST_DATA_TIME = "LastDataTime"
-
+  val EPA_LAST_RECORD_TIME = "EPA_Last_Record_Time"
   // def getLogo: Future[LogoImage]
 
   // def setLogo(logo: LogoImage): Future[UpdateResult]
@@ -58,4 +59,8 @@ trait SysConfigDB {
   def getLastDataTime : Future[Instant]
 
   def setLastDataTime(dt:Instant) :Future[UpdateResult]
+
+  def getEpaLastRecordTime: Future[Date]
+
+  def setEpaLastRecordTime(v: Date): Future[UpdateResult]
 }

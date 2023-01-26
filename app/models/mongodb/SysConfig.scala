@@ -34,7 +34,8 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     CDX_MONITOR_TYPES -> Document(valueKey -> Json.toJson(CdxUploader.defaultMonitorTypes).toString()),
     ACTIVE_MONITOR_ID -> Document(valueKey -> Monitor.activeId),
     LAST_DATA_TIME -> Document(valueKey ->
-      Date.from(Instant.now().minus(4, ChronoUnit.DAYS)))
+      Date.from(Instant.now().minus(4, ChronoUnit.DAYS))),
+    EPA_LAST_RECORD_TIME -> Document(valueKey -> Date.from(Instant.parse("2021-01-01T00:00:00.000Z")))
   )
 
   override def getSpectrumLastParseTime(): Future[Instant] = getInstant(SpectrumLastParseTime)()
@@ -142,4 +143,9 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
   override def getLastDataTime: Future[Instant] = getInstant(LAST_DATA_TIME)()
 
   override def setLastDataTime(dt: Instant): Future[UpdateResult] = setInstant(LAST_DATA_TIME)(dt)
+
+  override def getEpaLastRecordTime: Future[Date] = get(EPA_LAST_RECORD_TIME)
+    .map(v => Date.from(Instant.ofEpochMilli(v.asDateTime().getValue)))
+
+  override def setEpaLastRecordTime(v: Date): Future[UpdateResult] = set(EPA_LAST_RECORD_TIME, BsonDateTime(v))
 }

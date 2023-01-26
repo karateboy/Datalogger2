@@ -1,6 +1,7 @@
 package controllers
 
 import com.github.nscala_time.time.Imports._
+import controllers.Highchart.{AxisTitle, CategorySeqData, HighchartCategoryData, XAxis, YAxis}
 import models._
 import play.api.Logger
 import play.api.libs.json._
@@ -10,6 +11,7 @@ import javax.inject._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.math.BigDecimal.RoundingMode
 
 class Realtime @Inject()
 (monitorTypeOp: MonitorTypeDB, dataCollectManagerOp: DataCollectManagerOp, instrumentOp: InstrumentDB,
@@ -177,4 +179,73 @@ class Realtime @Inject()
     }
   }
 
+  def getYearCompareChart(monitor: String): Action[AnyContent] = Security.Authenticated.async {
+    val end = DateTime.now().withTimeAtStartOfDay()
+    val start = end.withDayOfMonth(1).withTimeAtStartOfDay().minusYears(2)
+    for (records <- recordDB.getRecordListFuture(recordDB.HourCollection)(start, end, Seq(monitor))) yield {
+      val monthUsageMap = records.groupBy(record => {
+        val dt = new DateTime(record._id.time)
+        dt.withDayOfMonth(1).withTimeAtStartOfDay()
+      }).map(pair => pair._1 -> pair._2.flatMap(_.mtMap.get(MonitorType.POWER)).flatMap(_.value).sum)
+
+      val monthTempMap = records.groupBy(record => {
+        val dt = new DateTime(record._id.time)
+        dt.withDayOfMonth(1).withTimeAtStartOfDay()
+      }).flatMap(pair => {
+        val values = pair._2
+          .flatMap(_.mtMap.get(MonitorType.TEMP))
+          .flatMap(_.value)
+        if (values.nonEmpty)
+          Some(pair._1 -> values.sum / values.size)
+        else
+          None
+      })
+
+
+      val offsetList = (0 until 12).reverse.toList
+      val categories =
+        for (offset <- offsetList) yield {
+          val dt = end.minusMonths(offset)
+          s"${dt.toString("yyyy年M月")}"
+        }
+      val powerMtCase = monitorTypeOp.map(MonitorType.POWER)
+      val tempMtCase = monitorTypeOp.map(MonitorType.TEMP)
+
+      val yAxisList = Seq(
+        YAxis(labels = None, title = AxisTitle(Some(Some(s"${powerMtCase.desp} (${powerMtCase.unit})"))), plotLines = None, min = Some(0)),
+        YAxis(labels = None, title = AxisTitle(Some(Some(s"${tempMtCase.desp} (${tempMtCase.unit})"))), plotLines = None, opposite = true)
+      )
+
+
+      def getYearData(yearOffset: Int, monthMap: Map[DateTime, Double], mtCase: MonitorType) = {
+        for (offset <- offsetList) yield {
+          val dt = end.withDayOfMonth(1).minusMonths(offset).minusYears(yearOffset)
+          monthMap.get(dt).map(BigDecimal(_).setScale(mtCase.prec, RoundingMode.HALF_EVEN).doubleValue())
+        }
+      }
+
+      val thisYear = getYearData(0, monthUsageMap, powerMtCase)
+      val thisYearTemp = getYearData(0, monthTempMap, tempMtCase)
+      val lastYear = getYearData(1, monthUsageMap, powerMtCase)
+      val lastYearTemp = getYearData(1, monthTempMap, tempMtCase)
+
+      val series = Seq(
+        CategorySeqData(name = s"去年度用電量", data = lastYear, chartType = Some("column")),
+        CategorySeqData(name = s"本年度用電量", data = thisYear, chartType = Some("column")),
+        CategorySeqData(name = s"去年度氣溫", data = lastYearTemp, chartType = Some("line"), yAxis = 1),
+        CategorySeqData(name = s"本年度氣溫", data = thisYearTemp, chartType = Some("line"), yAxis = 1)
+      )
+
+
+      val chart = HighchartCategoryData(
+        Map.empty[String, String],
+        Map("text" -> s"${monitorDB.map(monitor).desc}同期用電比較"),
+        XAxis(categories = Some(categories)),
+        yAxisList,
+        series)
+
+      implicit val w1 = Json.writes[HighchartCategoryData]
+      Ok(Json.toJson(chart))
+    }
+  }
 }
