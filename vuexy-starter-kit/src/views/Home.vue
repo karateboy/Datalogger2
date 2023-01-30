@@ -45,13 +45,7 @@
             <div :id="`history_${m._id}`"></div>
           </b-card>
         </b-col>
-        <b-col
-          v-for="m in monitorNoMe"
-          :key="`compare_${m._id}`"
-          xl="3"
-          lg="6"
-          sm="12"
-        >
+        <b-col v-for="m in monitorNoMe" :key="`compare_${m._id}`" cols="12">
           <b-card border-variant="primary">
             <div :id="`year_compare_${m._id}`"></div>
           </b-card>
