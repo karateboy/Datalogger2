@@ -35,7 +35,7 @@
         </b-row>
       </b-form>
     </b-card>
-    <b-card v-show="display">
+    <b-card v-if="display">
       <b-row>
         <b-col><b-img :src="getWaveBEImgUrl" fluid /></b-col>
         <b-col><b-img :src="getWaveBNImgUrl" fluid /></b-col>
@@ -99,7 +99,7 @@ export default Vue.extend({
       return `${this.baseUrl}WaveBN?dateTime=${this.activeDateTime}`;
     },
     getWaveBZImgUrl(): string {
-      return `${this.baseUrl}WaveBN?dateTime=${this.activeDateTime}`;
+      return `${this.baseUrl}WaveBZ?dateTime=${this.activeDateTime}`;
     },
     getWaveDEImgUrl(): string {
       return `${this.baseUrl}WaveDE?dateTime=${this.activeDateTime}`;
@@ -108,13 +108,23 @@ export default Vue.extend({
       return `${this.baseUrl}WaveDN?dateTime=${this.activeDateTime}`;
     },
     getWaveDZImgUrl(): string {
-      return `${this.baseUrl}WaveDN?dateTime=${this.activeDateTime}`;
+      return `${this.baseUrl}WaveDZ?dateTime=${this.activeDateTime}`;
     },
   },
   methods: {
     async query() {
-      this.display = true;
-      this.activeDateTime = this.form.date;
+      this.display = false;
+      try {
+        let res = await axios.get(
+          `/CheckEarthquakeReport?dateTime=${this.form.date}`,
+        );
+        if (res.status === 200) {
+          this.display = true;
+          this.activeDateTime = this.form.date;
+        }
+      } catch (err) {
+        this.$bvModal.msgBoxOk('沒有對應的地震資料');
+      }
     },
   },
 });

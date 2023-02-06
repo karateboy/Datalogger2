@@ -204,8 +204,12 @@ export default Vue.extend({
       for (const mt of me.windRoseList) me.queryWindRose(mt);
     }, 60000);
 
-    await this.getCdxConfig();
     await this.initRealtimeChart();
+  },
+  watch: {
+    'userInfo.monitorTypeOfInterest': function(){
+      for (const mt of this.userInfo.monitorTypeOfInterest) this.query(mt);
+    }
   },
   beforeDestroy() {
     clearInterval(this.refreshTimer);
@@ -217,7 +221,6 @@ export default Vue.extend({
     ...mapActions('user', ['getUserInfo']),
     async refresh(): Promise<void> {
       this.plotLatestData();
-      this.getCdxUploadEvents();
     },
     async plotLatestData(): Promise<void> {
       await this.getRealtimeStatus();
@@ -504,31 +507,6 @@ export default Vue.extend({
         highcharts.chart(`rose_${mt}`, ret);
       } catch (err) {
       } finally {
-      }
-    },
-    async getCdxUploadEvents() {
-      try {
-        const range = [
-          moment().subtract(7, 'days').valueOf(),
-          moment().valueOf(),
-        ];
-        let src = 'S:CDX';
-        let res = await axios.get(`/Alarms/${src}/1/${range[0]}/${range[1]}`);
-        if (res.status === 200) {
-          this.cdxUploadLogs = res.data.slice(0, 5);
-        }
-      } catch (err) {
-        throw new Error(`$err`);
-      }
-    },
-    async getCdxConfig() {
-      try {
-        let ret = await axios.get('/CdxConfig');
-        if (ret.status === 200) {
-          this.cdxConfig = ret.data;
-        }
-      } catch (err) {
-        throw new Error(`$err`);
       }
     },
     rowClass(item: any, type: any) {

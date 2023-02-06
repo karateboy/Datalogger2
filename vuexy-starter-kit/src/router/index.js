@@ -241,14 +241,14 @@ const router = new VueRouter({
       name: 'report',
       component: () => import('@/views/ReportQuery.vue'),
       meta: {
-        pageTitle: '監測報表',
+        pageTitle: '資料有效率統計',
         breadcrumb: [
           {
             text: '報表查詢',
             active: true,
           },
           {
-            text: '監測報表',
+            text: '資料有效率統計',
             active: true,
           },
         ],

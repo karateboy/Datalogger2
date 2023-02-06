@@ -19,9 +19,30 @@
     </b-card>
     <b-card v-show="years.length !== 0">
       <b-row>
-        <b-col cols="6">Google Map</b-col>
-        <b-col cols="6">
+        <b-col lg="7" sm="12">
+          <div class="map_container">
+            <GmapMap
+              v-if="mapLoaded"
+              ref="mapRef"
+              :center="mapCenter"
+              :zoom="8"
+              map-type-id="terrain"
+              class="map_canvas"
+            >
+              <GmapMarker
+                v-for="(evt, index) in earthquakeEvents"
+                :key="index"
+                :position="getEventPos(evt)"
+                :clickable="false"
+                :title="getEventTitle(evt)"
+                :icon="getEarthQuakeIcon(evt)"
+              />
+            </GmapMap>
+          </div>
+        </b-col>
+        <b-col lg="5" sm="12">
           <b-table
+            class="text-right"
             :items="earthquakeEvents"
             :fields="fields"
             select-mode="single"
@@ -52,6 +73,7 @@ import Vue from 'vue';
 const Ripple = require('vue-ripple-directive');
 import moment from 'moment';
 import axios from 'axios';
+import { faCircle } from '@fortawesome/free-solid-svg-icons';
 interface EarthquakeData {
   dateTime: number;
   lat: number;
@@ -63,6 +85,10 @@ interface EarthquakeYearEvents {
   year: number;
   events: Array<EarthquakeData>;
 }
+interface Position {
+  lat: number;
+  lng: number;
+}
 
 export default Vue.extend({
   data() {
@@ -72,16 +98,16 @@ export default Vue.extend({
         key: 'dateTime',
         label: '地震時間',
         sortable: true,
-        formatter: (v: number) => moment(v).format('lll'),
+        formatter: (v: number) => moment(v).format('y年MM月DD日 HH:mm:ss'),
       },
       {
-        key: 'lat',
+        key: 'lon',
         label: '經度',
         sortable: true,
         formatter: (v: number) => v.toFixed(4),
       },
       {
-        key: 'lon',
+        key: 'lat',
         label: '緯度',
         sortable: true,
         formatter: (v: number) => v.toFixed(4),
@@ -105,6 +131,7 @@ export default Vue.extend({
       fields,
       eventTitle: '',
       activeDateTime: 0,
+      mapLoaded: false,
     };
   },
   computed: {
@@ -119,8 +146,17 @@ export default Vue.extend({
         ? 'http://localhost:9000/'
         : '/';
     },
+    mapCenter() {
+      let lat = 23.974184149523335;
+      let lng = 120.98011790489949;
+      return { lat, lng };
+    },
   },
   async mounted() {
+    this.$gmapApiPromiseLazy().then(() => {
+      this.mapLoaded = true;
+    });
+
     await this.getEarthquakeEvents();
   },
   methods: {
@@ -156,6 +192,31 @@ export default Vue.extend({
     },
     getDImgUrl(): string {
       return `${this.baseUrl}EarthquakeDImg?dateTime=${this.activeDateTime}`;
+    },
+    getEventPos(evt: EarthquakeData): Position {
+      let lat = evt.lat;
+      let lng = evt.lon;
+      return { lat, lng };
+    },
+    getEventTitle(evt: EarthquakeData): string {
+      return moment(evt.dateTime).format('y年MM月DD日 HH:mm:ss');
+    },
+    getEarthQuakeIcon(data: EarthquakeData): any {
+      let fillColor = '#008f00';
+      if (data.dateTime === this.activeDateTime) fillColor = '#ff0000';
+
+      return {
+        path: faCircle.icon[4] as string,
+        fillColor,
+        fillOpacity: 1,
+        anchor: new google.maps.Point(
+          faCircle.icon[0] / 2, // width
+          faCircle.icon[1], // height
+        ),
+        strokeWeight: 1,
+        strokeColor: '#ffffff',
+        scale: 0.015,
+      };
     },
   },
 });

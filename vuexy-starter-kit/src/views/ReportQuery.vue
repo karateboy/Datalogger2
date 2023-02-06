@@ -5,23 +5,6 @@
         <b-row>
           <b-col cols="12">
             <b-form-group
-              label="報表種類"
-              label-for="reportType"
-              label-cols-md="3"
-            >
-              <v-select
-                id="reportType"
-                v-model="form.reportType"
-                label="txt"
-                :reduce="dt => dt.id"
-                :options="reportTypes"
-              />
-            </b-form-group>
-          </b-col>
-        </b-row>
-        <b-row>
-          <b-col cols="12">
-            <b-form-group
               label="查詢日期"
               label-for="dataRange"
               label-cols-md="3"

@@ -25,8 +25,8 @@ class EarthquakeDb @Inject()(configuration: Configuration) {
       try{
         val dateTime = LocalDateTime.parse(line.take(20).trim, DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"))
         val tokens = line.drop(20).trim.split("\\s+")
-        val lat = tokens(0).trim.toDouble
-        val lon = tokens(1).trim.toDouble
+        val lat = tokens(1).trim.toDouble
+        val lon = tokens(0).trim.toDouble
         val magnitude = tokens(2).trim.toDouble
         val depth = tokens(3).trim.toDouble
         dataMap.update(dateTime, EarthQuakeData(dateTime.toEpochSecond(ZoneOffset.ofHours(8))*1000, lat, lon, magnitude, depth))
@@ -37,6 +37,6 @@ class EarthquakeDb @Inject()(configuration: Configuration) {
     lines.foreach(handleEntry)
     dataMap.toMap
   }
-  val dataMap = readData()
+  val dataMap: Map[LocalDateTime, EarthQuakeData] = readData()
   Logger.info(s"Total ${dataMap.size} entry in dataMap")
 }

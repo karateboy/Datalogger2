@@ -40,7 +40,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
       reportType match {
         case PeriodReport.DailyReport =>
           val startDate = new DateTime(startNum).withMillisOfDay(0)
-          val mtList = monitorTypeOp.realtimeMtvList
+          val mtList = monitorTypeOp.activeMtvList
           val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.SELF_ID, mtList, startDate, startDate + 1.day)
           val mtTimeMap: Map[String, Map[DateTime, Record]] = periodMap.map { pair =>
             val k = pair._1

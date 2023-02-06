@@ -125,6 +125,7 @@ POST     /SystemConfig/EffectiveRatio                                           
 
 #EARTHQUAKE
 GET     /EarthquakeEvents                       controllers.Query.getEarthquakeEvents
+GET     /CheckEarthquakeReport                  controllers.Query.checkEarthquakeReport(dateTime:Long)
 GET     /EarthquakeReport                       controllers.Query.getEarthquakeReportImage(dateTime:Long)
 GET     /EarthquakeBImg                         controllers.Query.getEarthquakeBImage(dateTime:Long)
 GET     /EarthquakeDImg                         controllers.Query.getEarthquakeDImage(dateTime:Long)

@@ -912,6 +912,24 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
       }).toList.sortBy(_.year)
     Ok(Json.toJson(db))
   }
+  def checkEarthquakeReport(dateTime: Long): Action[AnyContent] = Security.Authenticated {
+    try {
+      val src = "B"
+      val sub = "E"
+      val dt = new DateTime(dateTime)
+      val dtStr = dt.toString("yyyyMMdd")
+      val path = Paths.get(earthquakeDb.rootPath, s"DAY_CBPV_${src}/${dt.getYear}/CBPV-${src}_${dtStr}.${sub}.png")
+      if (Files.exists(path))
+        Ok("")
+      else
+        NotFound
+    } catch {
+      case ex: Throwable =>
+        Logger.error("unable to get file", ex)
+        BadRequest("unable to get file")
+    }
+  }
+
   def getEarthquakeReportImage(dateTime:Long) = Security.Authenticated {
     val dt = new DateTime(dateTime)
     val dtStr = dt.toString("yyyyMMddHHmmss")
@@ -932,10 +950,16 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
   }
 
   def getWaveImage(dateTime:Long, src:String, sub:String)= Security.Authenticated {
-    val dt = new DateTime(dateTime)
-    val dtStr = dt.toString("yyyyMMdd")
-    val path = Paths.get(earthquakeDb.rootPath, s"DAY_CBPV_${src}/${dt.getYear}/CBPV-${src}_${dtStr}.${sub}.png")
-    Ok.sendFile(path.toFile)
+    try{
+      val dt = new DateTime(dateTime)
+      val dtStr = dt.toString("yyyyMMdd")
+      val path = Paths.get(earthquakeDb.rootPath, s"DAY_CBPV_${src}/${dt.getYear}/CBPV-${src}_${dtStr}.${sub}.png")
+      Ok.sendFile(path.toFile)
+    }catch {
+      case ex:Throwable=>
+        Logger.error("unable to get file", ex)
+        BadRequest("unable to get file")
+    }
   }
 
   case class InstrumentReport(columnNames: Seq[String], rows: Seq[RowData])

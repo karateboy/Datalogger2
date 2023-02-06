@@ -36,13 +36,26 @@ export default [
         route: 'underground-water',
         action: 'read',
         resource: 'Data',
-      },      
+      },
       {
         title: '土壤氣體查詢',
-        route: 'ground-gas',
+        children: [
+          {
+            title: '土壤氣體圖',
+            route: 'ground-gas',
+            action: 'read',
+            resource: 'Data',
+          },
+          {
+            title: '雙測項對比圖',
+            route: 'scatter-chart',
+            action: 'read',
+            resource: 'Data',
+          },
+        ],
         action: 'read',
         resource: 'Data',
-      },      
+      },
       {
         title: '地表變形查詢',
         route: 'gps-trend',
@@ -50,21 +63,21 @@ export default [
         resource: 'Data',
       },
       {
-        title: '雙測項對比圖',
-        route: 'scatter-chart',
-        action: 'read',
-        resource: 'Data',
-      },
-      //地表變形趨勢圖
-      {
-        title: '年度地震查詢',
-        route: 'earthquake-event-query',
-        action: 'read',
-        resource: 'Data',
-      },
-      {
-        title: '每日波形查詢',
-        route: 'wave-query',
+        title: '地震資料查詢',
+        children: [
+          {
+            title: '年度地震資料查詢',
+            route: 'earthquake-event-query',
+            action: 'read',
+            resource: 'Data',
+          },
+          {
+            title: '每日波形查詢',
+            route: 'wave-query',
+            action: 'read',
+            resource: 'Data',
+          },
+        ],
         action: 'read',
         resource: 'Data',
       },
@@ -81,14 +94,8 @@ export default [
     icon: 'BookOpenIcon',
     children: [
       {
-        title: '監測報表',
+        title: '資料有效率統計',
         route: 'report',
-        action: 'read',
-        resource: 'Data',
-      },
-      {
-        title: '月份時報表',
-        route: 'monthly-hour-report',
         action: 'read',
         resource: 'Data',
       },

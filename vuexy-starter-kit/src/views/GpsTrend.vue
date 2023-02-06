@@ -122,8 +122,8 @@ import useAppConfig from '../@core/app-config/useAppConfig';
 import moment from 'moment';
 import axios from 'axios';
 import highcharts from 'highcharts';
-import hcRegression from 'highcharts-regression';
-hcRegression(highcharts);
+const highchartsRegression = require('highcharts-regression');
+highchartsRegression(highcharts);
 
 export default Vue.extend({
   components: {

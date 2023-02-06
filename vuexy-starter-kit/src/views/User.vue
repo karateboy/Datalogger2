@@ -63,7 +63,11 @@
           :options="groupList"
         />
       </b-form-group>
-      <b-form-group label="關注測項:" label-for="monitorTypes" label-cols="3">
+      <b-form-group
+        label="首頁顯示測項:"
+        label-for="monitorTypes"
+        label-cols="3"
+      >
         <b-form-checkbox-group
           id="monitorTypes"
           v-model="user.monitorTypeOfInterest"
@@ -98,7 +102,7 @@
 
 <script>
 import Vue from 'vue';
-import { mapState, mapActions } from 'vuex';
+import { mapState, mapActions, mapMutations } from 'vuex';
 import axios from 'axios';
 const Ripple = require('vue-ripple-directive');
 import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
@@ -181,6 +185,7 @@ export default Vue.extend({
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapActions('monitors', ['fetchMonitors']),
+    ...mapMutations('user', ['setUserInfo']),
     getGroupList() {
       axios
         .get('/Groups')
@@ -223,6 +228,9 @@ export default Vue.extend({
 
         axios.put(`/User/${this.currentUser.Id}`, this.user).then(res => {
           if (res.status === 200) {
+            if (this.userInfo._id === this.user._id)
+              this.setUserInfo(this.user);
+
             this.$toast({
               component: ToastificationContent,
               props: {
