@@ -206,7 +206,7 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
       val cmd = s"TV$m,$n"
       serial.port.writeBytes(makeCmd(cmd))
       Thread.sleep(3000)
-      serial.port.readHexString()
+      Logger.info(s"response=>${serial.port.readHexString()}")
     }
   }
 
