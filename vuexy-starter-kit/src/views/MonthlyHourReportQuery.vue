@@ -71,7 +71,7 @@
     </b-card>
     <b-card v-show="display">
       <div>
-        <b-table responsive hover :fields="columns" :items="rows" bordered>
+        <b-table hover :fields="columns" :items="rows" bordered small>
           <template #custom-foot>
             <b-tr v-for="stat in statRows" :key="stat.name">
               <b-th>{{ stat.name }}</b-th>
@@ -159,16 +159,13 @@ export default Vue.extend({
       this.columns.push({
         key: 'time',
         label: '日\\時間',
-        sortable: true,
       });
 
       for (let i = 0; i < report.columnNames.length; i++) {
         this.columns.push({
           key: `cellData[${i}].v`,
           label: `${report.columnNames[i]}`,
-          sortable: true,
           tdClass: this.cellDataTd(i),
-          stickyColumn: true,
         });
       }
       for (const row of report.rows) {

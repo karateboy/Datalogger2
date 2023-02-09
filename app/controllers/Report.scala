@@ -75,6 +75,15 @@ class Report @Inject()(monitorDB: MonitorDB, monitorTypeOp: MonitorTypeDB, recor
                 }
               StatRow("最小", minData)
             }
+            val sumRow = {
+              val minData =
+                for (mt <- mtList) yield {
+                  val stat = statMap(mt)(startDate)
+                  val sum = stat.avg map(_ * stat.count)
+                  CellData(monitorTypeOp.format(mt, sum), Seq.empty[String])
+                }
+              StatRow("日總和", minData)
+            }
             val effectiveRow = {
               val effectiveData =
                 for (mt <- mtList) yield {
@@ -82,7 +91,7 @@ class Report @Inject()(monitorDB: MonitorDB, monitorTypeOp: MonitorTypeDB, recor
                 }
               StatRow("有效率(%)", effectiveData)
             }
-            val statRows = Seq(avgRow, maxRow, minRow, effectiveRow)
+            val statRows = Seq(avgRow, maxRow, minRow, sumRow, effectiveRow)
 
             val hourRows =
               for (i <- 0 to 23) yield {

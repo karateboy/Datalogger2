@@ -1,5 +1,5 @@
 <template>
-  <b-row v-if="userInfo.isAdmin">
+  <b-row v-if="userInfo.isAdmin || monitorNoMe.length > 1">
     <b-col cols="12">
       <b-table
         class="text-center"
@@ -180,7 +180,7 @@ export default Vue.extend({
     },
     async query(m: Monitor) {
       const now = new Date().getTime();
-      const oneHourBefore = now - 24 * 60 * 60 * 1000;
+      const oneHourBefore = now - 3 * 24 * 60 * 60 * 1000;
       let mtList = this.activatedMonitorTypes as Array<MonitorType>;
       let mtStr = mtList.map(mt => mt._id).join(':');
       const url = `/HistoryTrend/${m._id}/POWER/Min/all/${oneHourBefore}/${now}`;
