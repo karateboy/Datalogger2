@@ -184,18 +184,22 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   def startCalibration(calibrationType: CalibrationType, monitorTypes: List[String]): Unit = {
     Logger.info(s"start calibrating ${monitorTypes.mkString(",")}")
-    onCalibrationStart()
-    import com.github.nscala_time.time.Imports._
-    val endState = collectorState
-    if (!calibrationType.zero &&
-      deviceConfig.calibratorPurgeTime.getOrElse(0) != 0) {
-      val timer = Some(purgeCalibrator())
-      context become calibrationPhase(calibrationType, DateTime.now, false, List.empty[ReportData],
-        List.empty[(String, Double)], endState, timer)
-    } else {
-      context become calibrationPhase(calibrationType, DateTime.now, false, List.empty[ReportData],
-        List.empty[(String, Double)], endState, None)
-      self ! RaiseStart
+    Future{
+      blocking{
+        onCalibrationStart()
+        import com.github.nscala_time.time.Imports._
+        val endState = collectorState
+        if (!calibrationType.zero &&
+          deviceConfig.calibratorPurgeTime.getOrElse(0) != 0) {
+          val timer = Some(purgeCalibrator())
+          context become calibrationPhase(calibrationType, DateTime.now, false, List.empty[ReportData],
+            List.empty[(String, Double)], endState, timer)
+        } else {
+          context become calibrationPhase(calibrationType, DateTime.now, false, List.empty[ReportData],
+            List.empty[(String, Double)], endState, None)
+          self ! RaiseStart
+        }
+      }
     }
   }
 
@@ -389,11 +393,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
             calibrationOp.insertFuture(cal)
           }
         }
-        onCalibrationEnd()
         Logger.info("All monitorTypes are calibrated.")
         collectorState = endState
         instrumentOp.setState(instId, collectorState)
-        resetToNormal
+        resetToNormal()
+        onCalibrationEnd()
         context become normalPhase
         Logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
       }
