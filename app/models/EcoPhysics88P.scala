@@ -183,7 +183,7 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
     for (serial <- serialOpt) {
       Logger.info(s"$instId Switch to Remote mode")
       serial.port.writeBytes(makeCmd("HR1"))
-      Thread.sleep(3000)
+      Thread.sleep(5000)
       Logger.info(s"response=>${serial.port.readHexString()}")
     }
   }
@@ -192,7 +192,7 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
     for (serial <- serialOpt) {
       Logger.info(s"$instId Switch to Local mode")
       serial.port.writeBytes(makeCmd("HR0"))
-      Thread.sleep(3000)
+      Thread.sleep(5000)
       Logger.info(s"response=>${serial.port.readHexString()}")
     }
   }
@@ -205,7 +205,7 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
         "0"
       val cmd = s"TV$m,$n"
       serial.port.writeBytes(makeCmd(cmd))
-      Thread.sleep(3000)
+      Thread.sleep(1000)
       Logger.info(s"response=>${serial.port.readHexString()}")
     }
   }
