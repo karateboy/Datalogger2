@@ -8,6 +8,7 @@ import play.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 import scala.util.{Failure, Success}
 
 case class ModelRegValue2(inputRegs: List[(InstrumentStatusType, Double)],
@@ -197,7 +198,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
         } else {
           context become calibrationPhase(calibrationType, DateTime.now, false, List.empty[ReportData],
             List.empty[(String, Double)], endState, None)
-          self ! RaiseStart
+          val delay = getDelayAfterCalibrationStart
+          if(delay != 0)
+            context.system.scheduler.scheduleOnce(FiniteDuration(delay, MILLISECONDS), self, RaiseStart)
+          else
+            self ! RaiseStart
         }
       }
     }
@@ -407,13 +412,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   def setCalibrationReg(address: Int, on: Boolean): Unit
 
-  def onCalibrationStart(): Unit = {
+  def onCalibrationStart(): Unit = {}
 
-  }
+  def getDelayAfterCalibrationStart: Int = 0
 
-  def onCalibrationEnd() = {
-
-  }
+  def onCalibrationEnd() = {}
 
   def resetToNormal() {
     try {
