@@ -53,6 +53,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
                       instrumentStatusOp: InstrumentStatusDB, instrumentOp: InstrumentDB,
                       alarmOp: AlarmDB, calibrationOp: CalibrationDB,
                       manualAuditLogOp: ManualAuditLogDB, excelUtility: ExcelUtility,
+                      environment: Environment,
                       configuration: Configuration, earthquakeDb: EarthquakeDb) extends Controller {
 
   implicit val cdWrite = Json.writes[CellData]
@@ -838,7 +839,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
               (13 -> "西北西"), (14 -> "西北"), (15 -> "北北西"))
           val dirStrSeq =
             for {
-              dir <- 0 to nWay - 1
+              dir <- 0 until nWay
               dirKey = if (nWay == 8)
                 dir * 2
               else if (nWay == 32) {
@@ -877,7 +878,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
             level <- 0 to levels.length
           } yield {
             val data =
-              for (dir <- 0 to nWay - 1)
+              for (dir <- 0 until nWay)
                 yield (dir.toLong, Some(windMap(dir)(level)))
 
             seqData(concLevels(level), data)
@@ -912,6 +913,12 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
       }).toList.sortBy(_.year)
     Ok(Json.toJson(db))
   }
+
+  private def sendEmptyPicture() = {
+    val path = Paths.get(environment.rootPath.getAbsolutePath, "/public/empty.png")
+    Ok.sendFile(path.toFile)
+  }
+
   def checkEarthquakeReport(dateTime: Long): Action[AnyContent] = Security.Authenticated {
     try {
       val src = "B"
@@ -930,23 +937,34 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     }
   }
 
-  def getEarthquakeReportImage(dateTime:Long) = Security.Authenticated {
+  def getEarthquakeReportImage(dateTime:Long): Action[AnyContent] = Security.Authenticated {
     val dt = new DateTime(dateTime)
     val dtStr = dt.toString("yyyyMMddHHmmss")
     val path = Paths.get(earthquakeDb.rootPath, s"EQ_REPORT/${dt.getYear}/${dtStr}.gif")
-    Ok.sendFile(path.toFile)
+    if(Files.exists(path))
+      Ok.sendFile(path.toFile)
+    else
+      sendEmptyPicture()
   }
-  def getEarthquakeBImage(dateTime:Long) = Security.Authenticated {
+
+
+  def getEarthquakeBImage(dateTime:Long): Action[AnyContent] = Security.Authenticated {
     val dt = new DateTime(dateTime)
     val dtStr = dt.toString("yyyyMMddHHmmss")
     val path = Paths.get(earthquakeDb.rootPath, s"EQ_CBPV_B/${dt.getYear}/CBPV-B_${dtStr}.png")
-    Ok.sendFile(path.toFile)
+    if(Files.exists(path))
+      Ok.sendFile(path.toFile)
+    else
+      sendEmptyPicture()
   }
-  def getEarthquakeDImage(dateTime:Long) = Security.Authenticated {
+  def getEarthquakeDImage(dateTime:Long): Action[AnyContent] = Security.Authenticated {
     val dt = new DateTime(dateTime)
     val dtStr = dt.toString("yyyyMMddHHmmss")
     val path = Paths.get(earthquakeDb.rootPath, s"EQ_CBPV_D/${dt.getYear}/CBPV-D_${dtStr}.png")
-    Ok.sendFile(path.toFile)
+    if(Files.exists(path))
+      Ok.sendFile(path.toFile)
+    else
+      sendEmptyPicture()
   }
 
   def getWaveImage(dateTime:Long, src:String, sub:String)= Security.Authenticated {
@@ -958,7 +976,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     }catch {
       case ex:Throwable=>
         Logger.error("unable to get file", ex)
-        BadRequest("unable to get file")
+        sendEmptyPicture()
     }
   }
 

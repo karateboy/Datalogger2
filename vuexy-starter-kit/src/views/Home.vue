@@ -373,7 +373,7 @@ export default Vue.extend({
     },
     async query(mt: string) {
       const now = new Date().getTime();
-      const oneDayBefore = now - 24 * 60 * 60 * 1000;
+      const oneDayBefore = now - 3 * 24 * 60 * 60 * 1000;
       const monitors = 'me';
       const url = `/HistoryTrend/${monitors}/${mt}/Min/all/${oneDayBefore}/${now}`;
       const res = await axios.get(url);
@@ -390,7 +390,7 @@ export default Vue.extend({
       };
 
       let mtInfo = this.mtMap.get(mt) as MonitorType;
-      ret.title!.text = `${mtInfo.desp}24小時趨勢圖`;
+      ret.title!.text = `${mtInfo.desp}72小時趨勢圖`;
 
       ret.colors = [
         '#7CB5EC',

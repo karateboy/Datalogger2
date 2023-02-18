@@ -33,9 +33,10 @@
                 v-for="(evt, index) in earthquakeEvents"
                 :key="index"
                 :position="getEventPos(evt)"
-                :clickable="false"
+                :clickable="true"
                 :title="getEventTitle(evt)"
                 :icon="getEarthQuakeIcon(evt)"
+                @click="onIconClick(evt, index)"
               />
             </GmapMap>
           </div>
@@ -48,6 +49,7 @@
             select-mode="single"
             selectable
             @row-selected="onRowSelected"
+            ref="earthquakeEvents"
           ></b-table>
         </b-col>
       </b-row>
@@ -73,7 +75,7 @@ import Vue from 'vue';
 const Ripple = require('vue-ripple-directive');
 import moment from 'moment';
 import axios from 'axios';
-import { faCircle } from '@fortawesome/free-solid-svg-icons';
+import { faCircle, faStar } from '@fortawesome/free-solid-svg-icons';
 interface EarthquakeData {
   dateTime: number;
   lat: number;
@@ -98,7 +100,7 @@ export default Vue.extend({
         key: 'dateTime',
         label: '地震時間',
         sortable: true,
-        formatter: (v: number) => moment(v).format('y年MM月DD日 HH:mm:ss'),
+        formatter: (v: number) => moment(v).format('y-MM-DD HH:mm:ss'),
       },
       {
         key: 'lon',
@@ -125,8 +127,9 @@ export default Vue.extend({
         formatter: (v: number) => v.toFixed(1),
       },
     ];
+    let year = moment().year();
     return {
-      year: 2022,
+      year,
       eventMap,
       fields,
       eventTitle: '',
@@ -170,6 +173,10 @@ export default Vue.extend({
             eventMap.set(yearEvent.year, yearEvent.events);
           }
           this.eventMap = eventMap;
+
+          let years = Array.from(this.eventMap.keys());
+
+          if (years.length !== 0) this.year = Math.max(...years);
         }
       } catch (err) {
         console.error(err);
@@ -202,12 +209,23 @@ export default Vue.extend({
       return moment(evt.dateTime).format('y年MM月DD日 HH:mm:ss');
     },
     getEarthQuakeIcon(data: EarthquakeData): any {
-      let fillColor = '#008f00';
-      if (data.dateTime === this.activeDateTime) fillColor = '#ff0000';
+      if (data.dateTime === this.activeDateTime)
+        return {
+          path: faStar.icon[4] as string,
+          fillColor: '#ff0000',
+          fillOpacity: 1,
+          anchor: new google.maps.Point(
+            faStar.icon[0] / 2, // width
+            faStar.icon[1], // height
+          ),
+          strokeWeight: 1,
+          strokeColor: '#ffffff',
+          scale: 0.03,
+        };
 
       return {
         path: faCircle.icon[4] as string,
-        fillColor,
+        fillColor: '#008f00',
         fillOpacity: 1,
         anchor: new google.maps.Point(
           faCircle.icon[0] / 2, // width
@@ -217,6 +235,10 @@ export default Vue.extend({
         strokeColor: '#ffffff',
         scale: 0.015,
       };
+    },
+    onIconClick(evt: EarthquakeData, index: number) {
+      this.activeDateTime = evt.dateTime;
+      this.$refs.earthquakeEvents.selectRow(index);
     },
   },
 });

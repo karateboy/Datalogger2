@@ -23,7 +23,7 @@ class EarthquakeDb @Inject()(configuration: Configuration) {
     val dataMap = Map.empty[LocalDateTime, EarthQuakeData]
     def handleEntry(line:String): Unit ={
       try{
-        val dateTime = LocalDateTime.parse(line.take(20).trim, DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"))
+        val dateTime = LocalDateTime.parse(line.take(20).trim, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
         val tokens = line.drop(20).trim.split("\\s+")
         val lat = tokens(1).trim.toDouble
         val lon = tokens(0).trim.toDouble
