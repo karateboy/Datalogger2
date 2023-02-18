@@ -341,4 +341,17 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     f onFailure (errorHandler)
     f
   }
+
+  def upsertManyRecord(docs: Seq[RecordList])(colName: String): Future[BulkWriteResult] = {
+    val col = getCollection(colName)
+    val writeModels = docs map {
+      doc =>
+        ReplaceOneModel(Filters.equal("_id", RecordListID(doc._id.time, doc._id.monitor)),
+          doc, ReplaceOptions().upsert(true))
+    }
+    val f = col.bulkWrite(writeModels, BulkWriteOptions().ordered(false)).toFuture()
+    f onFailure errorHandler()
+    f
+  }
+
 }

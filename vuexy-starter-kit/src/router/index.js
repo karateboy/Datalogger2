@@ -237,6 +237,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/upload-data',
+      name: 'upload-data',
+      component: () => import('@/views/UploadData.vue'),
+      meta: {
+        pageTitle: '上傳資料',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '上傳資料',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/monitor-type-config',
       name: 'monitor-type-config',
       component: () => import('@/views/MonitorTypeConfig.vue'),

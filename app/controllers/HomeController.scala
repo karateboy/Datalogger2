@@ -1,11 +1,13 @@
 package controllers
 
+import akka.actor.ActorSystem
 import com.github.nscala_time.time.Imports._
 import models._
 import play.api._
 import play.api.libs.json._
 import play.api.mvc._
 
+import java.nio.file.Files
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -14,6 +16,7 @@ class HomeController @Inject()(environment: play.api.Environment,
                                userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
                                monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorOp, groupOp: GroupOp,
                                instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp,
+                               recordOp: RecordOp, actorSystem: ActorSystem,
                                sensorOp: MqttSensorOp, errorReportOp: ErrorReportOp) extends Controller {
 
   val title = "資料擷取器"
@@ -589,7 +592,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       monitor <- monitors
       mCase = monitorOp.map(monitor)
       hour <- query.getPeriods(start, end + 1.hour, 1.hour)} {
-      dataCollectManagerOp.recalculateHourData(monitor, hour, false, true)(monitorTypeOp.realtimeMtvList)
+      dataCollectManagerOp.recalculateHourData(monitor, hour, forward = false, alwaysValid = true)(mCase.monitorTypes)
     }
     Ok(Json.obj("ok" -> true))
   }
@@ -603,6 +606,40 @@ class HomeController @Inject()(environment: play.api.Environment,
           dataCollectManagerOp.toggleMonitorTypeDO(inst._id, MonitorType.SPRAY, 10))
       }
       Ok("ok")
+  }
+
+  def importData(fileTypeStr: String) = Security.Authenticated(parse.multipartFormData) {
+    implicit request =>
+      val dataFileOpt = request.body.file("data")
+      if (dataFileOpt.isEmpty) {
+        Logger.info("data is empty..")
+        Ok(Json.obj("ok" -> true))
+      } else {
+        val dataFile = dataFileOpt.get
+        val (fileType, filePath) = fileTypeStr match {
+          case "sensor" =>
+            (DataImporter.SensorData, Files.createTempFile("sensor", ".csv"))
+          case "sensorRaw" =>
+            (DataImporter.SensorRawData, Files.createTempFile("sensorRaw", ".csv"))
+
+          case "updateSensorRaw" =>
+            (DataImporter.UpdateSensorData, Files.createTempFile("sensorRaw", ".csv"))
+
+          case "epa" =>
+            (DataImporter.EpaData, Files.createTempFile("epa", ".csv"))
+        }
+
+        val file = dataFile.ref.moveTo(filePath.toFile, replace = true)
+
+        val actorName = DataImporter.start(monitorOp = monitorOp, recordOp = recordOp,
+          sensorOp = sensorOp,
+          dataFile = file, fileType = fileType, dataCollectManagerOp = dataCollectManagerOp)(actorSystem)
+        Ok(Json.obj("actorName" -> actorName))
+      }
+  }
+
+  def getUploadProgress(actorName: String) = Security.Authenticated {
+    Ok(Json.obj("finished" -> DataImporter.isFinished(actorName)))
   }
 
   def getSensors = Security.Authenticated.async {

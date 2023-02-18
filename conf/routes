@@ -87,6 +87,9 @@ GET           /Excel/monitorReport/:reportType/:reportDate                      
 
 GET           /MonthlyHourReport/:monitorType/:reportDate                                      controllers.Report.monthlyHourReport(monitorType, reportDate:Long, outputTypeStr="html")
 
+#Upload
+POST    /ImportData/:fileType                                                     controllers.HomeController.importData(fileType)
+GET     /UploadProgress/:actorName                                                controllers.HomeController.getUploadProgress(actorName)
 
 #JSON
 GET           /MonitorType                                                                     controllers.HomeController.monitorTypeList
