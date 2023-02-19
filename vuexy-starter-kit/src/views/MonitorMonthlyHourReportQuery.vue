@@ -80,27 +80,18 @@
         </b-row>
       </b-form>
     </b-card>
-    <b-card v-show="display">
-      <div>
-        <b-table
-          responsive
-          hover
-          :fields="columns"
-          :items="rows"
-          bordered
-          small
-        >
-          <template #custom-foot>
-            <b-tr v-for="stat in statRows" :key="stat.name">
-              <b-th>{{ stat.name }}</b-th>
-              <th v-for="(cell, i) in stat.cellData" :key="i">
-                {{ cell.v }}
-              </th>
-            </b-tr>
-          </template>
-        </b-table>
-      </div>
-    </b-card>
+    <div v-show="display">
+      <b-table hover :fields="columns" :items="rows" bordered small responsive>
+        <template #custom-foot>
+          <b-tr v-for="stat in statRows" :key="stat.name">
+            <b-th>{{ stat.name }}</b-th>
+            <th v-for="(cell, i) in stat.cellData" :key="i">
+              {{ cell.v }}
+            </th>
+          </b-tr>
+        </template>
+      </b-table>
+    </div>
   </div>
 </template>
 <style lang="scss">
@@ -182,7 +173,6 @@ export default Vue.extend({
       this.columns.push({
         key: 'time',
         label: '日\\時間',
-        sortable: true,
       });
 
       for (let i = 0; i < report.columnNames.length; i++) {
@@ -191,7 +181,6 @@ export default Vue.extend({
           label: `${report.columnNames[i]}`,
           sortable: true,
           tdClass: this.cellDataTd(i),
-          stickyColumn: true,
         });
       }
       for (const row of report.rows) {

@@ -126,9 +126,9 @@ class Realtime @Inject()
           val mine = monitorDB.mvList.filter(group.monitors.contains(_) || userInfo.isAdmin)
             .map(m => PowerUsage(monitorDB.map(m).desc, weekUsageMap.getOrElse(m, 0d) / 7, dayUsageMap.getOrElse(m, 0d)))
 
-          val other = monitorDB.mvList.filter(!group.monitors.contains(_) && !userInfo.isAdmin)
-            .map(m => PowerUsage("N/A", weekUsageMap.getOrElse(m, 0d) / 7, dayUsageMap.getOrElse(m, 0d)))
-          mine ++ other
+          //val other = monitorDB.mvList.filter(!group.monitors.contains(_) && !userInfo.isAdmin)
+          //  .map(m => PowerUsage("N/A", weekUsageMap.getOrElse(m, 0d) / 7, dayUsageMap.getOrElse(m, 0d)))
+          mine
         }
 
       implicit val writes: OWrites[PowerUsage] = Json.writes[PowerUsage]

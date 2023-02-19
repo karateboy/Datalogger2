@@ -287,7 +287,8 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
           s"趨勢圖 (${start.toString("YYYY年")}~${end.toString("YYYY年")})"
       }
 
-    var maxUsage : Option[Double] = Some(0d)
+    var maxUsage: Option[Double] = Some(0d)
+
     def getAxisLines(mt: String, m: String) = {
       val mtCase = monitorTypeOp.map(mt)
       val std_law_line =
@@ -296,18 +297,23 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
         else
           Some(AxisLine("#FF0000", 2, mtCase.std_law.get, Some(AxisLineLabel("right", "法規值"))))
 
-      val maxUsageFuture = if(tabType == TableType.hour)
-        DataCollectManager.getLastWeekPowerMaxUsage(m, recordOp.HourCollection)(recordOp)
-      else
-        DataCollectManager.getLastWeekPowerMaxUsage(m, recordOp.MinCollection)(recordOp)
+      val maxUsageLine =
+        reportUnit match {
+          case ReportUnit.Hour =>
+            val maxUsage = waitReadyResult(DataCollectManager.getLastWeekPowerMaxUsage(m, recordOp.HourCollection)
+            (recordOp))
+            Some(AxisLine("#FF0000", 2, maxUsage.getOrElse(0d),
+              Some(AxisLineLabel("left", "上週小時最大用電量", Some(Style("white"))))))
 
-      maxUsage = waitReadyResult(maxUsageFuture)
-      val maxUsageLine = if(tabType == TableType.hour)
-        Some(AxisLine("#FF0000", 2, maxUsage.getOrElse(0d),
-        Some(AxisLineLabel("left", "上週小時最大用電量", Some(Style("white"))))))
-      else
-        Some(AxisLine("#FF0000", 2, maxUsage.getOrElse(0d),
-          Some(AxisLineLabel("left", "上週分鐘最大用電量", Some(Style("white"))))))
+          case ReportUnit.Min =>
+            val maxUsage = waitReadyResult(DataCollectManager.getLastWeekPowerMaxUsage(m, recordOp.MinCollection)
+            (recordOp))
+            Some(AxisLine("#FF0000", 2, maxUsage.getOrElse(0d),
+              Some(AxisLineLabel("left", "上週分鐘最大用電量", Some(Style("white"))))))
+          case _ =>
+            None
+        }
+
       val lines = Seq(std_law_line, maxUsageLine).flatten
       if (lines.nonEmpty)
         Some(lines)
@@ -317,9 +323,9 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
 
     val yAxisGroup: Map[String, Seq[(String, Option[Seq[AxisLine]])]] = {
       val pairs =
-        for(m<-monitors;mt<-monitorTypes) yield
+        for (m <- monitors; mt <- monitorTypes) yield
           (monitorTypeOp.map(mt).unit, getAxisLines(mt, m))
-        pairs.groupBy(_._1)
+      pairs.groupBy(_._1)
     }
 
     val yAxisGroupMap = yAxisGroup map {
@@ -398,9 +404,9 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
           Map("type" -> "line"),
           Map("text" -> title),
           xAxis,
-          Seq(YAxis(labels=None, title=AxisTitle(Some(Some(s"${mtCase.desp} (${mtCase.unit})"))), plotLines = getAxisLines(mt, m),
-            max = maxUsage.map(v=>BigDecimal(v/3*4).setScale(mtCase.prec, RoundingMode.HALF_EVEN).doubleValue()), min = Some(0))),
-            series,
+          Seq(YAxis(labels = None, title = AxisTitle(Some(Some(s"${mtCase.desp} (${mtCase.unit})"))), plotLines = getAxisLines(mt, m),
+            max = maxUsage.map(v => BigDecimal(v / 3 * 4).setScale(mtCase.prec, RoundingMode.HALF_EVEN).doubleValue()), min = Some(0))),
+          series,
           Some(downloadFileName))
       } else {
         HighchartData(

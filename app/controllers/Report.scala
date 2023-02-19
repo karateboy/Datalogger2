@@ -91,7 +91,7 @@ class Report @Inject()(monitorDB: MonitorDB, monitorTypeOp: MonitorTypeDB, recor
                 }
               StatRow("有效率(%)", effectiveData)
             }
-            val statRows = Seq(avgRow, maxRow, minRow, sumRow, effectiveRow)
+            val statRows = Seq(avgRow, maxRow, minRow, sumRow)
 
             val hourRows =
               for (i <- 0 to 23) yield {
@@ -133,7 +133,7 @@ class Report @Inject()(monitorDB: MonitorDB, monitorTypeOp: MonitorTypeDB, recor
                 for (mt <- mtList) yield {
                   CellData(monitorTypeOp.format(mt, overallStatMap(mt).avg), Seq.empty[String])
                 }
-              StatRow("平均", avgData)
+              StatRow("每日平均", avgData)
             }
             val maxRow = {
               val maxData =
@@ -149,6 +149,17 @@ class Report @Inject()(monitorDB: MonitorDB, monitorTypeOp: MonitorTypeDB, recor
                 }
               StatRow("最小", minData)
             }
+            val sumRow = {
+              val sumData =
+                for (mt <- mtList) yield {
+                  val sum =
+                    for(avg<-overallStatMap(mt).avg) yield
+                      avg * overallStatMap(mt).count
+
+                  CellData(monitorTypeOp.format(mt, sum), Seq.empty[String])
+                }
+              StatRow("總和", sumData)
+            }
             val effectiveRow = {
               val effectiveData =
                 for (mt <- mtList) yield {
@@ -156,7 +167,7 @@ class Report @Inject()(monitorDB: MonitorDB, monitorTypeOp: MonitorTypeDB, recor
                 }
               StatRow("有效率(%)", effectiveData)
             }
-            val statRows = Seq(avgRow, maxRow, minRow, effectiveRow)
+            val statRows = Seq(avgRow, maxRow, minRow, sumRow)
 
             val dayRows =
               for (recordTime <- getPeriods(start, start + 1.month, 1.day)) yield {
