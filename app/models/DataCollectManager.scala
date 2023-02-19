@@ -88,6 +88,8 @@ case class WriteSignal(mtId: String, bit: Boolean)
 
 case object CheckInstruments
 
+case object ReloadEarthquakeDB
+
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentDB,
                                      recordOp: RecordDB, alarmOp: AlarmDB, sysConfigDB: SysConfigDB,
@@ -383,7 +385,7 @@ class DataCollectManager @Inject()
  dataCollectManagerOp: DataCollectManagerOp,
  instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentDB,
  sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory,
- WSClient: WSClient) extends Actor with InjectedActorSupport {
+ WSClient: WSClient, earthquakeDb: EarthquakeDb) extends Actor with InjectedActorSupport {
   val storeSecondData = config.getBoolean("logger.storeSecondData").getOrElse(false)
   Logger.info(s"store second data = $storeSecondData")
   DataCollectManager.updateEffectiveRatio(sysConfig)
@@ -394,6 +396,14 @@ class DataCollectManager @Inject()
     val next30 = DateTime.now().withSecondOfMinute(30).plusMinutes(1)
     val postSeconds = new org.joda.time.Duration(DateTime.now, next30).getStandardSeconds
     context.system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
+  }
+
+  val timer2 = {
+    import scala.concurrent.duration._
+    //Try to trigger at 30 sec
+    val next30 = DateTime.now().withSecondOfMinute(30).plusMinutes(1)
+    val postSeconds = new org.joda.time.Duration(DateTime.now, next30).getStandardSeconds
+    context.system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), self, ReloadEarthquakeDB)
   }
 
   val autoStateConfigOpt: Option[Seq[AutoStateConfig]] = AutoState.getConfig(config)
@@ -495,6 +505,9 @@ class DataCollectManager @Inject()
             self ! SetState(config.instID, config.state)
           }
         })
+
+    case ReloadEarthquakeDB =>
+      earthquakeDb.reloadData()
 
     case StartInstrument(inst) =>
       if (!instrumentTypeOp.map.contains(inst.instType)) {

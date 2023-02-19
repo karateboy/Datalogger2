@@ -37,6 +37,12 @@ class EarthquakeDb @Inject()(configuration: Configuration) {
     lines.foreach(handleEntry)
     dataMap.toMap
   }
-  val dataMap: Map[LocalDateTime, EarthQuakeData] = readData()
-  Logger.info(s"Total ${dataMap.size} entry in dataMap")
+  @volatile var dataMap: Map[LocalDateTime, EarthQuakeData] = readData()
+
+
+  def reloadData(): Unit = {
+    Logger.info("reload earthquake data")
+    dataMap = readData()
+    Logger.info(s"Total ${dataMap.size} entry in dataMap")
+  }
 }
