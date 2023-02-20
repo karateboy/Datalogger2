@@ -39,177 +39,183 @@ class Report @Inject()(monitorDB: MonitorDB, monitorTypeOp: MonitorTypeDB, recor
       val outputType = OutputType.withName(outputTypeStr)
       val mtList = Seq(MonitorType.POWER)
 
-        reportType match {
-          case PeriodReport.DailyReport =>
-            val startDate = new DateTime(startNum).withMillisOfDay(0)
-            val endDate =
-                startDate + 1.day
+      reportType match {
+        case PeriodReport.DailyReport =>
+          val startDate = new DateTime(startNum).withMillisOfDay(0)
+          val endDate =
+            startDate + 1.day
 
-            val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(monitor, mtList, startDate, endDate)
-            val mtTimeMap: Map[String, Map[DateTime, Record]] = periodMap.map { pair =>
-              val k = pair._1
-              val v = pair._2
-              k -> Map(v.map { r => r.time -> r }: _*)
-            }
-            val statMap: Map[String, Map[DateTime, Stat]] =
-              query.getPeriodStatReportMap(periodMap, 1.day)(startDate, startDate + 1.day)
+          val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(monitor, mtList, startDate, endDate)
+          val mtTimeMap: Map[String, Map[DateTime, Record]] = periodMap.map { pair =>
+            val k = pair._1
+            val v = pair._2
+            k -> Map(v.map { r => r.time -> r }: _*)
+          }
+          val statMap: Map[String, Map[DateTime, Stat]] =
+            query.getPeriodStatReportMap(periodMap, 1.day)(startDate, startDate + 1.day)
 
-            val avgRow = {
-              val avgData =
-                for (mt <- mtList) yield {
-                  CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).avg), Seq.empty[String])
-                }
-              StatRow("平均", avgData)
-            }
-            val maxRow = {
-              val maxData =
-                for (mt <- mtList) yield {
-                  CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).max), Seq.empty[String])
-                }
-              StatRow("最大", maxData)
-            }
-            val minRow = {
-              val minData =
-                for (mt <- mtList) yield {
-                  CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).min), Seq.empty[String])
-                }
-              StatRow("最小", minData)
-            }
-            val sumRow = {
-              val minData =
-                for (mt <- mtList) yield {
-                  val stat = statMap(mt)(startDate)
-                  val sum = stat.avg map(_ * stat.count)
-                  CellData(monitorTypeOp.format(mt, sum), Seq.empty[String])
-                }
-              StatRow("日總和", minData)
-            }
-            val effectiveRow = {
-              val effectiveData =
-                for (mt <- mtList) yield {
-                  CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).effectPercent), Seq.empty[String])
-                }
-              StatRow("有效率(%)", effectiveData)
-            }
-            val statRows = Seq(avgRow, maxRow, minRow, sumRow)
-
-            val hourRows =
-              for (i <- 0 to 23) yield {
-                val recordTime = startDate + i.hour
-                val mtData =
-                  for (mt <- mtList) yield {
-                    CellData(monitorTypeOp.formatRecord(mt, mtTimeMap(mt).get(recordTime)),
-                      monitorTypeOp.getCssClassStr(mt, mtTimeMap(mt).get(recordTime)))
-                  }
-                RowData(recordTime.getMillis, mtData)
+          val avgRow = {
+            val avgData =
+              for (mt <- mtList) yield {
+                CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).avg), Seq.empty[String])
               }
-            val columnNames = mtList map {
-              monitorTypeOp.map(_).desp
-            }
-            val dailyReport = DisplayReport(columnNames, hourRows, statRows)
-
-            if (outputType == OutputType.html)
-              Ok(Json.toJson(dailyReport))
-            else {
-              val (title, excelFile) =
-                ("日報" + startDate.toString("YYYYMMdd"), excelUtility.exportDailyReport(startDate, dailyReport))
-
-              Ok.sendFile(excelFile, fileName = _ =>
-                s"${title}.xlsx",
-                onClose = () => {
-                  Files.deleteIfExists(excelFile.toPath())
-                })
-            }
-
-          case PeriodReport.MonthlyReport =>
-            val start = new DateTime(startNum).withMillisOfDay(0).withDayOfMonth(1)
-            val end = start + 1.month
-
-            val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(monitor, monitorTypeOp.activeMtvList, start, end)
-            val statMap = query.getPeriodStatReportMap(periodMap, 1.day)(start, start + 1.month)
-            val overallStatMap = getOverallStatMap(statMap, 20)
-            val avgRow = {
-              val avgData =
-                for (mt <- mtList) yield {
-                  CellData(monitorTypeOp.format(mt, overallStatMap(mt).avg), Seq.empty[String])
-                }
-              StatRow("每日平均", avgData)
-            }
-            val maxRow = {
-              val maxData =
-                for (mt <- mtList) yield {
-                  CellData(monitorTypeOp.format(mt, overallStatMap(mt).max), Seq.empty[String])
-                }
-              StatRow("最大", maxData)
-            }
-            val minRow = {
-              val minData =
-                for (mt <- mtList) yield {
-                  CellData(monitorTypeOp.format(mt, overallStatMap(mt).min), Seq.empty[String])
-                }
-              StatRow("最小", minData)
-            }
-            val sumRow = {
-              val sumData =
-                for (mt <- mtList) yield {
-                  val sum =
-                    for(avg<-overallStatMap(mt).avg) yield
-                      avg * overallStatMap(mt).count
-
-                  CellData(monitorTypeOp.format(mt, sum), Seq.empty[String])
-                }
-              StatRow("總和", sumData)
-            }
-            val effectiveRow = {
-              val effectiveData =
-                for (mt <- mtList) yield {
-                  CellData(monitorTypeOp.format(mt, overallStatMap(mt).effectPercent), Seq.empty[String])
-                }
-              StatRow("有效率(%)", effectiveData)
-            }
-            val statRows = Seq(avgRow, maxRow, minRow, sumRow)
-
-            val dayRows =
-              for (recordTime <- getPeriods(start, start + 1.month, 1.day)) yield {
-                val mtData =
-                  for (mt <- mtList) yield {
-                    val status = if (statMap(mt)(recordTime).isEffective)
-                      MonitorStatus.NormalStat
-                    else
-                      MonitorStatus.InvalidDataStat
-
-                    CellData(monitorTypeOp.format(mt, statMap(mt)(recordTime).avg),
-                      MonitorStatus.getCssClassStr(status), Some(status))
-                  }
-                RowData(recordTime.getMillis, mtData)
+            StatRow("小時平均", avgData)
+          }
+          val maxRow = {
+            val maxData =
+              for (mt <- mtList) yield {
+                CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).max), Seq.empty[String])
               }
-            val columnNames = mtList map {
-              monitorTypeOp.map(_).desp
-            }
-            val monthlyReport = DisplayReport(columnNames, dayRows, statRows)
-            if (outputType == OutputType.html)
-              Ok(Json.toJson(monthlyReport))
-            else {
-              val (title, excelFile) =
-                ("月報" + start.toString("YYYYMM"),
-                  excelUtility.exportDisplayReport(s"監測月報 ${start.toString("YYYY年MM月")}", monthlyReport))
+            StatRow("最大", maxData)
+          }
+          val minRow = {
+            val minData =
+              for (mt <- mtList) yield {
+                CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).min), Seq.empty[String])
+              }
+            StatRow("最小", minData)
+          }
+          val sumRow = {
+            val minData =
+              for (mt <- mtList) yield {
+                val stat = statMap(mt)(startDate)
+                val sum = stat.avg map (_ * stat.count)
+                CellData(monitorTypeOp.format(mt, sum), Seq.empty[String])
+              }
+            StatRow("日總和", minData)
+          }
+          val statRows = Seq(avgRow, maxRow, minRow, sumRow)
 
-              Ok.sendFile(excelFile, fileName = _ =>
-                s"${title}.xlsx",
-                onClose = () => {
-                  Files.deleteIfExists(excelFile.toPath())
-                })
+          val hourRows =
+            for (i <- 0 to 23) yield {
+              val recordTime = startDate + i.hour
+              val mtData =
+                for (mt <- mtList) yield {
+                  CellData(monitorTypeOp.formatRecord(mt, mtTimeMap(mt).get(recordTime)),
+                    monitorTypeOp.getCssClassStr(mt, mtTimeMap(mt).get(recordTime)))
+                }
+              RowData(recordTime.getMillis, mtData)
             }
+          val columnNames = mtList map {
+            monitorTypeOp.map(_).desp
+          }
+          val dailyReport = DisplayReport(columnNames, hourRows, statRows)
 
-          case PeriodReport.YearlyReport =>
-            val start = new DateTime(startNum)
-            val startDate = start.withMillisOfDay(0).withDayOfMonth(1).withMonthOfYear(1)
-            val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(monitor, monitorTypeOp.activeMtvList, startDate, startDate + 1.year)
-            val statMap = query.getPeriodStatReportMap(periodMap, 1.month)(start, start + 1.year)
-            val overallStatMap = getOverallStatMap(statMap, 12)
-            Ok("")
-        }
+          if (outputType == OutputType.html)
+            Ok(Json.toJson(dailyReport))
+          else {
+            val (title, excelFile) =
+              ("日報" + startDate.toString("YYYYMMdd"), excelUtility.exportDailyReport(startDate, dailyReport))
+
+            Ok.sendFile(excelFile, fileName = _ =>
+              s"${title}.xlsx",
+              onClose = () => {
+                Files.deleteIfExists(excelFile.toPath())
+              })
+          }
+
+        case PeriodReport.MonthlyReport =>
+          val start = new DateTime(startNum).withMillisOfDay(0).withDayOfMonth(1)
+          val end = start + 1.month
+
+          val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(monitor, monitorTypeOp.activeMtvList, start, end)
+          val statMap = query.getPeriodStatReportMap(periodMap, 1.day)(start, start + 1.month)
+          val overallStatMap = getOverallStatMap(statMap, 20)
+          val avgRow = {
+            val avgData =
+              for (mt <- mtList) yield {
+                val dailyStat = statMap(mt).values.toList
+                val dailySum = dailyStat.flatMap(stat => stat.avg.map(_ * stat.count))
+                val dailyAvg = if (dailySum.nonEmpty)
+                  Some(dailySum.sum / dailySum.size)
+                else
+                  None
+                CellData(monitorTypeOp.format(mt, dailyAvg), Seq.empty[String])
+              }
+            StatRow("每日平均用電", avgData)
+          }
+          val maxRow = {
+            val maxData =
+              for (mt <- mtList) yield {
+                val dailyStat = statMap(mt).values.toList
+                val dailyData = dailyStat.flatMap(stat => stat.avg.map(_ * stat.count))
+                val dailyMax =
+                  if (dailyData.nonEmpty)
+                    Some(dailyData.max)
+                  else
+                    None
+                CellData(monitorTypeOp.format(mt, dailyMax), Seq.empty[String])
+              }
+            StatRow("日用電量最大", maxData)
+          }
+          val minRow = {
+            val minData =
+              for (mt <- mtList) yield {
+                val dailyStat = statMap(mt).values.toList
+                val dailyData = dailyStat.flatMap(stat => stat.avg.map(_ * stat.count))
+                val dailyMin =
+                  if (dailyData.nonEmpty)
+                    Some(dailyData.min)
+                  else
+                    None
+                CellData(monitorTypeOp.format(mt, dailyMin), Seq.empty[String])
+              }
+            StatRow("日用電量最小", minData)
+          }
+          val sumRow = {
+            val sumData =
+              for (mt <- mtList) yield {
+                val dailyStat = statMap(mt).values.toList
+                val dailyData = dailyStat.flatMap(stat => stat.avg.map(_ * stat.count))
+                val dailySum =
+                  if (dailyData.nonEmpty)
+                    Some(dailyData.sum)
+                  else
+                    None
+                CellData(monitorTypeOp.format(mt, dailySum), Seq.empty[String])
+              }
+            StatRow("當月總用電度數", sumData)
+          }
+          val statRows = Seq(avgRow, maxRow, minRow, sumRow)
+
+          val dayRows =
+            for (recordTime <- getPeriods(start, start + 1.month, 1.day)) yield {
+              val mtData =
+                for (mt <- mtList) yield {
+                  val status = MonitorStatus.NormalStat
+                  val sum = statMap(mt)(recordTime).avg.map(_ * statMap(mt)(recordTime).count)
+                  CellData(monitorTypeOp.format(mt, sum),
+                    MonitorStatus.getCssClassStr(status), Some(status))
+                }
+              RowData(recordTime.getMillis, mtData)
+            }
+          val columnNames = mtList map {
+            monitorTypeOp.map(_).desp
+          }
+          val monthlyReport = DisplayReport(columnNames, dayRows, statRows)
+          if (outputType == OutputType.html)
+            Ok(Json.toJson(monthlyReport))
+          else {
+            val (title, excelFile) =
+              ("月報" + start.toString("YYYYMM"),
+                excelUtility.exportDisplayReport(s"監測月報 ${start.toString("YYYY年MM月")}", monthlyReport))
+
+            Ok.sendFile(excelFile, fileName = _ =>
+              s"${title}.xlsx",
+              onClose = () => {
+                Files.deleteIfExists(excelFile.toPath())
+              })
+          }
+
+        case PeriodReport.YearlyReport =>
+          val start = new DateTime(startNum)
+          val startDate = start.withMillisOfDay(0).withDayOfMonth(1).withMonthOfYear(1)
+          val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(monitor, monitorTypeOp.activeMtvList, startDate, startDate + 1.year)
+          val statMap = query.getPeriodStatReportMap(periodMap, 1.month)(start, start + 1.year)
+          val overallStatMap = getOverallStatMap(statMap, 12)
+          Ok("")
       }
+  }
 
   def getOverallStatMap(statMap: Map[String, Map[DateTime, Stat]], minimalValidCount: Int): Map[String, Stat] = {
     statMap.map { pair =>
@@ -221,16 +227,16 @@ class Report @Inject()(monitorDB: MonitorDB, monitorTypeOp: MonitorTypeDB, recor
       val overCount = values.map {
         _.overCount
       }.sum
-      val max = if(values.nonEmpty)
+      val max = if (values.nonEmpty)
         values.map {
-        _.avg
-      }.max
+          _.avg
+        }.max
       else
         None
-      val min = if(values.nonEmpty)
+      val min = if (values.nonEmpty)
         values.map {
-        _.avg
-      }.min
+          _.avg
+        }.min
       else
         None
       val avg =

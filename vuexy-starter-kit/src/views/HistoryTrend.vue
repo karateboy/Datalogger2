@@ -151,11 +151,7 @@ export default Vue.extend({
         { id: 'valid', txt: '有效數據' },
       ],
       reportUnits: [
-        { txt: '秒', id: 'Sec' },
         { txt: '分', id: 'Min' },
-        { txt: '六分', id: 'SixMin' },
-        { txt: '十分', id: 'TenMin' },
-        { txt: '十五分', id: 'FifteenMin' },
         { txt: '小時', id: 'Hour' },
         { txt: '天', id: 'Day' },
         { txt: '月', id: 'Month' },
@@ -237,7 +233,7 @@ export default Vue.extend({
       }/${this.form.range[1]}`;
       const res = await axios.get(url);
       const ret = res.data;
-
+      console.info(ret);
       this.setLoading({ loading: false });
       if (this.form.chartType !== 'boxplot') {
         ret.chart = {

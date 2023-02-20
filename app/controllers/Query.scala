@@ -201,7 +201,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
             (TableType.min, new DateTime(startNum).withSecondOfMinute(0).withMillisOfSecond(0),
               new DateTime(endNum).withSecondOfMinute(0).withMillisOfSecond(0))
         } else
-          (TableType.hour, new DateTime(startNum).withMillisOfDay(0), new DateTime(endNum).withMillisOfDay(0))
+          (TableType.hour, new DateTime(startNum).withTimeAtStartOfDay(), new DateTime(endNum).withTimeAtStartOfDay())
 
 
       val outputType = OutputType.withName(outputTypeStr)
@@ -287,7 +287,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
           s"趨勢圖 (${start.toString("YYYY年")}~${end.toString("YYYY年")})"
       }
 
-    var maxUsage: Option[Double] = Some(0d)
+    var maxUsage: Option[Double] = None
 
     def getAxisLines(mt: String, m: String) = {
       val mtCase = monitorTypeOp.map(mt)
@@ -300,13 +300,13 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
       val maxUsageLine =
         reportUnit match {
           case ReportUnit.Hour =>
-            val maxUsage = waitReadyResult(DataCollectManager.getLastWeekPowerMaxUsage(m, recordOp.HourCollection)
+            maxUsage = waitReadyResult(DataCollectManager.getLastWeekPowerMaxUsage(m, recordOp.HourCollection)
             (recordOp))
             Some(AxisLine("#FF0000", 2, maxUsage.getOrElse(0d),
               Some(AxisLineLabel("left", "上週小時最大用電量", Some(Style("white"))))))
 
           case ReportUnit.Min =>
-            val maxUsage = waitReadyResult(DataCollectManager.getLastWeekPowerMaxUsage(m, recordOp.MinCollection)
+            maxUsage = waitReadyResult(DataCollectManager.getLastWeekPowerMaxUsage(m, recordOp.MinCollection)
             (recordOp))
             Some(AxisLine("#FF0000", 2, maxUsage.getOrElse(0d),
               Some(AxisLineLabel("left", "上週分鐘最大用電量", Some(Style("white"))))))
@@ -340,7 +340,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     val yAxisUnitMap = yAxisIndexList.map(kv => kv._1._1 -> kv._2).toMap
     val yAxisList = yAxisIndexList.map(_._1._2)
 
-    def getSeries(): Seq[seqData] = {
+    def getSeries: Seq[seqData] = {
 
       val monitorReportPairs =
         for {
@@ -400,12 +400,16 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
         val mt = monitorTypes.head
         val m = monitors.head
         val mtCase = monitorTypeOp.map(monitorTypes.head)
+        val min = if (maxUsage.nonEmpty)
+          Some(0d)
+        else
+          None
         HighchartData(
           Map("type" -> "line"),
           Map("text" -> title),
           xAxis,
           Seq(YAxis(labels = None, title = AxisTitle(Some(Some(s"${mtCase.desp} (${mtCase.unit})"))), plotLines = getAxisLines(mt, m),
-            max = maxUsage.map(v => BigDecimal(v / 3 * 4).setScale(mtCase.prec, RoundingMode.HALF_EVEN).doubleValue()), min = Some(0))),
+            max = maxUsage.map(v => BigDecimal(v / 3 * 4).setScale(mtCase.prec, RoundingMode.HALF_EVEN).doubleValue()), min = min)),
           series,
           Some(downloadFileName))
       } else {

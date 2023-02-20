@@ -1,5 +1,34 @@
 <template>
-  <b-row v-if="userInfo.isAdmin || monitorNoMe.length > 1">
+  <b-row v-if="is9">
+    <b-col cols="12">
+      <b-table
+        class="text-center"
+        :fields="transposeFields"
+        :items="transposePowerUsageList"
+        stacked="sm"
+        responsive
+        striped
+      >
+      </b-table>
+    </b-col>
+    <b-col v-for="m in monitorNoMe" :key="m._id" xl="2" lg="2" sm="12">
+      <b-card border-variant="primary">
+        <div :id="`history_${m._id}`"></div>
+      </b-card>
+    </b-col>
+    <b-col
+      v-for="m in monitorNoMe"
+      :key="`compare_${m._id}`"
+      xl="2"
+      lg="2"
+      sm="12"
+    >
+      <b-card v-show="!is9" border-variant="primary">
+        <div :id="`year_compare_${m._id}`"></div>
+      </b-card>
+    </b-col>
+  </b-row>
+  <b-row v-else-if="userInfo.isAdmin || monitorNoMe.length > 1">
     <b-col cols="12">
       <b-table
         class="text-center"
@@ -140,13 +169,19 @@ export default Vue.extend({
       if (this.monitorNoMe.length === 1) return 12;
       else return 4;
     },
+    is9(): boolean {
+      console.info(this.userInfo);
+      let ret = this.userInfo.name === '九份子';
+      console.info(`is9 = ${ret}`);
+      return ret;
+    },
   },
   async mounted() {
     const { skin } = useAppConfig();
     if (skin.value == 'dark') {
       darkTheme(highcharts);
     }
-
+    console.info(this.userInfo);
     await this.fetchMonitors();
     await this.getActiveID();
     await this.fetchMonitorTypes();
@@ -307,7 +342,6 @@ export default Vue.extend({
       ret.time = {
         timezoneOffset: -480,
       };
-      console.info(ret);
       highcharts.chart(`year_compare_${m._id}`, ret);
     },
     getMtName(mt: string): string {

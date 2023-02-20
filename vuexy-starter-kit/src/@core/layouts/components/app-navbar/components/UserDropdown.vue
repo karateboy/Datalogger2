@@ -24,37 +24,6 @@
     </template>
 
     <b-dropdown-item
-      :to="{ name: 'pages-profile' }"
-      link-class="d-flex align-items-center"
-    >
-      <feather-icon size="16" icon="UserIcon" class="mr-50" />
-      <span>Profile</span>
-    </b-dropdown-item>
-    <b-dropdown-item
-      :to="{ name: 'apps-email' }"
-      link-class="d-flex align-items-center"
-    >
-      <feather-icon size="16" icon="MailIcon" class="mr-50" />
-      <span>Inbox</span>
-    </b-dropdown-item>
-    <b-dropdown-item
-      :to="{ name: 'apps-todo' }"
-      link-class="d-flex align-items-center"
-    >
-      <feather-icon size="16" icon="CheckSquareIcon" class="mr-50" />
-      <span>Task</span>
-    </b-dropdown-item>
-    <b-dropdown-item
-      :to="{ name: 'apps-chat' }"
-      link-class="d-flex align-items-center"
-    >
-      <feather-icon size="16" icon="MessageSquareIcon" class="mr-50" />
-      <span>Chat</span>
-    </b-dropdown-item>
-
-    <b-dropdown-divider />
-
-    <b-dropdown-item
       :to="{ name: 'pages-account-setting' }"
       link-class="d-flex align-items-center"
     >
@@ -97,7 +66,6 @@ export default {
   components: {
     BNavItemDropdown,
     BDropdownItem,
-    BDropdownDivider,
     BAvatar,
   },
   data() {
