@@ -24,6 +24,4 @@ server.pid
 /importEPA
 .tmpBin
 parsed.list
-/vuexy-starter-kit/yarn.lock
 /cdxUpload
-/vuexy-starter-kit/package-lock.json
