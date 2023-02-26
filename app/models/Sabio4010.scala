@@ -162,7 +162,7 @@ class Sabio4010Collector @Inject()(instrumentOp: InstrumentDB, instrumentStatusO
                 comm.os.write(cmd.getBytes)
                 readResponse()
               } else {
-                val cmd = getCmdString("MS", seq)
+                val cmd = getCmdString("TS", seq)
                 comm.os.write(cmd.getBytes)
                 readResponse()
               }
