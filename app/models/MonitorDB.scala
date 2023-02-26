@@ -10,17 +10,30 @@ trait MonitorDB {
   implicit val mWrite = Json.writes[Monitor]
   implicit val mRead = Json.reads[Monitor]
 
-  var map: Map[String, Monitor] = Map.empty[String, Monitor]
+  @volatile var map: Map[String, Monitor] = Map.empty[String, Monitor]
 
-  def mvList: Seq[String] = map.map(_._1).toSeq
+  def mvList: Seq[String] = synchronized(map.keys.toSeq)
 
-  def ensure(_id: String): Unit = {
+  def ensure(_id: String): Unit = synchronized{
     if (!map.contains(_id)) {
       upsert(Monitor(_id, _id))
     }
   }
 
-  def upsert(m: Monitor): Unit
+  def ensure(m: Monitor): Unit = synchronized {
+    if (!map.contains(m._id)) {
+      upsert(m)
+    }
+  }
+  protected def upsert(m: Monitor): Unit
+
+  def upsertMonitor(m: Monitor): Unit = {
+    synchronized {
+      map = map + (m._id -> m)
+    }
+
+    upsert(m)
+  }
 
   protected def deleteMonitor(_id: String): Future[DeleteResult]
 
@@ -33,7 +46,7 @@ trait MonitorDB {
 
   def mList: List[Monitor]
 
-  def refresh(sysConfigDB: SysConfigDB) {
+  def refresh(sysConfigDB: SysConfigDB): Unit = {
     val pairs =
       for (m <- mList) yield {
         m._id -> m
