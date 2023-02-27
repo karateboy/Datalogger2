@@ -141,7 +141,7 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
     val mtDataOptList =
       for (mt <- mtList) yield {
         for (status <- rs.stringOpt(s"${mt}_s")) yield
-          MtRecord(mt, rs.doubleOpt(s"$mt"), status)
+          MtRecord(mt, rs.doubleOpt(s"$mt"), status, rs.doubleOpt(s"${mt}_raw"))
       }
     RecordList(_id = id, mtDataList = mtDataOptList.flatten)
   }
@@ -219,18 +219,27 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
     val tab = getTab(tabName)
     val mtColumn = SQLSyntax.createUnsafely(s"[$mt]")
     val mtStatusColumn = SQLSyntax.createUnsafely(s"[${mt}_s]")
+    val mtRawColumn = SQLSyntax.createUnsafely(s"[${mt}_raw]")
     sql"""
           Alter Table $tab
           Add $mtColumn float;
          """.execute().apply()
 
     sql"""
+          Alter Table $tab
+          Add $mtRawColumn float;
+         """.execute().apply()
+
+    sql"""
          Alter Table $tab
          Add $mtStatusColumn [nvarchar](5);
          """.execute().apply()
+
+
   }
 
-  private def init(): Unit = {
+
+  private def init()(implicit DBSession: DBSession = AutoSession): Unit = {
     val tabList =
       Seq(HourCollection, MinCollection, SecCollection)
     tabList.foreach(tab => {
@@ -240,6 +249,18 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
 
     mtList = sqlServer.getColumnNames(HourCollection).filter(col => {
       !col.endsWith("_s") && col != "monitor" && col != "time"
+    })
+
+    tabList.foreach(tabName =>{
+      val tab = getTab(tabName)
+      val columnName = sqlServer.getColumnNames(tab)
+      mtList.foreach(mt=>if(columnName.contains(s"${mt}_raw")){
+        val mtRawColumn = SQLSyntax.createUnsafely(s"[${mt}_raw]")
+        sql"""
+              Alter Table $tab
+              Add $mtRawColumn float;
+             """.execute().apply()
+      })
     })
   }
 

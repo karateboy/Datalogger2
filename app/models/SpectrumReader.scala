@@ -169,7 +169,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
           if (dt.isAfter(dataEnd))
             dataEnd = dt
           Some(RecordList(time = Date.from(dt), monitor = Monitor.activeId,
-            mtDataList = Seq(MtRecord(mtName, Some(value), MonitorStatus.NormalStat))))
+            mtDataList = Seq(monitorTypeOp.getMinMtRecordByRawValue(mtName, Some(value), MonitorStatus.NormalStat))))
         } catch {
           case ex: Throwable =>
             None

@@ -236,7 +236,7 @@ object DataCollectManager {
         _._2.size
       }.sum if total != 0
     } yield {
-      val minuteAvg: (Option[Double], String) = {
+      val minuteRawAvg: (Option[Double], String) = {
         val totalSize = statusMap map {
           _._2.length
         } sum
@@ -306,7 +306,11 @@ object DataCollectManager {
         }
       }
 
-      MtRecord(mt, minuteAvg._1, minuteAvg._2)
+      val mintueAvg = minuteRawAvg._1.map(rawValue => {
+        val mtCase = monitorTypeDB.map(mt)
+
+        rawValue})
+      monitorTypeDB.getMinMtRecordByRawValue(mt, minuteRawAvg._1, minuteRawAvg._2)
     }
   }
 
@@ -380,7 +384,7 @@ object DataCollectManager {
         (roundedAvg, statusKV._1)
       }
 
-      MtRecord(mt, hourAvg._1, hourAvg._2)
+      monitorTypeDB.getHourMtRecordByValue(mt, hourAvg._1, hourAvg._2)
     }
   }
 
@@ -590,7 +594,6 @@ class DataCollectManager @Inject()
       val now = DateTime.now
 
       for (instId <- collectorInstrumentMap.get(sender)) {
-        monitorTypeOp.calibrateDataByFixedMB(dataList)
 
         val pairs =
           for (data <- dataList) yield {
@@ -662,8 +665,13 @@ class DataCollectManager @Inject()
               mtSecListBuffer.append((mt, (record._2, record._3)))
             }
           }
+          val docs = secRecordMap map { r => {
+            val mtDataSeq = r._2.map(pair => {
+              val mt = pair._1
+              monitorTypeOp.getMinMtRecordByRawValue(pair._1, Some(pair._2._1), pair._2._2)
+            })
 
-          val docs = secRecordMap map { r => r._1 -> RecordList(r._1, r._2.toList) }
+            r._1 -> RecordList(mtDataSeq, RecordListID(r._1, Monitor.activeId)) }}
 
           val sortedDocs = docs.toSeq.sortBy { x => x._1 } map (_._2)
           if (sortedDocs.nonEmpty)

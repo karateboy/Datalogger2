@@ -88,7 +88,7 @@ import javax.inject._
 
 class MqttCollector2 @Inject()(monitorDB: MonitorDB,alarmOp: AlarmDB,
                                recordOp: RecordDB, dataCollectManager: DataCollectManager,
-                               mqttSensorOp: MqttSensorDB)
+                               mqttSensorOp: MqttSensorDB, monitorTypeDB: MonitorTypeDB)
                              (@Assisted id: String,
                               @Assisted protocolParam: ProtocolParam,
                               @Assisted config: MqttConfig2) extends Actor with MqttCallback {
@@ -249,11 +249,12 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB,alarmOp: AlarmDB,
             )
             for {mt <- mtMap.get(sensor)
                  v <- value
-                 } yield
-              MtRecord(mt, Some(v), MonitorStatus.NormalStat)
+                 } yield {
+              monitorTypeDB.getMinMtRecordByRawValue(mt, Some(v), MonitorStatus.NormalStat)
+            }
           }
-        val latlon = Seq(MtRecord(MonitorType.LAT, Some(message.lat), MonitorStatus.NormalStat),
-          MtRecord(MonitorType.LNG, Some(message.lon), MonitorStatus.NormalStat))
+        val latlon = Seq(monitorTypeDB.getMinMtRecordByRawValue(MonitorType.LAT, Some(message.lat), MonitorStatus.NormalStat),
+          monitorTypeDB.getMinMtRecordByRawValue(MonitorType.LNG, Some(message.lon), MonitorStatus.NormalStat))
         val mtDataList: Seq[MtRecord] = mtData.flatten ++ latlon
         val time = DateTime.parse(message.time, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss"))
           .withSecondOfMinute(0)

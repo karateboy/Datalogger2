@@ -50,7 +50,7 @@ trait RecordDB {
       val step = 360f / nDiv
       import scala.collection.mutable.ListBuffer
       val windDirPair =
-        for (d <- 0 to nDiv - 1) yield
+        for (d <- 0 until nDiv) yield
           d -> ListBuffer.empty[Double]
       val windMap: Map[Int, ListBuffer[Double]] = windDirPair.toMap
       var total = 0

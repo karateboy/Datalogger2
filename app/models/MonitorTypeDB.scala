@@ -7,6 +7,7 @@ import play.api.libs.json.Json
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.math.BigDecimal.RoundingMode
 
 trait MonitorTypeDB {
   implicit val configWrite = Json.writes[ThresholdConfig]
@@ -254,12 +255,23 @@ trait MonitorTypeDB {
     (overLaw.getOrElse(false), overLaw.getOrElse(false))
   }
 
-  def calibrateDataByFixedMB(dataList: List[MonitorTypeData]): Unit =
-    dataList.foreach( mtData => {
-      val mtCase = map(mtData.mt)
+  def getMinMtRecordByRawValue(mt: String, rawValue: Option[Double], status: String): MtRecord = {
+    val mtCase = map(mt)
+    val value = rawValue.map(v => {
       val b = mtCase.fixedB.getOrElse(0d)
       val m: Double = mtCase.fixedM.getOrElse(1)
-      mtData.value = (mtData.value + b) * m
-      mtData
+      BigDecimal((v + b) * m).setScale(mtCase.prec, RoundingMode.HALF_EVEN).doubleValue()
     })
+    MtRecord(mt, value, status, rawValue = rawValue)
+  }
+
+  def getHourMtRecordByValue(mt: String, value: Option[Double], status: String): MtRecord = {
+    val mtCase = map(mt)
+    val rawValue = value.map(v => {
+      val b = mtCase.fixedB.getOrElse(0d)
+      val m: Double = mtCase.fixedM.getOrElse(1)
+      BigDecimal(v / m - b).setScale(mtCase.prec, RoundingMode.HALF_EVEN).doubleValue()
+    })
+    MtRecord(mt, value, status, rawValue = rawValue)
+  }
 }

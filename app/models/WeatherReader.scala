@@ -126,7 +126,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
             for ((mt, idx) <- mtList.zipWithIndex) yield {
               try {
                 val value = token(idx + 2).toDouble
-                Some(MtRecord(mt, Some(value), MonitorStatus.NormalStat))
+                Some(monitorTypeOp.getMinMtRecordByRawValue(mt, Some(value), MonitorStatus.NormalStat))
               } catch {
                 case _: Exception =>
                   None
