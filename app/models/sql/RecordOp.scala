@@ -9,6 +9,7 @@ import scalikejdbc._
 
 import java.util.Date
 import javax.inject.{Inject, Singleton}
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -88,7 +89,7 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
 
   override def getRecordMapFuture(colName: String)
                                  (monitor: String, mtList: Seq[String],
-                                  startTime: DateTime, endTime: DateTime): Future[Map[String, Seq[Record]]] = {
+                                  startTime: DateTime, endTime: DateTime, includeRaw:Boolean): Future[Map[String, Seq[Record]]] = {
     implicit val session: DBSession = ReadOnlyAutoSession
     val tab: SQLSyntax = getTab(colName)
     val rawRecords =
@@ -101,21 +102,9 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
 
     val recordF = calibrateHelper(rawRecords, startTime, endTime)
 
-    for (records <- recordF) yield {
-      val pairs =
-        for (mt <- mtList) yield {
-          val list =
-            for {
-              doc <- records
-              time = doc._id.time
-              mtMap = doc.mtMap if mtMap.contains(mt) && mtMap(mt).value.isDefined
-            } yield {
-              Record(new DateTime(time.getTime), mtMap(mt).value, mtMap(mt).status, monitor)
-            }
-          mt -> list
-        }
-      pairs.toMap
-    }
+    for (recordLists <- recordF) yield
+      getRecordMapFromRecordList(mtList, recordLists, includeRaw)
+
   }
 
   override def getRecordListFuture(colName: String)

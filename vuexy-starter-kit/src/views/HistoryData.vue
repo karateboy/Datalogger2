@@ -31,6 +31,9 @@
                 :close-on-select="false"
                 multiple
               />
+              <b-form-checkbox v-model="form.includeRaw"
+                >顯示原始值</b-form-checkbox
+              >
             </b-form-group>
           </b-col>
           <b-col cols="12">
@@ -115,7 +118,7 @@
             <b-th
               v-for="mt in form.monitorTypes"
               :key="mt"
-              :colspan="form.monitors.length"
+              :colspan="mtColspan"
               class="text-center"
               style="text-transform: none"
               >{{ getMtDesc(mt) }}</b-th
@@ -168,6 +171,7 @@ export default Vue.extend({
         monitorTypes: Array<any>(),
         dataType: 'hour',
         range,
+        includeRaw: false,
       },
       display: false,
       columns: Array<any>(),
@@ -182,6 +186,11 @@ export default Vue.extend({
     ...mapGetters('monitors', ['mMap']),
     resultTitle(): string {
       return `總共${this.rows.length}筆`;
+    },
+    mtColspan(): number {
+      if (this.form.includeRaw) return 2 * this.form.monitors.length;
+
+      return this.form.monitors.length;
     },
   },
   watch: {},
@@ -207,10 +216,10 @@ export default Vue.extend({
       this.columns = this.getColumns();
       const monitors = this.form.monitors.join(':');
       const monitorTypes = this.form.monitorTypes.join(':');
-      const url = `/HistoryReport/${monitors}/${monitorTypes}/${this.form.dataType}/${this.form.range[0]}/${this.form.range[1]}`;
-
+      const url = `/HistoryReport/${monitors}/${monitorTypes}/${this.form.dataType}/${this.form.includeRaw}/${this.form.range[0]}/${this.form.range[1]}`;
       const ret = await axios.get(url);
       this.setLoading({ loading: false });
+      console.info(ret);
       for (const row of ret.data.rows) {
         row.date = moment(row.date).format('lll');
       }
@@ -225,7 +234,7 @@ export default Vue.extend({
       const mtCase = this.mtMap.get(mt);
       return `${mtCase.desp}(${mtCase.unit})`;
     },
-    getColumns() {
+    getColumns(): Array<any> {
       const ret = [];
       ret.push({
         key: 'date',
@@ -243,6 +252,14 @@ export default Vue.extend({
             tdClass: this.cellDataTd(i),
           });
           i++;
+          if (this.form.includeRaw) {
+            ret.push({
+              key: `cellData[${i}].v`,
+              label: `${mCase.desc}原始值`,
+              tdClass: this.cellDataTd(i),
+            });
+            i++;
+          }
         }
       }
 
@@ -257,7 +274,9 @@ export default Vue.extend({
 
       const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
         ':',
-      )}/${reportUnit}/all/${this.form.range[0]}/${this.form.range[1]}`;
+      )}/${this.form.includeRaw}/${reportUnit}/all/${this.form.range[0]}/${
+        this.form.range[1]
+      }`;
 
       window.open(url);
     },

@@ -31,6 +31,9 @@
                 :close-on-select="false"
                 multiple
               />
+              <b-form-checkbox v-model="form.includeRaw"
+                >顯示原始值</b-form-checkbox
+              >
             </b-form-group>
           </b-col>
           <b-col cols="12">
@@ -156,6 +159,7 @@ export default Vue.extend({
 
   data() {
     const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
+    let includeRaw = false;
     return {
       statusFilters: [
         { id: 'all', txt: '全部' },
@@ -212,6 +216,7 @@ export default Vue.extend({
         statusFilter: 'all',
         chartType: 'line',
         range,
+        includeRaw,
       },
     };
   },
@@ -247,9 +252,9 @@ export default Vue.extend({
       const monitors = this.form.monitors.join(':');
       const url = `/HistoryTrend/${monitors}/${this.form.monitorTypes.join(
         ':',
-      )}/${this.form.reportUnit}/${this.form.statusFilter}/${
-        this.form.range[0]
-      }/${this.form.range[1]}`;
+      )}/${this.form.includeRaw}/${this.form.reportUnit}/${
+        this.form.statusFilter
+      }/${this.form.range[0]}/${this.form.range[1]}`;
       const res = await axios.get(url);
       const ret = res.data;
 
@@ -316,9 +321,9 @@ export default Vue.extend({
       const monitors = this.form.monitors.join(':');
       const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
         ':',
-      )}/${this.form.reportUnit}/${this.form.statusFilter}/${
-        this.form.range[0]
-      }/${this.form.range[1]}`;
+      )}/${this.form.includeRaw}/${this.form.reportUnit}/${
+        this.form.statusFilter
+      }/${this.form.range[0]}/${this.form.range[1]}`;
 
       window.open(url);
     },

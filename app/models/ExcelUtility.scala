@@ -21,7 +21,13 @@ class ExcelUtility @Inject()
   val docRoot = environment.rootPath + "/report_template/"
 
   def exportChartData(chart: HighchartData, monitorTypes: Array[String], showSec: Boolean): File = {
-    val precArray = monitorTypes.map { mt => monitorTypeOp.map(mt).prec }
+    val precArray = monitorTypes.map { mt =>
+    if(monitorTypeOp.map.contains(mt))
+      monitorTypeOp.map(mt).prec
+    else{
+      val realType = MonitorType.getRealType(mt)
+      monitorTypeOp.map(realType).prec
+    }}
     exportChartData(chart, precArray, showSec)
   }
 

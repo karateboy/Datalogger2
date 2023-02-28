@@ -11,6 +11,7 @@ import play.api.mvc._
 
 import java.nio.file.Files
 import javax.inject._
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -159,7 +160,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
   import models.ModelHelper._
 
   def scatterChart(monitorStr: String, monitorTypeStr: String, tabTypeStr: String, statusFilterStr: String,
-                                 startNum: Long, endNum: Long) = Security.Authenticated.async {
+                   startNum: Long, endNum: Long) = Security.Authenticated.async {
     implicit request =>
       val monitors = monitorStr.split(':')
       val monitorTypeStrArray = monitorTypeStr.split(':')
@@ -176,12 +177,12 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
 
       assert(monitorTypes.length == 2)
 
-      for(chart <- compareChartHelper(monitors, monitorTypes, tabType, start, end)(statusFilter)) yield
-          Results.Ok(Json.toJson(chart))
+      for (chart <- compareChartHelper(monitors, monitorTypes, tabType, start, end)(statusFilter)) yield
+        Results.Ok(Json.toJson(chart))
   }
 
 
-  def historyTrendChart(monitorStr: String, monitorTypeStr: String, reportUnitStr: String, statusFilterStr: String,
+  def historyTrendChart(monitorStr: String, monitorTypeStr: String, includeRaw:Boolean, reportUnitStr: String, statusFilterStr: String,
                         startNum: Long, endNum: Long, outputTypeStr: String) = Security.Authenticated {
     implicit request =>
       val monitors = monitorStr.split(':')
@@ -204,12 +205,17 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
 
 
       val outputType = OutputType.withName(outputTypeStr)
-      val chart = trendHelper(monitors, monitorTypes, tabType,
+      val chart = trendHelper(monitors, monitorTypes, includeRaw, tabType,
         reportUnit, start, end, LoggerConfig.config.trendShowActual)(statusFilter)
 
       if (outputType == OutputType.excel) {
         import java.nio.file.Files
-        val excelFile = excelUtility.exportChartData(chart, monitorTypes, true)
+        val actualMonitorTypes = if(includeRaw)
+          monitorTypes flatMap(mt=>Seq(mt, MonitorType.getRawType(mt)))
+        else
+          monitorTypes
+
+        val excelFile = excelUtility.exportChartData(chart, actualMonitorTypes, true)
         val downloadFileName =
           if (chart.downloadFileName.isDefined)
             chart.downloadFileName.get
@@ -226,7 +232,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
       }
   }
 
-  def trendHelper(monitors: Seq[String], monitorTypes: Seq[String], tabType: TableType.Value,
+  def trendHelper(monitors: Seq[String], monitorTypes: Seq[String], includeRaw:Boolean, tabType: TableType.Value,
                   reportUnit: ReportUnit.Value, start: DateTime, end: DateTime, showActual: Boolean)(statusFilter: MonitorStatusFilter.Value) = {
     val period: Period =
       reportUnit match {
@@ -326,13 +332,19 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
         for {
           monitor <- monitors
         } yield {
-          monitor -> getPeriodReportMap(monitor, monitorTypes, tabType, period, statusFilter)(start, end)
+          monitor -> getPeriodReportMap(monitor, monitorTypes, tabType, period, includeRaw, statusFilter)(start, end)
         }
 
       val monitorReportMap = monitorReportPairs.toMap
+
+      val actualMonitorTypes = if(includeRaw)
+        monitorTypes flatMap(mt=>Seq(mt, MonitorType.getRawType(mt)))
+      else
+        monitorTypes
+
       for {
         m <- monitors
-        mt <- monitorTypes
+        mt <- actualMonitorTypes
         valueMap = monitorReportMap(m)(mt)
       } yield {
         val timeData =
@@ -359,9 +371,16 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
             val statusOpt = for (x <- t._2) yield x._2
             statusOpt.getOrElse(None)
         }
-        seqData(name = s"${monitorOp.map(m).desc}_${monitorTypeOp.map(mt).desp}",
-          data = timeValues, yAxis = yAxisUnitMap(monitorTypeOp.map(mt).unit),
-          tooltip = Tooltip(monitorTypeOp.map(mt).prec), statusList = timeStatus)
+        if(monitorTypeOp.map.contains(mt))
+          seqData(name = s"${monitorOp.map(m).desc}_${monitorTypeOp.map(mt).desp}",
+            data = timeValues, yAxis = yAxisUnitMap(monitorTypeOp.map(mt).unit),
+            tooltip = Tooltip(monitorTypeOp.map(mt).prec), statusList = timeStatus)
+        else{
+          val realMt = MonitorType.getRealType(mt)
+          seqData(name = s"${monitorOp.map(m).desc}_${monitorTypeOp.map(realMt).desp}原始值",
+            data = timeValues, yAxis = yAxisUnitMap(monitorTypeOp.map(realMt).unit),
+            tooltip = Tooltip(monitorTypeOp.map(realMt).prec), statusList = timeStatus)
+        }
       }
     }
 
@@ -401,14 +420,19 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     chart
   }
 
-  def getPeriodReportMap(monitor: String, mtList: Seq[String],
-                         tabType: TableType.Value, period: Period,
-                         statusFilter: MonitorStatusFilter.Value = MonitorStatusFilter.ValidData)
-                        (start: DateTime, end: DateTime): Map[String, Map[DateTime, (Option[Double], Option[String])]] = {
-    val mtRecordListMap = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitor, mtList, start, end)
+  private def getPeriodReportMap(monitor: String, mtList: Seq[String],
+                                 tabType: TableType.Value, period: Period,
+                                 includeRaw: Boolean = false,
+                                 statusFilter: MonitorStatusFilter.Value = MonitorStatusFilter.ValidData)
+                                (start: DateTime, end: DateTime): Map[String, Map[DateTime, (Option[Double], Option[String])]] = {
+    val mtRecordListMap = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitor, mtList, start, end, includeRaw)
+    val actualMonitorTypes = if(includeRaw)
+      mtList flatMap { mt => Seq(mt, MonitorType.getRawType(mt))}
+    else
+      mtList
 
     val mtRecordPairs =
-      for (mt <- mtList) yield {
+      for (mt <- actualMonitorTypes) yield {
         val recordList = mtRecordListMap(mt)
 
         def periodSlice(period_start: DateTime, period_end: DateTime) = {
@@ -427,7 +451,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
               period_start <- getPeriods(start, end, period)
               records = periodSlice(period_start, period_start + period) if records.length > 0
             } yield {
-              if (mt == MonitorType.WIN_DIRECTION) {
+              if (mt == MonitorType.WIN_DIRECTION || mt == MonitorType.getRawType(MonitorType.WIN_DIRECTION)) {
                 val windDir = records
                 val windSpeed = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitor, List(MonitorType.WIN_SPEED), period_start, period_start + period)(MonitorType.WIN_SPEED)
                 period_start -> (directionAvg(windSpeed.flatMap(_.value), windDir.flatMap(_.value)), None)
@@ -528,15 +552,15 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     val mt1 = monitorTypeOp.map(monitorTypes(0))
     val mt2 = monitorTypeOp.map(monitorTypes(1))
 
-    for(series<-getSeriesFuture()) yield
-      ScatterChart(Map("type"->"scatter", "zoomType"->"xy"),
-        Map("text"-> title),
+    for (series <- getSeriesFuture()) yield
+      ScatterChart(Map("type" -> "scatter", "zoomType" -> "xy"),
+        Map("text" -> title),
         ScatterAxis(Title(true, s"${mt1.desp}(${mt1.unit})"), getAxisLines(monitorTypes(0))),
         ScatterAxis(Title(true, s"${mt2.desp}(${mt2.unit})"), getAxisLines(monitorTypes(1))),
         series, Some(downloadFileName))
   }
 
-  def historyData(monitorStr: String, monitorTypeStr: String, tabTypeStr: String,
+  def historyData(monitorStr: String, monitorTypeStr: String, tabTypeStr: String, includeRaw: Boolean,
                   startNum: Long, endNum: Long) = Security.Authenticated.async {
     implicit request =>
       val monitors = monitorStr.split(":")
@@ -552,22 +576,31 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
         }
 
       val resultFuture = recordOp.getRecordListFuture(TableType.mapCollection(tabType))(start, end, monitors)
-      val emtpyCell = CellData("-", Seq.empty[String])
+      val emptyCell = CellData("-", Seq.empty[String])
       for (recordList <- resultFuture) yield {
-        import scala.collection.mutable.Map
-        val timeMtMonitorMap = Map.empty[DateTime, Map[String, Map[String, CellData]]]
+        val timeMtMonitorMap = mutable.Map.empty[DateTime, mutable.Map[String, mutable.Map[String, Seq[CellData]]]]
         recordList foreach {
           r =>
             val stripedTime = new DateTime(r._id.time).withSecondOfMinute(0).withMillisOfSecond(0)
-            val mtMonitorMap = timeMtMonitorMap.getOrElseUpdate(stripedTime, Map.empty[String, Map[String, CellData]])
+            val mtMonitorMap = timeMtMonitorMap.getOrElseUpdate(stripedTime, mutable.Map.empty[String, mutable.Map[String, Seq[CellData]]])
             for (mt <- monitorTypes.toSeq) {
-              val monitorMap = mtMonitorMap.getOrElseUpdate(mt, Map.empty[String, CellData])
+              val monitorMap = mtMonitorMap.getOrElseUpdate(mt, mutable.Map.empty[String, Seq[CellData]])
               val cellData = if (r.mtMap.contains(mt)) {
                 val mtRecord = r.mtMap(mt)
-                CellData(monitorTypeOp.format(mt, mtRecord.value),
+                val valueCell = CellData(monitorTypeOp.format(mt, mtRecord.value),
                   monitorTypeOp.getCssClassStr(mtRecord), Some(mtRecord.status))
-              } else
-                emtpyCell
+                val rawCell = CellData(monitorTypeOp.format(mt, mtRecord.rawValue),
+                  monitorTypeOp.getCssClassStr(mtRecord), Some(mtRecord.status))
+                if (includeRaw)
+                  Seq(valueCell, rawCell)
+                else
+                  Seq(valueCell)
+              } else {
+                if (includeRaw)
+                  Seq(emptyCell, emptyCell)
+                else
+                  Seq(emptyCell)
+              }
 
               monitorMap.update(r._id.monitor, cellData)
             }
@@ -582,15 +615,24 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
           } {
             val monitorMap = mtMonitorMap(mt)
             if (monitorMap.contains(m))
-              cellDataList = cellDataList :+ (mtMonitorMap(mt)(m))
-            else
-              cellDataList = cellDataList :+ (emtpyCell)
+              cellDataList = cellDataList ++ mtMonitorMap(mt)(m)
+            else {
+              if (includeRaw)
+                cellDataList = cellDataList ++ Seq(emptyCell, emptyCell)
+              else
+                cellDataList = cellDataList ++ Seq(emptyCell)
+            }
           }
           RowData(time.getMillis, cellDataList)
         }
 
-        val columnNames = monitorTypes.toSeq map {
-          monitorTypeOp.map(_).desp
+        val columnNames = monitorTypes.toSeq flatMap { mt => {
+          val mtCase: MonitorType = monitorTypeOp.map(mt)
+          if (includeRaw)
+            Seq(mtCase.desp, s"${mtCase.desp} 原始值")
+          else
+            Seq(mtCase.desp)
+        }
         }
         Ok(Json.toJson(DataTab(columnNames, timeRows)))
       }

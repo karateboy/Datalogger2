@@ -7,6 +7,7 @@ import org.mongodb.scala.BulkWriteResult
 import org.mongodb.scala.result.{InsertManyResult, UpdateResult}
 import play.api.libs.json.Json
 
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -28,13 +29,13 @@ trait RecordDB {
   def updateRecordStatus(dt: Long, mt: String, status: String, monitor: String = Monitor.activeId)(colName: String): Future[UpdateResult]
 
   def getRecordMap(colName: String)
-                  (monitor: String, mtList: Seq[String], startTime: DateTime, endTime: DateTime): Map[String, Seq[Record]] = {
-    val f = getRecordMapFuture(colName)(monitor, mtList, startTime, endTime)
+                  (monitor: String, mtList: Seq[String], startTime: DateTime, endTime: DateTime, includeRaw:Boolean = false): Map[String, Seq[Record]] = {
+    val f = getRecordMapFuture(colName)(monitor, mtList, startTime, endTime, includeRaw)
     waitReadyResult(f)
   }
 
   def getRecordMapFuture(colName: String)
-                        (monitor: String, mtList: Seq[String], startTime: Imports.DateTime, endTime: Imports.DateTime): Future[Map[String, Seq[Record]]]
+                        (monitor: String, mtList: Seq[String], startTime: Imports.DateTime, endTime: Imports.DateTime, includeRaw:Boolean = false): Future[Map[String, Seq[Record]]]
 
   def getRecordListFuture(colName: String)(startTime: Imports.DateTime, endTime: Imports.DateTime, monitors: Seq[String] = Seq(Monitor.activeId)): Future[Seq[RecordList]]
 
@@ -94,4 +95,34 @@ trait RecordDB {
                               monitor: String): Future[Seq[Seq[MtRecord]]]
 
   def upsertManyRecords(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult]
+
+  def getRecordMapFromRecordList(mtList:Seq[String], records: Seq[RecordList], includeRaw:Boolean): Map[String, Seq[Record]] = {
+    val resultMap = mutable.Map.empty[String, Seq[Record]]
+    for (mt <- mtList) {
+      val recordSeq = records flatMap {
+        doc => {
+          val mtMap = doc.mtMap
+          if (mtMap.contains(mt) && mtMap(mt).value.isDefined)
+            Some(Record(new DateTime(doc._id.time.getTime), mtMap(mt).value, mtMap(mt).status, doc._id.monitor))
+          else
+            None
+        }
+      }
+      resultMap.update(mt, recordSeq)
+
+      if (includeRaw) {
+        val recordSeq = records flatMap {
+          doc => {
+            val mtMap = doc.mtMap
+            if (mtMap.contains(mt) && mtMap(mt).rawValue.isDefined)
+              Some(Record(new DateTime(doc._id.time.getTime), mtMap(mt).rawValue, mtMap(mt).status, doc._id.monitor))
+            else
+              None
+          }
+        }
+        resultMap.update(MonitorType.getRawType(mt), recordSeq)
+      }
+    }
+    resultMap.toMap
+  }
 }
