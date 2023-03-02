@@ -44,11 +44,13 @@ case class RecordList(var mtDataList: Seq[MtRecord], _id: RecordListID) {
     mtDataList.foreach(rec => {
       val mtCase = monitorTypeOp.map(rec.mtName)
       if (mtCase.calibrate.getOrElse(false)) {
-          val calibratedValue =
+          val calibratedPair =
             for (calibrationItem <- getCalibrateItem(rec.mtName)) yield
-              calibrationItem._2.calibrate(rec.value)
+              (calibrationItem._2.calibrate(rec.value), calibrationItem._2.calibrate(rec.rawValue))
 
-          calibratedMtDataList = calibratedMtDataList :+ MtRecord(rec.mtName, calibratedValue.getOrElse(rec.value), rec.status)
+          val calibratedValue = calibratedPair.getOrElse((rec.value, null))._1
+          val calibratedRawValue = calibratedPair.getOrElse((null, rec.rawValue))._2
+          calibratedMtDataList = calibratedMtDataList :+ MtRecord(rec.mtName, calibratedValue, rec.status, calibratedRawValue)
       } else
         calibratedMtDataList = calibratedMtDataList :+ rec
     })
