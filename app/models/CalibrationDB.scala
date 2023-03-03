@@ -2,8 +2,11 @@ package models
 
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
+import play.api.Logger
 import play.api.libs.json.Json
 
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -14,12 +17,12 @@ case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTi
                        span_std: Option[Double], span_val: Option[Double]) {
   def zero_dev: Option[Double] = zero_val.map(Math.abs)
 
-  def span_dev_ratio = for (s_dev <- span_dev; std <- span_std)
+  def span_dev_ratioOpt: Option[Double] = for (s_dev <- span_devOpt; std <- span_std)
     yield s_dev / std * 100
 
-  def span_dev =
+  def span_devOpt: Option[Double] =
     for (span <- span_val; std <- span_std)
-      yield Math.abs(span_val.get - span_std.get)
+      yield Math.abs(span - std)
 
   def toJSON = {
     CalibrationJSON(monitorType, startTime.getMillis, endTime.getMillis, zero_val,
@@ -28,11 +31,11 @@ case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTi
 
   def success(implicit monitorTypeOp: MonitorTypeDB): Boolean = {
     val mtCase = monitorTypeOp.map(monitorType)
-    passStandard(zero_val, mtCase.zd_law) &&
-      passStandard(span_val, mtCase.span_dev_law)
+    passZeroStandard(zero_val, mtCase.zd_law) &&
+      passSpanStandard(mtCase)
   }
 
-  def passStandard(vOpt: Option[Double], stdOpt: Option[Double]): Boolean = {
+  def passZeroStandard(vOpt: Option[Double], stdOpt: Option[Double]): Boolean = {
     val retOpt =
       for {
         v <- vOpt
@@ -42,9 +45,16 @@ case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTi
       else
         false
 
-    retOpt.fold(true)(v => v)
+    retOpt.getOrElse(true)
   }
 
+  def passSpanStandard(mtCase:MonitorType):Boolean = {
+    val retOpt =
+      for(span_dev_ratio<-span_dev_ratioOpt;span_dev_law<-mtCase.span_dev_law) yield
+        span_dev_ratio < span_dev_law
+
+    retOpt.getOrElse(true)
+  }
   def canCalibrate: Boolean = {
     val retOpt =
       for {spanValue <- span_val
@@ -89,8 +99,9 @@ trait CalibrationDB {
     f onFailure errorHandler()
     for (calibrationList <- f)
       yield {
-        import scala.collection.mutable._
-        val resultMap = Map.empty[String, ListBuffer[(DateTime, Calibration)]]
+        import scala.collection.mutable.Map
+        val resultMap = mutable.Map.empty[String, ListBuffer[(DateTime, Calibration)]]
+        val calibrationSuccessFull = calibrationList.filter { c => c.success }
         for (item <- calibrationList.filter { c => c.success } if item.monitorType != MonitorType.NO2) {
           val lb = resultMap.getOrElseUpdate(item.monitorType, ListBuffer.empty[(DateTime, Calibration)])
           lb.append((item.endTime, item))

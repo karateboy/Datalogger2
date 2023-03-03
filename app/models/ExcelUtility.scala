@@ -378,7 +378,7 @@ class ExcelUtility @Inject()
       row.createCell(4).setCellValue(monitorTypeOp.format(mt, mtCase.zd_law))
       row.createCell(5).setCellValue(monitorTypeOp.format(mt, calibration.span_val))
       row.createCell(6).setCellValue(monitorTypeOp.format(mt, calibration.span_std))
-      row.createCell(7).setCellValue(monitorTypeOp.format(mt, calibration.span_dev))
+      row.createCell(7).setCellValue(monitorTypeOp.format(mt, calibration.span_devOpt))
       row.createCell(8).setCellValue(monitorTypeOp.format(mt, mtCase.span_dev_law))
       val mOpt =
         for {span_val <- calibration.span_val; zero_val <- calibration.zero_val;
