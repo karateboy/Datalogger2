@@ -65,22 +65,24 @@
             map-type-id="terrain"
             class="map_canvas"
           >
-            <GmapMarker
-              v-for="(m, index) in markers"
-              :key="index"
-              :position="m.position"
-              :clickable="true"
-              :draggable="true"
-              :title="m.title"
-              :icon="m.iconUrl"
-              @click="toggleInfoWindow(m, index)"
-            />
-            <gmap-info-window
-              :options="infoOptions"
-              :position="infoWindowPos"
-              :opened="infoWinOpen"
-              @closeclick="infoWinOpen = false"
-            />
+            <div v-if="mapLoaded">
+              <GmapMarker
+                v-for="(m, index) in markers"
+                :key="index"
+                :position="m.position"
+                :clickable="true"
+                :title="m.title"
+                :label="m.label"
+                :icon="m.icon"
+                @click="toggleInfoWindow(m, index)"
+              />
+              <gmap-info-window
+                :options="infoOptions"
+                :position="infoWindowPos"
+                :opened="infoWinOpen"
+                @closeclick="infoWinOpen = false"
+              />
+            </div>
           </GmapMap>
         </div>
       </b-card>
@@ -106,6 +108,7 @@
 import moment from 'moment';
 import { mapActions, mapState, mapGetters } from 'vuex';
 import axios from 'axios';
+import { Monitor } from '../store/monitors/types';
 export default {
   data() {
     const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
@@ -128,7 +131,7 @@ export default {
       infoWindowPos: null,
       infoWinOpen: false,
       currentMidx: null,
-
+      mapLoaded: false,
       infoOptions: {
         content: '',
         //optional: offset infowindow so it visually sits nicely on top of our marker
@@ -167,16 +170,14 @@ export default {
         lngMin = 1000;
 
       for (const stat of this.realTimeStatus) {
-        const latEntry = stat.mtDataList.find(v => v.mtName === 'LAT');
-        if (!latEntry) continue;
+        const monitor = this.mMap.get(stat._id.monitor);
+        let lat = monitor.location[0];
+        let lng = monitor.location[1];
 
-        const lngEntry = stat.mtDataList.find(v => v.mtName === 'LNG');
-        if (!lngEntry) continue;
-
-        if (latMin > latEntry.value) latMin = latEntry.value;
-        if (latMax < latEntry.value) latMax = latEntry.value;
-        if (lngMin > lngEntry.value) lngMin = lngEntry.value;
-        if (lngMax < lngEntry.value) lngMax = lngEntry.value;
+        if (latMin > lat) latMin = lat;
+        if (latMax < lat) latMax = lat;
+        if (lngMin > lng) lngMin = lng;
+        if (lngMax < lng) lngMax = lng;
         count++;
       }
 
@@ -191,22 +192,6 @@ export default {
     },
     markers() {
       const ret = [];
-      const getIconUrl = (v, mt) => {
-        let url = `https://chart.googleapis.com/chart?chst=d_bubble_text_small_withshadow&&chld=bb|`;
-        let mtCase = this.mtMap.get(mt);
-        let valueStr = encodeURIComponent(
-          `${v.toFixed(this.mtMap.get(mt).prec)}`,
-        );
-        if (v < 15.4) url += `${valueStr}|009865|000000`;
-        else if (v < 35.4) url += `${valueStr}|FFFB26|000000`;
-        else if (v < 54.4) url += `${valueStr}|FF9835|000000`;
-        else if (v < 150.4) url += `${valueStr}|CA0034|000000`;
-        else if (v < 250.4) url += `${valueStr}|670099|000000`;
-        else if (v < 350.4) url += `${valueStr}|7E0123|000000`;
-        else url += `${valueStr}|7E0123|FFFFFF`;
-
-        return url;
-      };
 
       const getMtUrl = mtEntries => {
         let url = `https://chart.googleapis.com/chart?chst=d_bubble_text_small_withshadow&&chld=bb|`;
@@ -223,36 +208,37 @@ export default {
             if (mt === 'PM25') v = mtEntry.data.value;
           }
         }
-        valueStr = encodeURI(valueStrList.join(', '));
-        console.info(valueStr);
-        if (v < 15.4) url += `${valueStr}|009865|000000`;
-        else if (v < 35.4) url += `${valueStr}|FFFB26|000000`;
-        else if (v < 54.4) url += `${valueStr}|FF9835|000000`;
-        else if (v < 150.4) url += `${valueStr}|CA0034|000000`;
-        else if (v < 250.4) url += `${valueStr}|670099|000000`;
-        else if (v < 350.4) url += `${valueStr}|7E0123|000000`;
-        else url += `${valueStr}|7E0123|FFFFFF`;
+        valueStr = valueStrList.join(', ');
+
+        let fillColor = '';
+        if (v < 15.4) fillColor = `#009865`;
+        else if (v < 35.4) fillColor = `#FFFB26`;
+        else if (v < 54.4) fillColor = `#FF9835`;
+        else if (v < 150.4) fillColor = `#CA0034`;
+        else if (v < 250.4) fillColor = `#670099`;
+        else if (v < 350.4) fillColor = `#7E0123`;
+        else fillColor = `#7E0123`;
+
+        let markerIcon = {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor,
+          fillOpacity: 1,
+          scale: 12,
+          strokeColor: 'white',
+          strokeWeight: 1,
+        };
 
         let pm25desc = '';
         if (v !== 0) pm25desc = this.getPM25Explain(v);
         return {
-          iconUrl: url,
           pm25desc,
+          markerIcon,
+          valueStr,
         };
       };
 
       for (const stat of this.realTimeStatus) {
-        let lat = 0,
-          lng = 0,
-          pm25 = 0;
-        const latEntry = stat.mtDataList.find(v => v.mtName === 'LAT');
-        if (!latEntry) continue;
-
-        const lngEntry = stat.mtDataList.find(v => v.mtName === 'LNG');
-        if (!lngEntry) continue;
-
-        lat = latEntry.value;
-        lng = lngEntry.value;
+        let pm25 = 0;
 
         let mtEntries = this.userInfo.monitorTypeOfInterest.flatMap(mt => {
           const data = stat.mtDataList.find(v => v.mtName === mt);
@@ -266,29 +252,33 @@ export default {
           ];
         });
 
-        const { iconUrl, pm25desc } = getMtUrl(mtEntries);
+        const { markerIcon, valueStr, pm25desc } = getMtUrl(mtEntries);
 
-        console.info(pm25desc);
         const monitor = this.mMap.get(stat._id.monitor);
         if (!monitor) continue;
-        let title = `${monitor.desc}-${pm25desc}`;
+        let label = pm25desc
+          ? `${monitor.desc}-${pm25desc}`
+          : `${monitor.desc}`;
+
+        let lat = monitor.location[0];
+        let lng = monitor.location[1];
         ret.push({
-          title,
+          title: valueStr,
           position: { lat, lng },
           pm25,
           infoText: `<strong>${monitor.desc}</strong>`,
-          iconUrl,
+          label,
+          icon: markerIcon,
         });
       }
+      console.info(ret);
       return ret;
     },
   },
   async mounted() {
-    const legend = document.getElementById('legend');
-    this.$refs.mapRef.$mapPromise.then(map => {
-      map.controls[google.maps.ControlPosition.LEFT_CENTER].push(legend);
+    this.$gmapApiPromiseLazy().then(() => {
+      this.mapLoaded = true;
     });
-
     /*
     this.loader = this.$loading.show({
       // Optional parameters

@@ -9,7 +9,7 @@ export default {
       isAdmin: false,
       group: '',
       monitorTypeOfInterest: [],
-      alertEmail: undefined
+      alertEmail: undefined,
     },
   },
   getters: {},

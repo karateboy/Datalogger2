@@ -47,7 +47,6 @@ export default [
         action: 'read',
         resource: 'Data',
       },
-
     ],
   },
   {

@@ -255,7 +255,7 @@ export default Vue.extend({
         );
         this.errorReports = ret.data as Array<ErrorReport>;
       } catch (err) {
-        throw new Error(err);
+        console.error(`${err}`);
       }
     },
     getErrorSensorList(errorReport: ErrorReport): Array<Sensor> {
