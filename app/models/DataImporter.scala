@@ -176,7 +176,11 @@ class DataImporter(monitorOp: MonitorOp, recordOp: RecordOp, sensorOp: MqttSenso
     val docOpts =
       for (record <- reader.allWithHeaders()) yield
         try {
-          val deviceID = record("id").toDouble.formatted("%.0f")
+          val deviceID = if(record.contains("id"))
+            record("id").trim.toDouble.formatted("%.0f")
+          else
+            record("IMEI").trim.toDouble.formatted("%.0f")
+
           val time = try {
             DateTime.parse(record("time"), DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss")).toDate
           } catch {
@@ -186,7 +190,7 @@ class DataImporter(monitorOp: MonitorOp, recordOp: RecordOp, sensorOp: MqttSenso
 
           val mtRecords =
             for {mt <- mtMap.keys.toList
-                 value <- record.get(mt)
+                 value <- record.get(mt) if value.nonEmpty
                  } yield
               MtRecord(mtName = mtMap(mt), value.toDouble, MonitorStatus.NormalStat)
 
@@ -195,7 +199,8 @@ class DataImporter(monitorOp: MonitorOp, recordOp: RecordOp, sensorOp: MqttSenso
           Some(RecordList(time = time, monitor = deviceID,
             mtDataList = mtRecords))
         } catch {
-          case _: Throwable =>
+          case ex: Throwable =>
+            Logger.error("skip line", ex)
             None
         }
     val docs = docOpts.flatten
@@ -215,17 +220,21 @@ class DataImporter(monitorOp: MonitorOp, recordOp: RecordOp, sensorOp: MqttSenso
           docs.foreach(recordList=>monitors.add(recordList._id.monitor))
           for {
             monitorID <- monitors
-            current <- getPeriods(start, end, new Period(1, 0,0,0))} {
-            val monitor = monitorOp.map(monitorID)
-            dataCollectManagerOp.recalculateHourData(monitorID, current, forward = false, alwaysValid = true)(monitor.monitorTypes)
+            current <- getPeriods(start, end, new Period(1, 0,0,0))
+            monitor <- monitorOp.map.get(monitorID)
           }
+            dataCollectManagerOp.recalculateHourData(monitorID, current, forward = false, alwaysValid = true)(monitor.monitorTypes)
 
           self ! Complete
         case Failure(exception) =>
           Logger.error("Failed to import data", exception)
           self ! Complete
       }
+    } else {
+      Logger.error("no record to be upsert!")
+      self ! Complete
     }
+
     docs.size
   }
 
