@@ -1,9 +1,8 @@
 package models
 
 import akka.actor._
-import com.github.nscala_time.time.Imports.{DateTime, Period}
-import models.ModelHelper.{getHourBetween, getPeriods, waitReadyResult}
-import models.mongodb.RecordOp
+import com.github.nscala_time.time.Imports.DateTime
+import models.ModelHelper.{getHourBetween, waitReadyResult}
 import play.api._
 
 import java.io.File
@@ -14,13 +13,14 @@ import scala.concurrent.duration.{FiniteDuration, MINUTES, SECONDS}
 import scala.concurrent.{Future, blocking}
 import scala.io.{Codec, Source}
 
-case class WeatherReaderConfig(enable: Boolean, dir: String, model:String)
+case class WeatherReaderConfig(enable: Boolean, dir: String, model: String)
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object WeatherReader {
   val CR800_MODEL = "CR800"
   val CR300_MODEL = "CR300"
   val models = Seq(CR800_MODEL, CR300_MODEL)
+
   def start(configuration: Configuration, actorSystem: ActorSystem,
             sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
             recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) = {
@@ -67,7 +67,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
       throw new Exception(s"unknown ${config.model} model")
   }
 
-  for(mt<-mtList)
+  for (mt <- mtList)
     recordOp.ensureMonitorType(mt)
 
   @volatile var timer: Cancellable = context.system.scheduler.scheduleOnce(FiniteDuration(5, SECONDS), self, ParseReport)
@@ -111,7 +111,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
           }
           val dt: LocalDateTime = try {
             LocalDateTime.parse(token(0), DateTimeFormatter.ofPattern("\"yyyy-MM-dd HH:mm:ss\""))
-          }catch {
+          } catch {
             case _: DateTimeParseException =>
               LocalDateTime.parse(token(0), DateTimeFormatter.ofPattern("\"yyyy/MM/dd HH:mm:ss\""))
           }
@@ -126,7 +126,8 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
             for ((mt, idx) <- mtList.zipWithIndex) yield {
               try {
                 val value = token(idx + 2).toDouble
-                Some(monitorTypeOp.getMinMtRecordByRawValue(mt, Some(value), MonitorStatus.NormalStat))
+                val mtCase = monitorTypeOp.map(mt)
+                Some(monitorTypeOp.getMinMtRecordByRawValue(mt, Some(value), MonitorStatus.NormalStat)(mtCase.fixedM, mtCase.fixedB))
               } catch {
                 case _: Exception =>
                   None

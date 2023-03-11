@@ -1,8 +1,8 @@
 package models
 
 import com.github.nscala_time.time.Imports._
+import models.Calibration.CalibrationListMap
 import models.ModelHelper._
-import play.api.Logger
 import play.api.libs.json.Json
 
 import scala.collection.mutable
@@ -48,22 +48,12 @@ case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTi
     retOpt.getOrElse(true)
   }
 
-  def passSpanStandard(mtCase:MonitorType):Boolean = {
+  def passSpanStandard(mtCase: MonitorType): Boolean = {
     val retOpt =
-      for(span_dev_ratio<-span_dev_ratioOpt;span_dev_law<-mtCase.span_dev_law) yield
+      for (span_dev_ratio <- span_dev_ratioOpt; span_dev_law <- mtCase.span_dev_law) yield
         span_dev_ratio < span_dev_law
 
     retOpt.getOrElse(true)
-  }
-  def canCalibrate: Boolean = {
-    val retOpt =
-      for {spanValue <- span_val
-           spanStd <- span_std
-           zeroVal <- zero_val
-           } yield
-        (spanValue - zeroVal) != 0 && spanStd != 0
-
-    retOpt.fold(false)(v => v)
   }
 
   def calibrate(valueOpt: Option[Double]): Option[Double] =
@@ -74,8 +64,30 @@ case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTi
          } yield
       (value - zeroVal) * spanStd / (spanValue - zeroVal)
 
-}
+  val M: Option[Double] =
+    for {zeroVal <- zero_val
+         spanVal <- span_val
+         spanStd <- span_std if spanVal != zeroVal} yield
+      spanStd / (spanVal - zeroVal)
 
+  val B: Option[Double] =
+    for {
+      zeroVal <- zero_val
+      spanVal <- span_val
+      spanStd <- span_std if spanVal != zeroVal} yield
+      (-zeroVal * spanStd) / (spanVal - zeroVal)
+
+}
+object Calibration {
+  type CalibrationListMap = Map[String, List[(DateTime, Calibration)]]
+  val emptyCalibrationListMap = Map.empty[String, List[(DateTime, Calibration)]]
+  def findTargetCalibrationMB(calibrationListMap: CalibrationListMap, mt:String, target:DateTime): Option[(Option[Double], Option[Double])] = {
+    calibrationListMap.get(mt).flatMap(calibrationList=>{
+      val candidate = calibrationList.takeWhile(p => p._1 < target).map(_._2)
+      candidate.lastOption
+    }).map(calibration=>(calibration.M, calibration.B))
+  }
+}
 trait CalibrationDB {
 
   implicit val reads = Json.reads[Calibration]
@@ -90,18 +102,16 @@ trait CalibrationDB {
 
   def calibrationReport(mt: String, start: DateTime, end: DateTime): Seq[Calibration]
 
-  def getCalibrationMap(startDate: DateTime, endDate: DateTime)
-                       (implicit monitorTypeOp: MonitorTypeDB): Future[Map[String, List[(DateTime, Calibration)]]] = {
-    val begin = (startDate - 5.day)
-    val end = (endDate + 1.day)
+  def getCalibrationListMapFuture(startDate: DateTime, endDate: DateTime)
+                                 (implicit monitorTypeOp: MonitorTypeDB): Future[CalibrationListMap] = {
+    val begin = startDate - 3.day
+    val end = endDate
 
     val f = calibrationReportFuture(begin, end)
     f onFailure errorHandler()
     for (calibrationList <- f)
       yield {
-        import scala.collection.mutable.Map
         val resultMap = mutable.Map.empty[String, ListBuffer[(DateTime, Calibration)]]
-        val calibrationSuccessFull = calibrationList.filter { c => c.success }
         for (item <- calibrationList.filter { c => c.success } if item.monitorType != MonitorType.NO2) {
           val lb = resultMap.getOrElseUpdate(item.monitorType, ListBuffer.empty[(DateTime, Calibration)])
           lb.append((item.endTime, item))

@@ -8,6 +8,7 @@ import org.mongodb.scala.result.{InsertManyResult, UpdateResult}
 import play.api.libs.json.Json
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -38,6 +39,23 @@ trait RecordDB {
                         (monitor: String, mtList: Seq[String], startTime: Imports.DateTime, endTime: Imports.DateTime, includeRaw:Boolean = false): Future[Map[String, Seq[Record]]]
 
   def getRecordListFuture(colName: String)(startTime: Imports.DateTime, endTime: Imports.DateTime, monitors: Seq[String] = Seq(Monitor.activeId)): Future[Seq[RecordList]]
+
+  def getMtRecordMapFuture(colName: String)
+                           (monitor: String, mtList: Seq[String], startTime: Imports.DateTime, endTime: Imports.DateTime): Future[mutable.Map[String, ListBuffer[MtRecord]]] = {
+    for(recordLists <- getRecordListFuture(colName)(startTime, endTime, Seq(monitor))) yield {
+      val map = mutable.Map.empty[String, ListBuffer[MtRecord]]
+      for{recordList<-recordLists
+          mtMap = recordList.mtMap
+          mt<-mtList
+          }{
+        if(mtMap.contains(mt)){
+          val lb = map.getOrElseUpdate(mt, ListBuffer.empty[MtRecord])
+          lb.append(mtMap(mt))
+        }
+      }
+      map
+    }
+  }
 
   def getRecordWithLimitFuture(colName: String)(startTime: Imports.DateTime, endTime: Imports.DateTime, limit: Int, monitor: String = Monitor.activeId):
   Future[Seq[RecordList]]

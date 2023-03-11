@@ -255,22 +255,20 @@ trait MonitorTypeDB {
     (overLaw.getOrElse(false), overLaw.getOrElse(false))
   }
 
-  def getMinMtRecordByRawValue(mt: String, rawValue: Option[Double], status: String): MtRecord = {
+  def getMinMtRecordByRawValue(mt: String, rawValue: Option[Double], status: String)(mOpt: Option[Double], bOpt: Option[Double]): MtRecord = {
     val mtCase = map(mt)
-    val value = rawValue.map(v => {
-      val b = mtCase.fixedB.getOrElse(0d)
-      val m: Double = mtCase.fixedM.getOrElse(1)
-      BigDecimal((v + b) * m).setScale(mtCase.prec, RoundingMode.HALF_EVEN).doubleValue()
-    })
-    MtRecord(mt, value, status, rawValue = rawValue)
-  }
+    val value:Option[Double] = rawValue.map(v => {
+      if(mtCase.calibrate.getOrElse(false)){
+        val calibratedValue =
+          for {
+            m <- mOpt
+            b <- bOpt
+          } yield
+            BigDecimal((v * m) + b).setScale(mtCase.prec, RoundingMode.HALF_EVEN).doubleValue()
 
-  def getHourMtRecordByValue(mt: String, value: Option[Double], status: String): MtRecord = {
-    val mtCase = map(mt)
-    val rawValue = value.map(v => {
-      val b = mtCase.fixedB.getOrElse(0d)
-      val m: Double = mtCase.fixedM.getOrElse(1)
-      BigDecimal(v / m - b).setScale(mtCase.prec, RoundingMode.HALF_EVEN).doubleValue()
+        calibratedValue.getOrElse(v)
+      } else
+        v
     })
     MtRecord(mt, value, status, rawValue = rawValue)
   }

@@ -159,7 +159,7 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     val needCalibration = mtList.map { mt => monitorTypeOp.map(mt).calibrate.getOrElse(false) }.exists(p => p)
 
     if (needCalibration) {
-      val f2 = calibrationOp.getCalibrationMap(startTime, endTime)(monitorTypeOp)
+      val f2 = calibrationOp.getCalibrationListMapFuture(startTime, endTime)(monitorTypeOp)
       for {
         docs <- f
         calibrationMap <- f2

@@ -139,7 +139,7 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
     val needCalibration = mtList.map { mt => monitorTypeOp.map(mt).calibrate.getOrElse(false) }.exists(p => p)
 
     if (needCalibration) {
-      for (calibrationMap <- calibrationOp.getCalibrationMap(startTime, endTime)(monitorTypeOp)) yield {
+      for (calibrationMap <- calibrationOp.getCalibrationListMapFuture(startTime, endTime)(monitorTypeOp)) yield {
         rawRecords.foreach(_.doCalibrate(monitorTypeOp, calibrationMap))
         rawRecords
       }

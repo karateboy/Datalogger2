@@ -2,6 +2,7 @@ package models
 
 import akka.actor._
 import com.github.nscala_time.time.Imports._
+import models.Calibration.{CalibrationListMap, emptyCalibrationListMap, findTargetCalibrationMB}
 import models.DataCollectManager.{calculateHourAvgMap, calculateMinAvgMap}
 import models.ForwardManager.{ForwardHour, ForwardHourRecord, ForwardMin, ForwardMinRecord}
 import models.ModelHelper._
@@ -12,6 +13,7 @@ import play.api.libs.concurrent.InjectedActorSupport
 
 import javax.inject._
 import scala.collection.mutable.ListBuffer
+import scala.collection.{immutable, mutable}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS, SECONDS}
@@ -34,7 +36,16 @@ case class SetMonitorTypeState(instId: String, mt: String, state: String)
 
 case class MonitorTypeData(mt: String, var value: Double, status: String)
 
-case class ReportData(dataList: List[MonitorTypeData])
+case class ReportData(private val _dataList: List[MonitorTypeData]) {
+  def dataList(monitorTypeDB: MonitorTypeDB): List[MonitorTypeData] =
+    _dataList.map(mtd => {
+      val mtCase = monitorTypeDB.map(mtd.mt)
+      val m: Double = mtCase.fixedM.getOrElse(1d)
+      val b: Double = mtCase.fixedB.getOrElse(0d)
+      mtd.value = mtd.value * m + b
+      mtd
+    })
+}
 
 case class SignalData(mt: String, value: Boolean)
 
@@ -167,39 +178,28 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
   def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean = false)
                          (mtList: Seq[String], monitorTypeDB: MonitorTypeDB): Future[UpdateResult] = {
     val ret =
-      for (recordMap <- recordOp.getRecordMapFuture(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current)) yield {
-        import scala.collection.mutable.ListBuffer
-        var mtMap = Map.empty[String, Map[String, ListBuffer[(DateTime, Double)]]]
+      for (recordMap <- recordOp.getMtRecordMapFuture(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current)) yield {
+        val mtMap = mutable.Map.empty[String, mutable.Map[String, ListBuffer[MtRecord]]]
 
         for {
-          mtRecords <- recordMap
-          mt = mtRecords._1
-          r <- mtRecords._2
+          (mt, mtRecordList) <- recordMap
+          mtRecord <- mtRecordList
         } {
-          var statusMap = mtMap.getOrElse(mt, {
-            val map = Map.empty[String, ListBuffer[(DateTime, Double)]]
-            mtMap = mtMap ++ Map(mt -> map)
-            map
-          })
-
-          val tagInfo = MonitorStatus.getTagInfo(r.status)
+          val statusMap = mtMap.getOrElseUpdate(mt, mutable.Map.empty[String, ListBuffer[MtRecord]])
+          val tagInfo = MonitorStatus.getTagInfo(mtRecord.status)
           val status = tagInfo.statusType match {
             case StatusType.ManualValid =>
               MonitorStatus.NormalStat
             case _ =>
-              r.status
+              mtRecord.status
           }
 
-          val lb = statusMap.getOrElse(status, {
-            val l = ListBuffer.empty[(DateTime, Double)]
-            statusMap = statusMap ++ Map(status -> l)
-            mtMap = mtMap ++ Map(mt -> statusMap)
-            l
-          })
+          val lb = statusMap.getOrElseUpdate(status, ListBuffer.empty[MtRecord])
 
-          for (v <- r.value if !v.isNaN)
-            lb.append((r.time, v))
+          for (v <- mtRecord.value if !v.isNaN)
+            lb.append(mtRecord)
         }
+
         val mtDataList = calculateHourAvgMap(mtMap, alwaysValid, monitorTypeDB)
         val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
         val f = recordOp.replaceRecord(recordList)(recordOp.HourCollection)
@@ -229,7 +229,9 @@ object DataCollectManager {
       effectiveRatio = ratio
   }
 
-  def calculateMinAvgMap(monitorTypeDB: MonitorTypeDB, mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
+  def calculateMinAvgMap(monitorTypeDB: MonitorTypeDB,
+                         mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]],
+                         alwaysValid: Boolean)(calibrationMap: CalibrationListMap, dateTime: DateTime): immutable.Iterable[MtRecord] = {
     for {
       (mt, statusMap) <- mtMap
       total = statusMap.map {
@@ -309,40 +311,40 @@ object DataCollectManager {
       val mintueAvg = minuteRawAvg._1.map(rawValue => {
         val mtCase = monitorTypeDB.map(mt)
 
-        rawValue})
-      monitorTypeDB.getMinMtRecordByRawValue(mt, minuteRawAvg._1, minuteRawAvg._2)
+        rawValue
+      })
+
+      val (mOpt, bOpt) = findTargetCalibrationMB(calibrationMap, mt, dateTime).getOrElse((None, None))
+      monitorTypeDB.getMinMtRecordByRawValue(mt, minuteRawAvg._1, minuteRawAvg._2)(mOpt, bOpt)
     }
   }
 
-  def calculateHourAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]],
+  def calculateHourAvgMap(mtMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]],
                           alwaysValid: Boolean,
-                          monitorTypeDB: MonitorTypeDB) = {
+                          monitorTypeDB: MonitorTypeDB): mutable.Iterable[MtRecord] = {
     for {
       (mt, statusMap) <- mtMap
-      total = statusMap.map {
+      totalSize = statusMap.map {
         _._2.size
-      }.sum if total != 0
+      }.sum if totalSize != 0
     } yield {
-      val hourAvg: (Option[Double], String) = {
-        val totalSize = statusMap map {
-          _._2.length
-        } sum
-        val statusKV = {
-          val kv = statusMap.maxBy(kv => kv._2.length)
-          if (kv._1 == MonitorStatus.NormalStat && (alwaysValid ||
-            statusMap(kv._1).size < totalSize * effectiveRatio)) {
-            //return most status except normal
-            val noNormalStatusMap = statusMap - kv._1
-            noNormalStatusMap.maxBy(kv => kv._2.length)
-          } else
-            kv
-        }
-        val values = if (statusMap.contains(MonitorStatus.NormalStat))
-          statusMap(MonitorStatus.NormalStat).map(_._2).toList
-        else
-          List.empty[Double]
+      val status = {
+        val kv = statusMap.maxBy(kv => kv._2.length)
+        if (kv._1 == MonitorStatus.NormalStat && (alwaysValid ||
+          statusMap(kv._1).size < totalSize * effectiveRatio)) {
+          //return most status except normal
+          val noNormalStatusMap = statusMap - kv._1
+          noNormalStatusMap.maxBy(kv => kv._2.length)._1
+        } else
+          kv._1
+      }
+      val mtRecords = if (statusMap.contains(MonitorStatus.NormalStat))
+        statusMap(MonitorStatus.NormalStat)
+      else
+        ListBuffer.empty[MtRecord]
 
-        val avgOpt = if (values.length == 0)
+      def hourAccumulator(values: Seq[Double], isRaw: Boolean): Option[Double] = {
+        if (values.isEmpty)
           None
         else {
           val mtCase = monitorTypeDB.map(mt)
@@ -351,14 +353,17 @@ object DataCollectManager {
               val windDir = values
               if (mtMap.contains(MonitorType.WIN_SPEED)) {
                 val windSpeedMostStatus = mtMap(MonitorType.WIN_SPEED).maxBy(kv => kv._2.length)
-                val windSpeed = windSpeedMostStatus._2.map(_._2)
-                directionAvg(windSpeed.toList, windDir)
+                val windSpeed = windSpeedMostStatus._2
+                if (isRaw)
+                  directionAvg(windSpeed.flatMap(_.rawValue), values)
+                else
+                  directionAvg(windSpeed.flatMap(_.value), values)
               } else { //assume wind speed is all equal
                 val windSpeed =
                   for (r <- 1 to windDir.length)
                     yield 1.0
 
-                directionAvg(windSpeed.toList, windDir)
+                directionAvg(windSpeed, values)
               }
             case MonitorType.RAIN =>
               if (mtCase.accumulated.contains(true))
@@ -377,14 +382,17 @@ object DataCollectManager {
                 Some(values.sum / values.length)
           }
         }
-
-        val roundedAvg =
-          for (avg <- avgOpt) yield
-            BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
-        (roundedAvg, statusKV._1)
       }
 
-      monitorTypeDB.getHourMtRecordByValue(mt, hourAvg._1, hourAvg._2)
+      val roundedAvg =
+        for (avg <- hourAccumulator(mtRecords.flatMap(_.value), isRaw = false)) yield
+          BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
+
+      val roundedRawAvg: Option[Double] =
+        for (avg <- hourAccumulator(mtRecords.flatMap(_.rawValue), isRaw = true)) yield
+          BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
+
+      MtRecord(mt, roundedAvg, status, rawValue = roundedRawAvg)
     }
   }
 
@@ -474,7 +482,8 @@ class DataCollectManager @Inject()
     List.empty[(DateTime, String, List[MonitorTypeData])],
     List.empty[String],
     Map.empty[String, Map[ActorRef, Boolean => Unit]],
-    Map.empty[String, (DateTime, Boolean)])
+    Map.empty[String, (DateTime, Boolean)],
+    emptyCalibrationListMap)
 
   def handler(instrumentMap: Map[String, InstrumentParam],
               collectorInstrumentMap: Map[ActorRef, String],
@@ -482,7 +491,8 @@ class DataCollectManager @Inject()
               mtDataList: List[(DateTime, String, List[MonitorTypeData])],
               restartList: Seq[String],
               signalTypeHandlerMap: Map[String, Map[ActorRef, Boolean => Unit]],
-              signalDataMap: Map[String, (DateTime, Boolean)]): Receive = {
+              signalDataMap: Map[String, (DateTime, Boolean)],
+              calibrationListMap: CalibrationListMap): Receive = {
     case ForwardHour =>
       for (forwardManager <- forwardManagerOpt)
         forwardManager ! ForwardHour
@@ -543,7 +553,7 @@ class DataCollectManager @Inject()
         context become handler(
           instrumentMap + (inst._id -> instrumentParam),
           collectorInstrumentMap + (collector -> inst._id),
-          latestDataMap, mtDataList, restartList, signalTypeHandlerMap, signalDataMap)
+          latestDataMap, mtDataList, restartList, signalTypeHandlerMap, signalDataMap, calibrationListMap)
       }
 
     case StopInstrument(id: String) =>
@@ -559,15 +569,16 @@ class DataCollectManager @Inject()
         })
         param.actor ! PoisonPill
 
-        if (calibratorOpt == Some(param.actor)) {
+        if (calibratorOpt.contains(param.actor)) {
           calibratorOpt = None
-        } else if (digitalOutputOpt == Some(param.actor)) {
+        } else if (digitalOutputOpt.contains(param.actor)) {
           digitalOutputOpt = None
         }
 
         if (!restartList.contains(id))
           context become handler(instrumentMap - id, collectorInstrumentMap - param.actor,
-            latestDataMap -- param.mtList, mtDataList, restartList, filteredSignalHandlerMap, signalDataMap)
+            latestDataMap -- param.mtList, mtDataList, restartList,
+            filteredSignalHandlerMap, signalDataMap, calibrationListMap)
         else {
           val removed = restartList.filter(_ != id)
           val f = instrumentOp.getInstrumentFuture(id)
@@ -576,23 +587,24 @@ class DataCollectManager @Inject()
               self ! StartInstrument(value)
           })
           context become handler(instrumentMap - id, collectorInstrumentMap - param.actor,
-            latestDataMap -- param.mtList, mtDataList, removed, filteredSignalHandlerMap, signalDataMap)
+            latestDataMap -- param.mtList, mtDataList, removed,
+            filteredSignalHandlerMap, signalDataMap, calibrationListMap)
         }
       }
 
     case RestartInstrument(id) =>
       self ! StopInstrument(id)
       context become handler(instrumentMap, collectorInstrumentMap,
-        latestDataMap, mtDataList, restartList :+ id, signalTypeHandlerMap, signalDataMap)
+        latestDataMap, mtDataList, restartList :+ id, signalTypeHandlerMap, signalDataMap, calibrationListMap)
 
     case RestartMyself =>
       val id = collectorInstrumentMap(sender)
       Logger.info(s"restart $id")
       self ! RestartInstrument(id)
 
-    case ReportData(dataList) =>
+    case reportData: ReportData =>
       val now = DateTime.now
-
+      val dataList: List[MonitorTypeData] = reportData.dataList(monitorTypeOp)
       for (instId <- collectorInstrumentMap.get(sender)) {
 
         val pairs =
@@ -608,7 +620,7 @@ class DataCollectManager @Inject()
 
         context become handler(instrumentMap, collectorInstrumentMap,
           latestDataMap ++ pairs, (DateTime.now, instId, dataList) :: mtDataList, restartList,
-          signalTypeHandlerMap, signalDataMap)
+          signalTypeHandlerMap, signalDataMap, calibrationListMap)
       }
 
     case CalculateData => {
@@ -667,11 +679,14 @@ class DataCollectManager @Inject()
           }
           val docs = secRecordMap map { r => {
             val mtDataSeq = r._2.map(pair => {
-              val mt = pair._1
-              monitorTypeOp.getMinMtRecordByRawValue(pair._1, Some(pair._2._1), pair._2._2)
+              val (mt, (value, status)) = pair
+              val mtCase = monitorTypeOp.map(mt)
+              monitorTypeOp.getMinMtRecordByRawValue(pair._1, Some(pair._2._1), pair._2._2)(mtCase.fixedM, mtCase.fixedB)
             })
 
-            r._1 -> RecordList(mtDataSeq, RecordListID(r._1, Monitor.activeId)) }}
+            r._1 -> RecordList(mtDataSeq, RecordListID(r._1, Monitor.activeId))
+          }
+          }
 
           val sortedDocs = docs.toSeq.sortBy { x => x._1 } map (_._2)
           if (sortedDocs.nonEmpty)
@@ -679,7 +694,7 @@ class DataCollectManager @Inject()
         }
       }
 
-      def calculateMinData(current: DateTime): Future[UpdateResult] = {
+      def calculateMinData(current: DateTime, calibrationMap: CalibrationListMap): Future[UpdateResult] = {
         import scala.collection.mutable.Map
         val mtMap = Map.empty[String, Map[String, ListBuffer[(String, DateTime, Double)]]]
 
@@ -735,12 +750,12 @@ class DataCollectManager @Inject()
         if (LoggerConfig.config.storeSecondData)
           flushSecData(priorityMtMap)
 
-        val minuteMtAvgList = calculateMinAvgMap(monitorTypeOp, priorityMtMap, false)
+        val minuteMtAvgList = calculateMinAvgMap(monitorTypeOp, priorityMtMap, alwaysValid = false)(calibrationMap, current.minusMinutes(1))
 
         checkMinDataAlarm(minuteMtAvgList)
 
         context become handler(instrumentMap, collectorInstrumentMap,
-          latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap)
+          latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap, calibrationListMap)
         val f = recordOp.upsertRecord(RecordList(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId))(recordOp.MinCollection)
         f onComplete {
           case Success(_) =>
@@ -753,7 +768,7 @@ class DataCollectManager @Inject()
 
       val current = DateTime.now().withSecondOfMinute(0).withMillisOfSecond(0)
       if (LoggerConfig.config.selfMonitor) {
-        val f = calculateMinData(current)
+        val f = calculateMinData(current, calibrationListMap)
         f onComplete {
           case Success(_) =>
             if (current.getMinuteOfHour == 0) {
@@ -799,7 +814,7 @@ class DataCollectManager @Inject()
         context become handler(
           instrumentMap + (instId -> param),
           collectorInstrumentMap,
-          latestDataMap, mtDataList, restartList, signalTypeHandlerMap, signalDataMap)
+          latestDataMap, mtDataList, restartList, signalTypeHandlerMap, signalDataMap, calibrationListMap)
       }
 
     case ManualZeroCalibration(instId) =>
@@ -866,7 +881,7 @@ class DataCollectManager @Inject()
       val filteredSignalMap = signalDataMap.filter(p => p._2._1.after(now - 6.seconds))
       val resultMap = filteredSignalMap map { p => p._1 -> p._2._2 }
       context become handler(instrumentMap, collectorInstrumentMap, latestDataMap,
-        mtDataList, restartList, signalTypeHandlerMap, filteredSignalMap)
+        mtDataList, restartList, signalTypeHandlerMap, filteredSignalMap, calibrationListMap)
 
       sender() ! resultMap
 
@@ -898,14 +913,14 @@ class DataCollectManager @Inject()
         }
       }
       context become handler(instrumentMap, collectorInstrumentMap, latestDataMap,
-        mtDataList, restartList, signalTypeHandlerMap, signalDataMap)
+        mtDataList, restartList, signalTypeHandlerMap, signalDataMap, calibrationListMap)
       sender ! latestMap
 
     case AddSignalTypeHandler(mtId, signalHandler) =>
       var handlerMap = signalTypeHandlerMap.getOrElse(mtId, Map.empty[ActorRef, Boolean => Unit])
       handlerMap = handlerMap + (sender() -> signalHandler)
       context become handler(instrumentMap, collectorInstrumentMap, latestDataMap,
-        mtDataList, restartList, signalTypeHandlerMap + (mtId -> handlerMap), signalDataMap)
+        mtDataList, restartList, signalTypeHandlerMap + (mtId -> handlerMap), signalDataMap, calibrationListMap)
 
     case WriteSignal(mtId, bit) =>
       monitorTypeOp.logDiMonitorType(alarmOp, mtId, bit)
@@ -919,11 +934,11 @@ class DataCollectManager @Inject()
         signal.mt -> (DateTime.now(), signal.value)
       }).toMap
       context become handler(instrumentMap, collectorInstrumentMap, latestDataMap,
-        mtDataList, restartList, signalTypeHandlerMap, signalDataMap ++ updateMap)
+        mtDataList, restartList, signalTypeHandlerMap, signalDataMap ++ updateMap, calibrationListMap)
 
     case CheckInstruments =>
       val now = DateTime.now()
-      val f = recordOp.getRecordMapFuture(recordOp.MinCollection)(Monitor.activeId, monitorTypeOp.realtimeMtvList,
+      val f = recordOp.getMtRecordMapFuture(recordOp.MinCollection)(Monitor.activeId, monitorTypeOp.realtimeMtvList,
         now.minusHours(1), now)
       for (minRecordMap <- f) {
         for (kv <- instrumentMap) {

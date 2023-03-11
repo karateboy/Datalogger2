@@ -3,6 +3,7 @@ package models
 import com.github.nscala_time.time
 import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
+import models.Calibration.CalibrationListMap
 import play.api.libs.json.{Json, OWrites, Reads}
 
 import java.util.Date
@@ -26,9 +27,9 @@ case class RecordList(var mtDataList: Seq[MtRecord], _id: RecordListID) {
     pairs.toMap
   }
 
-  def doCalibrate(monitorTypeOp: MonitorTypeDB, calibrationMap: Map[String, List[(DateTime, Calibration)]]): Unit = {
-    def getCalibrateItem(mt: String): Option[(time.Imports.DateTime, Calibration)] = {
-      def findCalibration(calibrationList: List[(DateTime, Calibration)]): Option[(Imports.DateTime, Calibration)] = {
+  def doCalibrate(monitorTypeOp: MonitorTypeDB, calibrationMap: CalibrationListMap): Unit = {
+    def getCalibrateItem(mt: String): Option[(DateTime, Calibration)] = {
+      def findCalibration(calibrationList: List[(DateTime, Calibration)]): Option[(DateTime, Calibration)] = {
         val recordTime: DateTime = new DateTime(_id.time)
         val candidate = calibrationList.takeWhile(p => p._1 < recordTime)
         candidate.lastOption

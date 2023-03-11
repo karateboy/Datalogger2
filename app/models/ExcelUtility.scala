@@ -382,14 +382,14 @@ class ExcelUtility @Inject()
       row.createCell(8).setCellValue(monitorTypeOp.format(mt, mtCase.span_dev_law))
       val mOpt =
         for {span_val <- calibration.span_val; zero_val <- calibration.zero_val;
-             span_std <- mtCase.span if span_val - zero_val != 0} yield
+             span_std <- calibration.span_std if span_val - zero_val != 0} yield
           span_std / (span_val - zero_val)
 
       val mStr = mOpt.map(s"%.2f".format(_)).getOrElse("-")
       row.createCell(9).setCellValue(mStr)
       val bOpt =
         for {span_val <- calibration.span_val; zero_val <- calibration.zero_val;
-             span_std <- mtCase.span if span_val - zero_val != 0} yield
+             span_std <- calibration.span_std if span_val - zero_val != 0} yield
           (-zero_val * span_std) / (span_val - zero_val)
 
       val bStr = bOpt.map(s"%.2f".format(_)).getOrElse("-")
