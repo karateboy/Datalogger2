@@ -99,6 +99,8 @@ case class WriteSignal(mtId: String, bit: Boolean)
 
 case object CheckInstruments
 
+case class UpdateCalibrationMap(map:CalibrationListMap)
+
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentDB,
                                      recordOp: RecordDB, alarmOp: AlarmDB, sysConfigDB: SysConfigDB,
@@ -783,6 +785,11 @@ class DataCollectManager @Inject()
         }
       }
     }
+
+    case UpdateCalibrationMap(map) =>
+      context become handler(instrumentMap, collectorInstrumentMap,
+        latestDataMap, mtDataList, restartList,
+        signalTypeHandlerMap, signalDataMap, map)
 
     case SetState(instId, state) =>
       Logger.info(s"SetState($instId, $state)")
