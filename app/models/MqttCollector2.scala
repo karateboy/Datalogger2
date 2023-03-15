@@ -264,7 +264,9 @@ class MqttCollector2 @Inject()(monitorOp: MonitorOp, alarmOp: AlarmOp,
           val sensor = sensorMap(message.id)
           val mtList = mtDataList.map(_.mtName)
           val monitor = monitorOp.map(sensor.monitor)
-          monitor.location = Some(Seq(message.lat, message.lon))
+          if(monitor.location.isEmpty)
+            monitor.location = Some(Seq(message.lat, message.lon))
+
           if(!mtList.forall(monitor.monitorTypes.contains(_))){
             monitor.monitorTypes = Set(monitor.monitorTypes ++ mtList :_*).toSeq
           }

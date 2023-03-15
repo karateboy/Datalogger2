@@ -4,7 +4,7 @@
       <b-table
         responsive
         :fields="columns"
-        :items="monitors"
+        :items="editMonitors"
         bordered
         sticky-header
         style="min-height: 600px"
@@ -28,6 +28,15 @@
             :options="monitorTypes"
             multiple
             @input="markDirty(row.item)"
+          />
+        </template>
+        <template #cell(locationStr)="row">
+          <b-form-input
+            v-model="row.item.locationStr"
+            @change="
+              markDirty(row.item);
+              checkLocation(row.item.locationStr);
+            "
           />
         </template>
       </b-table>
@@ -59,23 +68,12 @@ import Vue from 'vue';
 const Ripple = require('vue-ripple-directive');
 import { mapActions, mapState } from 'vuex';
 import axios from 'axios';
-/*
-interface MonitorType {
-  _id: string;
-  desp: string;
-  unit: string;
-  prec: number;
-  order: number;
-  signalType: boolean;
-  std_law?: number;
-  std_internal?: number;
-  zd_internal?: number;
-  zd_law?: number;
-  span?: number;
-  span_dev_internal?: number;
-  span_dev_law?: number;
-  measuringBy?: Array<string>;
-} */
+import { Monitor } from '../store/monitors/types';
+
+interface EditMonitor extends Monitor {
+  dirty?: boolean;
+  locationStr?: string;
+}
 
 export default Vue.extend({
   components: {},
@@ -95,18 +93,22 @@ export default Vue.extend({
       {
         key: 'desc',
         label: '名稱',
-        sortable: true,
       },
       {
         key: 'monitorTypes',
         label: '測項',
-        sortable: true,
+      },
+      {
+        key: 'locationStr',
+        label: '位置',
       },
     ];
 
+    const editMonitors = new Array<EditMonitor>();
     return {
       display: false,
       columns,
+      editMonitors,
     };
   },
   computed: {
@@ -116,25 +118,60 @@ export default Vue.extend({
   async mounted() {
     await this.fetchMonitors();
     await this.fetchMonitorTypes();
+    this.copyMonitor();
   },
   methods: {
     ...mapActions('monitors', ['fetchMonitors']),
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     save() {
       const all = Array<any>();
-      for (const m of this.monitors) {
+      for (const m of this.editMonitors) {
         if (m.dirty) {
+          if (m.locationStr) {
+            try {
+              m.location = m.locationStr.split(',').map(t => parseFloat(t));
+            } catch (err) {}
+          }
           all.push(axios.put(`/Monitor/${m._id}`, m));
         }
       }
 
       Promise.all(all).then(() => {
         this.fetchMonitors();
+        this.copyMonitor();
         this.$bvModal.msgBoxOk('成功');
       });
     },
+    copyMonitor() {
+      this.editMonitors = new Array<EditMonitor>();
+      for (const m of this.monitors) {
+        let monitor = m as EditMonitor;
+        monitor.dirty = false;
+        monitor.locationStr = monitor.location
+          ? monitor.location.join(',')
+          : '';
+        this.editMonitors.push(monitor);
+      }
+    },
     rollback() {
       this.fetchMonitors();
+      this.copyMonitor();
+    },
+    checkLocation(posStr: string | undefined): boolean {
+      try {
+        if (posStr === undefined) return true;
+
+        let pos = posStr.split(',').map(t => parseFloat(t));
+
+        if (pos.length === 2 && pos.every(l => !isNaN(l))) return true;
+        else {
+          this.$bvModal.msgBoxOk(`${posStr}不是有效的位置!`);
+          return false;
+        }
+      } catch (err) {
+        this.$bvModal.msgBoxOk(`${posStr}不是有效的位置!`);
+        return false;
+      }
     },
     async deleteMonitor(row: any) {
       const confirm = await this.$bvModal.msgBoxConfirm(
