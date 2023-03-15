@@ -405,6 +405,7 @@ class DataCollectManager @Inject()
 (config: Configuration, recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
  dataCollectManagerOp: DataCollectManagerOp,
  instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentDB,
+ calibrationDB: CalibrationDB,
  sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
   Logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
   DataCollectManager.updateEffectiveRatio(sysConfig)
@@ -627,6 +628,12 @@ class DataCollectManager @Inject()
 
     case CalculateData => {
       import scala.collection.mutable.ListBuffer
+
+      val now = DateTime.now()
+      //Update Calibration Map
+      for(map<-calibrationDB.getCalibrationListMapFuture(now.minusDays(2), now)(monitorTypeOp)){
+        self ! UpdateCalibrationMap(map)
+      }
 
       def flushSecData(recordMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]]) {
 
