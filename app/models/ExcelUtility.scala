@@ -385,14 +385,14 @@ class ExcelUtility @Inject()
              span_std <- calibration.span_std if span_val - zero_val != 0} yield
           span_std / (span_val - zero_val)
 
-      val mStr = mOpt.map(s"%.2f".format(_)).getOrElse("-")
+      val mStr = mOpt.map(s"%.6f".format(_)).getOrElse("-")
       row.createCell(9).setCellValue(mStr)
       val bOpt =
         for {span_val <- calibration.span_val; zero_val <- calibration.zero_val;
              span_std <- calibration.span_std if span_val - zero_val != 0} yield
           (-zero_val * span_std) / (span_val - zero_val)
 
-      val bStr = bOpt.map(s"%.2f".format(_)).getOrElse("-")
+      val bStr = bOpt.map(s"%.6f".format(_)).getOrElse("-")
       row.createCell(10).setCellValue(bStr)
       val statusCell = row.createCell(11)
       if (calibration.success(monitorTypeOp)) {
