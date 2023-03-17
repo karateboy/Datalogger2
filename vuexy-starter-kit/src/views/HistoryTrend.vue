@@ -93,6 +93,27 @@
                 value-type="timestamp"
                 :show-second="false"
               />
+              <b-button
+                variant="gradient-primary"
+                class="ml-1"
+                size="md"
+                @click="setThisWeek"
+                >本週</b-button
+              >
+              <b-button
+                variant="gradient-primary"
+                class="ml-1"
+                size="md"
+                @click="setThisMonth"
+                >本月</b-button
+              >
+              <b-button
+                variant="gradient-primary"
+                class="ml-1"
+                size="md"
+                @click="setThisQ"
+                >本季</b-button
+              >
             </b-form-group>
           </b-col>
           <!-- submit and reset -->
@@ -149,7 +170,7 @@ export default Vue.extend({
   },
 
   data() {
-    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
+    const range = [moment().subtract(7, 'days').valueOf(), moment().valueOf()];
     return {
       statusFilters: [
         { id: 'all', txt: '全部' },
@@ -314,6 +335,18 @@ export default Vue.extend({
       }/${this.form.range[1]}`;
 
       window.open(url);
+    },
+    setThisWeek() {
+      const startOfTheWeek = moment().startOf('week').valueOf();
+      this.form.range = [startOfTheWeek, moment().valueOf()];
+    },
+    setThisMonth() {
+      const startOfThisMonth = moment().startOf('month').valueOf();
+      this.form.range = [startOfThisMonth, moment().valueOf()];
+    },
+    setThisQ() {
+      const startOfThisQ = moment().startOf('Q').valueOf();
+      this.form.range = [startOfThisQ, moment().valueOf()];
     },
   },
 });

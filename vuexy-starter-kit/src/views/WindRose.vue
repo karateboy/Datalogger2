@@ -4,17 +4,6 @@
       <b-form @submit.prevent>
         <b-row>
           <b-col cols="12">
-            <b-form-group label="測點" label-for="monitor" label-cols-md="3">
-              <v-select
-                id="monitor"
-                v-model="form.monitor"
-                label="desc"
-                :reduce="mt => mt._id"
-                :options="monitors"
-              />
-            </b-form-group>
-          </b-col>
-          <b-col cols="12">
             <b-form-group label="方位" label-for="nWay" label-cols-md="3">
               <v-select
                 id="nWay"
@@ -101,7 +90,7 @@ export default Vue.extend({
       moment().startOf('days').subtract(1, 'days').valueOf(),
       moment().startOf('days').valueOf(),
     ];
-    let monitor: string | undefined;
+    let monitor: string | undefined = 'self';
     let monitorType: string = 'me';
     let nWays = [8, 16, 32];
     let errorMsg: string = '';

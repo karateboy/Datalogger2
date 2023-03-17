@@ -171,6 +171,7 @@ export default Vue.extend({
     };
   },
   computed: {
+    ...mapState(['period']),
     ...mapState('user', ['userInfo']),
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap']),
@@ -207,9 +208,12 @@ export default Vue.extend({
     await this.initRealtimeChart();
   },
   watch: {
-    'userInfo.monitorTypeOfInterest': function(){
+    'userInfo.monitorTypeOfInterest': function () {
       for (const mt of this.userInfo.monitorTypeOfInterest) this.query(mt);
-    }
+    },
+    period(newValue) {
+      for (const mt of this.userInfo.monitorTypeOfInterest) this.query(mt);
+    },
   },
   beforeDestroy() {
     clearInterval(this.refreshTimer);
@@ -373,9 +377,14 @@ export default Vue.extend({
     },
     async query(mt: string) {
       const now = new Date().getTime();
-      const oneDayBefore = now - 3 * 24 * 60 * 60 * 1000;
+      let start = now - 3 * 24 * 60 * 60 * 1000;
+      if (this.period === 'week') start = moment().startOf('week').valueOf();
+      else if (this.period === 'month')
+        start = moment().startOf('month').valueOf();
+      else if (this.period === 'quarter')
+        start = moment().startOf('quarter').valueOf();
       const monitors = 'me';
-      const url = `/HistoryTrend/${monitors}/${mt}/Min/all/${oneDayBefore}/${now}`;
+      const url = `/HistoryTrend/${monitors}/${mt}/Min/all/${start}/${now}`;
       const res = await axios.get(url);
       const ret: highcharts.Options = res.data;
 
@@ -391,6 +400,11 @@ export default Vue.extend({
 
       let mtInfo = this.mtMap.get(mt) as MonitorType;
       ret.title!.text = `${mtInfo.desp}72小時趨勢圖`;
+      if (this.period === 'week') ret.title!.text = `${mtInfo.desp}本周趨勢圖`;
+      else if (this.period === 'month')
+        ret.title!.text = `${mtInfo.desp}本月趨勢圖`;
+      else if (this.period === 'quarter')
+        ret.title!.text = `${mtInfo.desp}本季趨勢圖`;
 
       ret.colors = [
         '#7CB5EC',

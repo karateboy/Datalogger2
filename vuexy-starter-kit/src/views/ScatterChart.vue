@@ -17,17 +17,16 @@
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="測項"
-              label-for="monitorType"
+              label="土壤氣體"
+              label-for="earthAir"
               label-cols-md="3"
             >
               <v-select
-                id="monitorType"
-                v-model="form.monitorTypes"
-                label="desp"
-                :reduce="mt => mt._id"
-                :options="activatedMonitorTypes"
-                multiple
+                id="earthAir"
+                v-model="form.earthAir"
+                label="desc"
+                :reduce="a => a.type"
+                :options="earthAir"
               />
             </b-form-group>
           </b-col>
@@ -48,21 +47,6 @@
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="狀態"
-              label-for="statusFilter"
-              label-cols-md="3"
-            >
-              <v-select
-                id="statusFilter"
-                v-model="form.statusFilter"
-                label="txt"
-                :reduce="dt => dt.id"
-                :options="statusFilters"
-              />
-            </b-form-group>
-          </b-col>
-          <b-col cols="12">
-            <b-form-group
               label="資料區間"
               label-for="dataRange"
               label-cols-md="3"
@@ -76,6 +60,27 @@
                 value-type="timestamp"
                 :show-second="false"
               />
+              <b-button
+                variant="gradient-primary"
+                class="ml-1"
+                size="md"
+                @click="setThisWeek"
+                >本週</b-button
+              >
+              <b-button
+                variant="gradient-primary"
+                class="ml-1"
+                size="md"
+                @click="setThisMonth"
+                >本月</b-button
+              >
+              <b-button
+                variant="gradient-primary"
+                class="ml-1"
+                size="md"
+                @click="setThisQ"
+                >本季</b-button
+              >
             </b-form-group>
           </b-col>
           <!-- submit and reset -->
@@ -164,9 +169,24 @@ export default Vue.extend({
           desc: '點圖',
         },
       ],
+      earthAir: [
+        {
+          type: 'O2CO2',
+          desc: 'O2 vs CO2',
+        },
+        {
+          type: 'CO2N2',
+          desc: 'CO2 vs N2',
+        },
+        {
+          type: 'CO2N2/O2',
+          desc: 'CO2 vs N2/O2',
+        },
+      ],
       form: {
         monitors: Array<string>(),
         monitorTypes: Array<string>(),
+        earthAir: 'O2CO2',
         dataType: 'hour',
         statusFilter: 'all',
         range,
@@ -203,6 +223,17 @@ export default Vue.extend({
     ...mapActions('monitors', ['fetchMonitors']),
     ...mapMutations(['setLoading']),
     async query() {
+      switch (this.form.earthAir) {
+        case 'O2CO2':
+          this.form.monitorTypes = ['O2', 'CO2'];
+          break;
+        case 'CO2N2':
+          this.form.monitorTypes = ['CO2', 'N2'];
+          break;
+        case 'CO2N2/O2':
+          this.form.monitorTypes = ['CO2', 'N2/O2'];
+          break;
+      }
       if (this.form.monitorTypes.length !== 2) {
         this.$bvModal.msgBoxOk('測項數必須為2個');
         return;
@@ -287,6 +318,18 @@ export default Vue.extend({
       } finally {
         this.setLoading({ loading: false });
       }
+    },
+    setThisWeek() {
+      const startOfTheWeek = moment().startOf('week').valueOf();
+      this.form.range = [startOfTheWeek, moment().valueOf()];
+    },
+    setThisMonth() {
+      const startOfThisMonth = moment().startOf('month').valueOf();
+      this.form.range = [startOfThisMonth, moment().valueOf()];
+    },
+    setThisQ() {
+      const startOfThisQ = moment().startOf('Q').valueOf();
+      this.form.range = [startOfThisQ, moment().valueOf()];
     },
   },
 });

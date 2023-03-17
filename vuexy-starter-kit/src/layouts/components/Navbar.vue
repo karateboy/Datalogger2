@@ -15,6 +15,30 @@
     >
       <dark-Toggler class="d-none d-lg-block" />
       <h2 class="m-0">彰濱基線資訊系統</h2>
+      <b-form-group v-if="homePage" label="" label-for="dataRange">
+        <b-button
+          variant="gradient-primary"
+          class="ml-1"
+          size="md"
+          @click="setThisWeek"
+          >本週</b-button
+        >
+        <b-button
+          variant="gradient-primary"
+          class="ml-1"
+          size="md"
+          @click="setThisMonth"
+          >本月</b-button
+        >
+        <b-button
+          variant="gradient-primary"
+          class="ml-1"
+          size="md"
+          @click="setThisQ"
+          >本季</b-button
+        >
+      </b-form-group>
+      <h1 v-if="homePage"></h1>
     </div>
 
     <b-navbar-nav class="nav align-items-center ml-auto">
@@ -71,7 +95,7 @@
 <script>
 import DarkToggler from '@core/layouts/components/app-navbar/components/DarkToggler.vue';
 import axios from 'axios';
-import { mapState } from 'vuex';
+import { mapState, mapMutations } from 'vuex';
 import jscookie from 'js-cookie';
 import User from '../../views/User.vue';
 
@@ -100,8 +124,16 @@ export default {
 
       return '使用者';
     },
+    homePage() {
+      if (this.$route.path == '/' || this.$route.path == '/home') {
+        return true;
+      } else {
+        return false;
+      }
+    },
   },
   methods: {
+    ...mapMutations(['setPeriod']),
     logout() {
       axios.get('/logout').then(() => {
         jscookie.remove('authentication');
@@ -114,6 +146,15 @@ export default {
     },
     onUpdate() {
       this.$bvModal.hide('userModal');
+    },
+    setThisWeek() {
+      this.setPeriod('week');
+    },
+    setThisMonth() {
+      this.setPeriod('month');
+    },
+    setThisQ() {
+      this.setPeriod('quarter');
     },
   },
 };

@@ -33,9 +33,20 @@ export default [
       },
       {
         title: '地下水查詢',
-        route: 'underground-water',
-        action: 'read',
-        resource: 'Data',
+        children: [
+          {
+            title: '地下水採樣資料',
+            route: 'underground-water',
+            action: 'read',
+            resource: 'Data',
+          },
+          {
+            title: '地下水即時監測',
+            route: 'history-data',
+            action: 'read',
+            resource: 'Data',
+          },
+        ],
       },
       {
         title: '土壤氣體查詢',

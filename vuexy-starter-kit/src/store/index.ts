@@ -17,6 +17,7 @@ const store: StoreOptions<RootState> = {
     isLoading: false,
     loadingMessage: '...',
     login: false,
+    period: 'week',
   },
   mutations: {
     setLoading(state, param) {
@@ -26,6 +27,9 @@ const store: StoreOptions<RootState> = {
     },
     setLogin(state, login) {
       state.login = login;
+    },
+    setPeriod(state, period) {
+      state.period = period;
     },
   },
   modules: {
