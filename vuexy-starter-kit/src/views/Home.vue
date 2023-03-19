@@ -401,7 +401,7 @@ export default Vue.extend({
       const oneHourBefore = now - 60 * 60 * 1000;
       const url = `/HistoryTrend/${
         this.activeID
-      }/${false}/${mt}/Min/all/${oneHourBefore}/${now}`;
+      }/${mt}/${false}/Min/all/${oneHourBefore}/${now}`;
       const res = await axios.get(url);
       const ret: highcharts.Options = res.data;
 
