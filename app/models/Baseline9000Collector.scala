@@ -256,9 +256,10 @@ class Baseline9000Collector @Inject()
         }
       } onFailure serialErrorHandler
 
-    case ReportData(mtDataList) =>
+    case reportData:ReportData =>
       if(calibrateRecordStart){
-        val data = mtDataList.filter { data => data.mt == mt }
+        val dataList = reportData.dataList(monitorTypeOp)
+        val data = dataList.filter { data => data.mt == mt }
         context become calibrationHandler(calibrationType, mt, startTime, data ::: calibrationDataList, zeroValue)
       }
 

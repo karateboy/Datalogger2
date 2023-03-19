@@ -21,7 +21,13 @@ class ExcelUtility @Inject()
   val docRoot = environment.rootPath + "/report_template/"
 
   def exportChartData(chart: HighchartData, monitorTypes: Array[String], showSec: Boolean): File = {
-    val precArray = monitorTypes.map { mt => monitorTypeOp.map(mt).prec }
+    val precArray = monitorTypes.map { mt =>
+    if(monitorTypeOp.map.contains(mt))
+      monitorTypeOp.map(mt).prec
+    else{
+      val realType = MonitorType.getRealType(mt)
+      monitorTypeOp.map(realType).prec
+    }}
     exportChartData(chart, precArray, showSec)
   }
 
@@ -372,21 +378,21 @@ class ExcelUtility @Inject()
       row.createCell(4).setCellValue(monitorTypeOp.format(mt, mtCase.zd_law))
       row.createCell(5).setCellValue(monitorTypeOp.format(mt, calibration.span_val))
       row.createCell(6).setCellValue(monitorTypeOp.format(mt, calibration.span_std))
-      row.createCell(7).setCellValue(monitorTypeOp.format(mt, calibration.span_dev))
+      row.createCell(7).setCellValue(monitorTypeOp.format(mt, calibration.span_devOpt))
       row.createCell(8).setCellValue(monitorTypeOp.format(mt, mtCase.span_dev_law))
       val mOpt =
         for {span_val <- calibration.span_val; zero_val <- calibration.zero_val;
-             span_std <- mtCase.span if span_val - zero_val != 0} yield
+             span_std <- calibration.span_std if span_val - zero_val != 0} yield
           span_std / (span_val - zero_val)
 
-      val mStr = mOpt.map(s"%.2f".format(_)).getOrElse("-")
+      val mStr = mOpt.map(s"%.6f".format(_)).getOrElse("-")
       row.createCell(9).setCellValue(mStr)
       val bOpt =
         for {span_val <- calibration.span_val; zero_val <- calibration.zero_val;
-             span_std <- mtCase.span if span_val - zero_val != 0} yield
+             span_std <- calibration.span_std if span_val - zero_val != 0} yield
           (-zero_val * span_std) / (span_val - zero_val)
 
-      val bStr = bOpt.map(s"%.2f".format(_)).getOrElse("-")
+      val bStr = bOpt.map(s"%.6f".format(_)).getOrElse("-")
       row.createCell(10).setCellValue(bStr)
       val statusCell = row.createCell(11)
       if (calibration.success(monitorTypeOp)) {

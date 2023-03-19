@@ -20,7 +20,7 @@ object AbstractCollector {
 }
 
 abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
-                                 alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
+                                 alarmOp: AlarmDB, monitorTypeDB: MonitorTypeDB,
                                  calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                                 (instId: String, desc: String, deviceConfig: DeviceConfig, protocol: ProtocolParam) extends Actor {
 
@@ -342,12 +342,12 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
       val values = for {mt <- deviceConfig.monitorTypes.getOrElse(List.empty[String])} yield {
         val calibrations = calibrationReadingList.flatMap {
           reading =>
-            reading.dataList.filter {
+            reading.dataList(monitorTypeDB).filter {
               _.mt == mt
             }.map { r => r.value }
         }
 
-        if (calibrations.length == 0) {
+        if (calibrations.isEmpty) {
           Logger.warn(s"No calibration data for $mt")
           (mt, 0d)
         } else
@@ -380,7 +380,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           for (mt <- deviceConfig.monitorTypes.getOrElse(List.empty[String])) {
             val zero = zeroMap.get(mt)
             val span = spanMap.get(mt)
-            val spanStd = monitorTypeOp.map(mt).span
+            val spanStd = monitorTypeDB.map(mt).span
             val cal = Calibration(mt, startTime, endTime, zero, spanStd, span)
             calibrationOp.insertFuture(cal)
           }
@@ -392,7 +392,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
               if (calibrationType.zero)
                 Calibration(mt, startTime, endTime, values, None, None)
               else {
-                val spanStd = monitorTypeOp.map(mt).span
+                val spanStd = monitorTypeDB.map(mt).span
                 Calibration(mt, startTime, endTime, None, spanStd, values)
               }
             calibrationOp.insertFuture(cal)

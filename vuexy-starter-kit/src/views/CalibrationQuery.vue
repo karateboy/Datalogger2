@@ -261,7 +261,7 @@ export default Vue.extend({
             ) {
               if (item.span_val - item.zero_val !== 0) {
                 let m = item.span_std / (item.span_val - item.zero_val);
-                return m.toFixed(2);
+                return m.toFixed(6);
               }
             }
 
@@ -285,7 +285,7 @@ export default Vue.extend({
                 let b =
                   (-item.zero_val * item.span_std) /
                   (item.span_val - item.zero_val);
-                return b.toFixed(2);
+                return b.toFixed(6);
               }
             }
 
