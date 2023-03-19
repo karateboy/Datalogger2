@@ -88,38 +88,26 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
 
   override def getRecordMapFuture(colName: String)
                                  (monitor: String, mtList: Seq[String],
-                                  startTime: DateTime, endTime: DateTime): Future[Map[String, Seq[Record]]] = {
-    implicit val session: DBSession = ReadOnlyAutoSession
-    val tab: SQLSyntax = getTab(colName)
-    val rawRecords =
-      sql"""
+                                  startTime: DateTime, endTime: DateTime, includeRaw: Boolean): Future[Map[String, Seq[Record]]] =
+    Future {
+      implicit val session: DBSession = ReadOnlyAutoSession
+      val tab: SQLSyntax = getTab(colName)
+      val recordLists =
+        sql"""
            Select *
            From $tab
            Where [time] >= ${startTime} and [time] < ${endTime} and [monitor] = $monitor
            Order by [time]
            """.map(mapper).list().apply()
 
-    val recordF = calibrateHelper(rawRecords, startTime, endTime)
 
-    for (records <- recordF) yield {
-      val pairs =
-        for (mt <- mtList) yield {
-          val list =
-            for {
-              doc <- records
-              time = doc._id.time
-              mtMap = doc.mtMap if mtMap.contains(mt) && mtMap(mt).value.isDefined
-            } yield {
-              Record(new DateTime(time.getTime), mtMap(mt).value, mtMap(mt).status, monitor)
-            }
-          mt -> list
-        }
-      pairs.toMap
+      getRecordMapFromRecordList(mtList, recordLists, includeRaw)
+
     }
-  }
 
   override def getRecordListFuture(colName: String)
-                                  (startTime: DateTime, endTime: DateTime, monitors: Seq[String]): Future[Seq[RecordList]] = {
+                                  (startTime: DateTime, endTime: DateTime, monitors: Seq[String]): Future[Seq[RecordList]] =
+  Future{
     implicit val session: DBSession = AutoSession
     val tab: SQLSyntax = getTab(colName)
     val monitorIn = SQLSyntax.in(SQLSyntax.createUnsafely("[monitor]"), monitors)
@@ -131,7 +119,7 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
            Order by [time]
            """.map(mapper).list().apply()
 
-    calibrateHelper(rawRecords, startTime, endTime)
+    rawRecords
   }
 
   private def getTab(tabName: String) = SQLSyntax.createUnsafely(s"[dbo].[$tabName]")
@@ -141,57 +129,46 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
     val mtDataOptList =
       for (mt <- mtList) yield {
         for (status <- rs.stringOpt(s"${mt}_s")) yield
-          MtRecord(mt, rs.doubleOpt(s"$mt"), status)
+          MtRecord(mt, rs.doubleOpt(s"$mt"), status, rs.doubleOpt(s"${mt}_raw"))
       }
     RecordList(_id = id, mtDataList = mtDataOptList.flatten)
   }
 
-  private def calibrateHelper(rawRecords: List[RecordList], startTime: DateTime, endTime: DateTime): Future[List[RecordList]] = {
-    val needCalibration = mtList.map { mt => monitorTypeOp.map(mt).calibrate.getOrElse(false) }.exists(p => p)
-
-    if (needCalibration) {
-      for (calibrationMap <- calibrationOp.getCalibrationMap(startTime, endTime)(monitorTypeOp)) yield {
-        rawRecords.foreach(_.doCalibrate(monitorTypeOp, calibrationMap))
-        rawRecords
-      }
-    } else
-      Future.successful(rawRecords)
-  }
-
   override def getRecordWithLimitFuture(colName: String)
-                                       (startTime: DateTime, endTime: DateTime, limit: Int, monitor: String): Future[Seq[RecordList]] = {
-    implicit val session: DBSession = AutoSession
-    val tab: SQLSyntax = getTab(colName)
-    val rawRecords =
-      sql"""
+                                       (startTime: DateTime, endTime: DateTime, limit: Int, monitor: String): Future[Seq[RecordList]] =
+    Future {
+      implicit val session: DBSession = AutoSession
+      val tab: SQLSyntax = getTab(colName)
+      val rawRecords =
+        sql"""
            Select Top 60 *
            From $tab
            Where [time] >= ${startTime.toDate} and [time] < ${endTime.toDate} and [monitor] = $monitor
            Order by [time]
            """.map(mapper).list().apply()
-    calibrateHelper(rawRecords, startTime, endTime)
-  }
+      rawRecords
+    }
 
   override def getRecordValueSeqFuture(colName: String)
-                                      (mtList: Seq[String], startTime: DateTime, endTime: DateTime, monitor: String): Future[Seq[Seq[MtRecord]]] = {
-    implicit val session: DBSession = AutoSession
-    val tab: SQLSyntax = getTab(colName)
-    val rawRecords =
-      sql"""
+                                      (mtList: Seq[String], startTime: DateTime, endTime: DateTime, monitor: String): Future[Seq[Seq[MtRecord]]] =
+    Future {
+      implicit val session: DBSession = AutoSession
+      val tab: SQLSyntax = getTab(colName)
+      val rawRecords =
+        sql"""
            Select *
            From $tab
            Where [time] >= ${startTime.toDate} and [time] < ${endTime.toDate} and [monitor] = $monitor
            Order by [time]
            """.map(mapper).list().apply()
 
-    val recordF = calibrateHelper(rawRecords, startTime, endTime)
-    for (docs <- recordF) yield
+
       for {
-        doc <- docs
+        doc <- rawRecords
         mtMap = doc.mtMap if mtList.forall(doc.mtMap.contains(_))
       } yield
         mtList map mtMap
-  }
+    }
 
   override def upsertManyRecords(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult] = Future {
     records.foreach(recordList => {
@@ -210,7 +187,7 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
           addMonitorType(tab, mt)
         })
 
-        mtList = mtList:+ mt
+        mtList = mtList :+ mt
       }
     }
   }
@@ -219,18 +196,27 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
     val tab = getTab(tabName)
     val mtColumn = SQLSyntax.createUnsafely(s"[$mt]")
     val mtStatusColumn = SQLSyntax.createUnsafely(s"[${mt}_s]")
+    val mtRawColumn = SQLSyntax.createUnsafely(s"[${mt}_raw]")
     sql"""
           Alter Table $tab
           Add $mtColumn float;
          """.execute().apply()
 
     sql"""
+          Alter Table $tab
+          Add $mtRawColumn float;
+         """.execute().apply()
+
+    sql"""
          Alter Table $tab
          Add $mtStatusColumn [nvarchar](5);
          """.execute().apply()
+
+
   }
 
-  private def init(): Unit = {
+
+  private def init()(implicit DBSession: DBSession = AutoSession): Unit = {
     val tabList =
       Seq(HourCollection, MinCollection, SecCollection)
     tabList.foreach(tab => {
@@ -240,6 +226,18 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
 
     mtList = sqlServer.getColumnNames(HourCollection).filter(col => {
       !col.endsWith("_s") && col != "monitor" && col != "time"
+    })
+
+    tabList.foreach(tabName => {
+      val tab = getTab(tabName)
+      val columnName = sqlServer.getColumnNames(tab)
+      mtList.foreach(mt => if (columnName.contains(s"${mt}_raw")) {
+        val mtRawColumn = SQLSyntax.createUnsafely(s"[${mt}_raw]")
+        sql"""
+              Alter Table $tab
+              Add $mtRawColumn float;
+             """.execute().apply()
+      })
     })
   }
 

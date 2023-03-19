@@ -51,19 +51,10 @@
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
               variant="primary"
               class="mr-1"
-              :disabled="selected.length === 0"
-              @click="activateInst"
+              :disabled="!canToggleActivate"
+              @click="toggleActivateState"
             >
-              啟用
-            </b-button>
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="primary"
-              class="mr-1"
-              :disabled="selected.length === 0"
-              @click="deactivateInst"
-            >
-              停用
+              {{ toggleActivateName }}
             </b-button>
             <b-button
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
@@ -223,6 +214,21 @@ export default Vue.extend({
       if (!this.isNew && this.selected.length) return this.selected[0].inst;
       else return {};
     },
+    canToggleActivate() {
+      return (
+        this.selected.length === 1 &&
+        (this.selected[0].state !== '啟用中' ||
+          this.selected[0].state === '停用中')
+      );
+    },
+    toggleActivateName() {
+      if (this.selected.length === 1) {
+        if (this.selected[0].state === '停用') return '啟用';
+
+        return '停用';
+      }
+      return '停用/啟用';
+    },
   },
   mounted() {
     this.getInstList();
@@ -251,7 +257,6 @@ export default Vue.extend({
             variant: 'success',
           },
         });
-        this.getInstList();
       } else {
         this.$toast({
           component: ToastificationContent,
@@ -261,21 +266,29 @@ export default Vue.extend({
             variant: 'danger',
           },
         });
+        this.getInstList();
       }
     },
-    async activateInst() {
-      const res = await axios.put(
-        `/ActivateInstrument/${this.selected[0]._id}`,
-        {},
-      );
-      this.showResult(res.data.ok);
-    },
-    async deactivateInst() {
-      const res = await axios.put(
-        `/DeactivateInstrument/${this.selected[0]._id}`,
-        {},
-      );
-      this.showResult(res.data.ok);
+    async toggleActivateState() {
+      try {
+        if (this.selected[0].state === '停用') {
+          this.selected[0].state = '啟動中';
+          const res = await axios.put(
+            `/ActivateInstrument/${this.selected[0]._id}`,
+            {},
+          );
+        } else {
+          this.selected[0].state = '停用中';
+          const res = await axios.put(
+            `/DeactivateInstrument/${this.selected[0]._id}`,
+            {},
+          );
+        }
+        this.showResult(res.data.ok);
+      } catch (err) {
+        console.error(`${err}`);
+        this.showResult(false);
+      }
     },
     async toggleMaintenanceMode() {
       const res = await axios.put(

@@ -99,5 +99,9 @@ object MonitorType {
   val RELATIVE_WIND_DIR = "RELATIVE_WIND_DIR"
   val DIRECTION = "DIRECTION"
 
+  def getRawType(mt:String): String = mt + "_raw"
+  def getRealType(rawMt:String):String = rawMt.reverse.drop(4).reverse
+  def isRawValueType(mt:String):Boolean = mt.endsWith("_raw")
+
 }
 

@@ -22,6 +22,7 @@ class HomeController @Inject()(environment: play.api.Environment,
                                sensorOp: MqttSensorDB, WSClient: WSClient,
                                emailTargetOp: EmailTargetDB,
                                sysConfig: SysConfigDB, recordDB: RecordDB,
+                               calibrationDB: CalibrationDB,
                                @Named("dataCollectManager") manager: ActorRef) extends Controller {
 
   val title = "資料擷取器"
@@ -559,7 +560,8 @@ class HomeController @Inject()(environment: play.api.Environment,
     val start = new DateTime(startNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
     val end = new DateTime(endNum).withMinuteOfHour(23).withSecondOfMinute(59).withMillisOfSecond(0)
 
-    Logger.info(s"Recalcular Hour from ${start} to ${end}")
+    Logger.info(s"Recalculate Hour from $start to $end")
+
     for {
       monitor <- monitors
       hour <- query.getPeriods(start, end, 1.hour)} {
