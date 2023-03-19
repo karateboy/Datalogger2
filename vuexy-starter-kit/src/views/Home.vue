@@ -399,7 +399,9 @@ export default Vue.extend({
     async query(mt: string) {
       const now = new Date().getTime();
       const oneHourBefore = now - 60 * 60 * 1000;
-      const url = `/HistoryTrend/${this.activeID}/${mt}/Min/all/${oneHourBefore}/${now}`;
+      const url = `/HistoryTrend/${
+        this.activeID
+      }/${false}/${mt}/Min/all/${oneHourBefore}/${now}`;
       const res = await axios.get(url);
       const ret: highcharts.Options = res.data;
 
