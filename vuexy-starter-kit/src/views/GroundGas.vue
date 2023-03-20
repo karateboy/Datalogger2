@@ -5,25 +5,15 @@
     </b-card>
     <b-row>
       <b-col>
-        <b-card header="O2 vs CO2" img-fluid>
-          <b-img src="../assets/images/o2_co2.png" fluid thumbnail />
-        </b-card>
-      </b-col>
-      <b-col>
-        <b-card header="CO2 vs N2" img-fluid>
-          <b-img src="../assets/images/co2_n2.png" fluid thumbnail />
-        </b-card>
-      </b-col>
-      <b-col>
-        <b-card header="CO2 vs N2/O2" img-fluid>
-          <b-img src="../assets/images/co2_n2-o2.png" fluid thumbnail />
-        </b-card>
+        <div id="trend"></div>
       </b-col>
     </b-row>
   </div>
 </template>
 <script lang="ts">
 import Vue from 'vue';
+import highcharts from 'highcharts';
+
 export default Vue.extend({
   data() {
     let fields = [
@@ -199,6 +189,77 @@ export default Vue.extend({
       fields,
       items,
     };
+  },
+  mounted(){
+    this.drawBarChart1();
+  },
+  methods: {
+    drawBarChart1() {
+      let co2: highcharts.SeriesColumnOptions = {
+        name: 'CO2',
+        type: 'column',
+        data: this.items.map(row => row.CO2),
+      };
+      let n2: highcharts.SeriesColumnOptions = {
+        name: 'N2',
+        type: 'column',
+        data: this.items.map(row => row.N2),
+      };
+      let ch4: highcharts.SeriesColumnOptions = {
+        name: 'CH4',
+        type: 'column',
+        data: this.items.map(row => row.CH4)
+      };
+      let O2Ar: highcharts.SeriesColumnOptions = {
+        name: 'O2Ar',
+        type: 'column',
+        data: this.items.map(row => row['O2+Ar']),
+      };
+      let series = [co2, n2, ch4, O2Ar];
+      let chartOpt: highcharts.Options = {
+        chart: {
+          type: 'column',
+        },
+        title: {
+          text: '土壤氣體趨勢圖',
+        },
+        exporting: {
+          enabled: false,
+        },
+        xAxis: {
+          //categories: ['10分鐘累積', '1小時累積雨量', '日累積雨量'],
+          crosshair: true,
+        },
+        yAxis: {
+          min: 0,
+          title: {
+            text: 'ppm',
+          },
+        },
+        tooltip: {
+          headerFormat:
+            '<span style="font-size:10px">{point.key}</span><table>',
+          pointFormat:
+            '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
+            '<td style="padding:0"><b>{point.y:.1f} ppm</b></td></tr>',
+          footerFormat: '</table>',
+          shared: true,
+          useHTML: true,
+        },
+        plotOptions: {
+          column: {
+            pointPadding: 0.2,
+            borderWidth: 0,
+          },
+        },
+        series,
+        credits: {
+          enabled: false,
+          href: 'http://www.wecc.com.tw/',
+        },
+      };
+      highcharts.chart('trend', chartOpt);
+    },
   },
 });
 </script>

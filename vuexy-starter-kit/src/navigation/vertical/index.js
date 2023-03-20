@@ -28,7 +28,7 @@ export default [
         resource: 'Data',
       },
       {
-        title: '基線資料查詢',
+        title: '玫瑰圖查詢',
         route: 'wind-rose-query',
       },
       {
