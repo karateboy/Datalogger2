@@ -434,6 +434,8 @@ class DataCollectManager @Inject()
     for(ret<-sysConfig.getImportGPS() if !ret){
       GpsDataReader.start(context.system, environment,sysConfig, monitorOp, monitorTypeOp, recordOp)
     }
+
+    CsvReader.start(environment, context.system, monitorOp, monitorTypeOp, recordOp, dataCollectManagerOp)
   }
   instrumentList.foreach {
     inst =>

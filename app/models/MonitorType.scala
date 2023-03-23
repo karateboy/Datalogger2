@@ -91,6 +91,9 @@ object MonitorType {
   val H2S = "H2S"
   val H2 = "H2"
   val NH3 = "NH3"
+  val O2 = "O2"
+  val N2 = "N2"
+  val N2O2 = "N2-O2"
   val NOY_NO = "NOY-NO"
   val NOY = "NOY"
   var rangeOrder = 0

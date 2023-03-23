@@ -44,6 +44,12 @@ libraryDependencies += "org.scalikejdbc" %% "scalikejdbc-config" % "2.5.2"
 // https://mvnrepository.com/artifact/org.scalikejdbc/scalikejdbc-play-initializer
 libraryDependencies += "org.scalikejdbc" %% "scalikejdbc-play-initializer" % "2.5.3"
 
+// https://mvnrepository.com/artifact/com.opencsv/opencsv
+libraryDependencies += "com.opencsv" % "opencsv" % "5.4"
+
+// https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml
+libraryDependencies += "org.apache.poi" % "poi-ooxml" % "5.0.0"
+
 
 routesGenerator := StaticRoutesGenerator
 

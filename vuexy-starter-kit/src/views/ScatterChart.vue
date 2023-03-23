@@ -231,7 +231,7 @@ export default Vue.extend({
           this.form.monitorTypes = ['CO2', 'N2'];
           break;
         case 'CO2N2/O2':
-          this.form.monitorTypes = ['CO2', 'N2/O2'];
+          this.form.monitorTypes = ['CO2', 'N2-O2'];
           break;
       }
       if (this.form.monitorTypes.length !== 2) {

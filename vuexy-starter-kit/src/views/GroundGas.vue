@@ -1,264 +1,324 @@
 <template>
   <div>
-    <b-card header="RAW data" border-variant="success">
-      <b-table :fields="fields" :items="items" striped hover></b-table>
+    <b-card>
+      <b-form @submit.prevent>
+        <b-row>
+          <b-col cols="12">
+            <b-form-group
+              label="測項"
+              label-for="monitorType"
+              label-cols-md="3"
+            >
+              <v-select
+                id="monitorType"
+                v-model="form.monitorTypes"
+                label="desp"
+                :reduce="mt => mt._id"
+                :options="groundMonitorTypes"
+                :close-on-select="false"
+                multiple
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="12">
+            <b-form-group
+              label="時間單位"
+              label-for="reportUnit"
+              label-cols-md="3"
+            >
+              <v-select
+                id="reportUnit"
+                v-model="form.reportUnit"
+                label="txt"
+                :reduce="dt => dt.id"
+                :options="reportUnits"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="12">
+            <b-form-group
+              label="資料區間"
+              label-for="dataRange"
+              label-cols-md="3"
+            >
+              <v-select
+                id="dataRange"
+                v-model="form.start"
+                label="txt"
+                :reduce="dt => dt.range[0]"
+                :options="dateRanges"
+              />
+            </b-form-group>
+          </b-col>
+          <!-- submit and reset -->
+          <b-col offset-md="3">
+            <b-button
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              type="submit"
+              variant="primary"
+              class="mr-1"
+              @click="query"
+            >
+              查詢
+            </b-button>
+            <b-button
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              type="submit"
+              variant="primary"
+              class="mr-1"
+              @click="downloadExcel"
+            >
+              下載Excel
+            </b-button>
+          </b-col>
+        </b-row>
+      </b-form>
     </b-card>
-    <b-row>
-      <b-col>
-        <div id="trend"></div>
-      </b-col>
-    </b-row>
+    <b-card v-show="display">
+      <b-card-body><div id="chart_container" /></b-card-body>
+    </b-card>
   </div>
 </template>
+<style lang="scss">
+@import '@core/scss/vue/libs/vue-select.scss';
+</style>
 <script lang="ts">
 import Vue from 'vue';
+import DatePicker from 'vue2-datepicker';
+import 'vue2-datepicker/index.css';
+import 'vue2-datepicker/locale/zh-tw';
+const Ripple = require('vue-ripple-directive');
+import { mapState, mapActions, mapMutations, mapGetters } from 'vuex';
+import darkTheme from 'highcharts/themes/dark-unica';
+import useAppConfig from '../@core/app-config/useAppConfig';
+import moment from 'moment';
+import axios from 'axios';
 import highcharts from 'highcharts';
+import { MonitorType } from './types';
 
 export default Vue.extend({
+  directives: {
+    Ripple,
+  },
   data() {
-    let fields = [
+    const dateRanges = [
       {
-        key: 'CO2',
-        label: 'CO2',
-        sortable: true,
+        txt: '2022/09/02',
+        range: [
+          moment('2022-09-02').startOf('day').valueOf(),
+          moment('2022-09-02').startOf('day').add(1, 'day').valueOf(),
+        ],
       },
       {
-        key: 'N2',
-        label: 'N2',
-        sortable: true,
+        txt: '2022/09/12',
+        range: [
+          moment('2022-09-12').startOf('day').valueOf(),
+          moment('2022-09-12').startOf('day').add(1, 'day').valueOf(),
+        ],
       },
       {
-        key: 'CH4',
-        label: 'CH4',
-        sortable: true,
+        txt: '2022/09/22',
+        range: [
+          moment('2022-09-22').startOf('day').valueOf(),
+          moment('2022-09-22').startOf('day').add(1, 'day').valueOf(),
+        ],
       },
       {
-        key: 'O2+Ar',
-        label: 'O2+Ar',
-        sortable: true,
-        formatter: (v: number) => v.toFixed(2),
-      },
-    ];
-    let items = [
-      {
-        CO2: 2.51,
-        N2: 80.31,
-        CH4: 0,
-        'O2+Ar': 17.23,
+        txt: '2022/11/10',
+        range: [
+          moment('2022-11-10').startOf('day').valueOf(),
+          moment('2022-11-10').startOf('day').add(1, 'day').valueOf(),
+        ],
       },
       {
-        CO2: 1.63,
-        N2: 81.43,
-        CH4: 0,
-        'O2+Ar': 17.04,
+        txt: '2022/11/12',
+        range: [
+          moment('2022-11-12').startOf('day').valueOf(),
+          moment('2022-11-12').startOf('day').add(1, 'day').valueOf(),
+        ],
       },
       {
-        CO2: 5.8,
-        N2: 79.14,
-        CH4: 0,
-        'O2+Ar': 15.16,
+        txt: '2022/12/05',
+        range: [
+          moment('2022-12-05').startOf('day').valueOf(),
+          moment('2022-12-05').startOf('day').add(1, 'day').valueOf(),
+        ],
       },
       {
-        CO2: 5.09,
-        N2: 77.83,
-        CH4: 0,
-        'O2+Ar': 17.119999999999997,
-      },
-      {
-        CO2: 2.4,
-        N2: 81.06,
-        CH4: 0,
-        'O2+Ar': 16.58,
-      },
-      {
-        CO2: 1.57,
-        N2: 79.74,
-        CH4: 0,
-        'O2+Ar': 18.79,
-      },
-      {
-        CO2: 2.25,
-        N2: 78.76,
-        CH4: 0,
-        'O2+Ar': 19.099999999999998,
-      },
-      {
-        CO2: 4.35,
-        N2: 81.24,
-        CH4: 0,
-        'O2+Ar': 14.52,
-      },
-      {
-        CO2: 2.47,
-        N2: 80.01,
-        CH4: 0,
-        'O2+Ar': 17.63,
-      },
-      {
-        CO2: 3.49,
-        N2: 79.39,
-        CH4: 0,
-        'O2+Ar': 17.23,
-      },
-      {
-        CO2: 4.83,
-        N2: 78.16,
-        CH4: 0,
-        'O2+Ar': 17.12,
-      },
-      {
-        CO2: 0.93,
-        N2: 79.3,
-        CH4: 0,
-        'O2+Ar': 19.87,
-      },
-      {
-        CO2: 3.86,
-        N2: 79.04,
-        CH4: 0,
-        'O2+Ar': 17.21,
-      },
-      {
-        CO2: 4.86,
-        N2: 80.67,
-        CH4: 0,
-        'O2+Ar': 14.28,
-      },
-      {
-        CO2: 3.64,
-        N2: 79.06,
-        CH4: 0,
-        'O2+Ar': 17.400000000000002,
-      },
-      {
-        CO2: 1.41,
-        N2: 79.4,
-        CH4: 0,
-        'O2+Ar': 19.22,
-      },
-      {
-        CO2: 3.93,
-        N2: 78.22,
-        CH4: 0,
-        'O2+Ar': 17.96,
-      },
-      {
-        CO2: 4.03,
-        N2: 81.79,
-        CH4: 0,
-        'O2+Ar': 14.17,
-      },
-      {
-        CO2: 2.14,
-        N2: 78.98,
-        CH4: 0,
-        'O2+Ar': 18.990000000000002,
-      },
-      {
-        CO2: 3.15,
-        N2: 79.96,
-        CH4: 0,
-        'O2+Ar': 16.96,
-      },
-      {
-        CO2: 3.75,
-        N2: 78.58,
-        CH4: 0,
-        'O2+Ar': 17.78,
-      },
-      {
-        CO2: 3.33,
-        N2: 79.79,
-        CH4: 0,
-        'O2+Ar': 16.92,
-      },
-      {
-        CO2: 3.25,
-        N2: 79.63,
-        CH4: 0,
-        'O2+Ar': 17.2,
-      },
-      {
-        CO2: 0.04,
-        N2: 79.09,
-        CH4: 0,
-        'O2+Ar': 20.92,
+        txt: '2022/12/23',
+        range: [
+          moment('2022-12-23').startOf('day').valueOf(),
+          moment('2022-12-23').startOf('day').add(1, 'day').valueOf(),
+        ],
       },
     ];
+    const range = dateRanges[0].range;
+    let start = dateRanges[0].range[0];
     return {
-      fields,
-      items,
+      statusFilters: [
+        { id: 'all', txt: '全部' },
+        { id: 'normal', txt: '正常量測值' },
+        { id: 'calbration', txt: '校正' },
+        { id: 'maintance', txt: '維修' },
+        { id: 'invalid', txt: '無效數據' },
+        { id: 'valid', txt: '有效數據' },
+      ],
+      reportUnits: [
+        { txt: '分', id: 'Min' },
+        { txt: '十五分', id: 'FifteenMin' },
+        { txt: '小時', id: 'Hour' },
+      ],
+      dateRanges,
+      reportUnit: 'Hour',
+      display: false,
+      chartTypes: [
+        {
+          type: 'line',
+          desc: '折線圖',
+        },
+        {
+          type: 'spline',
+          desc: '曲線圖',
+        },
+        {
+          type: 'area',
+          desc: '面積圖',
+        },
+        {
+          type: 'areaspline',
+          desc: '曲線面積圖',
+        },
+        {
+          type: 'column',
+          desc: '柱狀圖',
+        },
+        {
+          type: 'scatter',
+          desc: '點圖',
+        },
+      ],
+      form: {
+        monitors: ['me'],
+        monitorTypes: ['CO2', 'CH4', 'O2', 'N2', 'N2-O2'],
+        reportUnit: 'Min',
+        statusFilter: 'all',
+        chartType: 'line',
+        range,
+        start,
+      },
     };
   },
-  mounted(){
-    this.drawBarChart1();
+  computed: {
+    ...mapState('monitorTypes', ['monitorTypes']),
+    ...mapGetters('monitorTypes', ['activatedMonitorTypes']),
+    ...mapState('monitors', ['monitors']),
+    myMonitors(): Array<any> {
+      return this.monitors.filter((m: any) => m._id === 'me');
+    },
+    range(): Array<number> {
+      return [this.form.start, moment(this.form.start).add(1, 'day').valueOf()];
+    },
+    groundMonitorTypes(): Array<MonitorType> {
+      let mtList = ['CO2', 'CH4', 'O2', 'N2', 'N2-O2'];
+      return this.monitorTypes.filter(
+        (mt: MonitorType) => mtList.indexOf(mt._id) !== -1,
+      );
+    },
+  },
+  watch: {},
+  async mounted() {
+    const { skin } = useAppConfig();
+    if (skin.value == 'dark') {
+      darkTheme(highcharts);
+    }
+
+    await this.fetchMonitorTypes();
+    await this.fetchMonitors();
   },
   methods: {
-    drawBarChart1() {
-      let co2: highcharts.SeriesColumnOptions = {
-        name: 'CO2',
-        type: 'column',
-        data: this.items.map(row => row.CO2),
-      };
-      let n2: highcharts.SeriesColumnOptions = {
-        name: 'N2',
-        type: 'column',
-        data: this.items.map(row => row.N2),
-      };
-      let ch4: highcharts.SeriesColumnOptions = {
-        name: 'CH4',
-        type: 'column',
-        data: this.items.map(row => row.CH4)
-      };
-      let O2Ar: highcharts.SeriesColumnOptions = {
-        name: 'O2Ar',
-        type: 'column',
-        data: this.items.map(row => row['O2+Ar']),
-      };
-      let series = [co2, n2, ch4, O2Ar];
-      let chartOpt: highcharts.Options = {
-        chart: {
-          type: 'column',
-        },
-        title: {
-          text: '土壤氣體趨勢圖',
-        },
-        exporting: {
-          enabled: false,
-        },
-        xAxis: {
-          //categories: ['10分鐘累積', '1小時累積雨量', '日累積雨量'],
-          crosshair: true,
-        },
-        yAxis: {
-          min: 0,
-          title: {
-            text: 'ppm',
-          },
-        },
-        tooltip: {
-          headerFormat:
-            '<span style="font-size:10px">{point.key}</span><table>',
-          pointFormat:
-            '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
-            '<td style="padding:0"><b>{point.y:.1f} ppm</b></td></tr>',
-          footerFormat: '</table>',
-          shared: true,
-          useHTML: true,
-        },
-        plotOptions: {
-          column: {
-            pointPadding: 0.2,
-            borderWidth: 0,
-          },
-        },
-        series,
-        credits: {
+    ...mapActions('monitorTypes', ['fetchMonitorTypes']),
+    ...mapActions('monitors', ['fetchMonitors']),
+    ...mapMutations(['setLoading']),
+    async query() {
+      this.setLoading({ loading: true });
+      this.display = true;
+      const monitors = this.form.monitors.join(':');
+      const url = `/HistoryTrend/${monitors}/${this.form.monitorTypes.join(
+        ':',
+      )}/${this.form.reportUnit}/${this.form.statusFilter}/${this.range[0]}/${
+        this.range[1]
+      }`;
+      const res = await axios.get(url);
+      const ret = res.data;
+
+      this.setLoading({ loading: false });
+      if (this.form.chartType !== 'boxplot') {
+        ret.chart = {
+          type: this.form.chartType,
+          zoomType: 'x',
+          panning: true,
+          panKey: 'shift',
+          alignTicks: false,
+        };
+
+        const pointFormatter = function pointFormatter(this: any) {
+          const d = new Date(this.x);
+          return `${d.toLocaleString()}:${Math.round(this.y)}度`;
+        };
+
+        ret.colors = [
+          '#7CB5EC',
+          '#434348',
+          '#90ED7D',
+          '#F7A35C',
+          '#8085E9',
+          '#F15C80',
+          '#E4D354',
+          '#2B908F',
+          '#FB9FA8',
+          '#91E8E1',
+          '#7CB5EC',
+          '#80C535',
+          '#969696',
+        ];
+
+        ret.tooltip = { valueDecimals: 2 };
+        ret.legend = { enabled: true };
+        ret.credits = {
           enabled: false,
           href: 'http://www.wecc.com.tw/',
-        },
-      };
-      highcharts.chart('trend', chartOpt);
+        };
+        ret.xAxis.type = 'datetime';
+        ret.xAxis.dateTimeLabelFormats = {
+          day: '%b%e日',
+          week: '%b%e日',
+          month: '%y年%b',
+        };
+
+        ret.plotOptions = {
+          scatter: {
+            tooltip: {
+              pointFormatter,
+            },
+          },
+        };
+        ret.time = {
+          timezoneOffset: -480,
+        };
+      }
+      highcharts.chart('chart_container', ret);
+    },
+    async downloadExcel() {
+      const baseUrl =
+        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
+      const monitors = this.form.monitors.join(':');
+      const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
+        ':',
+      )}/${this.form.reportUnit}/${this.form.statusFilter}/${this.range[0]}/${
+        this.range[1]
+      }`;
+
+      window.open(url);
     },
   },
 });
