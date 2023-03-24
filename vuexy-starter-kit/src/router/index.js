@@ -56,6 +56,25 @@ const router = new VueRouter({
         ],
       },
     },
+    //underground-water-data
+    {
+      path: '/underground-water-data',
+      name: 'underground-water-data',
+      component: () => import('@/views/UnderGroundWaterData.vue'),
+      meta: {
+        pageTitle: '地下水查詢',
+        breadcrumb: [
+          {
+            text: '地下水查詢',
+            active: true,
+          },
+          {
+            text: '地下水即時監測',
+            active: true,
+          },
+        ],
+      },
+    },
     {
       path: '/history-trend',
       name: 'history-trend',
@@ -187,14 +206,14 @@ const router = new VueRouter({
       name: 'wind-rose-query',
       component: () => import('@/views/WindRose.vue'),
       meta: {
-        pageTitle: '玫瑰圖查詢',
+        pageTitle: '風速風向玫瑰圖查詢',
         breadcrumb: [
           {
             text: '數據查詢',
             active: true,
           },
           {
-            text: '玫瑰圖查詢',
+            text: '風速風向玫瑰圖查詢',
             active: true,
           },
         ],

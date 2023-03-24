@@ -35,46 +35,16 @@
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="時間單位"
-              label-for="reportUnit"
+              label="資料種類"
+              label-for="dataType"
               label-cols-md="3"
             >
               <v-select
-                id="reportUnit"
-                v-model="form.reportUnit"
+                id="dataType"
+                v-model="form.dataType"
                 label="txt"
                 :reduce="dt => dt.id"
-                :options="reportUnits"
-              />
-            </b-form-group>
-          </b-col>
-          <b-col cols="12">
-            <b-form-group
-              label="狀態"
-              label-for="statusFilter"
-              label-cols-md="3"
-            >
-              <v-select
-                id="statusFilter"
-                v-model="form.statusFilter"
-                label="txt"
-                :reduce="dt => dt.id"
-                :options="statusFilters"
-              />
-            </b-form-group>
-          </b-col>
-          <b-col cols="12">
-            <b-form-group
-              label="圖表類型"
-              label-for="chartType"
-              label-cols-md="3"
-            >
-              <v-select
-                id="chartType"
-                v-model="form.chartType"
-                label="desc"
-                :reduce="ct => ct.type"
-                :options="chartTypes"
+                :options="dataTypes"
               />
             </b-form-group>
           </b-col>
@@ -128,6 +98,14 @@
               查詢
             </b-button>
             <b-button
+              v-ripple.400="'rgba(186, 191, 199, 0.15)'"
+              type="reset"
+              class="mr-1"
+              variant="outline-secondary"
+            >
+              取消
+            </b-button>
+            <b-button
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
               type="submit"
               variant="primary"
@@ -140,26 +118,56 @@
         </b-row>
       </b-form>
     </b-card>
-    <b-card v-show="display">
-      <b-card-body><div id="chart_container" /></b-card-body>
+    <b-card v-show="display" :title="resultTitle">
+      <b-table
+        striped
+        hover
+        :fields="columns"
+        :items="rows"
+        show-empty
+        :per-page="15"
+        :current-page="currentPage"
+        responsive
+        sticky-header="800px"
+      >
+        <template #thead-top>
+          <b-tr>
+            <b-th></b-th>
+            <b-th
+              v-for="mt in form.monitorTypes"
+              :key="mt"
+              :colspan="form.monitors.length"
+              class="text-center"
+              style="text-transform: none"
+              >{{ getMtDesc(mt) }}</b-th
+            >
+          </b-tr>
+        </template>
+      </b-table>
+      <b-pagination
+        v-model="currentPage"
+        :total-rows="rows.length"
+        :per-page="15"
+        first-text="⏮"
+        prev-text="⏪"
+        next-text="⏩"
+        last-text="⏭"
+        class="mt-4"
+      ></b-pagination>
     </b-card>
   </div>
 </template>
-<style lang="scss">
-@import '@core/scss/vue/libs/vue-select.scss';
-</style>
 <script lang="ts">
 import Vue from 'vue';
 import DatePicker from 'vue2-datepicker';
 import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
 const Ripple = require('vue-ripple-directive');
-import { mapState, mapActions, mapMutations, mapGetters } from 'vuex';
-import darkTheme from 'highcharts/themes/dark-unica';
-import useAppConfig from '../@core/app-config/useAppConfig';
+import { mapState, mapGetters, mapActions, mapMutations } from 'vuex';
 import moment from 'moment';
 import axios from 'axios';
-import highcharts from 'highcharts';
+const excel = require('../libs/excel');
+const _ = require('lodash');
 
 export default Vue.extend({
   components: {
@@ -172,84 +180,45 @@ export default Vue.extend({
   data() {
     const range = [moment().subtract(7, 'days').valueOf(), moment().valueOf()];
     return {
-      statusFilters: [
-        { id: 'all', txt: '全部' },
-        { id: 'normal', txt: '正常量測值' },
-        { id: 'calbration', txt: '校正' },
-        { id: 'maintance', txt: '維修' },
-        { id: 'invalid', txt: '無效數據' },
-        { id: 'valid', txt: '有效數據' },
-      ],
-      reportUnits: [
-        { txt: '十五分', id: 'FifteenMin' },
-        { txt: '小時', id: 'Hour' },
-        { txt: '天', id: 'Day' },
-        { txt: '月', id: 'Month' },
-        { txt: '季', id: 'Quarter' },
-        { txt: '年', id: 'Year' },
-      ],
-      reportUnit: 'Hour',
-      display: false,
-      chartTypes: [
-        {
-          type: 'line',
-          desc: '折線圖',
-        },
-        {
-          type: 'spline',
-          desc: '曲線圖',
-        },
-        {
-          type: 'area',
-          desc: '面積圖',
-        },
-        {
-          type: 'areaspline',
-          desc: '曲線面積圖',
-        },
-        {
-          type: 'column',
-          desc: '柱狀圖',
-        },
-        {
-          type: 'scatter',
-          desc: '點圖',
-        },
+      dataTypes: [
+        { txt: '小時資料', id: 'hour' },
+        { txt: '分鐘資料', id: 'min' },
       ],
       form: {
-        monitors: Array<string>(),
-        monitorTypes: Array<string>(),
-        reportUnit: 'Hour',
-        statusFilter: 'all',
-        chartType: 'line',
+        monitors: Array<any>(),
+        monitorTypes: Array<any>(),
+        dataType: 'hour',
         range,
       },
+      display: false,
+      columns: Array<any>(),
+      rows: Array<any>(),
+      currentPage: 1,
     };
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
-    ...mapGetters('monitorTypes', ['activatedMonitorTypes']),
     ...mapState('monitors', ['monitors']),
+    ...mapGetters('monitorTypes', ['mtMap', 'activatedMonitorTypes']),
+    ...mapGetters('monitors', ['mMap']),
+    resultTitle(): string {
+      return `總共${this.rows.length}筆`;
+    },
     myMonitors(): Array<any> {
       return this.monitors.filter((m: any) => m._id === 'me');
     },
   },
   watch: {},
   async mounted() {
-    const { skin } = useAppConfig();
-    if (skin.value == 'dark') {
-      darkTheme(highcharts);
-    }
-
     await this.fetchMonitorTypes();
     await this.fetchMonitors();
-
-    if (this.activatedMonitorTypes.length !== 0)
-      this.form.monitorTypes.push(this.activatedMonitorTypes[0]._id);
 
     if (this.monitors.length !== 0) {
       this.form.monitors.push(this.myMonitors[0]._id);
     }
+
+    this.form.monitorTypes.push('ORP');
+    this.form.monitorTypes.push('RDO');
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
@@ -258,83 +227,82 @@ export default Vue.extend({
     async query() {
       this.setLoading({ loading: true });
       this.display = true;
+      this.rows = [];
+      this.columns = this.getColumns();
       const monitors = this.form.monitors.join(':');
-      const url = `/HistoryTrend/${monitors}/${this.form.monitorTypes.join(
-        ':',
-      )}/${this.form.reportUnit}/${this.form.statusFilter}/${
-        this.form.range[0]
-      }/${this.form.range[1]}`;
-      const res = await axios.get(url);
-      const ret = res.data;
+      const monitorTypes = this.form.monitorTypes.join(':');
+      const url = `/HistoryReport/${monitors}/${monitorTypes}/${this.form.dataType}/${this.form.range[0]}/${this.form.range[1]}`;
 
+      const ret = await axios.get(url);
       this.setLoading({ loading: false });
-      if (this.form.chartType !== 'boxplot') {
-        ret.chart = {
-          type: this.form.chartType,
-          zoomType: 'x',
-          panning: true,
-          panKey: 'shift',
-          alignTicks: false,
-        };
-
-        const pointFormatter = function pointFormatter(this: any) {
-          const d = new Date(this.x);
-          return `${d.toLocaleString()}:${Math.round(this.y)}度`;
-        };
-
-        ret.colors = [
-          '#7CB5EC',
-          '#434348',
-          '#90ED7D',
-          '#F7A35C',
-          '#8085E9',
-          '#F15C80',
-          '#E4D354',
-          '#2B908F',
-          '#FB9FA8',
-          '#91E8E1',
-          '#7CB5EC',
-          '#80C535',
-          '#969696',
-        ];
-
-        ret.tooltip = { valueDecimals: 2 };
-        ret.legend = { enabled: true };
-        ret.credits = {
-          enabled: false,
-          href: 'http://www.wecc.com.tw/',
-        };
-        ret.xAxis.type = 'datetime';
-        ret.xAxis.dateTimeLabelFormats = {
-          day: '%b%e日',
-          week: '%b%e日',
-          month: '%y年%b',
-        };
-
-        ret.plotOptions = {
-          scatter: {
-            tooltip: {
-              pointFormatter,
-            },
-          },
-        };
-        ret.time = {
-          timezoneOffset: -480,
-        };
+      for (const row of ret.data.rows) {
+        row.date = moment(row.date).format('lll');
       }
-      highcharts.chart('chart_container', ret);
+
+      this.rows = ret.data.rows;
+    },
+    cellDataTd(i: number) {
+      return (_value: any, _key: any, item: any) =>
+        item.cellData[i].cellClassName;
+    },
+    getMtDesc(mt: string) {
+      const mtCase = this.mtMap.get(mt);
+      return `${mtCase.desp}(${mtCase.unit})`;
+    },
+    getColumns() {
+      const ret = [];
+      ret.push({
+        key: 'date',
+        label: '時間',
+        stickyColumn: true,
+      });
+      let i = 0;
+      for (const mt of this.form.monitorTypes) {
+        const mtCase = this.mtMap.get(mt);
+        for (const m of this.form.monitors) {
+          const mCase = this.mMap.get(m);
+          ret.push({
+            key: `cellData[${i}].v`,
+            label: `${mCase.desc}`,
+            tdClass: this.cellDataTd(i),
+          });
+          i++;
+        }
+      }
+
+      return ret;
     },
     async downloadExcel() {
       const baseUrl =
         process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
       const monitors = this.form.monitors.join(':');
+      let reportUnit = 'Min';
+      if (this.form.dataType === 'hour') reportUnit = 'Hour';
+
       const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
         ':',
-      )}/${this.form.reportUnit}/${this.form.statusFilter}/${
-        this.form.range[0]
-      }/${this.form.range[1]}`;
+      )}/${reportUnit}/all/${this.form.range[0]}/${this.form.range[1]}`;
 
       window.open(url);
+    },
+    exportExcel() {
+      const title = this.columns.map(e => e.label);
+      const key = this.columns.map(e => e.key);
+      for (let entry of this.rows) {
+        let e = entry as any;
+        for (let k of key) {
+          e[k] = _.get(entry, k);
+        }
+      }
+      const monitorTypes = this.form.monitorTypes.join('');
+      const params = {
+        title,
+        key,
+        data: this.rows,
+        autoWidth: true,
+        filename: `${monitorTypes}歷史資料查詢`,
+      };
+      excel.export_array_to_excel(params);
     },
     setThisWeek() {
       const startOfTheWeek = moment().startOf('week').valueOf();

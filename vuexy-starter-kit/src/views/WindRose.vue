@@ -90,8 +90,8 @@ export default Vue.extend({
       moment().startOf('days').subtract(1, 'days').valueOf(),
       moment().startOf('days').valueOf(),
     ];
-    let monitor: string | undefined = 'self';
-    let monitorType: string = 'me';
+    let monitor: string | undefined = 'me';
+    let monitorType: string = 'WD_SPEED';
     let nWays = [8, 16, 32];
     let errorMsg: string = '';
     return {
@@ -129,14 +129,6 @@ export default Vue.extend({
 
     await this.fetchMonitorTypes();
     await this.fetchMonitors();
-
-    if (this.activatedMonitorTypes.length !== 0) {
-      this.form.monitorType = this.activatedMonitorTypes[0]._id;
-    }
-
-    if (this.monitors.length !== 0) {
-      this.form.monitor = this.monitors[0]._id;
-    }
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),

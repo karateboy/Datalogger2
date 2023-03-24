@@ -42,7 +42,7 @@ export default [
           },
           {
             title: '地下水即時監測',
-            route: 'history-data',
+            route: 'underground-water-data',
             action: 'read',
             resource: 'Data',
           },
