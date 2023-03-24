@@ -10,7 +10,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class Realtime @Inject()
 (monitorTypeOp: MonitorTypeDB, dataCollectManagerOp: DataCollectManagerOp, instrumentOp: InstrumentDB,
- monitorStatusOp: MonitorStatusDB) extends Controller {
+ monitorStatusOp: MonitorStatusDB, recordDB: RecordDB) extends Controller {
   val overTimeLimit = 6
 
   case class MonitorTypeStatus(_id: String, desp: String, value: String, unit: String, instrument: String, status: String, classStr: Seq[String], order: Int)
@@ -64,7 +64,7 @@ class Realtime @Inject()
                   status,
                   MonitorStatus.getCssClassStr(record.status, overInternal, overLaw), mCase.order)
               } else {
-                if(instrumentStatus == "停用")
+                if (instrumentStatus == "停用")
                   MonitorTypeStatus(_id = mCase._id, mCase.desp, monitorTypeOp.format(mt, None),
                     mCase.unit, measuringByStr,
                     instrumentStatus,
@@ -82,5 +82,17 @@ class Realtime @Inject()
         }
 
       result
+  }
+
+  def getRealtimeAQI: Action[AnyContent] = Security.Authenticated.async {
+    val lastHour = DateTime.now().minusHours(1).withMinuteOfHour(0)
+      .withSecondOfMinute(0).withMillisOfSecond(0)
+    for (ret <- AQI.getMonitorRealtimeAQI(Monitor.activeId, lastHour)(recordDB)) yield {
+      val aqiExplainReport = AQI.getAqiExplain(ret)(monitorTypeOp)
+      implicit val w3 = Json.writes[AqiExplain]
+      implicit val w2: OWrites[AqiSubExplain] = Json.writes[AqiSubExplain]
+      implicit val w1: OWrites[AqiExplainReport] = Json.writes[AqiExplainReport]
+      Ok(Json.toJson(aqiExplainReport))
+    }
   }
 }

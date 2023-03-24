@@ -15,6 +15,12 @@ export default [
         action: 'read',
         resource: 'Dashboard',
       },
+      {
+        title: '即時AQI',
+        route: 'realtime-aqi',
+        action: 'read',
+        resource: 'Dashboard',
+      },
     ],
   },
   {

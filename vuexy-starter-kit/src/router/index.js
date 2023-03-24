@@ -39,6 +39,20 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/realtime-aqi',
+      name: 'realtime-aqi',
+      component: () => import('@/views/RealtimeAQI.vue'),
+      meta: {
+        pageTitle: '即時資料',
+        breadcrumb: [
+          {
+            text: '即時AQI',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/history-data',
       name: 'history-data',
       component: () => import('@/views/HistoryData.vue'),

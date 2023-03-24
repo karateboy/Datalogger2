@@ -77,7 +77,7 @@ GET      /Upload/:start/:end                                                    
 
 #Realtime
 GET      /MonitorTypeStatusList                                                   controllers.Realtime.MonitorTypeStatusList()
-
+GET      /RealtimeAQI                                                             controllers.Realtime.getRealtimeAQI()
 #Report
 GET      /monitorReport/:reportType/:reportDate                                   controllers.Report.getMonitorReport(reportType, reportDate:Long, outputTypeStr="html")
 GET      /PDF/monitorReport/:reportType/:reportDate                               controllers.Report.getMonitorReport(reportType, reportDate:Long, outputTypeStr="pdf")
