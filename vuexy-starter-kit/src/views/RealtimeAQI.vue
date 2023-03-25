@@ -1,24 +1,30 @@
 <template>
-  <div>
+  <div v-if="report">
     <b-card
-      v-if="report"
-      title="即時AQI"
+      :header="title"
+      header-class="h4 display text-center"
       border-variant="primary"
+      header-bg-variant="primary"
+      header-text-variant="white"
       class="text-center"
+      no-body
     >
-      <strong>{{ report.value.value }}</strong>
-    </b-card>
-    <b-card-group deck columns>
-      <b-card
-        v-for="subExplain in report.subExplain"
-        :key="subExplain.mtName"
-        border-variant="primary"
-        :class="subExplain.explain.css"
+      <b-table
+        :fields="fields"
+        :items="report.aqi.subExplain"
+        bordered
+        hover
+        striped
       >
-        <h3 class="text-center" v-html="subExplain.mtName"></h3>
-        <h4 class="text-center">{{ subExplain.explain.value }}</h4>
-      </b-card>
-    </b-card-group>
+        <template #thead-top>
+          <b-tr>
+            <b-td colspan="3" :class="report.aqi.value.css">
+              <h1 class="text-center">AQI:&nbsp;{{ report.aqi.value.aqi }}</h1>
+            </b-td>
+          </b-tr>
+        </template>
+      </b-table>
+    </b-card>
     <b-card title="即時空氣品質指標(AQI)計算方式如下">
       <p>
         各測項即時濃度依下列公式計算後，再對應下表得出O<sub>3</sub>、PM<sub>2.5</sub>、PM<sub>10</sub>、CO、SO<sub>2</sub>、
@@ -306,8 +312,15 @@ table.TMP1 td {
 <script lang="ts">
 import Vue from 'vue';
 import axios from 'axios';
+import moment from 'moment';
+
+interface RealtimeAQI {
+  date: Date;
+  aqi: AqiExplainReport;
+}
 
 interface AqiExplain {
+  aqi: string;
   value: string;
   css: string;
 }
@@ -323,11 +336,48 @@ interface AqiExplainReport {
 }
 export default Vue.extend({
   data() {
-    let report: AqiExplainReport | undefined;
+    let report: RealtimeAQI | undefined;
+    const fields = [
+      {
+        key: 'mtName',
+        label: '測項',
+        sortable: true,
+        tdClass: function (v: string, _key: string, item: AqiSubExplain) {
+          return [item.explain.css];
+        },
+      },
+      {
+        key: 'explain.aqi',
+        label: '副指標',
+        sortable: true,
+        tdClass: function (v: string, _key: string, item: AqiSubExplain) {
+          return [item.explain.css];
+        },
+      },
+      {
+        key: 'explain.value',
+        label: '測值',
+        sortable: true,
+        tdClass: function (v: string, _key: string, item: AqiSubExplain) {
+          return [item.explain.css];
+        },
+      },
+    ];
     return {
       report,
+      fields,
       timer: 0,
     };
+  },
+  computed: {
+    title(): string {
+      if (this.report) {
+        let lastHour = moment(this.report.date);
+        return `即時AQI (${lastHour.format('lll')})`;
+      }
+
+      return '';
+    },
   },
   mounted() {
     this.getRealtimeAQI();
@@ -340,7 +390,7 @@ export default Vue.extend({
     async getRealtimeAQI() {
       const res = await axios.get('/RealtimeAQI');
       if (res.status === 200) {
-        this.report = res.data as AqiExplainReport;
+        this.report = res.data as RealtimeAQI;
       }
     },
   },

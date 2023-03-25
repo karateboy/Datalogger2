@@ -5,6 +5,7 @@ import models._
 import play.api.libs.json._
 import play.api.mvc._
 
+import java.util.Date
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -84,6 +85,7 @@ class Realtime @Inject()
       result
   }
 
+  case class RealtimeAQI(date:Date, aqi:AqiExplainReport)
   def getRealtimeAQI: Action[AnyContent] = Security.Authenticated.async {
     val lastHour = DateTime.now().minusHours(1).withMinuteOfHour(0)
       .withSecondOfMinute(0).withMillisOfSecond(0)
@@ -92,7 +94,8 @@ class Realtime @Inject()
       implicit val w3 = Json.writes[AqiExplain]
       implicit val w2: OWrites[AqiSubExplain] = Json.writes[AqiSubExplain]
       implicit val w1: OWrites[AqiExplainReport] = Json.writes[AqiExplainReport]
-      Ok(Json.toJson(aqiExplainReport))
+      implicit val w0  = Json.writes[RealtimeAQI]
+      Ok(Json.toJson(RealtimeAQI(lastHour.toDate, aqiExplainReport)))
     }
   }
 }

@@ -89,6 +89,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/aqi-trend',
+      name: 'aqi-trend',
+      component: () => import('@/views/AqiTrend.vue'),
+      meta: {
+        pageTitle: 'AQI趨勢圖',
+        breadcrumb: [
+          {
+            text: '數據查詢',
+            active: true,
+          },
+          {
+            text: 'AQI趨勢圖',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/scatter-chart',
       name: 'scatter-chart',
       component: () => import('@/views/ScatterChart.vue'),

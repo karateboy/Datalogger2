@@ -1,6 +1,7 @@
 package models
 
 import com.github.nscala_time.time.Imports._
+import play.api.Logger
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -10,7 +11,7 @@ import scala.concurrent.Future
 sealed trait AqiMonitorType
 
 case class AqiSubExplain(mtName:String, explain:AqiExplain)
-case class AqiExplain(value:String, css:String)
+case class AqiExplain(aqi:String, value:String, css:String)
 case class AqiExplainReport(value:AqiExplain, subExplain: Seq[AqiSubExplain])
 case class AqiSubReport(value: Option[Double], aqi: Option[Double])
 
@@ -37,14 +38,14 @@ object AQI {
   val dailyList = List(O3_8hr, O3, pm25, pm10, CO_8hr, SO2, NO2)
 
   def getAqiMonitorTypeName: Map[AqiMonitorType, String] = Map(
-    O3_8hr -> "臭氧<br/>(ppm)<br/>八小時平均值",
-    O3 -> "臭氧<br/>(ppm)<br/>小時平均值",
-    pm25 -> "PM2.5<br/>(μg/m3)<br/>平均值",
-    pm10 -> "PM10<br/>(μg/m3 )<br/>平均值",
-    CO_8hr -> "CO<br/>(ppm)<br/>8小時平均值",
-    SO2 -> "SO2<br/>(ppb)<br/>小時平均值",
-    SO2_24hr -> "SO2<br/>(ppb)<br/>24小時平均值",
-    NO2 -> "NO2<br/>(ppb)<br/>小時平均值")
+    O3_8hr -> "臭氧(ppm) 八小時平均值",
+    O3 -> "臭氧(ppm) 小時平均值",
+    pm25 -> "PM2.5(μg/m3) 平均值",
+    pm10 -> "PM10(μg/m3 )平均值",
+    CO_8hr -> "CO(ppm) 8小時平均值",
+    SO2 -> "SO2(ppb) 小時平均值",
+    SO2_24hr -> "SO2(ppb) 24小時平均值",
+    NO2 -> "NO2(ppb) 小時平均值")
 
   val mtMap: mutable.Map[AqiMonitorType, String] = mutable.Map(
     O3_8hr -> MonitorType.O3,
@@ -59,11 +60,13 @@ object AQI {
   def mtList: Set[String] = mtMap.values.toSet
 
   def getAqiExplain(report:AqiReport)(monitorTypeDB: MonitorTypeDB) : AqiExplainReport = {
-    val value = AqiExplain(report.aqi.map(_.toInt.toString).getOrElse("-"), report.aqi.map(getAqiLevel).getOrElse(""))
+    val value = AqiExplain(report.aqi.map(_.toInt.toString).getOrElse("-"), "",
+      report.aqi.map(getAqiLevel).getOrElse(""))
     val subExplain =
     report.sub_map.map(pair=>{
       val (aqiMt, subReport) = pair
       AqiSubExplain(getAqiMonitorTypeName(aqiMt), AqiExplain(subReport.aqi.map(_.toInt.toString).getOrElse("-"),
+        monitorTypeDB.format(mtMap(aqiMt), subReport.value),
         subReport.aqi.map(getAqiLevel).getOrElse("")))
     })
     AqiExplainReport(value, subExplain.toSeq)
@@ -338,7 +341,7 @@ object AQI {
       }
   }
 
-  def getRealtimeAqiTrend(m: String, start: DateTime, end: DateTime)(implicit recordDB: RecordDB): Future[Map[DateTime, Option[Double]]] = {
+  def getRealtimeAqiTrend(m: String, start: DateTime, end: DateTime)(implicit recordDB: RecordDB): Future[Map[DateTime, AqiReport]] = {
 
     for (recordLists <- recordDB.getRecordListFuture(recordDB.HourCollection)(start.minusDays(1), end, Seq(m))) yield {
       val recordMap = mutable.Map.empty[String, ListBuffer[Option[MtRecord]]]
@@ -346,6 +349,7 @@ object AQI {
            mtMap = recordlist.mtMap
            mt <- mtList
            } {
+
         val lb = recordMap.getOrElseUpdate(mt, ListBuffer.empty[Option[MtRecord]])
         lb.append(mtMap.get(mt))
       }
@@ -354,14 +358,14 @@ object AQI {
         for {
           hr <- 24 to (24 + duration.getStandardDays.toInt * 24)
         } yield {
-          start + (hr - 24).hour -> getMonitorRealtimeAQIfromMap(hr, recordMap)._1
+          start + (hr - 24).hour -> getMonitorRealtimeAQIfromMap(hr, recordMap)
         }
       pairs.toMap
     }
   }
 
   def getMonitorRealtimeAQIfromMap(thisHour: Int,
-                                   map: mutable.Map[String, ListBuffer[Option[MtRecord]]]) = {
+                                   map: mutable.Map[String, ListBuffer[Option[MtRecord]]]): AqiReport = {
     def getValidValues(mt: String, start: Int, end: Int): ListBuffer[Double] = {
       val mtRecords = map(mt).slice(start, end)
       mtRecords.flatten.filter(mtRecord =>
@@ -406,7 +410,7 @@ object AQI {
 
     val aqi = result.values.map(_.aqi).max
 
-    (aqi, result)
+    AqiReport(aqi, result)
   }
 
   def getMonitorDailyAQI(monitor: String, thisDay: DateTime)(implicit recordDB: RecordDB): Future[AqiReport] = {
@@ -415,20 +419,22 @@ object AQI {
       for {recordList <- recordLists
            mtMap = recordList.mtMap
            mt <- mtList} {
+
         val lb = dayMap.getOrElseUpdate(mt, ListBuffer.empty[Option[MtRecord]])
         lb.append(mtMap.get(mt))
       }
+
       getMonitorDailyAQIfromMap(0, dayMap)
     }
   }
 
-  def getMonitorDailyAQIfromMap(dayStartHour: Int,
-                                map: mutable.Map[String, ListBuffer[Option[MtRecord]]]) = {
+  private def getMonitorDailyAQIfromMap(dayStartHour: Int,
+                                        map: mutable.Map[String, ListBuffer[Option[MtRecord]]]): AqiReport = {
 
-    def getValidValues(mt: String, start: Int, end: Int): ListBuffer[Double] = {
-      val mtRecords = map(mt).slice(start, end)
+    def getValidValues(mt: String, start: Int, end: Int): List[Double] = {
+      val mtRecords: Iterable[Option[MtRecord]] = map.get(mt).map(lb=>lb.slice(start, end)).getOrElse(ListBuffer.empty[Option[MtRecord]])
       mtRecords.flatten.filter(mtRecord =>
-        MonitorStatusFilter.isMatched(MonitorStatusFilter.ValidData, mtRecord.status)).flatMap(_.value)
+        MonitorStatusFilter.isMatched(MonitorStatusFilter.ValidData, mtRecord.status)).flatMap(_.value).toList
     }
 
     def getMonitorTypeAvg(mt: String,
@@ -453,7 +459,7 @@ object AQI {
     }
 
     def getMonitorType8HourAvgMax(mt: String, start: Int, end: Int): Option[Double] = {
-      def get8hrAvg(validValues: ListBuffer[Double]): Option[Double] =
+      def get8hrAvg(validValues: List[Double]): Option[Double] =
         if (validValues.length < 6)
           None
         else

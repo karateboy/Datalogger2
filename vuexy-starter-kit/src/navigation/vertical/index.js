@@ -40,6 +40,12 @@ export default [
         resource: 'Data',
       },
       {
+        title: 'AQI趨勢圖',
+        route: 'aqi-trend',
+        action: 'read',
+        resource: 'Data',
+      },
+      {
         title: '雙測項對比圖',
         route: 'scatter-chart',
         action: 'read',
