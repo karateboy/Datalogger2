@@ -125,6 +125,8 @@ GET           /AlertEmailTargets                                                
 POST          /AlertEmailTargets                                                                                 controllers.HomeController.saveAlertEmailTargets
 GET           /SystemConfig/EffectiveRatio                                                                       controllers.HomeController.getEffectiveRatio
 POST          /SystemConfig/EffectiveRatio                                                                       controllers.HomeController.saveEffectiveRatio
+GET           /SystemConfig/AqiMonitorTypes                                                                      controllers.Realtime.getAqiMonitorTypeMapping
+POST          /SystemConfig/AqiMonitorTypes                                                                      controllers.Realtime.postAqiMonitorTypeMapping
 
 #Rules
 GET           /SpikeRules                                                                                        controllers.RuleController.getSpikeRules

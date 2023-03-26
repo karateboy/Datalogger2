@@ -2,7 +2,7 @@ package models.sql
 
 import com.mongodb.client.result.UpdateResult
 import models.CdxUploader.{CdxConfig, CdxMonitorType}
-import models.{CdxUploader, Monitor, SysConfigDB}
+import models.{AQI, CdxUploader, Monitor, SysConfigDB}
 import play.api.libs.json.Json
 import scalikejdbc._
 
@@ -71,7 +71,7 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
   }
 
   override def getAlertEmailTarget(): Future[Seq[String]] = Future {
-    val valueOpt = get(AlertEmailTaget)
+    val valueOpt = get(AlertEmailTarget)
     val ret =
       for (value <- valueOpt) yield
         value.v.split(",").filter(_.nonEmpty).toSeq
@@ -79,7 +79,7 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
   }
 
   override def setAlertEmailTarget(emails: Seq[String]): Future[UpdateResult] = Future {
-    val ret = set(AlertEmailTaget, emails.mkString(","))
+    val ret = set(AlertEmailTarget, emails.mkString(","))
     UpdateResult.acknowledged(ret, ret, null)
   }
 
@@ -166,6 +166,19 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
 
   override def setActiveMonitorId(id: String): Future[UpdateResult] = Future {
     val ret = set(ACTIVE_MONITOR_ID, id)
+    UpdateResult.acknowledged(ret, ret, null)
+  }
+
+  override def getAqiMonitorTypes: Future[Seq[String]] = Future {
+    val valueOpt = get(AQI_MONITOR_TYPES)
+    val ret =
+      for (value <- valueOpt) yield
+        value.v.split(",").filter(_.nonEmpty).toSeq
+    ret.getOrElse(AQI.defaultMappingTypes)
+  }
+
+  override def setAqiMonitorTypes(emails: Seq[String]): Future[UpdateResult] = Future {
+    val ret = set(AQI_MONITOR_TYPES, emails.mkString(","))
     UpdateResult.acknowledged(ret, ret, null)
   }
 }

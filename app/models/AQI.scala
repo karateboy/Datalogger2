@@ -10,9 +10,12 @@ import scala.concurrent.Future
 
 sealed trait AqiMonitorType
 
-case class AqiSubExplain(mtName:String, explain:AqiExplain)
-case class AqiExplain(aqi:String, value:String, css:String)
-case class AqiExplainReport(value:AqiExplain, subExplain: Seq[AqiSubExplain])
+case class AqiSubExplain(mtName: String, explain: AqiExplain)
+
+case class AqiExplain(aqi: String, value: String, css: String)
+
+case class AqiExplainReport(value: AqiExplain, subExplain: Seq[AqiSubExplain])
+
 case class AqiSubReport(value: Option[Double], aqi: Option[Double])
 
 case class AqiReport(aqi: Option[Double], sub_map: Map[AqiMonitorType, AqiSubReport])
@@ -34,14 +37,20 @@ object AQI {
 
   final case object NO2 extends AqiMonitorType
 
-  val realtimeList = List(O3_8hr, O3, pm25, pm10, CO_8hr, SO2, NO2)
-  val dailyList = List(O3_8hr, O3, pm25, pm10, CO_8hr, SO2, NO2)
+  val aqiMonitorType: Seq[AqiMonitorType] = Seq(O3_8hr, O3, pm25, pm10, CO_8hr, SO2, SO2_24hr, NO2)
+  val defaultMappingTypes: Seq[String] = Seq(MonitorType.O3, MonitorType.O3,
+    MonitorType.PM25,
+    MonitorType.PM10,
+    MonitorType.CO,
+    MonitorType.SO2,
+    MonitorType.SO2,
+    MonitorType.NO2)
 
   def getAqiMonitorTypeName: Map[AqiMonitorType, String] = Map(
     O3_8hr -> "臭氧(ppm) 八小時平均值",
     O3 -> "臭氧(ppm) 小時平均值",
     pm25 -> "PM2.5(μg/m3) 平均值",
-    pm10 -> "PM10(μg/m3 )平均值",
+    pm10 -> "PM10(μg/m3) 平均值",
     CO_8hr -> "CO(ppm) 8小時平均值",
     SO2 -> "SO2(ppb) 小時平均值",
     SO2_24hr -> "SO2(ppb) 24小時平均值",
@@ -57,18 +66,27 @@ object AQI {
     SO2_24hr -> MonitorType.SO2,
     NO2 -> MonitorType.NO2)
 
+  def updateAqiTypeMapping(monitorTypes: Seq[String]): Unit = {
+    if (monitorTypes.length != aqiMonitorType.length) {
+      Logger.error(s"AQI type mapping length not equal!")
+    } else
+      for ((k, v) <- aqiMonitorType.zip(monitorTypes)) {
+        mtMap.update(k, v)
+      }
+  }
+
   def mtList: Set[String] = mtMap.values.toSet
 
-  def getAqiExplain(report:AqiReport)(monitorTypeDB: MonitorTypeDB) : AqiExplainReport = {
+  def getAqiExplain(report: AqiReport)(monitorTypeDB: MonitorTypeDB): AqiExplainReport = {
     val value = AqiExplain(report.aqi.map(_.toInt.toString).getOrElse("-"), "",
       report.aqi.map(getAqiLevel).getOrElse(""))
     val subExplain =
-    report.sub_map.map(pair=>{
-      val (aqiMt, subReport) = pair
-      AqiSubExplain(getAqiMonitorTypeName(aqiMt), AqiExplain(subReport.aqi.map(_.toInt.toString).getOrElse("-"),
-        monitorTypeDB.format(mtMap(aqiMt), subReport.value),
-        subReport.aqi.map(getAqiLevel).getOrElse("")))
-    })
+      report.sub_map.map(pair => {
+        val (aqiMt, subReport) = pair
+        AqiSubExplain(getAqiMonitorTypeName(aqiMt), AqiExplain(subReport.aqi.map(_.toInt.toString).getOrElse("-"),
+          monitorTypeDB.format(mtMap(aqiMt), subReport.value),
+          subReport.aqi.map(getAqiLevel).getOrElse("")))
+      })
     AqiExplainReport(value, subExplain.toSeq)
   }
 
@@ -432,7 +450,7 @@ object AQI {
                                         map: mutable.Map[String, ListBuffer[Option[MtRecord]]]): AqiReport = {
 
     def getValidValues(mt: String, start: Int, end: Int): List[Double] = {
-      val mtRecords: Iterable[Option[MtRecord]] = map.get(mt).map(lb=>lb.slice(start, end)).getOrElse(ListBuffer.empty[Option[MtRecord]])
+      val mtRecords: Iterable[Option[MtRecord]] = map.get(mt).map(lb => lb.slice(start, end)).getOrElse(ListBuffer.empty[Option[MtRecord]])
       mtRecords.flatten.filter(mtRecord =>
         MonitorStatusFilter.isMatched(MonitorStatusFilter.ValidData, mtRecord.status)).flatMap(_.value).toList
     }
