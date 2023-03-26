@@ -231,7 +231,7 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
     tabList.foreach(tabName => {
       val tab = getTab(tabName)
       val columnName = sqlServer.getColumnNames(tab)
-      mtList.foreach(mt => if (columnName.contains(s"${mt}_raw")) {
+      mtList.foreach(mt => if (!columnName.contains(s"${mt}_raw")) {
         val mtRawColumn = SQLSyntax.createUnsafely(s"[${mt}_raw]")
         sql"""
               Alter Table $tab
