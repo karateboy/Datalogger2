@@ -15,6 +15,12 @@ export default [
         action: 'read',
         resource: 'Dashboard',
       },
+      {
+        title: '即時AQI',
+        route: 'realtime-aqi',
+        action: 'read',
+        resource: 'Dashboard',
+      },
     ],
   },
   {
@@ -30,6 +36,12 @@ export default [
       {
         title: '歷史趨勢圖',
         route: 'history-trend',
+        action: 'read',
+        resource: 'Data',
+      },
+      {
+        title: 'AQI趨勢圖',
+        route: 'aqi-trend',
         action: 'read',
         resource: 'Data',
       },

@@ -410,6 +410,9 @@ class DataCollectManager @Inject()
   Logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
   DataCollectManager.updateEffectiveRatio(sysConfig)
 
+  for(aqiMonitorTypes <- sysConfig.getAqiMonitorTypes())
+    AQI.updateAqiTypeMapping(aqiMonitorTypes)
+    
   val timer = {
     import scala.concurrent.duration._
     //Try to trigger at 30 sec

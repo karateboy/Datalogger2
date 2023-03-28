@@ -2,7 +2,7 @@ package models.mongodb
 
 import models.CdxUploader.{CdxConfig, CdxMonitorType}
 import models.ModelHelper.{errorHandler, waitReadyResult}
-import models.{CdxUploader, Monitor, SysConfigDB}
+import models.{AQI, CdxUploader, Monitor, SysConfigDB}
 import org.mongodb.scala.bson.{BsonDateTime, BsonNumber, BsonString, BsonValue, Document}
 import org.mongodb.scala.model.{Filters, ReplaceOptions}
 import org.mongodb.scala.result.UpdateResult
@@ -27,11 +27,12 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     SpectrumLastParseTime -> Document(valueKey -> new Date(0)),
     WeatherLastParseTime -> Document(valueKey -> new Date(0)),
     WeatherSkipLine -> Document(valueKey -> 0),
-    AlertEmailTaget -> Document(valueKey -> Seq("karateboy.tw@gmail.com")),
+    AlertEmailTarget -> Document(valueKey -> Seq("karateboy.tw@gmail.com")),
     EffectiveRatio -> Document(valueKey -> 0.75),
     CDX_CONFIG -> Document(valueKey -> Json.toJson(CdxUploader.defaultConfig).toString()),
     CDX_MONITOR_TYPES -> Document(valueKey -> Json.toJson(CdxUploader.defaultMonitorTypes).toString()),
-    ACTIVE_MONITOR_ID -> Document(valueKey -> Monitor.activeId)
+    ACTIVE_MONITOR_ID -> Document(valueKey -> Monitor.activeId),
+    AQI_MONITOR_TYPES -> Document(valueKey ->AQI.defaultMappingTypes)
   )
 
   override def getSpectrumLastParseTime(): Future[Instant] = getInstant(SpectrumLastParseTime)()
@@ -90,10 +91,10 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
   }
 
   override def getAlertEmailTarget(): Future[Seq[String]] =
-    for (v <- get(AlertEmailTaget)) yield
+    for (v <- get(AlertEmailTarget)) yield
       v.asArray().toSeq.map(_.asString().getValue)
 
-  override def setAlertEmailTarget(emails: Seq[String]): Future[UpdateResult] = set(AlertEmailTaget, emails)
+  override def setAlertEmailTarget(emails: Seq[String]): Future[UpdateResult] = set(AlertEmailTarget, emails)
 
   private def set(_id: String, v: Seq[String]) = upsert(_id, Document(valueKey -> v))
 
@@ -135,4 +136,19 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
   override def getActiveMonitorId(): Future[String] = get(ACTIVE_MONITOR_ID).map(_.asString().getValue)
 
   override def setActiveMonitorId(id: String): Future[UpdateResult] = set(ACTIVE_MONITOR_ID, BsonString(id))
+
+  override def getAqiMonitorTypes(): Future[Seq[String]] =
+    for (v <- get(AQI_MONITOR_TYPES)) yield
+      v.asArray().toSeq.map(_.asString().getValue)
+  override def setAqiMonitorTypes(monitorTypes: Seq[String]): Future[UpdateResult] =
+    set(AQI_MONITOR_TYPES, monitorTypes)
+
+
+  /*
+  override def getAlertEmailTarget(): Future[Seq[String]] =
+    for (v <- get(AlertEmailTarget)) yield
+      v.asArray().toSeq.map(_.asString().getValue)
+
+  override def setAlertEmailTarget(emails: Seq[String]): Future[UpdateResult] = set(AlertEmailTarget, emails)
+*/
 }
