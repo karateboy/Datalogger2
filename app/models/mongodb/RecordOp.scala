@@ -9,6 +9,7 @@ import play.api.Logger
 
 import java.util.Date
 import javax.inject.{Inject, Singleton}
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Success
@@ -78,15 +79,15 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
   }
 
   override def getRecordMapFuture(colName: String)
-                                 (monitor: String, mtList: Seq[String], startTime: DateTime, endTime: DateTime): Future[Map[String, Seq[Record]]] = {
+                                 (monitor: String, mtList: Seq[String], startTime: DateTime, endTime: DateTime, includeRaw:Boolean): Future[Map[String, Seq[Record]]] = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
     val col = getCollection(colName)
     val operation: FindObservable[RecordList] = col.find(
       and(equal("_id.monitor", monitor),
-        gte("_id.time", startTime.toDate()),
-        lt("_id.time", endTime.toDate())))
+        gte("_id.time", startTime.toDate),
+        lt("_id.time", endTime.toDate)))
       .sort(ascending("time"))
 
     val f: Future[Seq[RecordList]] = if (mongodb.below44)
@@ -94,25 +95,8 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     else
       operation.allowDiskUse(true).toFuture()
 
-    val allF = calibrateHelper(f, mtList, startTime, endTime)
-
-    for (docs <- allF) yield {
-      val pairs =
-        for {
-          mt <- mtList
-        } yield {
-          val list =
-            for {
-              doc <- docs
-              time = doc._id.time
-              mtMap = doc.mtMap if mtMap.contains(mt) && mtMap(mt).value.isDefined
-            } yield {
-              Record(new DateTime(time.getTime), mtMap(mt).value, mtMap(mt).status, monitor)
-            }
-
-          mt -> list
-        }
-      Map(pairs: _*)
+    for (recordLists <- f) yield {
+      getRecordMapFromRecordList(mtList, recordLists, includeRaw)
     }
   }
 
@@ -125,7 +109,7 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     val f = col.find(and(in("_id.monitor", monitors: _*), gte("_id.time", startTime.toDate()), lt("_id.time", endTime.toDate())))
       .sort(ascending("_id.time")).toFuture()
     f onFailure errorHandler
-    calibrateHelper(f, monitorTypeOp.mtvList, startTime, endTime)
+    f
   }
 
   override def getRecordWithLimitFuture(colName: String)(startTime: DateTime, endTime: DateTime, limit: Int, monitor: String = Monitor.activeId):
@@ -154,8 +138,7 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
       .sort(ascending("_id.time")).toFuture()
     f onFailure errorHandler
 
-    val recordF = calibrateHelper(f, mtList, startTime, endTime)
-    for (docs <- recordF) yield {
+    for (docs <- f) yield {
       for {
         doc <- docs
         mtMap = doc.mtMap if mtList.forall(doc.mtMap.contains(_))
@@ -167,23 +150,6 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
   }
 
   private def getCollection(colName: String): MongoCollection[RecordList] = mongodb.database.getCollection[RecordList](colName).withCodecRegistry(codecRegistry)
-
-  private def calibrateHelper(f: Future[Seq[RecordList]],
-                              mtList: Seq[String], startTime: DateTime, endTime: DateTime): Future[Seq[RecordList]] = {
-    val needCalibration = mtList.map { mt => monitorTypeOp.map(mt).calibrate.getOrElse(false) }.exists(p => p)
-
-    if (needCalibration) {
-      val f2 = calibrationOp.getCalibrationMap(startTime, endTime)(monitorTypeOp)
-      for {
-        docs <- f
-        calibrationMap <- f2
-      } yield {
-        docs.foreach(_.doCalibrate(monitorTypeOp, calibrationMap))
-        docs
-      }
-    } else
-      f
-  }
 
   override def upsertManyRecords(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult] = {
     /*

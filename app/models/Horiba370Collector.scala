@@ -501,9 +501,9 @@ class Horiba370Collector @Inject()
         }
       }
 
-    case ReportData(mtDataList) =>
+    case reportData:ReportData =>
       if (recording) {
-        val data = mtDataList
+        val data = reportData.dataList(monitorTypeOp)
         context become calibrationHandler(connection, calibrationType, startTime, recording,
           data ::: calibrationDataList, zeroMap)
       }
