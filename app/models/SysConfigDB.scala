@@ -13,10 +13,11 @@ trait SysConfigDB {
   val WeatherLastParseTime = "WeatherLastParseTime"
   val WeatherSkipLine = "WeatherSkipLine"
   val EffectiveRatio = "EffectiveRatio"
-  val AlertEmailTaget = "AlertEmailTarget"
+  val AlertEmailTarget = "AlertEmailTarget"
   val CDX_CONFIG = "CdxConfig"
   val CDX_MONITOR_TYPES = "CdxMonitorTypes"
   val ACTIVE_MONITOR_ID = "ActiveMonitorId"
+  val AQI_MONITOR_TYPES = "AqiMonitorTypes"
 
   // def getLogo: Future[LogoImage]
 
@@ -53,4 +54,9 @@ trait SysConfigDB {
   def getActiveMonitorId() : Future[String]
 
   def setActiveMonitorId(id:String) : Future[UpdateResult]
+
+  def getAqiMonitorTypes(): Future[Seq[String]]
+
+  def setAqiMonitorTypes(monitorTypes: Seq[String]): Future[UpdateResult]
+
 }

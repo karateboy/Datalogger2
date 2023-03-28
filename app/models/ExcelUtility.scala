@@ -7,7 +7,6 @@ import org.apache.poi.openxml4j.opc._
 import org.apache.poi.ss.usermodel._
 import org.apache.poi.ss.util.CellRangeAddress
 import org.apache.poi.xssf.usermodel._
-import play.api.Logger
 
 import java.io._
 import java.math.MathContext
@@ -22,12 +21,13 @@ class ExcelUtility @Inject()
 
   def exportChartData(chart: HighchartData, monitorTypes: Array[String], showSec: Boolean): File = {
     val precArray = monitorTypes.map { mt =>
-    if(monitorTypeOp.map.contains(mt))
-      monitorTypeOp.map(mt).prec
-    else{
-      val realType = MonitorType.getRealType(mt)
-      monitorTypeOp.map(realType).prec
-    }}
+      if (monitorTypeOp.map.contains(mt))
+        monitorTypeOp.map(mt).prec
+      else {
+        val realType = MonitorType.getRealType(mt)
+        monitorTypeOp.map(realType).prec
+      }
+    }
     exportChartData(chart, precArray, showSec)
   }
 
@@ -105,11 +105,12 @@ class ExcelUtility @Inject()
               timeCell.setCellValue(dt.toString("YYYY/MM/dd HH:mm:ss"))
           }
 
-            val cell = thisRow.createCell(colIdx * 2 + 1)
-            cell.setCellStyle(styles(colIdx))
-            for (v <- pair._2 if !v.isNaN) {
-              val d = BigDecimal(v).setScale(precArray(colIdx), RoundingMode.HALF_EVEN)
-              cell.setCellValue(d.doubleValue())
+          val cell = thisRow.createCell(colIdx * 2 + 1)
+          cell.setCellStyle(styles(colIdx))
+          for (v <- pair._2 if !v.isNaN) {
+            val d = BigDecimal(v).setScale(precArray(colIdx), RoundingMode.HALF_EVEN)
+            cell.setCellValue(d.doubleValue())
+            if (series.statusList.nonEmpty)
               for (status <- series.statusList(row - 1)) {
                 val tagInfo = MonitorStatus.getTagInfo(status)
                 val statusCell = thisRow.createCell(2 * colIdx + 2)
@@ -127,8 +128,7 @@ class ExcelUtility @Inject()
                   statusCell.setCellStyle(maintanceStyle)
                 }
               }
-            }
-
+          }
         }
       }
     }

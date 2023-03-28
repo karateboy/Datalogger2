@@ -34,6 +34,147 @@
         </b-row>
       </b-form>
     </b-card>
+    <b-card v-if="aqiMonitorTypes.length !== 0">
+      <b-form @submit.prevent>
+        <b-row>
+          <b-col cols="12">
+            <b-form-group
+              label="臭氧(ppm) 八小時平均值測項"
+              label-for="monitorType"
+              label-cols-md="3"
+            >
+              <v-select
+                id="monitorType"
+                v-model="aqiMonitorTypes[0]"
+                label="desp"
+                :reduce="mt => mt._id"
+                :options="activatedMonitorTypes"                
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="12">
+            <b-form-group
+              label="臭氧(ppm) 小時平均值測項"
+              label-for="monitorType"
+              label-cols-md="3"
+            >
+              <v-select
+                id="monitorType"
+                v-model="aqiMonitorTypes[1]"
+                label="desp"
+                :reduce="mt => mt._id"
+                :options="activatedMonitorTypes"                
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="12">
+            <b-form-group
+              label="PM2.5(μg/m3) 平均值測項"
+              label-for="monitorType"
+              label-cols-md="3"
+            >
+              <v-select
+                id="monitorType"
+                v-model="aqiMonitorTypes[2]"
+                label="desp"
+                :reduce="mt => mt._id"
+                :options="activatedMonitorTypes"                
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="12">
+            <b-form-group
+              label="PM10(μg/m3 )平均值測項"
+              label-for="monitorType"
+              label-cols-md="3"
+            >
+              <v-select
+                id="monitorType"
+                v-model="aqiMonitorTypes[3]"
+                label="desp"
+                :reduce="mt => mt._id"
+                :options="activatedMonitorTypes"                
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="12">
+            <b-form-group
+              label="CO(ppm) 8小時平均值測項"
+              label-for="monitorType"
+              label-cols-md="3"
+            >
+              <v-select
+                id="monitorType"
+                v-model="aqiMonitorTypes[4]"
+                label="desp"
+                :reduce="mt => mt._id"
+                :options="activatedMonitorTypes"                
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="12">
+            <b-form-group
+              label="SO2(ppb) 小時平均值測項"
+              label-for="monitorType"
+              label-cols-md="3"
+            >
+              <v-select
+                id="monitorType"
+                v-model="aqiMonitorTypes[5]"
+                label="desp"
+                :reduce="mt => mt._id"
+                :options="activatedMonitorTypes"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="12">
+            <b-form-group
+              label="SO2(ppb) 24小時平均值測項"
+              label-for="monitorType"
+              label-cols-md="3"
+            >
+              <v-select
+                id="monitorType"
+                v-model="aqiMonitorTypes[6]"
+                label="desp"
+                :reduce="mt => mt._id"
+                :options="activatedMonitorTypes"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="12">
+            <b-form-group
+              label="NO2(ppb) 小時平均值測項"
+              label-for="monitorType"
+              label-cols-md="3"
+            >
+              <v-select
+                id="monitorType"
+                v-model="aqiMonitorTypes[7]"
+                label="desp"
+                :reduce="mt => mt._id"
+                :options="activatedMonitorTypes"                
+              />
+            </b-form-group>
+          </b-col>
+        </b-row>
+        <br />
+        <b-row>
+          <b-col offset-md="3">
+            <b-button
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              type="submit"
+              variant="primary"
+              class="mr-1"
+              :disabled="!canSaveEffectiveRatio"
+              @click="setAqiMapping"
+            >
+              儲存
+            </b-button>
+          </b-col>
+        </b-row>
+      </b-form>
+    </b-card>
     <b-card title="異常通報">
       <b-table :items="emails" :fields="fields" bordered>
         <template #thead-top>
@@ -94,6 +235,7 @@ import Vue from 'vue';
 const Ripple = require('vue-ripple-directive');
 import axios from 'axios';
 import { isNumber } from 'highcharts';
+import { mapState, mapGetters, mapActions } from 'vuex';
 
 interface EmailTarget {
   _id: string;
@@ -109,6 +251,7 @@ export default Vue.extend({
   },
   data() {
     let emails = Array<EmailTarget>();
+    let aqiMonitorTypes = new Array<string>();
     const fields = [
       {
         key: '_id',
@@ -127,10 +270,13 @@ export default Vue.extend({
       selected: [],
       emails,
       fields,
+      aqiMonitorTypes,
       disconnectCheckTime: '',
     };
   },
   computed: {
+    ...mapState('monitorTypes', ['monitorTypes']),
+    ...mapGetters('monitorTypes', ['mtMap', 'activatedMonitorTypes']),
     canSaveEffectiveRatio(): boolean {
       if (!this.form.effectiveRatio) return false;
 
@@ -142,11 +288,14 @@ export default Vue.extend({
       return true;
     },
   },
-  mounted() {
+  async mounted() {
     this.getEffectiveRatio();
     this.getAlertEmailTarget();
+    await this.fetchMonitorTypes();
+    await this.getAqiMapping();
   },
   methods: {
+    ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     async getEffectiveRatio() {
       const res = await axios.get('/SystemConfig/EffectiveRatio');
       this.form.effectiveRatio = res.data;
@@ -162,6 +311,29 @@ export default Vue.extend({
         this.$bvModal.msgBoxOk(`失敗 ${res.status} - ${res.statusText}`, {
           headerBgVariant: 'danger',
         });
+      }
+    },
+    async getAqiMapping() {
+      try {
+        const res = await axios.get('/SystemConfig/AqiMonitorTypes');
+        if (res.status === 200) {
+          this.aqiMonitorTypes = res.data;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    async setAqiMapping() {
+      try {
+        const res = await axios.post(
+          '/SystemConfig/AqiMonitorTypes',
+          this.aqiMonitorTypes,
+        );
+        if (res.status === 200) {
+          this.$bvModal.msgBoxOk('成功更新');
+        }
+      } catch (err) {
+        console.error(err);
       }
     },
     onEmailSelected(items: never[]) {

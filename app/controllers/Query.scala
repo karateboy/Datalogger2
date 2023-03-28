@@ -1,5 +1,8 @@
 package controllers
 
+import com.github
+import com.github.nscala_time
+import com.github.nscala_time.time
 import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import controllers.Highchart._
@@ -943,4 +946,81 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
   }
 
   case class InstrumentReport(columnNames: Seq[String], rows: Seq[RowData])
+
+  def aqiTrendChart(monitorStr: String, isDailyAqi: Boolean, startNum: Long, endNum: Long,  outputTypeStr: String) =
+    Security.Authenticated.async {
+    implicit request =>
+      val monitors = monitorStr.split(':')
+      val start = new DateTime(startNum).withTimeAtStartOfDay()
+      val end = new DateTime(endNum).withTimeAtStartOfDay() + 1.day
+      val outputType = OutputType.withName(outputTypeStr)
+
+      def getAqiMap(m: String): Future[Map[DateTime, AqiReport]] = {
+        if (isDailyAqi) {
+            val aqiListFuture: List[Future[(DateTime, AqiReport)]] =
+              for (current <- getPeriods(start, end, 1.day)) yield {
+                for (v <- AQI.getMonitorDailyAQI(m, current)(recordOp)) yield
+                  (current, v)
+              }
+            for (ret <- Future.sequence(aqiListFuture)) yield
+              ret.toMap
+        } else {
+          AQI.getRealtimeAqiTrend(m, start, end)(recordOp)
+        }
+      }
+
+      val timeSet = if (isDailyAqi)
+        getPeriods(start, end, 1.day)
+      else
+        getPeriods(start, end, 1.hour)
+
+      val monitorAqiPairFutures =
+        for (m <- monitors.toList) yield {
+          for(map<-getAqiMap(m)) yield
+            m -> map
+        }
+
+      for(monitorAqiPair <- Future.sequence(monitorAqiPairFutures)) yield {
+        val monitorAqiMap = monitorAqiPair.toMap
+        val title = "AQI歷史趨勢圖"
+        val timeSeq = timeSet.zipWithIndex
+
+        val series = for {
+          m <- monitors
+          timeData = timeSeq.map { t =>
+            val time = t._1
+            val x = t._2
+            if (monitorAqiMap(m).contains(time)) {
+              val aqi = monitorAqiMap(m).get(time).flatMap(_.aqi)
+              (time.getMillis, aqi)
+            } else
+              (time.getMillis, None)
+          }
+        } yield {
+          seqData(monitorOp.map(m).desc, timeData)
+        }
+        val timeStrSeq =
+          if (isDailyAqi)
+            timeSeq.map(_._1.toString("YY/MM/dd"))
+          else
+            timeSeq.map(_._1.toString("MM/dd HH:00"))
+
+        val chart = HighchartData(
+          scala.collection.immutable.Map("type" -> "column"),
+          scala.collection.immutable.Map("text" -> title),
+          XAxis(None),
+          Seq(YAxis(None, AxisTitle(Some(Some(""))), None)),
+          series)
+
+        if (outputType == OutputType.excel) {
+          val excelFile = excelUtility.exportChartData(chart, Array(0), showSec = false)
+          Ok.sendFile(excelFile, fileName = _ =>
+            s"AQI查詢.xlsx",
+            onClose = () => {
+              Files.deleteIfExists(excelFile.toPath)
+            })
+        } else
+          Ok(Json.toJson(chart))
+      }
+  }
 }
