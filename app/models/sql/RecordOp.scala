@@ -225,13 +225,14 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
     })
 
     mtList = sqlServer.getColumnNames(HourCollection).filter(col => {
-      !col.endsWith("_s") && col != "monitor" && col != "time"
-    })
+      col.endsWith("_s")
+    }).map(_.reverse.drop(2).reverse)
 
+    //Init raw columns
     tabList.foreach(tabName => {
-      val tab = getTab(tabName)
-      val columnName = sqlServer.getColumnNames(tab)
+      val columnName = sqlServer.getColumnNames(tabName)
       mtList.foreach(mt => if (!columnName.contains(s"${mt}_raw")) {
+        val tab = getTab(tabName)
         val mtRawColumn = SQLSyntax.createUnsafely(s"[${mt}_raw]")
         sql"""
               Alter Table $tab
