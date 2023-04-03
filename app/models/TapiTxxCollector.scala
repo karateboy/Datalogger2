@@ -26,7 +26,7 @@ import models.TapiTxx._
 import javax.inject._
 
 abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
-                                          alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
+                                          alarmOp: AlarmDB, monitorTypeDB: MonitorTypeDB,
                                           calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                                          (instId: String, modelReg: ModelReg, tapiConfig: TapiConfig, host: String) extends Actor {
   val InputKey = "Input"
@@ -40,8 +40,8 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
 
   self ! ConnectHost
   val WarnKey = "Warn"
-  var timerOpt: Option[Cancellable] = None
-  var masterOpt: Option[ModbusMaster] = None
+  @volatile var timerOpt: Option[Cancellable] = None
+  @volatile var masterOpt: Option[ModbusMaster] = None
   @volatile var (collectorState: String, instrumentStatusTypesOpt) = {
     val instList = instrumentOp.getInstrument(instId)
     if (!instList.isEmpty) {
@@ -50,9 +50,9 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
     } else
       (MonitorStatus.NormalStat, None)
   }
-  var connected = false
-  var oldModelReg: Option[ModelRegValue] = None
-  var nextLoggingStatusTime = {
+  @volatile var connected = false
+  @volatile var oldModelReg: Option[ModelRegValue] = None
+  @volatile var nextLoggingStatusTime = {
     import com.github.nscala_time.time.Imports._
     def getNextTime(period: Int) = {
       val now = DateTime.now()
@@ -438,12 +438,12 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
       val values = for {mt <- tapiConfig.monitorTypes.get} yield {
         val calibrations = calibrationReadingList.flatMap {
           reading =>
-            reading.dataList.filter {
+            reading.dataList(monitorTypeDB).filter {
               _.mt == mt
             }.map { r => r.value }
         }
 
-        if (calibrations.length == 0) {
+        if (calibrations.isEmpty) {
           Logger.warn(s"No calibration data for $mt")
           (mt, 0d)
         } else
@@ -477,7 +477,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
                mt <- monitorTypes} {
             val zero = zeroMap.get(mt)
             val span = spanMap.get(mt)
-            val spanStd = monitorTypeOp.map(mt).span
+            val spanStd = monitorTypeDB.map(mt).span
             val cal = Calibration(mt, startTime, endTime, zero, spanStd, span)
             calibrationOp.insertFuture(cal)
           }
@@ -489,7 +489,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
               if (calibrationType.zero)
                 Calibration(mt, startTime, endTime, values, None, None)
               else {
-                val spanStd = monitorTypeOp.map(mt).span
+                val spanStd = monitorTypeDB.map(mt).span
                 Calibration(mt, startTime, endTime, None, spanStd, values)
               }
             calibrationOp.insertFuture(cal)
@@ -511,10 +511,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
         context.parent ! WriteDO(doBit, false)
     }
 
-    tapiConfig.calibrateSpanSeq map {
-      seq =>
-        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
-    }
+    context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
   }
 
   def triggerZeroCalibration(v: Boolean) {
@@ -527,8 +524,6 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
       seq =>
         if (v)
           context.parent ! ExecuteSeq(seq, v)
-        else
-          context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
     }
   }
 
@@ -542,8 +537,6 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
       seq =>
         if (v)
           context.parent ! ExecuteSeq(seq, v)
-        else
-          context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
     }
   }
 
@@ -560,8 +553,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
     try {
       if (v && tapiConfig.calibratorPurgeSeq.isDefined)
         context.parent ! ExecuteSeq(tapiConfig.calibratorPurgeSeq.get, v)
-      else
-        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+
     } catch {
       case ex: Exception =>
         ModelHelper.logException(ex)

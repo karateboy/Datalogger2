@@ -101,14 +101,14 @@ class Baseline9000Collector @Inject()
   val mtCH4 = ("CH4")
   val mtNMHC = ("NMHC")
   val mtTHC = ("THC")
-  var collectorState = {
+  @volatile var collectorState = {
     val instrument = instrumentOp.getInstrument(id)
     instrument(0).state
   }
-  var serialCommOpt: Option[SerialComm] = None
-  var timerOpt: Option[Cancellable] = None
-  var calibrateRecordStart = false
-  var calibrateTimerOpt: Option[Cancellable] = None
+  @volatile var serialCommOpt: Option[SerialComm] = None
+  @volatile var timerOpt: Option[Cancellable] = None
+  @volatile var calibrateRecordStart = false
+  @volatile var calibrateTimerOpt: Option[Cancellable] = None
 
   override def preStart() = {
     timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort))
@@ -256,9 +256,10 @@ class Baseline9000Collector @Inject()
         }
       } onFailure serialErrorHandler
 
-    case ReportData(mtDataList) =>
+    case reportData:ReportData =>
       if(calibrateRecordStart){
-        val data = mtDataList.filter { data => data.mt == mt }
+        val dataList = reportData.dataList(monitorTypeOp)
+        val data = dataList.filter { data => data.mt == mt }
         context become calibrationHandler(calibrationType, mt, startTime, data ::: calibrationDataList, zeroValue)
       }
 

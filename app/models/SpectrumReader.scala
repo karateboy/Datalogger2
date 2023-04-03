@@ -80,7 +80,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
 
   import SpectrumReader._
 
-  var timer: Cancellable = context.system.scheduler.scheduleOnce(FiniteDuration(5, SECONDS), self, ParseReport)
+  @volatile var timer: Cancellable = context.system.scheduler.scheduleOnce(FiniteDuration(5, SECONDS), self, ParseReport)
 
   override def receive: Receive = {
     case ParseReport =>
@@ -118,7 +118,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
 
 
           for (current <- getPeriods(start, end, Period.hours(1)))
-            dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID, current)(monitorTypeOp.mtvList)
+            dataCollectManagerOp.recalculateHourData(Monitor.activeId, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
         }
       }
       f onFailure errorHandler
@@ -133,7 +133,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
     val tokens = file.getName.split("\\.")
 
     val mtName = s"${tokens(0)}${config.postfix}"
-    monitorTypeOp.ensureMeasuring(mtName)
+    monitorTypeOp.ensure(mtName)
 
     val reader = CSVReader.open(file)
     var dataBegin = Instant.MAX
@@ -168,8 +168,10 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
 
           if (dt.isAfter(dataEnd))
             dataEnd = dt
-          Some(RecordList(time = Date.from(dt), monitor = Monitor.SELF_ID,
-            mtDataList = Seq(MtRecord(mtName, Some(value), MonitorStatus.NormalStat))))
+
+          val mtCase = monitorTypeOp.map(mtName)
+          Some(RecordList(time = Date.from(dt), monitor = Monitor.activeId,
+            mtDataList = Seq(monitorTypeOp.getMinMtRecordByRawValue(mtName, Some(value), MonitorStatus.NormalStat)(mtCase.fixedM, mtCase.fixedB))))
         } catch {
           case ex: Throwable =>
             None

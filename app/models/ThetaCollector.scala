@@ -99,7 +99,7 @@ class ThetaCollector @Inject()
   assert(protocolParam.protocol == Protocol.serial)
   val com = protocolParam.comPort.get
   val serial = SerialComm.open(com)
-  var timer: Cancellable = _
+  @volatile var timer: Cancellable = _
 
   override def receive: Receive = init()
 

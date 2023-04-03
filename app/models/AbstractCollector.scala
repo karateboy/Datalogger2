@@ -8,6 +8,7 @@ import play.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 import scala.util.{Failure, Success}
 
 case class ModelRegValue2(inputRegs: List[(InstrumentStatusType, Double)],
@@ -19,7 +20,7 @@ object AbstractCollector {
 }
 
 abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
-                                 alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
+                                 alarmOp: AlarmDB, monitorTypeDB: MonitorTypeDB,
                                  calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                                 (instId: String, desc: String, deviceConfig: DeviceConfig, protocol: ProtocolParam) extends Actor {
 
@@ -173,24 +174,37 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
     case ExecuteSeq(seq, on) =>
       executeSeq(seq, on)
+
+    case WriteSignal(mtId, bit) =>
+      onWriteSignal(mtId, bit)
   }
 
   def executeSeq(str: String, bool: Boolean): Unit = {}
 
+  def onWriteSignal(mt:String, bit:Boolean): Unit = {}
+
   def startCalibration(calibrationType: CalibrationType, monitorTypes: List[String]): Unit = {
     Logger.info(s"start calibrating ${monitorTypes.mkString(",")}")
-    onCalibrationStart()
-    import com.github.nscala_time.time.Imports._
-    val endState = collectorState
-    if (!calibrationType.zero &&
-      deviceConfig.calibratorPurgeTime.getOrElse(0) != 0) {
-      val timer = Some(purgeCalibrator())
-      context become calibrationPhase(calibrationType, DateTime.now, false, List.empty[ReportData],
-        List.empty[(String, Double)], endState, timer)
-    } else {
-      context become calibrationPhase(calibrationType, DateTime.now, false, List.empty[ReportData],
-        List.empty[(String, Double)], endState, None)
-      self ! RaiseStart
+    Future{
+      blocking{
+        onCalibrationStart()
+        import com.github.nscala_time.time.Imports._
+        val endState = collectorState
+        if (!calibrationType.zero &&
+          deviceConfig.calibratorPurgeTime.getOrElse(0) != 0) {
+          val timer = Some(purgeCalibrator())
+          context become calibrationPhase(calibrationType, DateTime.now, false, List.empty[ReportData],
+            List.empty[(String, Double)], endState, timer)
+        } else {
+          context become calibrationPhase(calibrationType, DateTime.now, false, List.empty[ReportData],
+            List.empty[(String, Double)], endState, None)
+          val delay = getDelayAfterCalibrationStart
+          if(delay != 0)
+            context.system.scheduler.scheduleOnce(FiniteDuration(delay, MILLISECONDS), self, RaiseStart)
+          else
+            self ! RaiseStart
+        }
+      }
     }
   }
 
@@ -328,12 +342,12 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
       val values = for {mt <- deviceConfig.monitorTypes.getOrElse(List.empty[String])} yield {
         val calibrations = calibrationReadingList.flatMap {
           reading =>
-            reading.dataList.filter {
+            reading.dataList(monitorTypeDB).filter {
               _.mt == mt
             }.map { r => r.value }
         }
 
-        if (calibrations.length == 0) {
+        if (calibrations.isEmpty) {
           Logger.warn(s"No calibration data for $mt")
           (mt, 0d)
         } else
@@ -366,7 +380,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           for (mt <- deviceConfig.monitorTypes.getOrElse(List.empty[String])) {
             val zero = zeroMap.get(mt)
             val span = spanMap.get(mt)
-            val spanStd = monitorTypeOp.map(mt).span
+            val spanStd = monitorTypeDB.map(mt).span
             val cal = Calibration(mt, startTime, endTime, zero, spanStd, span)
             calibrationOp.insertFuture(cal)
           }
@@ -378,17 +392,17 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
               if (calibrationType.zero)
                 Calibration(mt, startTime, endTime, values, None, None)
               else {
-                val spanStd = monitorTypeOp.map(mt).span
+                val spanStd = monitorTypeDB.map(mt).span
                 Calibration(mt, startTime, endTime, None, spanStd, values)
               }
             calibrationOp.insertFuture(cal)
           }
         }
-        onCalibrationEnd()
         Logger.info("All monitorTypes are calibrated.")
         collectorState = endState
         instrumentOp.setState(instId, collectorState)
-        resetToNormal
+        resetToNormal()
+        onCalibrationEnd()
         context become normalPhase
         Logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
       }
@@ -398,13 +412,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   def setCalibrationReg(address: Int, on: Boolean): Unit
 
-  def onCalibrationStart(): Unit = {
+  def onCalibrationStart(): Unit = {}
 
-  }
+  def getDelayAfterCalibrationStart: Int = 0
 
-  def onCalibrationEnd() = {
-
-  }
+  def onCalibrationEnd() = {}
 
   def resetToNormal() {
     try {
@@ -417,6 +429,8 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
         seq =>
           context.parent ! ExecuteSeq(seq, false)
       }
+
+      context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
 
       if (!deviceConfig.skipInternalVault.contains(true)) {
         for (reg <- getCalibrationReg) {
@@ -437,13 +451,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           context.parent ! WriteDO(doBit, v)
       }
 
-      if (v) {
+      if (v)
         deviceConfig.calibrateZeoSeq.foreach {
           seq =>
             context.parent ! ExecuteSeq(seq, v)
         }
-      } else
-        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
 
 
       if (deviceConfig.skipInternalVault != Some(true)) {
@@ -463,13 +475,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           context.parent ! WriteDO(doBit, v)
       }
 
-      if (v) {
+      if (v)
         deviceConfig.calibrateSpanSeq map {
           seq =>
             context.parent ! ExecuteSeq(seq, v)
         }
-      } else
-        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
 
       if (deviceConfig.skipInternalVault != Some(true)) {
         for (reg <- getCalibrationReg)

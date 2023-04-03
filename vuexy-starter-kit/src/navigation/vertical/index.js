@@ -15,6 +15,12 @@ export default [
         action: 'read',
         resource: 'Dashboard',
       },
+      {
+        title: '即時AQI',
+        route: 'realtime-aqi',
+        action: 'read',
+        resource: 'Dashboard',
+      },
     ],
   },
   {
@@ -30,6 +36,18 @@ export default [
       {
         title: '歷史趨勢圖',
         route: 'history-trend',
+        action: 'read',
+        resource: 'Data',
+      },
+      {
+        title: 'AQI趨勢圖',
+        route: 'aqi-trend',
+        action: 'read',
+        resource: 'Data',
+      },
+      {
+        title: '雙測項對比圖',
+        route: 'scatter-chart',
         action: 'read',
         resource: 'Data',
       },
@@ -104,7 +122,7 @@ export default [
         route: 'audit-config',
       },
       {
-        title: '資料管理',
+        title: '資料上傳',
         route: 'data-management',
       },
       {

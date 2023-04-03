@@ -18,27 +18,7 @@
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="測項"
-              label-for="monitorType"
-              label-cols-md="3"
-            >
-              <v-select
-                id="monitorType"
-                v-model="form.monitorTypes"
-                label="desp"
-                :reduce="mt => mt._id"
-                :options="activatedMonitorTypes"
-                :close-on-select="false"
-                multiple
-              />
-              <b-form-checkbox v-model="form.includeRaw"
-                >顯示原始值</b-form-checkbox
-              >
-            </b-form-group>
-          </b-col>
-          <b-col cols="12">
-            <b-form-group
-              label="時間單位"
+              label="統計單位"
               label-for="reportUnit"
               label-cols-md="3"
             >
@@ -48,21 +28,6 @@
                 label="txt"
                 :reduce="dt => dt.id"
                 :options="reportUnits"
-              />
-            </b-form-group>
-          </b-col>
-          <b-col cols="12">
-            <b-form-group
-              label="狀態"
-              label-for="statusFilter"
-              label-cols-md="3"
-            >
-              <v-select
-                id="statusFilter"
-                v-model="form.statusFilter"
-                label="txt"
-                :reduce="dt => dt.id"
-                :options="statusFilters"
               />
             </b-form-group>
           </b-col>
@@ -91,8 +56,8 @@
                 id="dataRange"
                 v-model="form.range"
                 :range="true"
-                type="datetime"
-                format="YYYY-MM-DD HH:mm"
+                type="date"
+                format="YYYY-MM-DD"
                 value-type="timestamp"
                 :show-second="false"
               />
@@ -158,29 +123,13 @@ export default Vue.extend({
   },
 
   data() {
-    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
-    let includeRaw = false;
+    const range = [moment().subtract(7, 'days').valueOf(), moment().valueOf()];
     return {
-      statusFilters: [
-        { id: 'all', txt: '全部' },
-        { id: 'normal', txt: '正常量測值' },
-        { id: 'calbration', txt: '校正' },
-        { id: 'maintance', txt: '維修' },
-        { id: 'invalid', txt: '無效數據' },
-        { id: 'valid', txt: '有效數據' },
-      ],
       reportUnits: [
-        { txt: '分', id: 'Min' },
-        { txt: '六分', id: 'SixMin' },
-        { txt: '十分', id: 'TenMin' },
-        { txt: '十五分', id: 'FifteenMin' },
-        { txt: '小時', id: 'Hour' },
-        { txt: '天', id: 'Day' },
-        { txt: '月', id: 'Month' },
-        { txt: '季', id: 'Quarter' },
-        { txt: '年', id: 'Year' },
+        { txt: '小時AQI', id: 'Hour' },
+        { txt: '日AQI', id: 'Day' },
       ],
-      reportUnit: 'Hour',
+      reportUnit: 'Day',
       display: false,
       chartTypes: [
         {
@@ -210,12 +159,9 @@ export default Vue.extend({
       ],
       form: {
         monitors: Array<string>(),
-        monitorTypes: Array<string>(),
-        reportUnit: 'Min',
-        statusFilter: 'all',
+        reportUnit: 'Day',
         chartType: 'line',
         range,
-        includeRaw,
       },
     };
   },
@@ -231,99 +177,80 @@ export default Vue.extend({
       darkTheme(highcharts);
     }
 
-    await this.fetchMonitorTypes();
     await this.fetchMonitors();
-
-    if (this.activatedMonitorTypes.length !== 0)
-      this.form.monitorTypes.push(this.activatedMonitorTypes[0]._id);
 
     if (this.monitors.length !== 0) {
       this.form.monitors.push(this.monitors[0]._id);
     }
   },
   methods: {
-    ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapActions('monitors', ['fetchMonitors']),
     ...mapMutations(['setLoading']),
     async query() {
       this.setLoading({ loading: true });
-      this.display = true;
-      const monitors = this.form.monitors.join(':');
-      const url = `/HistoryTrend/${monitors}/${this.form.monitorTypes.join(
-        ':',
-      )}/${this.form.includeRaw}/${this.form.reportUnit}/${
-        this.form.statusFilter
-      }/${this.form.range[0]}/${this.form.range[1]}`;
-      const res = await axios.get(url);
-      const ret = res.data;
+      try {
+        this.display = true;
+        const monitors = this.form.monitors.join(':');
+        let isDailyAqi = true;
+        if (this.form.reportUnit === 'Hour') isDailyAqi = false;
 
-      this.setLoading({ loading: false });
-      if (this.form.chartType !== 'boxplot') {
-        ret.chart = {
-          type: this.form.chartType,
-          zoomType: 'x',
-          panning: true,
-          panKey: 'shift',
-          alignTicks: false,
-        };
+        const url = `/AqiTrend/${monitors}/${isDailyAqi}/${this.form.range[0]}/${this.form.range[1]}`;
+        const res = await axios.get(url);
+        const ret = res.data;
+        if (this.form.chartType !== 'boxplot') {
+          ret.chart = {
+            type: this.form.chartType,
+            zoomType: 'x',
+            panning: true,
+            panKey: 'shift',
+            alignTicks: false,
+          };
 
-        const pointFormatter = function pointFormatter(this: any) {
-          const d = new Date(this.x);
-          return `${d.toLocaleString()}:${Math.round(this.y)}度`;
-        };
+          const pointFormatter = function pointFormatter(this: any) {
+            const d = new Date(this.x);
+            return `${d.toLocaleString()}:${Math.round(this.y)}度`;
+          };
 
-        ret.colors = [
-          '#7CB5EC',
-          '#434348',
-          '#90ED7D',
-          '#F7A35C',
-          '#8085E9',
-          '#F15C80',
-          '#E4D354',
-          '#2B908F',
-          '#FB9FA8',
-          '#91E8E1',
-          '#7CB5EC',
-          '#80C535',
-          '#969696',
-        ];
+          ret.tooltip = { valueDecimals: 2 };
+          ret.legend = { enabled: true };
+          ret.credits = {
+            enabled: false,
+            href: 'http://www.wecc.com.tw/',
+          };
+          ret.xAxis.type = 'datetime';
+          ret.xAxis.dateTimeLabelFormats = {
+            day: '%b%e日',
+            week: '%b%e日',
+            month: '%y年%b',
+          };
 
-        ret.tooltip = { valueDecimals: 2 };
-        ret.legend = { enabled: true };
-        ret.credits = {
-          enabled: false,
-          href: 'http://www.wecc.com.tw/',
-        };
-        ret.xAxis.type = 'datetime';
-        ret.xAxis.dateTimeLabelFormats = {
-          day: '%b%e日',
-          week: '%b%e日',
-          month: '%y年%b',
-        };
-
-        ret.plotOptions = {
-          scatter: {
-            tooltip: {
-              pointFormatter,
+          ret.plotOptions = {
+            scatter: {
+              tooltip: {
+                pointFormatter,
+              },
             },
-          },
-        };
-        ret.time = {
-          timezoneOffset: -480,
-        };
+          };
+          ret.time = {
+            timezoneOffset: -480,
+          };
+        }
+        highcharts.chart('chart_container', ret);
+      } catch (err) {
+        console.error(err);
+        this.$bvModal.show(`查詢失敗 ${err}`);
+      } finally {
+        this.setLoading({ loading: false });
       }
-      highcharts.chart('chart_container', ret);
     },
     async downloadExcel() {
       const baseUrl =
         process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
       const monitors = this.form.monitors.join(':');
-      const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
-        ':',
-      )}/${this.form.includeRaw}/${this.form.reportUnit}/${
-        this.form.statusFilter
-      }/${this.form.range[0]}/${this.form.range[1]}`;
+      let isDailyAqi = true;
+      if (this.form.reportUnit === 'Hour') isDailyAqi = false;
 
+      const url = `${baseUrl}AqiTrend/excel/${monitors}/${isDailyAqi}/${this.form.range[0]}/${this.form.range[1]}`;
       window.open(url);
     },
   },

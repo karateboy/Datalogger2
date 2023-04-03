@@ -49,7 +49,7 @@ object VocReader {
       Logger.info(config.toString)
       config.monitors.foreach(config=>{
         val m = Monitor(_id = config.id, desc = config.name, lat = Some(config.lat), lng = Some(config.lng))
-        monitorOp.upsert(m)
+        monitorOp.upsertMonitor(m)
       })
       count = count + 1
       actorSystem.actorOf(props(config, monitorTypeOp, recordOp, dataCollectManager), s"vocReader${count}")
@@ -154,7 +154,7 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
       val month = dirName.drop(3).toInt
       parseAllTx0(monitorConfig, year, month)
 
-      if(year > today.getYear || (year == today.getYear && month > today.getMonthOfYear))
+      if(year > today.getYear || (year == today.getYear && month >= today.getMonthOfYear))
         return
 
       setArchive(dir)
@@ -204,8 +204,7 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
         val mtID = "_" + mtName.replace(",", "_").replace("-", "_")
         val mtCase = monitorTypeOp.rangeType(mtID, mtName, "ppb", 2)
         mtCase.measuringBy = Some(List.empty[String])
-        if (!monitorTypeOp.exist(mtCase))
-          monitorTypeOp.ensureMonitorType(mtCase)
+        monitorTypeOp.ensure(mtCase)
 
         try {
           val v = line(5).toDouble
@@ -216,7 +215,11 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
         }
       }
     reader.close()
-    val mtDataList = dataList.flatten.map(d=>MtRecord(d._1, Some(d._2._1), d._2._2))
+    val mtDataList = dataList.flatten.map(data=> {
+      val (mt, (value, status)) = data
+      val mtCase = monitorTypeOp.map(mt)
+      monitorTypeOp.getMinMtRecordByRawValue(mt, Some(value), status)(mtCase.fixedM, mtCase.fixedB)
+    })
     val rl = RecordList(dateTime.toDate, mtDataList, monitorId)
     val f = recordOp.upsertRecord(rl)(recordOp.HourCollection)
     f onComplete {

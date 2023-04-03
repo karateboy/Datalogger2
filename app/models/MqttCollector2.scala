@@ -15,8 +15,10 @@ import scala.concurrent.duration.{Duration, MINUTES}
 import scala.concurrent.{Future, blocking}
 import scala.util.Success
 
-case class MqttConfig2(topic: String, group:String, eventConfig: EventConfig)
+case class MqttConfig2(topic: String, group: String, eventConfig: EventConfig)
+
 case class EventConfig(instId: String, bit: Int, seconds: Option[Int])
+
 case class MqttConfig(topic: String, monitor: String, eventConfig: EventConfig)
 
 object MqttCollector2 extends DriverOps {
@@ -46,7 +48,7 @@ object MqttCollector2 extends DriverOps {
 
   override def getCalibrationTime(param: String) = None
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt: Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Factory])
     val config = validateParam(param)
     val f2 = f.asInstanceOf[Factory]
@@ -86,14 +88,15 @@ object MqttCollector2 extends DriverOps {
 
 import javax.inject._
 
-class MqttCollector2 @Inject()(monitorDB: MonitorDB,alarmOp: AlarmDB,
+class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
                                recordOp: RecordDB, dataCollectManager: DataCollectManager,
-                               mqttSensorOp: MqttSensorDB)
-                             (@Assisted id: String,
-                              @Assisted protocolParam: ProtocolParam,
-                              @Assisted config: MqttConfig2) extends Actor with MqttCallback {
+                               mqttSensorOp: MqttSensorDB, monitorTypeDB: MonitorTypeDB)
+                              (@Assisted id: String,
+                               @Assisted protocolParam: ProtocolParam,
+                               @Assisted config: MqttConfig2) extends Actor with MqttCallback {
 
   import MqttCollector2._
+
   val payload =
     """{"id":"861108035994663",
       |"desc":"柏昇SAQ-200",
@@ -110,13 +113,13 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB,alarmOp: AlarmDB,
       |""".stripMargin
 
   implicit val reads = Json.reads[Message]
-  var mqttClientOpt: Option[MqttAsyncClient] = None
-  var lastDataArrival: DateTime = DateTime.now
+  @volatile var mqttClientOpt: Option[MqttAsyncClient] = None
+  @volatile var lastDataArrival: DateTime = DateTime.now
 
   val watchDog = context.system.scheduler.schedule(Duration(1, MINUTES),
     Duration(timeout, MINUTES), self, CheckTimeout)
 
-  var sensorMap: Map[String, Sensor] = {
+  @volatile var sensorMap: Map[String, Sensor] = {
     waitReadyResult(mqttSensorOp.getSensorMap)
   }
   self ! CreateClient
@@ -133,7 +136,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB,alarmOp: AlarmDB,
 
       import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence
       import org.eclipse.paho.client.mqttv3.{MqttAsyncClient, MqttException}
-      val  tmpDir = Files.createTempDirectory(MqttAsyncClient.generateClientId()).toFile().getAbsolutePath();
+      val tmpDir = Files.createTempDirectory(MqttAsyncClient.generateClientId()).toFile().getAbsolutePath();
       Logger.info(s"$id uses $tmpDir as tempDir")
       val dataStore = new MqttDefaultFilePersistence(tmpDir)
       try {
@@ -189,13 +192,13 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB,alarmOp: AlarmDB,
           }
         }
       }
-    case CheckTimeout=>
-      for(map <- mqttSensorOp.getSensorMap){
+    case CheckTimeout =>
+      for (map <- mqttSensorOp.getSensorMap) {
         sensorMap = map
       }
 
       val duration = new org.joda.time.Duration(lastDataArrival, DateTime.now())
-      if(duration.getStandardMinutes > timeout) {
+      if (duration.getStandardMinutes > timeout) {
         Logger.error(s"Mqtt ${id} no data timeout!")
         context.parent ! RestartMyself
       }
@@ -227,7 +230,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB,alarmOp: AlarmDB,
 
   }
 
-  def messageHandler(topic:String, payload: String): Unit = {
+  def messageHandler(topic: String, payload: String): Unit = {
     val mtMap = Map[String, String](
       "pm2_5" -> MonitorType.PM25,
       "pm10" -> MonitorType.PM10,
@@ -249,16 +252,19 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB,alarmOp: AlarmDB,
             )
             for {mt <- mtMap.get(sensor)
                  v <- value
+                 mtCase = monitorTypeDB.map(mt)
                  } yield
-              MtRecord(mt, Some(v), MonitorStatus.NormalStat)
+              monitorTypeDB.getMinMtRecordByRawValue(mt, Some(v), MonitorStatus.NormalStat)(mtCase.fixedM, mtCase.fixedB)
           }
-        val latlon = Seq(MtRecord(MonitorType.LAT, Some(message.lat), MonitorStatus.NormalStat),
-          MtRecord(MonitorType.LNG, Some(message.lon), MonitorStatus.NormalStat))
+        val latCase = monitorTypeDB.map(MonitorType.LAT)
+        val lngCase = monitorTypeDB.map(MonitorType.LNG)
+        val latlon = Seq(monitorTypeDB.getMinMtRecordByRawValue(MonitorType.LAT, Some(message.lat), MonitorStatus.NormalStat)(latCase.fixedM, latCase.fixedB),
+          monitorTypeDB.getMinMtRecordByRawValue(MonitorType.LNG, Some(message.lon), MonitorStatus.NormalStat)(lngCase.fixedM, lngCase.fixedB))
         val mtDataList: Seq[MtRecord] = mtData.flatten ++ latlon
         val time = DateTime.parse(message.time, DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss"))
           .withSecondOfMinute(0)
 
-        if(sensorMap.contains(message.id)){
+        if (sensorMap.contains(message.id)) {
           val sensor = sensorMap(message.id)
           val recordList = RecordList(time.toDate, mtDataList, sensor.monitor)
           val f = recordOp.upsertRecord(recordList)(recordOp.MinCollection)
@@ -270,8 +276,8 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB,alarmOp: AlarmDB,
             // val thresholdConfig = mtCase.thresholdConfig.getOrElse(ThresholdConfig(30))
             // context.parent ! ToggleTargetDO(config.eventConfig.instId, config.eventConfig.bit, thresholdConfig.elapseTime)
           }
-        }else{
-          monitorDB.upsert(Monitor(message.id, message.id, Some(message.lat), Some(message.lon)))
+        } else {
+          monitorDB.upsertMonitor(Monitor(message.id, message.id, Some(message.lat), Some(message.lon)))
           val sensor = Sensor(id = message.id, topic = topic, monitor = message.id, group = config.group)
           mqttSensorOp.upsert(sensor).andThen({
             case Success(_) =>

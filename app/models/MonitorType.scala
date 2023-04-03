@@ -9,11 +9,8 @@ case class MonitorType(_id: String,
                        order: Int,
                        signalType: Boolean = false,
                        std_law: Option[Double] = None,
-                       std_internal: Option[Double] = None,
-                       zd_internal: Option[Double] = None,
                        zd_law: Option[Double] = None,
                        span: Option[Double] = None,
-                       span_dev_internal: Option[Double] = None,
                        span_dev_law: Option[Double] = None,
                        var measuringBy: Option[List[String]] = None,
                        acoustic: Option[Boolean] = None,
@@ -22,7 +19,8 @@ case class MonitorType(_id: String,
                        calibrate: Option[Boolean] = None,
                        accumulated: Option[Boolean] = None,
                        fixedM: Option[Double] = None,
-                       fixedB: Option[Double] = None) {
+                       fixedB: Option[Double] = None,
+                       overLawSignalType: Option[String] = None) {
 
   def addMeasuring(instrumentId: String, append: Boolean) = {
     if (measuringBy.isEmpty)
@@ -46,9 +44,8 @@ case class MonitorType(_id: String,
         Some(measuringBy.get.filter { id => id != instrumentId })
 
     MonitorType(_id, desp, unit,
-      prec, order, signalType, std_law, std_internal,
-      zd_internal, zd_law,
-      span, span_dev_internal, span_dev_law,
+      prec, order, signalType, std_law, zd_law,
+      span, span_dev_law,
       newMeasuringBy)
   }
 }
@@ -71,6 +68,8 @@ object MonitorType {
   val NMHC = "NMHC"
   val LAT = "LAT"
   val LNG = "LNG"
+  val ALTITUDE = "ALTITUDE"
+  val SPEED = "SPEED"
   val WIN_SPEED = "WD_SPEED"
   val WIN_DIRECTION = "WD_DIR"
   val RAIN = "RAIN"
@@ -93,6 +92,17 @@ object MonitorType {
   val WINSPEED_MAX = "WINSPEED_MAX"
   var rangeOrder = 0
   var signalOrder = 1000
+
+  //Calculated types
+  val TRUE_WIND_SPEED = "TRUE_WIND_SPEED"
+  val TRUE_WIND_DIR = "TRUE_WIND_DIR"
+  val RELATIVE_WIND_SPEED = "RELATIVE_WIND_SPEED"
+  val RELATIVE_WIND_DIR = "RELATIVE_WIND_DIR"
+  val DIRECTION = "DIRECTION"
+
+  def getRawType(mt:String): String = mt + "_raw"
+  def getRealType(rawMt:String):String = rawMt.reverse.drop(4).reverse
+  def isRawValueType(mt:String):Boolean = mt.endsWith("_raw")
 
 }
 

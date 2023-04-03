@@ -7,7 +7,6 @@ import org.apache.poi.openxml4j.opc._
 import org.apache.poi.ss.usermodel._
 import org.apache.poi.ss.util.CellRangeAddress
 import org.apache.poi.xssf.usermodel._
-import play.api.Logger
 
 import java.io._
 import java.math.MathContext
@@ -21,7 +20,14 @@ class ExcelUtility @Inject()
   val docRoot = environment.rootPath + "/report_template/"
 
   def exportChartData(chart: HighchartData, monitorTypes: Array[String], showSec: Boolean): File = {
-    val precArray = monitorTypes.map { mt => monitorTypeOp.map(mt).prec }
+    val precArray = monitorTypes.map { mt =>
+      if (monitorTypeOp.map.contains(mt))
+        monitorTypeOp.map(mt).prec
+      else {
+        val realType = MonitorType.getRealType(mt)
+        monitorTypeOp.map(realType).prec
+      }
+    }
     exportChartData(chart, precArray, showSec)
   }
 
@@ -99,11 +105,12 @@ class ExcelUtility @Inject()
               timeCell.setCellValue(dt.toString("YYYY/MM/dd HH:mm:ss"))
           }
 
-            val cell = thisRow.createCell(colIdx * 2 + 1)
-            cell.setCellStyle(styles(colIdx))
-            for (v <- pair._2 if !v.isNaN) {
-              val d = BigDecimal(v).setScale(precArray(colIdx), RoundingMode.HALF_EVEN)
-              cell.setCellValue(d.doubleValue())
+          val cell = thisRow.createCell(colIdx * 2 + 1)
+          cell.setCellStyle(styles(colIdx))
+          for (v <- pair._2 if !v.isNaN) {
+            val d = BigDecimal(v).setScale(precArray(colIdx), RoundingMode.HALF_EVEN)
+            cell.setCellValue(d.doubleValue())
+            if (series.statusList.nonEmpty)
               for (status <- series.statusList(row - 1)) {
                 val tagInfo = MonitorStatus.getTagInfo(status)
                 val statusCell = thisRow.createCell(2 * colIdx + 2)
@@ -121,8 +128,7 @@ class ExcelUtility @Inject()
                   statusCell.setCellStyle(maintanceStyle)
                 }
               }
-            }
-
+          }
         }
       }
     }
@@ -371,22 +377,22 @@ class ExcelUtility @Inject()
       row.createCell(3).setCellValue(monitorTypeOp.format(mt, calibration.zero_val))
       row.createCell(4).setCellValue(monitorTypeOp.format(mt, mtCase.zd_law))
       row.createCell(5).setCellValue(monitorTypeOp.format(mt, calibration.span_val))
-      row.createCell(6).setCellValue(monitorTypeOp.format(mt, mtCase.span))
-      row.createCell(7).setCellValue(monitorTypeOp.format(mt, calibration.span_dev))
+      row.createCell(6).setCellValue(monitorTypeOp.format(mt, calibration.span_std))
+      row.createCell(7).setCellValue(monitorTypeOp.format(mt, calibration.span_devOpt))
       row.createCell(8).setCellValue(monitorTypeOp.format(mt, mtCase.span_dev_law))
       val mOpt =
         for {span_val <- calibration.span_val; zero_val <- calibration.zero_val;
-             span_std <- mtCase.span if span_val - zero_val != 0} yield
+             span_std <- calibration.span_std if span_val - zero_val != 0} yield
           span_std / (span_val - zero_val)
 
-      val mStr = mOpt.map(s"%.2f".format(_)).getOrElse("-")
+      val mStr = mOpt.map(s"%.6f".format(_)).getOrElse("-")
       row.createCell(9).setCellValue(mStr)
       val bOpt =
         for {span_val <- calibration.span_val; zero_val <- calibration.zero_val;
-             span_std <- mtCase.span if span_val - zero_val != 0} yield
+             span_std <- calibration.span_std if span_val - zero_val != 0} yield
           (-zero_val * span_std) / (span_val - zero_val)
 
-      val bStr = bOpt.map(s"%.2f".format(_)).getOrElse("-")
+      val bStr = bOpt.map(s"%.6f".format(_)).getOrElse("-")
       row.createCell(10).setCellValue(bStr)
       val statusCell = row.createCell(11)
       if (calibration.success(monitorTypeOp)) {

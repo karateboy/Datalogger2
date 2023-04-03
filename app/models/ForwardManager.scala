@@ -91,10 +91,6 @@ class ForwardManager @Inject()(hourRecordForwarderFactory: HourRecordForwarder.F
   val statusTypeForwarder = injectedChild(instrumentStatusTypeForwarderFactory(server, monitor),
     "statusTypeForwarder")
 
-  {
-    import context.dispatcher
-    context.system.scheduler.scheduleOnce(FiniteDuration(30, SECONDS), statusTypeForwarder, UpdateInstrumentStatusType)
-  }
 
   val timer = {
     import context.dispatcher
@@ -113,9 +109,15 @@ class ForwardManager @Inject()(hourRecordForwarderFactory: HourRecordForwarder.F
     context.system.scheduler.schedule(FiniteDuration(30, SECONDS), FiniteDuration(3, MINUTES), alarmForwarder, ForwardAlarm)
   }
 
+  /*
   val timer4 = {
     import context.dispatcher
-    context.system.scheduler.scheduleOnce(FiniteDuration(3, SECONDS), self, GetInstrumentCmd)
+    context.system.scheduler.schedule(FiniteDuration(3, SECONDS), FiniteDuration(1, MINUTES), self, GetInstrumentCmd)
+  }*/
+
+  val timer5 = {
+    import context.dispatcher
+    context.system.scheduler.schedule(FiniteDuration(30, SECONDS), FiniteDuration(10, MINUTES), statusTypeForwarder, UpdateInstrumentStatusType)
   }
 
   def receive = {
@@ -194,6 +196,7 @@ class ForwardManager @Inject()(hourRecordForwarderFactory: HourRecordForwarder.F
     timer.cancel
     timer2.cancel
     timer3.cancel
-    timer4.cancel
+    //timer4.cancel
+    timer5.cancel()
   }
 }

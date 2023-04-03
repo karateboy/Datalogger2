@@ -62,6 +62,7 @@ export interface MonitorType {
   accumulated?: boolean;
   fixedM?: number;
   fixedB?: number;
+  overLawSignalType?: string;
 }
 
 export interface CellData {

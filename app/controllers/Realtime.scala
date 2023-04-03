@@ -2,15 +2,18 @@ package controllers
 
 import com.github.nscala_time.time.Imports._
 import models._
+import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc._
 
+import java.util.Date
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class Realtime @Inject()
 (monitorTypeOp: MonitorTypeDB, dataCollectManagerOp: DataCollectManagerOp, instrumentOp: InstrumentDB,
- monitorStatusOp: MonitorStatusDB, recordDB: RecordDB) extends Controller {
+ monitorStatusOp: MonitorStatusDB, recordDB: RecordDB, sysConfigDB: SysConfigDB) extends Controller {
   val overTimeLimit = 6
 
   def MonitorTypeStatusList() = Security.Authenticated.async {
@@ -88,7 +91,7 @@ class Realtime @Inject()
       MonitorType.TEMP, winSpeedMax)
 
     val realtimeMapFuture =
-      recordDB.getRecordMapFuture(recordDB.MinCollection)(Monitor.SELF_ID, mtList, DateTime.now.minusDays(1), DateTime.now)
+      recordDB.getRecordMapFuture(recordDB.MinCollection)(Monitor.activeId, mtList, DateTime.now.minusDays(1), DateTime.now)
 
     val hourListFuture =
       recordDB.getRecordListFuture(recordDB.HourCollection)(DateTime.now.minusDays(1), DateTime.now)
@@ -188,4 +191,44 @@ class Realtime @Inject()
                             temp: Option[Double], winSpeed: Option[Double], winSpeedMaxToday: Option[Double],
                             humid: Option[Double],
                             rain: Seq[Option[Double]], hourStart: Long, hourRain: Seq[Option[Double]])
+
+  case class RealtimeAQI(date: Date, aqi: AqiExplainReport)
+
+  def getRealtimeAQI: Action[AnyContent] = Security.Authenticated.async {
+    val lastHour = DateTime.now().minusHours(1).withMinuteOfHour(0)
+      .withSecondOfMinute(0).withMillisOfSecond(0)
+    for (ret <- AQI.getMonitorRealtimeAQI(Monitor.activeId, lastHour)(recordDB)) yield {
+      val aqiExplainReport = AQI.getAqiExplain(ret)(monitorTypeOp)
+      implicit val w3 = Json.writes[AqiExplain]
+      implicit val w2: OWrites[AqiSubExplain] = Json.writes[AqiSubExplain]
+      implicit val w1: OWrites[AqiExplainReport] = Json.writes[AqiExplainReport]
+      implicit val w0 = Json.writes[RealtimeAQI]
+      Ok(Json.toJson(RealtimeAQI(lastHour.toDate, aqiExplainReport)))
+    }
+  }
+
+  def getAqiMonitorTypeMapping(): Action[AnyContent] = Security.Authenticated.async(
+    for (monitorTypes <- sysConfigDB.getAqiMonitorTypes()) yield {
+      Ok(Json.toJson(monitorTypes))
+    }
+  )
+
+  def postAqiMonitorTypeMapping() = Security.Authenticated.async(BodyParsers.parse.json) {
+    implicit request =>
+      val ret = request.body.validate[Seq[String]]
+      ret.fold(err => {
+        Logger.error(JsError.toJson(err).toString())
+        Future {
+          BadRequest(JsError.toJson(err).toString())
+        }
+      },
+        monitorTypes => {
+          for (ret <- sysConfigDB.setAqiMonitorTypes(monitorTypes)) yield {
+            //insert case
+            monitorTypes.foreach(monitorTypeOp.ensure)
+            AQI.updateAqiTypeMapping(monitorTypes)
+            Ok(Json.obj("ok" -> ret.wasAcknowledged()))
+          }
+        })
+  }
 }

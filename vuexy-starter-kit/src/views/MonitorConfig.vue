@@ -55,7 +55,8 @@
           </template>
         </template>
         <template #cell(_id)="row">
-          <b-form-input v-model="row.item._id" @change="markDirty(row.item)" />
+          <b-alert show>變更測站ID, 會重新記錄測量資料!</b-alert>
+          <b-form-input v-model="row.item._id" />
         </template>
         <template #cell(desc)="row">
           <b-form-input v-model="row.item.desc" @change="markDirty(row.item)" />
@@ -70,6 +71,7 @@
             label="desp"
             :reduce="mt => mt._id"
             :options="monitorTypes"
+            :close-on-select="false"
             multiple
             @input="markDirty(row.item)"
           />

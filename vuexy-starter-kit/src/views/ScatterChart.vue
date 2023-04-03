@@ -31,23 +31,20 @@
                 :close-on-select="false"
                 multiple
               />
-              <b-form-checkbox v-model="form.includeRaw"
-                >顯示原始值</b-form-checkbox
-              >
             </b-form-group>
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="時間單位"
-              label-for="reportUnit"
+              label="資料種類"
+              label-for="dataType"
               label-cols-md="3"
             >
               <v-select
-                id="reportUnit"
-                v-model="form.reportUnit"
+                id="dataType"
+                v-model="form.dataType"
                 label="txt"
                 :reduce="dt => dt.id"
-                :options="reportUnits"
+                :options="dataTypes"
               />
             </b-form-group>
           </b-col>
@@ -63,21 +60,6 @@
                 label="txt"
                 :reduce="dt => dt.id"
                 :options="statusFilters"
-              />
-            </b-form-group>
-          </b-col>
-          <b-col cols="12">
-            <b-form-group
-              label="圖表類型"
-              label-for="chartType"
-              label-cols-md="3"
-            >
-              <v-select
-                id="chartType"
-                v-model="form.chartType"
-                label="desc"
-                :reduce="ct => ct.type"
-                :options="chartTypes"
               />
             </b-form-group>
           </b-col>
@@ -109,21 +91,12 @@
             >
               查詢
             </b-button>
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              type="submit"
-              variant="primary"
-              class="mr-1"
-              @click="downloadExcel"
-            >
-              下載Excel
-            </b-button>
           </b-col>
         </b-row>
       </b-form>
     </b-card>
     <b-card v-show="display">
-      <b-card-body><div id="chart_container" /></b-card-body>
+      <b-card-body><div id="chart_container"></div></b-card-body>
     </b-card>
   </div>
 </template>
@@ -159,8 +132,11 @@ export default Vue.extend({
 
   data() {
     const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
-    let includeRaw = false;
     return {
+      dataTypes: [
+        { txt: '小時資料', id: 'hour' },
+        { txt: '分鐘資料', id: 'min' },
+      ],
       statusFilters: [
         { id: 'all', txt: '全部' },
         { id: 'normal', txt: '正常量測值' },
@@ -169,18 +145,6 @@ export default Vue.extend({
         { id: 'invalid', txt: '無效數據' },
         { id: 'valid', txt: '有效數據' },
       ],
-      reportUnits: [
-        { txt: '分', id: 'Min' },
-        { txt: '六分', id: 'SixMin' },
-        { txt: '十分', id: 'TenMin' },
-        { txt: '十五分', id: 'FifteenMin' },
-        { txt: '小時', id: 'Hour' },
-        { txt: '天', id: 'Day' },
-        { txt: '月', id: 'Month' },
-        { txt: '季', id: 'Quarter' },
-        { txt: '年', id: 'Year' },
-      ],
-      reportUnit: 'Hour',
       display: false,
       chartTypes: [
         {
@@ -211,17 +175,15 @@ export default Vue.extend({
       form: {
         monitors: Array<string>(),
         monitorTypes: Array<string>(),
-        reportUnit: 'Min',
+        dataType: 'hour',
         statusFilter: 'all',
-        chartType: 'line',
         range,
-        includeRaw,
       },
     };
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
-    ...mapGetters('monitorTypes', ['activatedMonitorTypes']),
+    ...mapGetters('monitorTypes', ['activatedMonitorTypes', 'mtMap']),
     ...mapState('monitors', ['monitors']),
   },
   watch: {},
@@ -246,30 +208,57 @@ export default Vue.extend({
     ...mapActions('monitors', ['fetchMonitors']),
     ...mapMutations(['setLoading']),
     async query() {
+      if (this.form.monitorTypes.length !== 2) {
+        this.$bvModal.msgBoxOk('測項數必須為2個');
+        return;
+      }
       this.setLoading({ loading: true });
-      this.display = true;
-      const monitors = this.form.monitors.join(':');
-      const url = `/HistoryTrend/${monitors}/${this.form.monitorTypes.join(
-        ':',
-      )}/${this.form.includeRaw}/${this.form.reportUnit}/${
-        this.form.statusFilter
-      }/${this.form.range[0]}/${this.form.range[1]}`;
-      const res = await axios.get(url);
-      const ret = res.data;
+      try {
+        this.display = true;
+        const monitors = this.form.monitors.join(':');
+        const url = `/ScatterChart/${monitors}/${this.form.monitorTypes.join(
+          ':',
+        )}/${this.form.dataType}/${this.form.statusFilter}/${
+          this.form.range[0]
+        }/${this.form.range[1]}`;
+        const res = await axios.get(url);
+        const ret = res.data;
 
-      this.setLoading({ loading: false });
-      if (this.form.chartType !== 'boxplot') {
-        ret.chart = {
-          type: this.form.chartType,
-          zoomType: 'x',
-          panning: true,
-          panKey: 'shift',
-          alignTicks: false,
+        ret.legend = {
+          layout: 'vertical',
+          align: 'left',
+          verticalAlign: 'top',
+          x: 100,
+          y: 70,
+          floating: true,
+          borderWidth: 1,
         };
 
-        const pointFormatter = function pointFormatter(this: any) {
-          const d = new Date(this.x);
-          return `${d.toLocaleString()}:${Math.round(this.y)}度`;
+        let mt1 = this.mtMap.get(this.form.monitorTypes[0]);
+        let mt2 = this.mtMap.get(this.form.monitorTypes[1]);
+        ret.plotOptions = {
+          scatter: {
+            marker: {
+              radius: 3,
+              states: {
+                hover: {
+                  enabled: true,
+                  lineColor: 'rgb(100,100,100)',
+                },
+              },
+            },
+            states: {
+              hover: {
+                marker: {
+                  enabled: false,
+                },
+              },
+            },
+            tooltip: {
+              headerFormat: '<b>{series.name}</b><br>',
+              pointFormat: `${mt1.desp}{point.x} ${mt1.unit}, ${mt2.desp}{point.y} ${mt2.unit}`,
+            },
+          },
         };
 
         ret.colors = [
@@ -288,43 +277,21 @@ export default Vue.extend({
           '#969696',
         ];
 
-        ret.tooltip = { valueDecimals: 2 };
-        ret.legend = { enabled: true };
+        let prec = Math.max(mt1.prec, mt2.prec);
+
+        ret.tooltip = { valueDecimals: prec };
+        //ret.legend = { enabled: true };
         ret.credits = {
           enabled: false,
           href: 'http://www.wecc.com.tw/',
         };
-        ret.xAxis.type = 'datetime';
-        ret.xAxis.dateTimeLabelFormats = {
-          day: '%b%e日',
-          week: '%b%e日',
-          month: '%y年%b',
-        };
 
-        ret.plotOptions = {
-          scatter: {
-            tooltip: {
-              pointFormatter,
-            },
-          },
-        };
-        ret.time = {
-          timezoneOffset: -480,
-        };
+        highcharts.chart('chart_container', ret);
+      } catch (err) {
+        throw Error(`${err}`);
+      } finally {
+        this.setLoading({ loading: false });
       }
-      highcharts.chart('chart_container', ret);
-    },
-    async downloadExcel() {
-      const baseUrl =
-        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
-      const monitors = this.form.monitors.join(':');
-      const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
-        ':',
-      )}/${this.form.includeRaw}/${this.form.reportUnit}/${
-        this.form.statusFilter
-      }/${this.form.range[0]}/${this.form.range[1]}`;
-
-      window.open(url);
     },
   },
 });

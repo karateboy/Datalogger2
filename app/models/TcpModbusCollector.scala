@@ -6,13 +6,14 @@ import com.serotonin.modbus4j.locator.BaseLocator
 import com.serotonin.modbus4j.serial.SerialPortWrapper
 import models.ModelHelper._
 import models.Protocol.ProtocolParam
+import models.TapiTxx.T700_STANDBY_SEQ
 import play.api._
 
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
-                                   alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
+                                   alarmOp: AlarmDB, monitorTypeDB: MonitorTypeDB,
                                    calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                                   (@Assisted("instId") instId: String, @Assisted("desc") desc: String, @Assisted modelReg: TcpModelReg,
                                    @Assisted deviceConfig: DeviceConfig, @Assisted("protocol") protocol: ProtocolParam) extends Actor {
@@ -27,8 +28,8 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
 
   self ! ConnectHost
   val WarnKey = "Warn"
-  var timerOpt: Option[Cancellable] = None
-  var masterOpt: Option[ModbusMaster] = None
+  @volatile var timerOpt: Option[Cancellable] = None
+  @volatile var masterOpt: Option[ModbusMaster] = None
   @volatile var (collectorState: String, instrumentStatusTypesOpt) = {
     val instList = instrumentOp.getInstrument(instId)
     if (instList.nonEmpty) {
@@ -37,9 +38,9 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
     } else
       (MonitorStatus.NormalStat, None)
   }
-  var connected = false
-  var oldModelReg: Option[ModelRegValue] = None
-  var nextLoggingStatusTime = {
+  @volatile var connected = false
+  @volatile var oldModelReg: Option[ModelRegValue] = None
+  @volatile var nextLoggingStatusTime = {
     def getNextTime(period: Int) = {
       import com.github.nscala_time.time.Imports._
       val now = DateTime.now()
@@ -460,7 +461,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
           val values = for {mt <- deviceConfig.monitorTypes.get} yield {
             val calibrations = calibrationReadingList.flatMap {
               reading =>
-                reading.dataList.filter {
+                reading.dataList(monitorTypeDB).filter {
                   _.mt == mt
                 }.map { r => r.value }
             }
@@ -497,7 +498,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
               for (mt <- deviceConfig.monitorTypes.get) {
                 val zero = zeroMap.get(mt)
                 val span = spanMap.get(mt)
-                val spanStd = monitorTypeOp.map(mt).span
+                val spanStd = monitorTypeDB.map(mt).span
                 val cal = Calibration(mt, startTime, endTime, zero, spanStd, span)
                 calibrationOp.insertFuture(cal)
               }
@@ -509,7 +510,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
                   if (calibrationType.zero)
                     Calibration(mt, startTime, endTime, values, None, None)
                   else {
-                    val spanStd = monitorTypeOp.map(mt).span
+                    val spanStd = monitorTypeDB.map(mt).span
                     Calibration(mt, startTime, endTime, None, spanStd, values)
                   }
                 calibrationOp.insertFuture(cal)
@@ -538,6 +539,8 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
         seq =>
           context.parent ! ExecuteSeq(seq, false)
       }
+
+      context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
 
       if (deviceConfig.skipInternalVault != Some(true)) {
         for (reg <- modelReg.calibrationReg) {

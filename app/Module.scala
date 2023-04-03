@@ -15,7 +15,8 @@ import play.api.libs.concurrent.AkkaGuiceSupport
 class Module(environment: Environment,
              configuration: Configuration) extends AbstractModule with AkkaGuiceSupport {
   override def configure() = {
-    val db = configuration.getString("logger.db").getOrElse("nosql")
+    LoggerConfig.init(configuration)
+    val db = LoggerConfig.config.db
     if(db == "sql"){
       import models.sql._
       //scalikejdbc.config.DBs.setupAll()
@@ -92,7 +93,7 @@ class Module(environment: Environment,
 	  bindActorFactory[DuoCollector, Duo.Factory]
     bindActorFactory[EcoPhysics88PCollector, EcoPhysics88P.Factory]
     bindActorFactory[HydreonRainGaugeCollector, HydreonRainGauge.Factory]
-
+    bindActorFactory[UpsCollector, UpsDrv.Factory]
     bindActorFactory[ForwardManager, ForwardManager.Factory]
     bindActorFactory[HourRecordForwarder, HourRecordForwarder.Factory]
     bindActorFactory[MinRecordForwarder, MinRecordForwarder.Factory]

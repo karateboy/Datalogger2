@@ -56,7 +56,7 @@ class HydreonRainGaugeCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
 
 
   Logger.info(s"HydreonRainGauge collector $instId start")
-  var serialOpt: Option[SerialComm] = None
+  @volatile var serialOpt: Option[SerialComm] = None
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] =
     HydreonRainGauge.instrumentStatusKeyList
@@ -70,7 +70,7 @@ class HydreonRainGaugeCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
     tokens(1).toDouble
   }
 
-  var resetCounter = 0
+  @volatile var resetCounter = 0
   override def readReg(statusTypeList: List[InstrumentStatusType], full: Boolean): Future[Option[ModelRegValue2]] = Future {
     blocking {
       try {

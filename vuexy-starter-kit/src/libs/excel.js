@@ -1,5 +1,5 @@
 /* eslint-disable */
-import XLSX, { WorkSheet } from 'xlsx';
+const XLSX = require('xlsx');
 
 function auto_width(ws, data) {
     /*set worksheet max width per col*/

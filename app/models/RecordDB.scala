@@ -7,6 +7,8 @@ import org.mongodb.scala.BulkWriteResult
 import org.mongodb.scala.result.{InsertManyResult, UpdateResult}
 import play.api.libs.json.Json
 
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -25,20 +27,37 @@ trait RecordDB {
 
   def upsertRecord(doc: RecordList)(colName: String): Future[UpdateResult]
 
-  def updateRecordStatus(dt: Long, mt: String, status: String, monitor: String = Monitor.SELF_ID)(colName: String): Future[UpdateResult]
+  def updateRecordStatus(dt: Long, mt: String, status: String, monitor: String = Monitor.activeId)(colName: String): Future[UpdateResult]
 
   def getRecordMap(colName: String)
-                  (monitor: String, mtList: Seq[String], startTime: DateTime, endTime: DateTime): Map[String, Seq[Record]] = {
-    val f = getRecordMapFuture(colName)(monitor, mtList, startTime, endTime)
+                  (monitor: String, mtList: Seq[String], startTime: DateTime, endTime: DateTime, includeRaw:Boolean = false): Map[String, Seq[Record]] = {
+    val f = getRecordMapFuture(colName)(monitor, mtList, startTime, endTime, includeRaw)
     waitReadyResult(f)
   }
 
   def getRecordMapFuture(colName: String)
-                        (monitor: String, mtList: Seq[String], startTime: Imports.DateTime, endTime: Imports.DateTime): Future[Map[String, Seq[Record]]]
+                        (monitor: String, mtList: Seq[String], startTime: Imports.DateTime, endTime: Imports.DateTime, includeRaw:Boolean = false): Future[Map[String, Seq[Record]]]
 
-  def getRecordListFuture(colName: String)(startTime: Imports.DateTime, endTime: Imports.DateTime, monitors: Seq[String] = Seq(Monitor.SELF_ID)): Future[Seq[RecordList]]
+  def getRecordListFuture(colName: String)(startTime: Imports.DateTime, endTime: Imports.DateTime, monitors: Seq[String] = Seq(Monitor.activeId)): Future[Seq[RecordList]]
 
-  def getRecordWithLimitFuture(colName: String)(startTime: Imports.DateTime, endTime: Imports.DateTime, limit: Int, monitor: String = Monitor.SELF_ID):
+  def getMtRecordMapFuture(colName: String)
+                           (monitor: String, mtList: Seq[String], startTime: Imports.DateTime, endTime: Imports.DateTime): Future[mutable.Map[String, ListBuffer[MtRecord]]] = {
+    for(recordLists <- getRecordListFuture(colName)(startTime, endTime, Seq(monitor))) yield {
+      val map = mutable.Map.empty[String, ListBuffer[MtRecord]]
+      for{recordList<-recordLists
+          mtMap = recordList.mtMap
+          mt<-mtList
+          }{
+        if(mtMap.contains(mt)){
+          val lb = map.getOrElseUpdate(mt, ListBuffer.empty[MtRecord])
+          lb.append(mtMap(mt))
+        }
+      }
+      map
+    }
+  }
+
+  def getRecordWithLimitFuture(colName: String)(startTime: Imports.DateTime, endTime: Imports.DateTime, limit: Int, monitor: String = Monitor.activeId):
   Future[Seq[RecordList]]
 
   def getWindRose(colName: String)(monitor: String, monitorType: String,
@@ -50,7 +69,7 @@ trait RecordDB {
       val step = 360f / nDiv
       import scala.collection.mutable.ListBuffer
       val windDirPair =
-        for (d <- 0 to nDiv - 1) yield
+        for (d <- 0 until nDiv) yield
           d -> ListBuffer.empty[Double]
       val windMap: Map[Int, ListBuffer[Double]] = windDirPair.toMap
       var total = 0
@@ -94,4 +113,34 @@ trait RecordDB {
                               monitor: String): Future[Seq[Seq[MtRecord]]]
 
   def upsertManyRecords(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult]
+
+  def getRecordMapFromRecordList(mtList:Seq[String], records: Seq[RecordList], includeRaw:Boolean): Map[String, Seq[Record]] = {
+    val resultMap = mutable.Map.empty[String, Seq[Record]]
+    for (mt <- mtList) {
+      val recordSeq = records flatMap {
+        doc => {
+          val mtMap = doc.mtMap
+          if (mtMap.contains(mt) && mtMap(mt).value.isDefined)
+            Some(Record(new DateTime(doc._id.time.getTime), mtMap(mt).value, mtMap(mt).status, doc._id.monitor))
+          else
+            None
+        }
+      }
+      resultMap.update(mt, recordSeq)
+
+      if (includeRaw) {
+        val recordSeq = records flatMap {
+          doc => {
+            val mtMap = doc.mtMap
+            if (mtMap.contains(mt) && mtMap(mt).rawValue.isDefined)
+              Some(Record(new DateTime(doc._id.time.getTime), mtMap(mt).rawValue, mtMap(mt).status, doc._id.monitor))
+            else
+              None
+          }
+        }
+        resultMap.update(MonitorType.getRawType(mt), recordSeq)
+      }
+    }
+    resultMap.toMap
+  }
 }

@@ -49,7 +49,6 @@ object Horiba370Collector extends DriverOps {
 
   implicit val cfgRead = Json.reads[Horiba370Config]
   implicit val cfgWrite = Json.writes[Horiba370Config]
-  var count = 0
 
   def getNextLoggingStatusTime = {
     import com.github.nscala_time.time.Imports._
@@ -146,7 +145,7 @@ class Horiba370Collector @Inject()
   val mtNMHC = "NMHC"
   val mtTHC = "THC"
 
-  var (collectorState, instrumentStatusTypesOpt) = {
+  @volatile var (collectorState, instrumentStatusTypesOpt) = {
     val instrument = instrumentOp.getInstrument(id)
     val inst = instrument(0)
     (inst.state, inst.statusType)
@@ -161,10 +160,10 @@ class Horiba370Collector @Inject()
     }
   }
 
-  var nextLoggingStatusTime = getNextLoggingStatusTime
-  var statusMap = Map.empty[String, Double]
-  var raiseStartTimerOpt: Option[Cancellable] = None
-  var calibrateTimerOpt: Option[Cancellable] = None
+  @volatile var nextLoggingStatusTime = getNextLoggingStatusTime
+  @volatile var statusMap = Map.empty[String, Double]
+  @volatile var raiseStartTimerOpt: Option[Cancellable] = None
+  @volatile var calibrateTimerOpt: Option[Cancellable] = None
 
   def logStatus() = {
     import com.github.nscala_time.time.Imports._
@@ -502,9 +501,9 @@ class Horiba370Collector @Inject()
         }
       }
 
-    case ReportData(mtDataList) =>
+    case reportData:ReportData =>
       if (recording) {
-        val data = mtDataList
+        val data = reportData.dataList(monitorTypeOp)
         context become calibrationHandler(connection, calibrationType, startTime, recording,
           data ::: calibrationDataList, zeroMap)
       }

@@ -74,6 +74,7 @@ class InstrumentTypeOp @Inject()
  metOne1020Factory: MetOne1020.Factory,
  ecoPhysics88PFactory: EcoPhysics88P.Factory,
  hydreonRainGaugeFactory: HydreonRainGauge.Factory,
+ upsFactory: UpsDrv.Factory,
  monitorTypeOp: MonitorTypeDB) extends InjectedActorSupport {
 
   import Protocol._
@@ -116,7 +117,8 @@ class InstrumentTypeOp @Inject()
     InstrumentType(Ma350Drv, ma350Factory),
     InstrumentType(MetOne1020, metOne1020Factory),
     InstrumentType(EcoPhysics88P, ecoPhysics88PFactory),
-    InstrumentType(HydreonRainGauge, hydreonRainGaugeFactory)
+    InstrumentType(HydreonRainGauge, hydreonRainGaugeFactory),
+    InstrumentType(UpsDrv, upsFactory)
   )
 
   val otherMap = otherDeviceList.map(dt=> dt.id->dt).toMap

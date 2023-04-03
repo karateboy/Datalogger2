@@ -46,10 +46,7 @@ class AkDrv(_id:String, desp:String, protocols:List[String], tcpModelReg: AkMode
 
   override def getMonitorTypes(param: String): List[String] = {
     val config = validateParam(param)
-    if (config.monitorTypes.isDefined)
-      config.monitorTypes.get.toList
-    else
-      List.empty[String]
+    config.monitorTypes.getOrElse(List.empty[String]).toList
   }
 
   def validateParam(json: String): AkDeviceConfig = {
@@ -88,7 +85,7 @@ object AkDrv {
     val files = new File(docRoot).listFiles()
     for (file <- files) yield {
       val device: AkDeviceModel = getDeviceModel(file)
-      device.akModelReg.dataRegs.foreach(reg=>monitorTypeOp.ensureMonitorType(reg.monitorType))
+
       InstrumentType(
         new AkDrv(s"${deviceTypeHead}${device.id}", device.description, List(Protocol.serial), device.akModelReg), factory)
     }

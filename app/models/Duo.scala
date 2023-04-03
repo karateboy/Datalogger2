@@ -122,7 +122,7 @@ object Duo extends DriverOps {
 
   def ensureSpectrumTypes(duoMT: DuoMonitorType)(monitorTypeOp: MonitorTypeDB) =
     for (mt <- getSpectrumMonitorTypes(duoMT))
-      monitorTypeOp.ensureMonitorType(mt)
+      monitorTypeOp.ensure(mt)
 
   def getSpectrumMonitorTypes(duoMT: DuoMonitorType) = for (idx <- 0 to 35) yield
     MonitorType(_id = s"${duoMT.configID}_${idx}", desp = s"${duoMT.desc} ${ONE_THIRD_OCTAVE_BANDS_CENTER_FREQ(idx)}Hz",
@@ -164,7 +164,7 @@ class DuoCollector @Inject()
   override def receive: Receive = {
     case ReadData =>
       val f = wsClient.url(s"http://${host}/pub/GetRealTimeValues.asp").get()
-      var dataList = Seq.empty[MonitorTypeData]
+      @volatile var dataList = Seq.empty[MonitorTypeData]
 
       for (ret <- f) {
         def getMonitorData(tag: String, mtList: Seq[DuoMonitorType]) = {
@@ -232,7 +232,7 @@ class DuoCollector @Inject()
       }
     case ReadFixedData =>
       val f = wsClient.url(s"http://${host}/ajax/F_refresh.asp?Mode=RT").get()
-      var dataList = Seq.empty[MonitorTypeData]
+      @volatile var dataList = Seq.empty[MonitorTypeData]
 
       for (ret <- f) {
         def getMonitorTypeData(tag: String, mtList: Seq[DuoMonitorType]) = {

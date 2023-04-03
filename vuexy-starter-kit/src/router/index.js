@@ -53,6 +53,20 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/realtime-aqi',
+      name: 'realtime-aqi',
+      component: () => import('@/views/RealtimeAQI.vue'),
+      meta: {
+        pageTitle: '即時資料',
+        breadcrumb: [
+          {
+            text: '即時AQI',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/history-data',
       name: 'history-data',
       component: () => import('@/views/HistoryData.vue'),
@@ -83,6 +97,42 @@ const router = new VueRouter({
           },
           {
             text: '歷史趨勢圖',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
+      path: '/aqi-trend',
+      name: 'aqi-trend',
+      component: () => import('@/views/AqiTrend.vue'),
+      meta: {
+        pageTitle: 'AQI趨勢圖',
+        breadcrumb: [
+          {
+            text: '數據查詢',
+            active: true,
+          },
+          {
+            text: 'AQI趨勢圖',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
+      path: '/scatter-chart',
+      name: 'scatter-chart',
+      component: () => import('@/views/ScatterChart.vue'),
+      meta: {
+        pageTitle: '雙測項對比圖',
+        breadcrumb: [
+          {
+            text: '數據查詢',
+            active: true,
+          },
+          {
+            text: '雙測項對比圖',
             active: true,
           },
         ],
@@ -363,14 +413,14 @@ const router = new VueRouter({
       name: 'data-management',
       component: () => import('@/views/DataManagement.vue'),
       meta: {
-        pageTitle: '資料管理',
+        pageTitle: '資料上傳',
         breadcrumb: [
           {
             text: '系統管理',
             active: true,
           },
           {
-            text: '資料管理',
+            text: '資料上傳',
             active: true,
           },
         ],

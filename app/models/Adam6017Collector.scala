@@ -2,6 +2,7 @@ package models
 
 import akka.actor._
 import com.google.inject.assistedinject.Assisted
+import models.Adam6017Collector.defaultSignalConfigs
 import models.ModelHelper._
 import models.Protocol.ProtocolParam
 import play.api._
@@ -10,7 +11,7 @@ import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object Adam6017Collector {
-
+  val defaultSignalConfigs = Seq[SignalConfig](SignalConfig(None), SignalConfig(None))
   var count = 0
 
   def start(id: String, protocolParam: ProtocolParam, param: Adam6017Param)(implicit context: ActorContext) = {
@@ -38,10 +39,20 @@ class Adam6017Collector @Inject()
 (instrumentOp: InstrumentDB)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: Adam6017Param) extends Actor with ActorLogging {
 
+  Logger.info(s"$id Adam6017 start")
+
   import MoxaE1212Collector._
 
+
+  for {(cfg, idx) <- param.doChannels.getOrElse(defaultSignalConfigs).zipWithIndex
+       monitorTypeId <- cfg.monitorType}
+    context.parent ! AddSignalTypeHandler(monitorTypeId, bit => {
+      self ! WriteDO(idx, bit)
+    })
+
+
   self ! ConnectHost
-  var cancelable: Cancellable = _
+  @volatile var cancelable: Cancellable = _
 
   def decodeAi(values: Seq[Double], collectorState: String)(param: Adam6017Param) = {
     val ret = for (v <- values) yield
@@ -126,7 +137,7 @@ class Adam6017Collector @Inject()
               val batch = new BatchRead[Float]
 
               for (idx <- 0 to 7)
-                batch.addLocator(idx, BaseLocator.holdingRegister(1, 30 + 2*idx, DataType.FOUR_BYTE_FLOAT_SWAPPED))
+                batch.addLocator(idx, BaseLocator.holdingRegister(1, 30 + 2 * idx, DataType.FOUR_BYTE_FLOAT_SWAPPED))
 
               batch.setContiguousRequests(true)
 
@@ -160,7 +171,7 @@ class Adam6017Collector @Inject()
       Logger.info(s"Output DO $bit to $on")
       try {
         import com.serotonin.modbus4j.locator.BaseLocator
-        val locator = BaseLocator.coilStatus(1, bit)
+        val locator = BaseLocator.coilStatus(1, 16 + bit)
         masterOpt map {
           master => master.setValue(locator, on)
         }

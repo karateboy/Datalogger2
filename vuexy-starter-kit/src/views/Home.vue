@@ -81,6 +81,12 @@
     </b-col>
   </b-row>
 </template>
+<style>
+.highcharts-container,
+.highcharts-container svg {
+  width: 100% !important;
+}
+</style>
 <script lang="ts">
 import Vue from 'vue';
 import { mapActions, mapGetters, mapState } from 'vuex';
@@ -190,6 +196,7 @@ export default Vue.extend({
   },
   computed: {
     ...mapState('user', ['userInfo']),
+    ...mapState('monitors', ['monitors', 'activeID']),
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap']),
     skin() {
@@ -211,8 +218,11 @@ export default Vue.extend({
       darkTheme(highcharts);
     }
 
+    await this.fetchMonitors();
+    await this.getActiveID();
     await this.fetchMonitorTypes();
     await this.getUserInfo();
+
     const me = this;
     for (const mt of this.userInfo.monitorTypeOfInterest) this.query(mt);
     for (const mt of me.windRoseList) me.queryWindRose(mt);
@@ -231,7 +241,7 @@ export default Vue.extend({
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
-    ...mapActions('monitors', ['fetchMonitors']),
+    ...mapActions('monitors', ['fetchMonitors', 'getActiveID']),
     ...mapActions('user', ['getUserInfo']),
     async refresh(): Promise<void> {
       this.plotLatestData();
@@ -389,8 +399,9 @@ export default Vue.extend({
     async query(mt: string) {
       const now = new Date().getTime();
       const oneHourBefore = now - 60 * 60 * 1000;
-      const monitors = 'me';
-      const url = `/HistoryTrend/${monitors}/${mt}/Min/all/${oneHourBefore}/${now}`;
+      const url = `/HistoryTrend/${
+        this.activeID
+      }/${mt}/${false}/Min/all/${oneHourBefore}/${now}`;
       const res = await axios.get(url);
       const ret: highcharts.Options = res.data;
 
@@ -470,10 +481,9 @@ export default Vue.extend({
     async queryWindRose(mt: string) {
       const now = new Date().getTime();
       const oneHourBefore = now - 60 * 60 * 1000;
-      const monitors = 'me';
 
       try {
-        const url = `/WindRose/me/${mt}/min/16/${oneHourBefore}/${now}`;
+        const url = `/WindRose/${this.activeID}/${mt}/min/16/${oneHourBefore}/${now}`;
         const res = await axios.get(url);
         const ret = res.data;
         ret.pane = {

@@ -22,6 +22,7 @@ class HomeController @Inject()(environment: play.api.Environment,
                                sensorOp: MqttSensorDB, WSClient: WSClient,
                                emailTargetOp: EmailTargetDB,
                                sysConfig: SysConfigDB, recordDB: RecordDB,
+                               calibrationDB: CalibrationDB,
                                @Named("dataCollectManager") manager: ActorRef) extends Controller {
 
   val title = "資料擷取器"
@@ -172,10 +173,8 @@ class HomeController @Inject()(environment: play.api.Environment,
             val f3 = f2.map {
               _ =>
                 Future.sequence {
-                  for (mt <- mtList) yield {
-                    monitorTypeOp.ensureMonitorType(mt)
+                  for (mt <- mtList) yield
                     monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog, recordDB)
-                  }
                 }
             }
             f3.map {
@@ -455,23 +454,24 @@ class HomeController @Inject()(environment: play.api.Environment,
           BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
         },
         m => {
-          monitorOp.upsert(m)
+          monitorOp.upsertMonitor(m)
           Ok(Json.obj("ok" -> true))
         })
   }
 
   def deleteMonitor(id: String) = Security.Authenticated.async {
-    for (ret <- monitorOp.deleteMonitor(id)) yield
+    for (ret <- monitorOp.delete(id, sysConfig)) yield
       Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
   }
 
   def getActiveMonitorID = Security.Authenticated {
-    Ok(Monitor.activeID)
+    Ok(Monitor.activeId)
   }
 
   def setActiveMonitorID(id: String) = Security.Authenticated {
     if (monitorOp.map.contains(id)) {
-      Monitor.activeID = id
+      Monitor.activeId = id
+      sysConfig.setActiveMonitorId(id)
       Ok(Json.obj("ok" -> true))
     } else
       BadRequest("Invalid monitor ID")
@@ -550,11 +550,12 @@ class HomeController @Inject()(environment: play.api.Environment,
     val start = new DateTime(startNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
     val end = new DateTime(endNum).withMinuteOfHour(23).withSecondOfMinute(59).withMillisOfSecond(0)
 
-    Logger.info(s"Recalcular Hour from ${start} to ${end}")
+    Logger.info(s"Recalculate Hour from $start to $end")
+
     for {
       monitor <- monitors
       hour <- query.getPeriods(start, end, 1.hour)} {
-      dataCollectManagerOp.recalculateHourData(monitor, hour)(monitorTypeOp.activeMtvList)
+      dataCollectManagerOp.recalculateHourData(monitor, hour)(monitorTypeOp.activeMtvList, monitorTypeOp)
     }
 
     Ok(Json.obj("ok" -> true))
@@ -590,7 +591,7 @@ class HomeController @Inject()(environment: play.api.Environment,
         sensor => {
           for (ret <- sensorOp.upsert(sensor)) yield {
             //insert case
-            monitorOp.ensureMonitor(id)
+            monitorOp.ensure(id)
 
             Ok(Json.obj("ok" -> ret.wasAcknowledged()))
           }
@@ -681,9 +682,9 @@ class HomeController @Inject()(environment: play.api.Environment,
                 Duo.ensureSpectrumTypes(t)(monitorTypeOp)
               } else {
                 if (Duo.map.contains(t.id))
-                  monitorTypeOp.ensureMonitorType(Duo.map(t.id))
+                  monitorTypeOp.ensure(Duo.map(t.id))
                 else
-                  monitorTypeOp.ensureMonitorType(t.id)
+                  monitorTypeOp.ensure(t.id)
               })
 
             Ok(Json.obj("ok" -> true))
@@ -706,9 +707,9 @@ class HomeController @Inject()(environment: play.api.Environment,
           Duo.ensureSpectrumTypes(t)(monitorTypeOp)
         } else {
           if (Duo.fixedMap.contains(t.id))
-            monitorTypeOp.ensureMonitorType(Duo.fixedMap(t.id))
+            monitorTypeOp.ensure(Duo.fixedMap(t.id))
           else
-            monitorTypeOp.ensureMonitorType(t.id)
+            monitorTypeOp.ensure(t.id)
         })
 
       val spectrumMonitorTypes =

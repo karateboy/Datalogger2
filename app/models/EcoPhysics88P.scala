@@ -7,7 +7,9 @@ import jssc.SerialPort
 import models.Protocol.ProtocolParam
 import play.api.Logger
 import play.api.libs.json.Json
+import sun.nio.cs.StandardCharsets
 
+import java.util
 import javax.inject.Inject
 import scala.concurrent.{Future, blocking}
 
@@ -91,7 +93,7 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
   Logger.info(s"EcoPhysics88P collector start")
   Logger.info(deviceConfig.toString)
   val ETX = "\u0003"
-  var serialOpt: Option[SerialComm] = None
+  @volatile var serialOpt: Option[SerialComm] = None
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] =
     EcoPhysics88P.instrumentStatusKeyList
@@ -155,7 +157,8 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
   }
 
   def makeCmd(cmd: String): Array[Byte] = {
-    val cmdTxt = s"${STX}0${deviceConfig.slaveID}$cmd$ETX"
+    val slaveID = deviceConfig.slaveID.get
+    val cmdTxt = s"${STX}0$slaveID$cmd$ETX"
     val buffer: Array[Byte] = cmdTxt.getBytes
     val BCC = buffer.foldLeft(0: Byte)((a, b) => (a ^ b).toByte)
     buffer :+ BCC
@@ -180,8 +183,10 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
     for (serial <- serialOpt) {
       Logger.info(s"$instId Switch to Remote mode")
       serial.port.writeBytes(makeCmd("HR1"))
-      Thread.sleep(1000)
-      serial.port.readHexString()
+      Thread.sleep(500)
+      val response = serial.port.readHexString()
+      if(response != null)
+        Logger.info(s"response=>$response")
     }
   }
 
@@ -189,8 +194,10 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
     for (serial <- serialOpt) {
       Logger.info(s"$instId Switch to Local mode")
       serial.port.writeBytes(makeCmd("HR0"))
-      Thread.sleep(1000)
-      serial.port.readHexString()
+      Thread.sleep(500)
+      val response = serial.port.readHexString()
+      if (response != null)
+        Logger.info(s"response=>$response")
     }
   }
   override def setCalibrationReg(address: Int, on: Boolean): Unit = {
@@ -202,11 +209,14 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
         "0"
       val cmd = s"TV$m,$n"
       serial.port.writeBytes(makeCmd(cmd))
-      Thread.sleep(1000)
-      serial.port.readHexString()
+      Thread.sleep(500)
+      val response = serial.port.readHexString()
+      if (response != null)
+        Logger.info(s"response=>$response")
     }
   }
 
+  override def getDelayAfterCalibrationStart: Int = 5000
   override def postStop(): Unit = {
     for (serial <- serialOpt)
       serial.port.closePort()

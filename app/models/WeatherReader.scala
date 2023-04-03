@@ -1,9 +1,8 @@
 package models
 
 import akka.actor._
-import com.github.nscala_time.time.Imports.{DateTime, Period}
-import models.ModelHelper.{getHourBetween, getPeriods, waitReadyResult}
-import models.mongodb.RecordOp
+import com.github.nscala_time.time.Imports.DateTime
+import models.ModelHelper.{getHourBetween, waitReadyResult}
 import play.api._
 
 import java.io.File
@@ -21,6 +20,7 @@ object WeatherReader {
   val CR800_MODEL = "CR800"
   val CR300_MODEL = "CR300"
   val models = Seq(CR800_MODEL, CR300_MODEL)
+
   def start(configuration: Configuration, actorSystem: ActorSystem,
             sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
             recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) = {
@@ -72,9 +72,10 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
       throw new Exception(s"unknown ${config.model} model")
   }
 
-  var timer: Cancellable = context.system.scheduler.scheduleOnce(FiniteDuration(5, SECONDS), self, ParseReport)
+  for (mt <- mtList)
+    recordOp.ensureMonitorType(mt)
 
-  var realtimeTimer: Option[Cancellable] = for(_ <- config.realtimeDir) yield
+  private val realtimeTimer: Option[Cancellable] = for(_ <- config.realtimeDir) yield
     context.system.scheduler.schedule(FiniteDuration(1, SECONDS), FiniteDuration(3, SECONDS), self, ParseRealtimeReport)
 
   Logger.info(s"WeatherReader: ${config.toString}")
@@ -84,10 +85,11 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
         blocking {
           try {
             fileParser(new File(config.dir))
-            timer = context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, ParseReport)
           } catch {
             case ex: Throwable =>
               Logger.error("fail to process weather file", ex)
+          } finally {
+            context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, ParseReport)
           }
         }
       }
@@ -108,7 +110,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
   def fileParser(file: File): Unit = {
     import scala.collection.mutable.ListBuffer
     for (mt <- mtList)
-      monitorTypeOp.ensureMeasuring(mt)
+      monitorTypeOp.ensure(mt)
 
     Logger.debug(s"parsing ${file.getAbsolutePath}")
     val skipLines = waitReadyResult(sysConfig.getWeatherSkipLine())
@@ -128,7 +130,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
           }
           val dt: LocalDateTime = try {
             LocalDateTime.parse(token(0), DateTimeFormatter.ofPattern("\"yyyy-MM-dd HH:mm:ss\""))
-          }catch {
+          } catch {
             case _: DateTimeParseException =>
               LocalDateTime.parse(token(0), DateTimeFormatter.ofPattern("\"yyyy/MM/dd HH:mm:ss\""))
           }
@@ -143,14 +145,15 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
             for ((mt, idx) <- mtList.zipWithIndex) yield {
               try {
                 val value = token(idx + 2).toDouble
-                Some(MtRecord(mt, Some(value), MonitorStatus.NormalStat))
+                val mtCase = monitorTypeOp.map(mt)
+                Some(monitorTypeOp.getMinMtRecordByRawValue(mt, Some(value), MonitorStatus.NormalStat)(mtCase.fixedM, mtCase.fixedB))
               } catch {
                 case _: Exception =>
                   None
               }
             }
 
-          docList.append(RecordList(time = Date.from(dt.atZone(ZoneId.systemDefault()).toInstant), monitor = Monitor.SELF_ID,
+          docList.append(RecordList(time = Date.from(dt.atZone(ZoneId.systemDefault()).toInstant), monitor = Monitor.activeId,
             mtDataList = mtRecordOpts.flatten))
         } catch {
           case ex: Throwable =>
@@ -169,7 +172,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
         val end = new DateTime(Date.from(dataEnd.atZone(ZoneId.systemDefault()).toInstant))
 
         for (current <- getHourBetween(start, end))
-          dataCollectManagerOp.recalculateHourData(Monitor.SELF_ID, current)(monitorTypeOp.mtvList)
+          dataCollectManagerOp.recalculateHourData(Monitor.activeId, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
       }
     } finally {
       src.close()
@@ -177,9 +180,8 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
   }
 
   def realtimeFileParser(file: File): Unit = {
-    import scala.collection.mutable.ListBuffer
     for (mt <- mtList)
-      monitorTypeOp.ensureMeasuring(mt)
+      monitorTypeOp.ensure(mt)
 
     Logger.debug(s"parsing ${file.getAbsolutePath}")
 
@@ -218,7 +220,6 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
   }
 
   override def postStop(): Unit = {
-    timer.cancel()
     for(realtimeTM<-realtimeTimer)
       realtimeTM.cancel()
 
