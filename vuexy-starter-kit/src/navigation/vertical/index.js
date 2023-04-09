@@ -15,12 +15,6 @@ export default [
         action: 'read',
         resource: 'Dashboard',
       },
-      {
-        title: '即時AQI',
-        route: 'realtime-aqi',
-        action: 'read',
-        resource: 'Dashboard',
-      },
     ],
   },
   {
@@ -40,24 +34,8 @@ export default [
         resource: 'Data',
       },
       {
-        title: 'AQI趨勢圖',
-        route: 'aqi-trend',
-        action: 'read',
-        resource: 'Data',
-      },
-      {
-        title: '雙測項對比圖',
-        route: 'scatter-chart',
-        action: 'read',
-        resource: 'Data',
-      },
-      {
         title: '玫瑰圖查詢',
         route: 'wind-rose-query',
-      },
-      {
-        title: '校正資料查詢',
-        route: 'calibration-query',
       },
       {
         title: '警報記錄查詢',
@@ -132,10 +110,6 @@ export default [
       {
         title: '資料上傳',
         route: 'data-management',
-      },
-      {
-        title: 'CDX上傳設定',
-        route: 'cdx-upload-config',
       },
       {
         title: '參數設定',
