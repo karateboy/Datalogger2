@@ -1,6 +1,7 @@
 package models
 
 import akka.actor.Actor
+import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
 import com.typesafe.config.ConfigFactory
@@ -59,7 +60,7 @@ class AkDrv(_id:String, desp:String, protocols:List[String], tcpModelReg: AkMode
       param => param)
   }
 
-  override def getCalibrationTime(param: String) = {
+  override def getCalibrationTime(param: String): Option[Imports.LocalTime] = {
     val config = validateParam(param)
     config.calibrationTime
   }
@@ -82,7 +83,7 @@ object AkDrv {
   val deviceTypeHead = "AkProtocol."
   def getInstrumentTypeList(environment: play.api.Environment, factory: AkDrv.Factory, monitorTypeOp: MonitorTypeDB): Array[InstrumentType] = {
     val docRoot = environment.rootPath + "/conf/AkProtocol/"
-    val files = new File(docRoot).listFiles()
+    val files = Option(new File(docRoot).listFiles()).getOrElse(Array.empty[File]).filter(p=>p.getName.toLowerCase.endsWith("conf"))
     for (file <- files) yield {
       val device: AkDeviceModel = getDeviceModel(file)
 
