@@ -1,6 +1,7 @@
 package models
 
 import akka.actor.Actor
+import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
 import com.typesafe.config.ConfigFactory
@@ -59,7 +60,7 @@ class AkDrv(_id:String, desp:String, protocols:List[String], tcpModelReg: AkMode
       param => param)
   }
 
-  override def getCalibrationTime(param: String) = {
+  override def getCalibrationTime(param: String): Option[Imports.LocalTime] = {
     val config = validateParam(param)
     config.calibrationTime
   }
