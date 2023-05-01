@@ -207,23 +207,23 @@ trait MonitorTypeDB {
 
   def realtimeMtvList: List[String] = mtvList.filter { mt =>
     val measuringBy = map(mt).measuringBy
-    measuringBy.isDefined && (!measuringBy.get.isEmpty)
+    measuringBy.isDefined && measuringBy.get.nonEmpty
   }
 
-  def format(mt: String, v: Option[Double]): String = {
+  def format(mt: String, v: Option[Double], precisionOpt: Option[Int] = None): String = {
     if (v.isEmpty)
       "-"
     else {
-      val prec = map(mt).prec
-      s"%.${prec}f".format(v.get)
+      val precision = precisionOpt.getOrElse(map(mt).prec)
+      s"%.${precision}f".format(v.get)
     }
   }
 
   def formatRecord(mt: String, r: Option[Record]): String = {
     val ret =
       for (rec <- r if rec.value.isDefined) yield {
-        val prec = map(mt).prec
-        s"%.${prec}f".format(r.get.value.get)
+        val precision = map(mt).prec
+        s"%.${precision}f".format(r.get.value.get)
       }
     ret.getOrElse("-")
   }
