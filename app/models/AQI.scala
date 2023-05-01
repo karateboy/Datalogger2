@@ -46,7 +46,7 @@ object AQI {
     MonitorType.SO2,
     MonitorType.NO2)
 
-  def getAqiMonitorTypeName: Map[AqiMonitorType, String] = Map(
+  private def getAqiMonitorTypeName: Map[AqiMonitorType, String] = Map(
     O3_8hr -> "臭氧(ppm) 八小時平均值",
     O3 -> "臭氧(ppm) 小時平均值",
     pm25 -> "PM2.5(μg/m3) 平均值",
@@ -83,9 +83,21 @@ object AQI {
     val subExplain =
       report.sub_map.map(pair => {
         val (aqiMt, subReport) = pair
-        AqiSubExplain(getAqiMonitorTypeName(aqiMt), AqiExplain(subReport.aqi.map(_.toInt.toString).getOrElse("-"),
-          monitorTypeDB.format(mtMap(aqiMt), subReport.value),
-          subReport.aqi.map(getAqiLevel).getOrElse("")))
+        if (aqiMt == O3_8hr || aqiMt == O3)
+          AqiSubExplain(getAqiMonitorTypeName(aqiMt), AqiExplain(subReport.aqi.map(_.toInt.toString).getOrElse("-"),
+            monitorTypeDB.format(mtMap(aqiMt), subReport.value.map(_ / 1000)),
+            subReport.aqi.map(getAqiLevel).getOrElse("")))
+        else {
+          val precision = if (aqiMt == pm10) Some(0)
+          else if (aqiMt == pm25)
+            Some(1)
+          else
+            None
+
+          AqiSubExplain(getAqiMonitorTypeName(aqiMt), AqiExplain(subReport.aqi.map(_.toInt.toString).getOrElse("-"),
+            monitorTypeDB.format(mtMap(aqiMt), subReport.value, precision),
+            subReport.aqi.map(getAqiLevel).getOrElse("")))
+        }
       })
     AqiExplainReport(value, subExplain.toSeq)
   }
