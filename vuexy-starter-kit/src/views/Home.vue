@@ -72,7 +72,13 @@
                 :position="m.position"
                 :clickable="true"
                 :title="m.title"
-                :label="m.label"
+                :label="{
+                  text: m.label,
+                  className: 'map-label bg-white rounded border border-primary',
+                  color: 'black',
+                  fontSize: '12px',
+                  fontWeight: '400',
+                }"
                 :icon="m.icon"
                 @click="toggleInfoWindow(m, index)"
               />
@@ -89,7 +95,7 @@
     </b-col>
   </b-row>
 </template>
-<style scoped>
+<style>
 .legend {
   /* min-width: 100px;*/
   background-color: white;
@@ -102,6 +108,11 @@
 
 .airgreen {
   background-color: rgb(229, 244, 239);
+}
+
+.map-label {
+  margin-top: 3rem !important;
+  padding: 0.2rem !important;
 }
 </style>
 <script>
@@ -194,7 +205,6 @@ export default {
       const ret = [];
 
       const getMtUrl = mtEntries => {
-        let url = `https://chart.googleapis.com/chart?chst=d_bubble_text_small_withshadow&&chld=bb|`;
         let valueStr = '';
         let valueStrList = [];
         let v = 0;
@@ -223,13 +233,12 @@ export default {
           path: google.maps.SymbolPath.CIRCLE,
           fillColor,
           fillOpacity: 1,
-          scale: 12,
+          scale: 7,
           strokeColor: 'white',
-          strokeWeight: 1,
+          strokeWeight: 0.5,
         };
 
         let pm25desc = '';
-        if (v !== 0) pm25desc = this.getPM25Explain(v);
         return {
           pm25desc,
           markerIcon,
@@ -458,5 +467,3 @@ export default {
   },
 };
 </script>
-
-<style></style>
