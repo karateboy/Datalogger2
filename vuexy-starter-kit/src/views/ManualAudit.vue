@@ -258,20 +258,25 @@ export default Vue.extend({
     ...mapMutations(['setLoading']),
     async query() {
       this.setLoading({ loading: true });
-      this.display = true;
-      this.rows = [];
-      this.columns = this.getColumns();
-      const monitors = this.form.monitors.join(':');
-      const monitorTypes = this.form.monitorTypes.join(':');
-      const url = `/HistoryReport/${monitors}/${monitorTypes}/${this.form.dataType}/${this.form.range[0]}/${this.form.range[1]}`;
-
-      const ret = await axios.get(url);
-      this.setLoading({ loading: false });
-      this.rows.splice(0, this.rows.length);
-      for (const row of ret.data.rows) {
-        row.dateStr = moment(row.date).format('lll');
-        row.include = false;
-        this.rows.push(row);
+      try {
+        this.display = true;
+        this.rows = [];
+        this.columns = this.getColumns();
+        const monitors = this.form.monitors.join(':');
+        const monitorTypes = this.form.monitorTypes.join(':');
+        const url = `/HistoryReport/${monitors}/${monitorTypes}/${this.form.dataType}/true/${this.form.range[0]}/${this.form.range[1]}`;
+        const ret = await axios.get(url);
+        this.rows.splice(0, this.rows.length);
+        for (const row of ret.data.rows) {
+          row.dateStr = moment(row.date).format('lll');
+          row.include = false;
+          this.rows.push(row);
+        }
+      } catch (err) {
+        this.$bvModal.msgBoxOk(`${err}`);
+        console.error(err);
+      } finally {
+        this.setLoading({ loading: false });
       }
     },
     cellDataTd(i: number) {
