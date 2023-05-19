@@ -56,7 +56,23 @@
       </b-card>
     </b-col>
     <b-col lg="12" md="12">
-      <b-card title="監測地圖🚀">
+      <b-card>
+        <b-row>
+          <b-col lg="6" md="12">
+            <b-table-simple borderless>
+              <b-tbody>
+                <b-tr>
+                  <b-td class="text-left align-middle"
+                    ><h3>監測地圖🚀</h3></b-td
+                  >
+                </b-tr>
+              </b-tbody>
+            </b-table-simple>
+          </b-col>
+          <b-col lg="6" md="12"
+            ><b-img src="../assets/images/legend.png" fluid class="float-right"
+          /></b-col>
+        </b-row>
         <div class="map_container">
           <GmapMap
             ref="mapRef"

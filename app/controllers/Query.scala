@@ -551,8 +551,9 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       import recordOp.recordListWrite
       val monitors = group.monitors
       val tabType = TableType.min
+      val oneHourAgo = DateTime.now.minusHours(1).toDate
       val futures = for (m <- monitors) yield
-        recordOp.getLatestRecordFuture(TableType.mapCollection(tabType))(m)
+        recordOp.getLatestRecordWithOldestLimitFuture(TableType.mapCollection(tabType))(m, oneHourAgo)
 
       val allFutures = Future.sequence(futures)
 

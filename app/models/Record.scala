@@ -187,32 +187,42 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
   implicit val idWrite = Json.writes[RecordListID]
   implicit val recordListWrite = Json.writes[RecordList]
 
-  def getRecordListFuture(colName: String)(startTime: DateTime, endTime: DateTime, monitors: Seq[String] = Seq(Monitor.SELF_ID)) = {
+  def getRecordListFuture(colName: String)(startTime: DateTime, endTime: DateTime, monitors: Seq[String] = Seq(Monitor.SELF_ID)): Future[Seq[RecordList]] = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
     val col = getCollection(colName)
 
-    col.find(and(in("_id.monitor", monitors: _*), gte("_id.time", startTime.toDate()), lt("_id.time", endTime.toDate())))
+    col.find(and(in("_id.monitor", monitors: _*), gte("_id.time", startTime.toDate), lt("_id.time", endTime.toDate)))
       .sort(ascending("_id.time")).toFuture()
   }
 
-  def getRecordWithLimitFuture(colName: String)(startTime: DateTime, endTime: DateTime, limit: Int, monitor: String = Monitor.SELF_ID) = {
+  def getRecordWithLimitFuture(colName: String)(startTime: DateTime, endTime: DateTime, limit: Int, monitor: String = Monitor.SELF_ID): Future[Seq[RecordList]] = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
     val col = getCollection(colName)
-    col.find(and(equal("_id.monitor", monitor), gte("_id.time", startTime.toDate()), lt("_id.time", endTime.toDate())))
+    col.find(and(equal("_id.monitor", monitor), gte("_id.time", startTime.toDate), lt("_id.time", endTime.toDate)))
       .limit(limit).sort(ascending("_id.time")).toFuture()
 
   }
 
-  def getLatestRecordFuture(colName: String)(monitor: String) = {
+  def getLatestRecordFuture(colName: String)(monitor: String): Future[Seq[RecordList]] = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
     val col = getCollection(colName)
     col.find(equal("_id.monitor", monitor))
+      .sort(descending("_id.time")).limit(1).toFuture()
+
+  }
+
+  def getLatestRecordWithOldestLimitFuture(colName: String)(monitor: String, oldest:Date): Future[Seq[RecordList]] = {
+    import org.mongodb.scala.model.Filters._
+    import org.mongodb.scala.model.Sorts._
+
+    val col = getCollection(colName)
+    col.find(and(equal("_id.monitor", monitor), gte("_id.time", oldest)))
       .sort(descending("_id.time")).limit(1).toFuture()
 
   }
