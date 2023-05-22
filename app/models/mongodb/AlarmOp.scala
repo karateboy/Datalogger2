@@ -65,7 +65,7 @@ class AlarmOp @Inject()(mongodb: MongoDB) extends AlarmDB {
     val f = collection.find(and(equal("src", src),
       gte("time", startB),
       lt("time", endB),
-      gte("level", level))).sort(descending("time")).toFuture()
+      equal("level", level))).sort(descending("time")).toFuture()
 
     f onFailure errorHandler()
     for(docs<-f) yield

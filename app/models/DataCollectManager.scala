@@ -965,6 +965,7 @@ class DataCollectManager @Inject()
           if (instParam.mtList.exists(mt => !minRecordMap.contains(mt) ||
             minRecordMap.contains(mt) && minRecordMap(mt).size < 45)) {
             Logger.error(s"$instID has less than 45 minRecords. Restart $instID")
+            alarmOp.log(alarmOp.srcInstrumentID(instID), alarmOp.Level.ERR, s"$instID 每小時分鐘資料小於45筆. 重新啟動 $instID 設備")
             self ! RestartInstrument(instID)
           }
         }

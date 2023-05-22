@@ -21,7 +21,7 @@ class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
     sql"""
           SELECT *
           FROM [dbo].[alarms]
-          Where src = $src and time >= ${start.toDate} and time < ${end.toDate} and [level] >= $level
+          Where src = $src and time >= ${start.toDate} and time < ${end.toDate} and [level] = $level
           Order by time desc
          """.map(mapper).list().apply()
   }
@@ -32,7 +32,7 @@ class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
     sql"""
           SELECT *
           FROM [dbo].[alarms]
-          Where time >= ${start.toDate} and time < ${end.toDate} and [level] >= $level
+          Where time >= ${start.toDate} and time < ${end.toDate} and [level] = $level
           Order by time desc
          """.map(mapper).list().apply()
   }
