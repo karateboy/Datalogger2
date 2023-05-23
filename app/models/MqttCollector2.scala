@@ -233,7 +233,9 @@ class MqttCollector2 @Inject()(monitorOp: MonitorOp, alarmOp: AlarmOp,
       "voc"-> MonitorType.VOC,
       "no2"-> MonitorType.NO2,
       "h2s"-> MonitorType.H2S,
-      "nh3"-> MonitorType.NH3)
+      "nh3"-> MonitorType.NH3,
+      "co"-> MonitorType.CO
+    )
 
     val ret = Json.parse(payload).validate[Message]
     ret.fold(err => {
