@@ -91,8 +91,11 @@ object AQI {
           val precision = if (aqiMt == pm10) Some(0)
           else if (aqiMt == pm25)
             Some(1)
+          else if (aqiMt == O3_8hr || aqiMt == O3)
+            Some(3)
           else
             None
+
 
           AqiSubExplain(getAqiMonitorTypeName(aqiMt), AqiExplain(subReport.aqi.map(_.toInt.toString).getOrElse("-"),
             monitorTypeDB.format(mtMap(aqiMt), subReport.value, precision),
