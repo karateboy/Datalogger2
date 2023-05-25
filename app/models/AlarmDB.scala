@@ -16,6 +16,8 @@ trait AlarmDB {
 
   def src(mt: String) = s"T:$mt"
 
+  def srcInstrumentID(id:String) = s"I:$id"
+
   def src(inst: Instrument) = s"I:${inst._id}"
 
   def instrumentSrc(id: String) = s"I:$id"

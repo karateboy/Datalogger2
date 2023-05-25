@@ -85,7 +85,7 @@ object AQI {
         val (aqiMt, subReport) = pair
         if (aqiMt == O3_8hr || aqiMt == O3)
           AqiSubExplain(getAqiMonitorTypeName(aqiMt), AqiExplain(subReport.aqi.map(_.toInt.toString).getOrElse("-"),
-            monitorTypeDB.format(mtMap(aqiMt), subReport.value.map(_ / 1000)),
+            monitorTypeDB.format(mtMap(aqiMt), subReport.value.map(_ / 1000), Some(3)),
             subReport.aqi.map(getAqiLevel).getOrElse("")))
         else {
           val precision = if (aqiMt == pm10) Some(0)
@@ -93,6 +93,7 @@ object AQI {
             Some(1)
           else
             None
+
 
           AqiSubExplain(getAqiMonitorTypeName(aqiMt), AqiExplain(subReport.aqi.map(_.toInt.toString).getOrElse("-"),
             monitorTypeDB.format(mtMap(aqiMt), subReport.value, precision),
