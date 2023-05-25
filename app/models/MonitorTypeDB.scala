@@ -7,6 +7,7 @@ import play.api.libs.json.Json
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.math.BigDecimal.RoundingMode
 
 trait MonitorTypeDB {
   implicit val configWrite = Json.writes[ThresholdConfig]
@@ -206,23 +207,23 @@ trait MonitorTypeDB {
 
   def realtimeMtvList: List[String] = mtvList.filter { mt =>
     val measuringBy = map(mt).measuringBy
-    measuringBy.isDefined && (!measuringBy.get.isEmpty)
+    measuringBy.isDefined && measuringBy.get.nonEmpty
   }
 
-  def format(mt: String, v: Option[Double]): String = {
+  def format(mt: String, v: Option[Double], precisionOpt: Option[Int] = None): String = {
     if (v.isEmpty)
       "-"
     else {
-      val prec = map(mt).prec
-      s"%.${prec}f".format(v.get)
+      val precision = precisionOpt.getOrElse(map(mt).prec)
+      s"%.${precision}f".format(v.get)
     }
   }
 
   def formatRecord(mt: String, r: Option[Record]): String = {
     val ret =
       for (rec <- r if rec.value.isDefined) yield {
-        val prec = map(mt).prec
-        s"%.${prec}f".format(r.get.value.get)
+        val precision = map(mt).prec
+        s"%.${precision}f".format(r.get.value.get)
       }
     ret.getOrElse("-")
   }
@@ -254,12 +255,21 @@ trait MonitorTypeDB {
     (overLaw.getOrElse(false), overLaw.getOrElse(false))
   }
 
-  def calibrateDataByFixedMB(dataList: List[MonitorTypeData]): Unit =
-    dataList.foreach( mtData => {
-      val mtCase = map(mtData.mt)
-      val b = mtCase.fixedB.getOrElse(0d)
-      val m: Double = mtCase.fixedM.getOrElse(1)
-      mtData.value = (mtData.value + b) * m
-      mtData
+  def getMinMtRecordByRawValue(mt: String, rawValue: Option[Double], status: String)(mOpt: Option[Double], bOpt: Option[Double]): MtRecord = {
+    val mtCase = map(mt)
+    val value:Option[Double] = rawValue.map(v => {
+      if(mtCase.calibrate.getOrElse(false)){
+        val calibratedValue =
+          for {
+            m <- mOpt
+            b <- bOpt
+          } yield
+            BigDecimal((v * m) + b).setScale(mtCase.prec, RoundingMode.HALF_EVEN).doubleValue()
+
+        calibratedValue.getOrElse(v)
+      } else
+        v
     })
+    MtRecord(mt, value, status, rawValue = rawValue)
+  }
 }

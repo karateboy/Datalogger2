@@ -183,8 +183,10 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
     for (serial <- serialOpt) {
       Logger.info(s"$instId Switch to Remote mode")
       serial.port.writeBytes(makeCmd("HR1"))
-      Thread.sleep(2000)
-      Logger.info(s"response=>${serial.port.readHexString()}")
+      Thread.sleep(500)
+      val response = serial.port.readHexString()
+      if(response != null)
+        Logger.info(s"response=>$response")
     }
   }
 
@@ -192,8 +194,10 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
     for (serial <- serialOpt) {
       Logger.info(s"$instId Switch to Local mode")
       serial.port.writeBytes(makeCmd("HR0"))
-      Thread.sleep(2000)
-      Logger.info(s"response=>${serial.port.readHexString()}")
+      Thread.sleep(500)
+      val response = serial.port.readHexString()
+      if (response != null)
+        Logger.info(s"response=>$response")
     }
   }
   override def setCalibrationReg(address: Int, on: Boolean): Unit = {
@@ -205,11 +209,14 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
         "0"
       val cmd = s"TV$m,$n"
       serial.port.writeBytes(makeCmd(cmd))
-      Thread.sleep(1000)
-      serial.port.readHexString()
+      Thread.sleep(500)
+      val response = serial.port.readHexString()
+      if (response != null)
+        Logger.info(s"response=>$response")
     }
   }
 
+  override def getDelayAfterCalibrationStart: Int = 5000
   override def postStop(): Unit = {
     for (serial <- serialOpt)
       serial.port.closePort()
