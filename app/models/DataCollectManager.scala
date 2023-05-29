@@ -100,7 +100,7 @@ case class WriteSignal(mtId: String, bit: Boolean)
 
 case object CheckInstruments
 
-case class UpdateCalibrationMap(map:CalibrationListMap)
+case class UpdateCalibrationMap(map: CalibrationListMap)
 
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentDB,
@@ -412,9 +412,9 @@ calibrationDB: CalibrationDB,
   Logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
   DataCollectManager.updateEffectiveRatio(sysConfig)
 
-  for(aqiMonitorTypes <- sysConfig.getAqiMonitorTypes())
+  for (aqiMonitorTypes <- sysConfig.getAqiMonitorTypes())
     AQI.updateAqiTypeMapping(aqiMonitorTypes)
-    
+
   val timer = {
     import scala.concurrent.duration._
     //Try to trigger at 30 sec
@@ -530,9 +530,11 @@ calibrationDB: CalibrationDB,
         })
 
     case StartInstrument(inst) =>
-      if (!instrumentTypeOp.map.contains(inst.instType)) {
+      if (!instrumentTypeOp.map.contains(inst.instType))
         Logger.error(s"${inst._id} of ${inst.instType} is unknown!")
-      } else {
+      else if (instrumentMap.contains(inst._id))
+        Logger.error(s"${inst._id} is already started!")
+      else {
         val instType = instrumentTypeOp.map(inst.instType)
         val collector = instrumentTypeOp.start(inst.instType, inst._id, inst.protocol, inst.param)
         val monitorTypes = instType.driver.getMonitorTypes(inst.param)
@@ -637,7 +639,7 @@ calibrationDB: CalibrationDB,
 
       val now = DateTime.now()
       //Update Calibration Map
-      for(map<-calibrationDB.getCalibrationListMapFuture(now.minusDays(2), now)(monitorTypeOp)){
+      for (map <- calibrationDB.getCalibrationListMapFuture(now.minusDays(2), now)(monitorTypeOp)) {
         self ! UpdateCalibrationMap(map)
       }
 
@@ -965,8 +967,10 @@ calibrationDB: CalibrationDB,
       for (minRecordMap <- f) {
         for (kv <- instrumentMap) {
           val (instID, instParam) = kv;
-          if (instParam.mtList.exists(mt => minRecordMap.contains(mt) && minRecordMap(mt).size < 45)) {
+          if (instParam.mtList.exists(mt => !minRecordMap.contains(mt) ||
+            minRecordMap.contains(mt) && minRecordMap(mt).size < 45)) {
             Logger.error(s"$instID has less than 45 minRecords. Restart $instID")
+            alarmOp.log(alarmOp.srcInstrumentID(instID), alarmOp.Level.ERR, s"$instID 每小時分鐘資料小於45筆. 重新啟動 $instID 設備")
             self ! RestartInstrument(instID)
           }
         }

@@ -237,12 +237,12 @@ export default Vue.extend({
       },
       {
         key: 'fixedM',
-        label: 'M',
+        label: 'slope',
         tdClass: { 'text-center': true },
       },
       {
         key: 'fixedB',
-        label: 'B',
+        label: 'offset',
         tdClass: { 'text-center': true },
       },
       {
