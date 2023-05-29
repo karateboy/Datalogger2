@@ -25,10 +25,40 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
     InsertManyResult.unacknowledged()
   }
 
-  override def upsertRecord(doc: RecordList)(colName: String): Future[UpdateResult] = replaceRecord(doc)(colName)
+  override def upsertRecord(doc: RecordList)(colName: String): Future[UpdateResult] = Future {
+    implicit val session: DBSession = AutoSession
+    val tab: SQLSyntax = getTab(colName)
+    val fields = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"[${record.mtName}],[${record.mtName}_s]").mkString(","))
+
+    def toStr(v: Option[Double]) = {
+      if (v.isDefined)
+        v.get.toString
+      else
+        "NULL"
+    }
+
+    val values = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"${toStr(record.value)}, '${record.status}'").mkString(","))
+    val setCause = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"[${record.mtName}] = ${toStr(record.value)}, [${record.mtName}_s] = '${record.status}'").mkString(","))
+    val ret =
+      sql"""
+         UPDATE $tab
+         SET $setCause
+         WHERE [monitor] = ${doc._id.monitor} AND [time] = ${doc._id.time}
+         @IF @@ROWCOUNT = 0
+         BEGIN
+            INSERT INTO $tab
+            ([monitor], [time], $fields)
+            VALUES
+            (${doc._id.monitor}, ${doc._id.time}, $values)
+         END
+         """.update().apply()
+
+    UpdateResult.acknowledged(ret, ret, null)
+  }
+
 
   override def replaceRecord(doc: RecordList)(colName: String): Future[UpdateResult] = Future {
-    val ret = insert(colName, doc, true)
+    val ret = insert(colName, doc, deleteFirst = true)
     UpdateResult.acknowledged(ret, ret, null)
   }
 
@@ -107,20 +137,20 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
 
   override def getRecordListFuture(colName: String)
                                   (startTime: DateTime, endTime: DateTime, monitors: Seq[String]): Future[Seq[RecordList]] =
-  Future{
-    implicit val session: DBSession = AutoSession
-    val tab: SQLSyntax = getTab(colName)
-    val monitorIn = SQLSyntax.in(SQLSyntax.createUnsafely("[monitor]"), monitors)
-    val rawRecords =
-      sql"""
+    Future {
+      implicit val session: DBSession = AutoSession
+      val tab: SQLSyntax = getTab(colName)
+      val monitorIn = SQLSyntax.in(SQLSyntax.createUnsafely("[monitor]"), monitors)
+      val rawRecords =
+        sql"""
            Select *
            From $tab
            Where [time] >= ${startTime} and [time] < ${endTime} and $monitorIn
            Order by [time]
            """.map(mapper).list().apply()
 
-    rawRecords
-  }
+      rawRecords
+    }
 
   private def getTab(tabName: String) = SQLSyntax.createUnsafely(s"[dbo].[$tabName]")
 
@@ -172,7 +202,7 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
 
   override def upsertManyRecords(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult] = Future {
     records.foreach(recordList => {
-      insert(colName, recordList, true)
+      upsertRecord(recordList)(colName)
     })
     BulkWriteResult.unacknowledged()
   }
