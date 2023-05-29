@@ -44,7 +44,7 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
          UPDATE $tab
          SET $setCause
          WHERE [monitor] = ${doc._id.monitor} AND [time] = ${doc._id.time}
-         @IF @@ROWCOUNT = 0
+         IF(@@ROWCOUNT = 0)
          BEGIN
             INSERT INTO $tab
             ([monitor], [time], $fields)
