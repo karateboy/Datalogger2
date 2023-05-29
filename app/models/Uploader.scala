@@ -31,7 +31,7 @@ object Uploader {
         value = mtData.value.map(_.toString).getOrElse(""),
         InstrumentCode = mtData.status)
     })
-    val uploadData = UploadData(itemData)
+
     val url = "https://www.yesylepb.com.tw/WebService/MonitorCarData.ashx"
     Logger.info(s"upload to $url")
     Logger.info(Json.toJson(UploadData(itemData)).toString())
