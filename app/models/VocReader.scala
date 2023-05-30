@@ -12,6 +12,7 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths, StandardOpenOption}
 import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration, MINUTES, SECONDS}
 import scala.concurrent.{Future, blocking}
@@ -25,7 +26,7 @@ object VocReader {
   var count = 0
 
   def start(configuration: Configuration, actorSystem: ActorSystem, monitorOp: MonitorDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, dataCollectManager:ActorRef) = {
+            recordOp: RecordDB, dataCollectManager:ActorRef): Option[ActorRef] = {
     def getConfig: Option[VocReaderConfig] = {
       def getMonitorConfig(config: Configuration) = {
         val id = config.getString("id").get
@@ -45,7 +46,7 @@ object VocReader {
         VocReaderConfig(enable, monitors)
     }
 
-    for (config <- getConfig if config.enable) {
+    for (config <- getConfig if config.enable) yield {
       Logger.info(config.toString)
       config.monitors.foreach(config=>{
         val m = Monitor(_id = config.id, desc = config.name, lat = Some(config.lat), lng = Some(config.lng))
@@ -73,11 +74,9 @@ object VocReader {
       None
   }
 
-  case class ReparseDir(year: Int, month: Int)
+  private case object ReadFile
 
-  case object ReadFile
-
-  def getParsedFileList(dir:String) = {
+  private def getParsedFileList(dir:String): Seq[String] = {
     val parsedFileName = s"$dir/parsed.list"
       try {
         Files.readAllLines(Paths.get(parsedFileName), StandardCharsets.UTF_8).asScala
@@ -88,10 +87,17 @@ object VocReader {
       }
   }
 
-  def appendToParsedFileList(dir:String, filePath: String) = {
-    var parsedFileList = getParsedFileList(dir)
-    parsedFileList = parsedFileList ++ Seq(filePath)
+  private def removeParsedFileList(dir:String) = {
+    val parsedFileName = s"$dir/parsed.list"
+    try {
+      Files.delete(Paths.get(parsedFileName))
+    } catch {
+      case ex: Throwable =>
+        Logger.error(s"Cannot delete $parsedFileName", ex)
+    }
+  }
 
+  private def appendToParsedFileList(dir:String, filePath: String) = {
     try {
       Files.write(Paths.get(s"$dir/parsed.list"), (filePath + "\n").getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.APPEND)
     } catch {
@@ -121,30 +127,38 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
   Logger.info("VocReader start")
   import VocReader._
 
-  val timer = context.system.scheduler.schedule(FiniteDuration(1, SECONDS), FiniteDuration(5, MINUTES), self, ReadFile)
+  def receive: Receive = handler(mutable.Map.empty[String, mutable.Set[String]], None)
 
-  def receive = {
+  def handler(parsedMap: mutable.Map[String, mutable.Set[String]], timerOpt:Option[Cancellable]) : Receive = {
     case ReadFile =>
       Future {
         blocking {
-          for (monitorConfig <- config.monitors)
-            parseMonitor(monitorConfig)
-            //parseAllTx0(monitorConfig, today.getYear, today.getMonthOfYear)
+          for (monitorConfig <- config.monitors) {
+            val parsedFileSet = parsedMap.getOrElseUpdate(monitorConfig.path, mutable.Set.empty[String])
+            if(parsedFileSet.isEmpty)
+                parsedFileSet ++= getParsedFileList(monitorConfig.path)
+
+            parseMonitor(monitorConfig)(parsedFileSet)
+          }
+          val nextTimer = context.system.scheduler.scheduleOnce(FiniteDuration(5, MINUTES), self, ReadFile)
+          context become handler(parsedMap, Some(nextTimer))
         }
       }
 
-    case ReparseDir(year: Int, month: Int) =>
-    //parseAllTx0(dir, year, month, true)
+    case ReaderReset =>
+      for(timer<-timerOpt)
+        timer.cancel()
+
+      for (monitorConfig <- config.monitors)
+        removeParsedFileList(monitorConfig.path)
+
+      context become handler(mutable.Map.empty[String, mutable.Set[String]], None)
+      self ! ReadFile
   }
 
-  def resetTimer: Cancellable = {
-    import scala.concurrent.duration._
-    context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ReadFile)
-  }
-
-  def parseMonitor(monitorConfig: VocMonitorConfig): Unit ={
+  private def parseMonitor(monitorConfig: VocMonitorConfig)(parsedFileList: mutable.Set[String]): Unit ={
     val allFileAndDirs = new java.io.File(monitorConfig.path).listFiles().toList
-    val dirs = allFileAndDirs.filter(p => p != null && p.isDirectory() && !isArchive(p))
+    val dirs = allFileAndDirs.filter(p => p != null && p.isDirectory && !isArchive(p))
     val today = (DateTime.now() - 2.hour).toLocalDate
 
     for(dir<-dirs) {
@@ -152,7 +166,7 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
       val taiwanYear = dirName.take(3).toInt
       val year = taiwanYear + 1911
       val month = dirName.drop(3).toInt
-      parseAllTx0(monitorConfig, year, month)
+      parseAllTx0(monitorConfig, year, month)(parsedFileList)
 
       if(year > today.getYear || (year == today.getYear && month >= today.getMonthOfYear))
         return
@@ -161,11 +175,10 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
     }
   }
 
-  def parseAllTx0(monitorConfig: VocMonitorConfig, year: Int, month: Int, ignoreParsed: Boolean = false) = {
+  private def parseAllTx0(monitorConfig: VocMonitorConfig, year: Int, month: Int, ignoreParsed: Boolean = false)(parsedFileList: mutable.Set[String]): Unit = {
     val dir = monitorConfig.path
     val monthFolder = dir + File.separator + s"${year - 1911}${"%02d".format(month)}"
 
-    val parsedFileList = VocReader.getParsedFileList(dir)
     def listTx0Files = {
       val BP1Files = Option(new java.io.File(monthFolder + File.separator + "BP1").listFiles())
         .getOrElse(Array.empty[File])
@@ -183,6 +196,7 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
           Logger.info(s"parse ${f.getAbsolutePath}")
           for (dateTime <- getFileDateTime(f.getName, year, month)) {
             parser(monitorConfig.id, f, dateTime)
+            parsedFileList.add(f.getAbsolutePath)
             appendToParsedFileList(dir, f.getAbsolutePath)
           }
         } catch {
@@ -193,11 +207,11 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
     }
   }
 
-  def parser(monitorId:String, file: File, dateTime: DateTime) = {
+  private def parser(monitorId:String, file: File, dateTime: DateTime): Unit = {
     import com.github.tototoshi.csv._
 
     val reader = CSVReader.open(file)
-    val recordList = reader.all().dropWhile { col => !col(0).startsWith("------") }.drop(1).takeWhile { col => !col(0).isEmpty() }
+    val recordList = reader.all().dropWhile { col => !col.head.startsWith("------") }.drop(1).takeWhile { col => col.head.nonEmpty }
     val dataList =
       for (line <- recordList) yield {
         val mtName = line(2)
@@ -232,6 +246,6 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
   }
 
   override def postStop(): Unit = {
-    timer.cancel()
+    Logger.info("VocReader stopped")
   }
 }

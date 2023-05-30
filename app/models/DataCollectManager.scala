@@ -101,6 +101,8 @@ case object CheckInstruments
 
 case class UpdateCalibrationMap(map: CalibrationListMap)
 
+case object ReaderReset
+
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentDB,
                                      recordOp: RecordDB, alarmOp: AlarmDB, sysConfigDB: SysConfigDB,
@@ -432,8 +434,8 @@ class DataCollectManager @Inject()
     } else
       None
 
-  startReaders()
-  val forwardManagerOpt =
+  val readerList: List[ActorRef] = startReaders()
+  val forwardManagerOpt: Option[ActorRef] =
     for (serverConfig <- ForwardManager.getConfig(config)) yield
       injectedChild(forwardManagerFactory(serverConfig.server, serverConfig.monitor), "forwardManager")
   var isT700Calibrator = true
@@ -442,10 +444,19 @@ class DataCollectManager @Inject()
   var onceTimer: Option[Cancellable] = None
   var signalTypeHandlerMap = Map.empty[String, Map[ActorRef, Boolean => Unit]]
 
-  def startReaders(): Unit = {
-    SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
-    WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
-    VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self)
+  def startReaders(): List[ActorRef] = {
+    val readers: ListBuffer[ActorRef] = ListBuffer.empty[ActorRef]
+
+    for(readerRef<-SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp))
+      readers.append(readerRef)
+
+    for(readerRef<-WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp))
+      readers.append(readerRef)
+
+    for(readerRef<-VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
+      readers.append(readerRef)
+
+    readers.toList
   }
 
 
@@ -970,6 +981,9 @@ class DataCollectManager @Inject()
           }
         }
       }
+
+    case ReaderReset =>
+      readerList.foreach(_ ! ReaderReset)
 
   }
 
