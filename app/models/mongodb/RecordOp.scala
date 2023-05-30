@@ -24,31 +24,16 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
 
   private val codecRegistry = fromRegistries(fromProviders(classOf[RecordList], classOf[MtRecord], classOf[RecordListID]), DEFAULT_CODEC_REGISTRY)
 
-  override def insertManyRecord(docs: Seq[RecordList])(colName: String): Future[InsertManyResult] = {
+  override def insertManyRecord(colName: String)(docs: Seq[RecordList]): Future[InsertManyResult] = {
     val col = getCollection(colName)
     val f = col.insertMany(docs).toFuture()
-    f.onFailure({
-      case ex: Exception => Logger.error(ex.getMessage, ex)
-    })
+    f onFailure errorHandler(s"insertManyRecord $colName")
     f
   }
 
-  init
+  init()
 
-  override def replaceRecord(doc: RecordList)(colName: String): Future[UpdateResult] = {
-    val col = getCollection(colName)
-
-    val f = col.replaceOne(Filters.equal("_id", RecordListID(doc._id.time, doc._id.monitor)),
-      doc,
-      ReplaceOptions().upsert(true)).toFuture()
-
-    f.onFailure({
-      case ex: Exception => Logger.error(ex.getMessage, ex)
-    })
-    f
-  }
-
-  override def upsertRecord(doc: RecordList)(colName: String): Future[UpdateResult] = {
+  override def upsertRecord(colName: String)(doc: RecordList): Future[UpdateResult] = {
     val col = getCollection(colName)
 
     val updates =
@@ -63,7 +48,7 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     f
   }
 
-  override def updateRecordStatus(dt: Long, mt: String, status: String, monitor: String = Monitor.activeId)(colName: String): Future[UpdateResult] = {
+  override def updateRecordStatus(colName: String)(dt: Long, mt: String, status: String, monitor: String = Monitor.activeId): Future[UpdateResult] = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Updates._
 

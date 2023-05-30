@@ -23,7 +23,7 @@ object WeatherReader {
 
   def start(configuration: Configuration, actorSystem: ActorSystem,
             sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) = {
+            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp): Option[ActorRef] = {
     def getConfig: Option[WeatherReaderConfig] = {
       for {config <- configuration.getConfig("weatherReader")
            enable <- config.getBoolean("enable")
@@ -34,7 +34,7 @@ object WeatherReader {
         WeatherReaderConfig(enable, dir, modelOpt.getOrElse(CR800_MODEL))
     }
 
-    for (config <- getConfig if config.enable)
+    for (config <- getConfig if config.enable) yield
       actorSystem.actorOf(props(config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp), "weatherReader")
   }
 

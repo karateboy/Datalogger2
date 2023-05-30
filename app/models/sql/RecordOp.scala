@@ -18,14 +18,14 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
 
   init()
 
-  override def insertManyRecord(docs: Seq[RecordList])(colName: String): Future[InsertManyResult] = Future {
+  override def insertManyRecord(colName: String)(docs: Seq[RecordList]): Future[InsertManyResult] = Future {
     docs.foreach(recordList => {
-      insert(colName, recordList, false)
+      insert(colName, recordList)
     })
     InsertManyResult.unacknowledged()
   }
 
-  override def upsertRecord(doc: RecordList)(colName: String): Future[UpdateResult] = Future {
+  override def upsertRecord(colName: String)(doc: RecordList): Future[UpdateResult] = Future {
     implicit val session: DBSession = AutoSession
     val tab: SQLSyntax = getTab(colName)
     val fields = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"[${record.mtName}],[${record.mtName}_s]").mkString(","))
@@ -57,16 +57,9 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
   }
 
 
-  override def replaceRecord(doc: RecordList)(colName: String): Future[UpdateResult] = Future {
-    val ret = insert(colName, doc, deleteFirst = true)
-    UpdateResult.acknowledged(ret, ret, null)
-  }
-
-  private def insert(colName: String, doc: RecordList, deleteFirst: Boolean): Int = {
+  private def insert(colName: String, doc: RecordList): Int = {
     implicit val session: DBSession = AutoSession
     val tab: SQLSyntax = getTab(colName)
-    if (deleteFirst)
-      delete(tab, doc._id)
 
     if (doc.mtDataList.isEmpty) {
       sql"""
@@ -102,7 +95,7 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
          """.update().apply()
   }
 
-  override def updateRecordStatus(dt: Long, mt: String, status: String, monitor: String)(colName: String): Future[UpdateResult] = Future {
+  override def updateRecordStatus(colName: String)(dt: Long, mt: String, status: String, monitor: String): Future[UpdateResult] = Future {
     implicit val session: DBSession = AutoSession
     val tab: SQLSyntax = getTab(colName)
     val mtStatusCol = SQLSyntax.createUnsafely(s"${mt}_s")
@@ -200,11 +193,10 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
         mtList map mtMap
     }
 
-  override def upsertManyRecords(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult] = Future {
-    records.foreach(recordList => {
-      upsertRecord(recordList)(colName)
-    })
-    BulkWriteResult.unacknowledged()
+  override def upsertManyRecords(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult] = {
+    val futures = records.map(recordList => upsertRecord(colName)(recordList))
+    for(_ <- Future.sequence(futures)) yield
+      BulkWriteResult.unacknowledged()
   }
 
   override def ensureMonitorType(mt: String): Unit = {

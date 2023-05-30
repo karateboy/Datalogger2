@@ -783,7 +783,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
         },
         maParam => {
           for (param <- maParam.updateList) {
-            recordOp.updateRecordStatus(param.time, param.mt, param.status)(TableType.mapCollection(tabType))
+            recordOp.updateRecordStatus(TableType.mapCollection(tabType))(param.time, param.mt, param.status)
             val log = ManualAuditLog(new DateTime(param.time), mt = param.mt, modifiedTime = DateTime.now(),
               operator = user.name, changedStatus = param.status, reason = maParam.reason)
             manualAuditLogOp.upsertLog(log)

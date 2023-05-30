@@ -21,13 +21,11 @@ trait RecordDB {
 
   def ensureMonitorType(mt:String)
 
-  def insertManyRecord(docs: Seq[RecordList])(colName: String): Future[InsertManyResult]
+  def insertManyRecord(colName: String)(docs: Seq[RecordList]): Future[InsertManyResult]
 
-  def replaceRecord(doc: RecordList)(colName: String): Future[UpdateResult]
+  def upsertRecord(colName: String)(doc: RecordList): Future[UpdateResult]
 
-  def upsertRecord(doc: RecordList)(colName: String): Future[UpdateResult]
-
-  def updateRecordStatus(dt: Long, mt: String, status: String, monitor: String = Monitor.activeId)(colName: String): Future[UpdateResult]
+  def updateRecordStatus(colName: String)(dt: Long, mt: String, status: String, monitor: String = Monitor.activeId): Future[UpdateResult]
 
   def getRecordMap(colName: String)
                   (monitor: String, mtList: Seq[String], startTime: DateTime, endTime: DateTime, includeRaw:Boolean = false): Map[String, Seq[Record]] = {

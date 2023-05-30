@@ -266,16 +266,8 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
 
         if (sensorMap.contains(message.id)) {
           val sensor = sensorMap(message.id)
-          val recordList = RecordList(time.toDate, mtDataList, sensor.monitor)
-          val f = recordOp.upsertRecord(recordList)(recordOp.MinCollection)
+          val f = recordOp.upsertRecord(recordOp.MinCollection)(RecordList(time.toDate, mtDataList, sensor.monitor))
           f.onFailure(ModelHelper.errorHandler)
-
-          if (dataCollectManager.checkMinDataAlarm(recordList.mtDataList)) {
-            // FIXME
-            // val mtCase = monitorTypeOp.map("PM25")
-            // val thresholdConfig = mtCase.thresholdConfig.getOrElse(ThresholdConfig(30))
-            // context.parent ! ToggleTargetDO(config.eventConfig.instId, config.eventConfig.bit, thresholdConfig.elapseTime)
-          }
         } else {
           monitorDB.upsertMonitor(Monitor(message.id, message.id, Some(message.lat), Some(message.lon)))
           val sensor = Sensor(id = message.id, topic = topic, monitor = message.id, group = config.group)
@@ -283,8 +275,8 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
             case Success(_) =>
               sensorMap = sensorMap + (message.id -> sensor)
           })
-          val recordList = RecordList(time.toDate, mtDataList, sensor.monitor)
-          val f = recordOp.upsertRecord(recordList)(recordOp.MinCollection)
+
+          val f = recordOp.upsertRecord(recordOp.MinCollection)(RecordList(time.toDate, mtDataList, sensor.monitor))
           f.onFailure(ModelHelper.errorHandler)
         }
       })
