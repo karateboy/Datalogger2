@@ -20,7 +20,7 @@ object GcReader {
   var count = 0
 
   def start(configuration: Configuration, actorSystem: ActorSystem, monitorOp: MonitorDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB) = {
+            recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB): Option[ActorRef] = {
     def getConfig: Option[GcReaderConfig] = {
       def getMonitorConfig(config: Configuration) = {
         val id = config.getString("id").get
@@ -40,7 +40,7 @@ object GcReader {
         GcReaderConfig(enable, monitors)
     }
 
-    for (config <- getConfig if config.enable) {
+    for (config <- getConfig if config.enable) yield {
       Logger.info(config.toString)
       config.monitors.foreach(config => {
         monitorOp.ensure(Monitor(_id = config.id, desc = config.name, lat = Some(config.lat), lng = Some(config.lng)))
@@ -78,12 +78,13 @@ object GcReader {
     }
   }
 
-  def setArchive(f: File): Unit = {
+  def setArchive(f: File, archive:Boolean): Unit = {
     import java.nio.file.attribute.DosFileAttributeView
     val path = Paths.get(f.getAbsolutePath)
     val dosView = Files.getFileAttributeView(path, classOf[DosFileAttributeView])
-    dosView.setArchive(true)
+    dosView.setArchive(archive)
   }
+
 
   def parser(gcMonitorConfig: GcMonitorConfig, reportDir: File)
             (implicit recordOp: RecordDB, wsClient: WSClient, monitorDB: MonitorDB, monitorTypeDB: MonitorTypeDB): Boolean = {
@@ -94,7 +95,7 @@ object GcReader {
     import scala.collection.JavaConverters._
 
     val fileLines =
-      Files.readAllLines(Paths.get(reportDir.getAbsolutePath + "/quant.txt"), StandardCharsets.UTF_8).asScala
+      Files.readAllLines(Paths.get(reportDir.getAbsolutePath, "quant.txt"), StandardCharsets.UTF_8).asScala
 
     val dateTimeOpt = {
       for (line <- fileLines.find(line =>
@@ -142,7 +143,7 @@ object GcReader {
         recordOp.ensureMonitorType(mtRecord.mtName)
       })
 
-      val f = recordOp.upsertRecord(record)(recordOp.HourCollection)
+      val f = recordOp.upsertRecord(recordOp.HourCollection)(record)
       f onComplete {
         case Success(_) =>
           // Upload
@@ -169,7 +170,7 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
 
   override def receive: Receive = handler(Map.empty[String, Int])
 
-  private val MAX_RETRY_COUNT = 60
+  private val MAX_RETRY_COUNT = 120
   self ! ParseReport
 
   def handler(retryMap: Map[String, Int]): Receive = {
@@ -184,7 +185,6 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
 
           try {
             parser(gcMonitorConfig, dir)
-            setArchive(dir)
             Logger.info(s"Handle $absPath successfully. Mark $absPath as archive")
             updatedRetryMap = updatedRetryMap - absPath
           } catch {
@@ -195,7 +195,7 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
                 } else {
                   Logger.info(s"$absPath reach max retries. Give up!")
                   Logger.info(s"Mark $absPath as archive")
-                  setArchive(dir)
+                  setArchive(dir, archive = true)
                   updatedRetryMap = updatedRetryMap - absPath
                 }
               } else
@@ -223,5 +223,17 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
       } finally {
         context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, ParseReport)
       }
+    case ReaderReset =>
+      Logger.info("ReaderReset")
+      for (gcMonitorConfig <- config.monitors) {
+        val dirs = listDirs(gcMonitorConfig.path)
+        for (dir <- dirs) yield {
+          val absPath = dir.getAbsolutePath
+          Logger.info(s"clear archive $absPath")
+          setArchive(new File(absPath), archive = false)
+        }
+      }
+      context become handler(Map.empty[String, Int])
+      // wait for the next 1 minute ParseReport event
   }
 }

@@ -458,8 +458,10 @@ calibrationDB: CalibrationDB,
     for(readerRef<-VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
       readers.append(readerRef)
 
+    for(readerRef<-GcReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, WSClient, monitorOp))
+      readers.append(readerRef)
+
     readers.toList
-    GcReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, WSClient, monitorOp)
   }
 
 
@@ -784,7 +786,8 @@ calibrationDB: CalibrationDB,
 
         context become handler(instrumentMap, collectorInstrumentMap,
           latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap, calibrationListMap)
-        val f = recordOp.upsertRecord(recordOp.MinCollection)(RecordList(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId))
+        val recordList: RecordList = RecordList(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId)
+        val f = recordOp.upsertRecord(recordOp.MinCollection)(recordList)
         f onComplete {
           case Success(_) =>
             Uploader.upload(WSClient)(recordList, monitorOp.map(Monitor.activeId))
