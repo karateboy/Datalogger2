@@ -204,7 +204,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 
         val mtDataList = calculateHourAvgMap(mtMap, alwaysValid, monitorTypeDB)
         val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
-        val f = recordOp.replaceRecord(recordList)(recordOp.HourCollection)
+        val f = recordOp.upsertRecord(recordOp.HourCollection)(recordList)
         if (forward) {
           f onComplete {
             case Success(_) =>
@@ -704,7 +704,7 @@ class DataCollectManager @Inject()
 
           val sortedDocs = docs.toSeq.sortBy { x => x._1 } map (_._2)
           if (sortedDocs.nonEmpty)
-            recordOp.insertManyRecord(sortedDocs)(recordOp.SecCollection)
+            recordOp.insertManyRecord(recordOp.SecCollection)(sortedDocs)
         }
       }
 
@@ -770,7 +770,7 @@ class DataCollectManager @Inject()
 
         context become handler(instrumentMap, collectorInstrumentMap,
           latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap, calibrationListMap)
-        val f = recordOp.upsertRecord(RecordList(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId))(recordOp.MinCollection)
+        val f = recordOp.upsertRecord(recordOp.MinCollection)(RecordList(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId))
         f onComplete {
           case Success(_) =>
             self ! ForwardMin
