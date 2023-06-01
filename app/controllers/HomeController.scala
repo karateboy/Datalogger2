@@ -513,9 +513,8 @@ class HomeController @Inject()(environment: play.api.Environment,
       Ok(Json.toJson(mtList.sortBy(_.order)))
   }
 
-  def upsertMonitorType(id: String) = Security.Authenticated.async(BodyParsers.parse.json) {
+  def upsertMonitorType = Security.Authenticated.async(BodyParsers.parse.json) {
     implicit request =>
-      Logger.info(s"upsert Mt:${id}")
       val mtResult = request.body.validate[MonitorType]
 
       mtResult.fold(
@@ -524,7 +523,7 @@ class HomeController @Inject()(environment: play.api.Environment,
           Future.successful(BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString())))
         },
         mt => {
-          Logger.info(mt.toString)
+          Logger.info(s"upsertMt ${mt.toString}")
           for (_ <- monitorTypeOp.upsertMonitorType(mt)) yield
             Ok(Json.obj("ok" -> true))
         })
