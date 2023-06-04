@@ -6,20 +6,26 @@ version := s"$mainVersion$distVersion"
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala, LauncherJarPlugin, JavaAppPackaging, WindowsPlugin)
 
-scalaVersion := "2.11.12"
+scalaVersion := "2.12.16"
 
 libraryDependencies ++= Seq(
   ws,
   filters,
-  "com.github.tototoshi" %% "scala-csv" % "1.3.5",
+  guice,
   "net.sf.marineapi" % "marineapi" % "0.11.0"
 )
+
+// https://mvnrepository.com/artifact/com.typesafe.play/play-json
+libraryDependencies += "com.typesafe.play" %% "play-json" % "2.6.14"
+
+// https://mvnrepository.com/artifact/com.github.tototoshi/scala-csv
+libraryDependencies += "com.github.tototoshi" %% "scala-csv" % "1.3.10"
 
 // https://mvnrepository.com/artifact/org.mongodb.scala/mongo-scala-driver
 libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "4.2.0"
 
 // https://mvnrepository.com/artifact/com.github.nscala-time/nscala-time
-libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "2.28.0"
+libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "2.32.0"
 
 // https://mvnrepository.com/artifact/org.eclipse.paho/org.eclipse.paho.client.mqttv3
 libraryDependencies += "org.eclipse.paho" % "org.eclipse.paho.client.mqttv3" % "1.2.5"
@@ -38,12 +44,11 @@ libraryDependencies += "com.microsoft.sqlserver" % "mssql-jdbc_auth" % "9.4.1.x8
 libraryDependencies += "io.github.java-native" % "jssc" % "2.9.4"
 
 // https://mvnrepository.com/artifact/org.scalikejdbc/scalikejdbc
-libraryDependencies += "org.scalikejdbc" %% "scalikejdbc" % "2.5.2"
+libraryDependencies += "org.scalikejdbc" %% "scalikejdbc" % "3.5.0"
 // https://mvnrepository.com/artifact/org.scalikejdbc/scalikejdbc-config
-libraryDependencies += "org.scalikejdbc" %% "scalikejdbc-config" % "2.5.2"
+libraryDependencies += "org.scalikejdbc" %% "scalikejdbc-config" % "3.5.0"
 // https://mvnrepository.com/artifact/org.scalikejdbc/scalikejdbc-play-initializer
-libraryDependencies += "org.scalikejdbc" %% "scalikejdbc-play-initializer" % "2.5.3"
-
+libraryDependencies += "org.scalikejdbc" %% "scalikejdbc-play-initializer" % "2.6.0"
 
 routesGenerator := StaticRoutesGenerator
 
