@@ -37,10 +37,18 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
         "NULL"
     }
 
-    val values = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"${toStr(record.value)}, '${record.status}'").mkString(","))
-    val setCause = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"[${record.mtName}] = ${toStr(record.value)}, [${record.mtName}_s] = '${record.status}'").mkString(","))
     val ret =
-      sql"""
+      if (doc.mtDataList.isEmpty) {
+        sql"""
+           INSERT INTO $tab
+           ([monitor], [time])
+           VALUES
+           (${doc._id.monitor}, ${doc._id.time})
+           """.update().apply()
+      } else {
+        val values = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"${toStr(record.value)}, '${record.status}'").mkString(","))
+        val setCause = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"[${record.mtName}] = ${toStr(record.value)}, [${record.mtName}_s] = '${record.status}'").mkString(","))
+        sql"""
          UPDATE $tab
          SET $setCause
          WHERE [monitor] = ${doc._id.monitor} AND [time] = ${doc._id.time}
@@ -52,6 +60,7 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
             (${doc._id.monitor}, ${doc._id.time}, $values)
          END
          """.update().apply()
+      }
 
     UpdateResult.acknowledged(ret, ret, null)
   }
@@ -195,7 +204,7 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
 
   override def upsertManyRecords(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult] = {
     val futures = records.map(recordList => upsertRecord(colName)(recordList))
-    for(_ <- Future.sequence(futures)) yield
+    for (_ <- Future.sequence(futures)) yield
       BulkWriteResult.unacknowledged()
   }
 

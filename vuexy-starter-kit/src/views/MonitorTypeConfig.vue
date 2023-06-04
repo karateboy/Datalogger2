@@ -353,7 +353,7 @@ export default Vue.extend({
       for (const mt of this.monitorTypes) {
         if (mt.dirty) {
           this.justify(mt);
-          all.push(axios.put(`/MonitorType/${mt._id}`, mt));
+          all.push(axios.put(`/MonitorType`, mt));
         }
       }
 
