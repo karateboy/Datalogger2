@@ -293,11 +293,19 @@ object DataCollectManager {
             case MonitorType.PM25 =>
               Some(values.last)
             case _ =>
-              val v = values.sum / values.length
-              if (v.isNaN)
-                None
-              else
-                Some(values.sum / values.length)
+              if(mtCase.acoustic.contains(true)){
+                val noNanValues = values.filter(v => !v.isNaN)
+                if(noNanValues.isEmpty)
+                  None
+                else
+                  Some(10 * Math.log10(noNanValues.map(v => Math.pow(10, v / 10)).sum / noNanValues.size))
+              } else {
+                val v = values.sum / values.length
+                if (v.isNaN)
+                  None
+                else
+                  Some(values.sum / values.length)
+              }
           }
         }
 
@@ -349,7 +357,7 @@ object DataCollectManager {
 
       def hourAccumulator(values: Seq[Double], isRaw: Boolean): Option[Double] = {
         if (values.isEmpty)
-          None
+          return None
         else {
           val mtCase = monitorTypeDB.map(mt)
           mt match {
@@ -379,11 +387,19 @@ object DataCollectManager {
             case MonitorType.PM25 =>
               Some(values.last)
             case _ =>
-              val v = values.sum / values.length
-              if (v.isNaN)
-                None
-              else
-                Some(values.sum / values.length)
+              if (mtCase.acoustic.contains(true)) {
+                val noNanValues = values.filter(v => !v.isNaN)
+                if(noNanValues.isEmpty)
+                  None
+                else
+                  Some(10 * Math.log10(noNanValues.map(v => Math.pow(10, v / 10)).sum / noNanValues.size))
+              } else {
+                val v = values.sum / values.length
+                if (v.isNaN)
+                  None
+                else
+                  Some(values.sum / values.length)
+              }
           }
         }
       }
