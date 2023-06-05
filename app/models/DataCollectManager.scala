@@ -101,6 +101,8 @@ case object CheckInstruments
 
 case class UpdateCalibrationMap(map: CalibrationListMap)
 
+case object ReaderReset
+
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentDB,
                                      recordOp: RecordDB, alarmOp: AlarmDB, sysConfigDB: SysConfigDB,
@@ -204,7 +206,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 
         val mtDataList = calculateHourAvgMap(mtMap, alwaysValid, monitorTypeDB)
         val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
-        val f = recordOp.replaceRecord(recordList)(recordOp.HourCollection)
+        val f = recordOp.upsertRecord(recordOp.HourCollection)(recordList)
         if (forward) {
           f onComplete {
             case Success(_) =>
@@ -291,11 +293,19 @@ object DataCollectManager {
             case MonitorType.PM25 =>
               Some(values.last)
             case _ =>
-              val v = values.sum / values.length
-              if (v.isNaN)
-                None
-              else
-                Some(values.sum / values.length)
+              if(mtCase.acoustic.contains(true)){
+                val noNanValues = values.filter(v => !v.isNaN)
+                if(noNanValues.isEmpty)
+                  None
+                else
+                  Some(10 * Math.log10(noNanValues.map(v => Math.pow(10, v / 10)).sum / noNanValues.size))
+              } else {
+                val v = values.sum / values.length
+                if (v.isNaN)
+                  None
+                else
+                  Some(values.sum / values.length)
+              }
           }
         }
 
@@ -347,7 +357,7 @@ object DataCollectManager {
 
       def hourAccumulator(values: Seq[Double], isRaw: Boolean): Option[Double] = {
         if (values.isEmpty)
-          None
+          return None
         else {
           val mtCase = monitorTypeDB.map(mt)
           mt match {
@@ -377,11 +387,19 @@ object DataCollectManager {
             case MonitorType.PM25 =>
               Some(values.last)
             case _ =>
-              val v = values.sum / values.length
-              if (v.isNaN)
-                None
-              else
-                Some(values.sum / values.length)
+              if (mtCase.acoustic.contains(true)) {
+                val noNanValues = values.filter(v => !v.isNaN)
+                if(noNanValues.isEmpty)
+                  None
+                else
+                  Some(10 * Math.log10(noNanValues.map(v => Math.pow(10, v / 10)).sum / noNanValues.size))
+              } else {
+                val v = values.sum / values.length
+                if (v.isNaN)
+                  None
+                else
+                  Some(values.sum / values.length)
+              }
           }
         }
       }
@@ -432,8 +450,8 @@ class DataCollectManager @Inject()
     } else
       None
 
-  startReaders()
-  val forwardManagerOpt =
+  val readerList: List[ActorRef] = startReaders()
+  val forwardManagerOpt: Option[ActorRef] =
     for (serverConfig <- ForwardManager.getConfig(config)) yield
       injectedChild(forwardManagerFactory(serverConfig.server, serverConfig.monitor), "forwardManager")
   var isT700Calibrator = true
@@ -442,10 +460,19 @@ class DataCollectManager @Inject()
   var onceTimer: Option[Cancellable] = None
   var signalTypeHandlerMap = Map.empty[String, Map[ActorRef, Boolean => Unit]]
 
-  def startReaders(): Unit = {
-    SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
-    WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
-    VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self)
+  def startReaders(): List[ActorRef] = {
+    val readers: ListBuffer[ActorRef] = ListBuffer.empty[ActorRef]
+
+    for(readerRef<-SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp))
+      readers.append(readerRef)
+
+    for(readerRef<-WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp))
+      readers.append(readerRef)
+
+    for(readerRef<-VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
+      readers.append(readerRef)
+
+    readers.toList
   }
 
 
@@ -704,7 +731,7 @@ class DataCollectManager @Inject()
 
           val sortedDocs = docs.toSeq.sortBy { x => x._1 } map (_._2)
           if (sortedDocs.nonEmpty)
-            recordOp.insertManyRecord(sortedDocs)(recordOp.SecCollection)
+            recordOp.insertManyRecord(recordOp.SecCollection)(sortedDocs)
         }
       }
 
@@ -770,7 +797,7 @@ class DataCollectManager @Inject()
 
         context become handler(instrumentMap, collectorInstrumentMap,
           latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap, calibrationListMap)
-        val f = recordOp.upsertRecord(RecordList(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId))(recordOp.MinCollection)
+        val f = recordOp.upsertRecord(recordOp.MinCollection)(RecordList(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId))
         f onComplete {
           case Success(_) =>
             self ! ForwardMin
@@ -970,6 +997,9 @@ class DataCollectManager @Inject()
           }
         }
       }
+
+    case ReaderReset =>
+      readerList.foreach(_ ! ReaderReset)
 
   }
 

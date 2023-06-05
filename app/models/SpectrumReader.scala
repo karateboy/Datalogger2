@@ -22,7 +22,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 object SpectrumReader {
   def start(configuration: Configuration, actorSystem: ActorSystem,
             sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) = {
+            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp): Option[ActorRef] = {
     def getConfig: Option[SpectrumReaderConfig] = {
       for {config <- configuration.getConfig("spectrumReader")
            enable <- config.getBoolean("enable")
@@ -33,7 +33,7 @@ object SpectrumReader {
         SpectrumReaderConfig(enable, dir, postfix)
     }
 
-    for (config <- getConfig if config.enable)
+    for (config <- getConfig if config.enable) yield
       actorSystem.actorOf(props(config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp), "spectrumReader")
   }
 
