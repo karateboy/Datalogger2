@@ -33,8 +33,8 @@ object Uploader {
     })
 
     val url = "https://www.yesylepb.com.tw/WebService/MonitorCarData.ashx"
-    Logger.info(s"upload to $url")
-    Logger.info(Json.toJson(UploadData(itemData)).toString())
+    Logger.debug(s"upload to $url")
+    Logger.debug(Json.toJson(UploadData(itemData)).toString())
     val f = ws.url("https://www.yesylepb.com.tw/WebService/MonitorCarData.ashx")
       .withHeaders(("RequiredValidateToken", "OwEsu5KJAAAMPdPpZfYN"), ("method", "UploadMonitorCarData"))
       .post(Json.toJson(UploadData(itemData)))
@@ -43,7 +43,7 @@ object Uploader {
       case Success(resp) =>
         if (resp.status == HttpStatus.SC_OK) {
           Logger.info(s"Success upload ${recordList._id.time}")
-          Logger.info(s"${resp.json.toString()}")
+          Logger.debug(s"${resp.json.toString()}")
         } else {
           Logger.error(s"Failed to upload ${resp.status} ${resp.json.toString()}")
         }
