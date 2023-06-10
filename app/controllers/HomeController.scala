@@ -544,7 +544,7 @@ class HomeController @Inject()(environment: play.api.Environment,
 
   def signalValues = Security.Authenticated.async {
     implicit request =>
-      for (ret <- dataCollectManagerOp.getLatestSignal()) yield
+      for (ret <- dataCollectManagerOp.getLatestSignal) yield
         Ok(Json.toJson(ret))
   }
 
