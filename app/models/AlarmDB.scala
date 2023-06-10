@@ -1,16 +1,11 @@
 package models
 
-import com.github.nscala_time.time.Imports
-import com.github.nscala_time.time.Imports.DateTime
-import play.api.libs.json.Json
+import play.api.libs.json.{Json, OWrites}
 
+import java.util.Date
 import scala.concurrent.Future
 
-case class Alarm2JSON(time: Long, src: String, level: Int, info: String)
-
-case class Alarm(time: DateTime, src: String, level: Int, desc: String) {
-  def toJson = Alarm2JSON(time.getMillis, src, level, desc)
-}
+case class Alarm(time: Date, src: String, level: Int, desc: String)
 
 trait AlarmDB {
 
@@ -26,16 +21,17 @@ trait AlarmDB {
 
   def srcCDX() = "S:CDX"
 
-  def getAlarmsFuture(level: Int, start: Imports.DateTime, end: Imports.DateTime): Future[Seq[Alarm]]
+  def getAlarmsFuture(level: Int, start: Date, end: Date): Future[Seq[Alarm]]
 
-  def getAlarmsFuture(src:String, level: Int, start: Imports.DateTime, end: Imports.DateTime): Future[Seq[Alarm]]
+  def getAlarmsFuture(src:String, level: Int, start: Date, end: Date): Future[Seq[Alarm]]
 
-  implicit val write = Json.writes[Alarm]
-  implicit val jsonWrite = Json.writes[Alarm2JSON]
+  implicit val write: OWrites[Alarm] = Json.writes[Alarm]
 
-  def getAlarmsFuture(start: Imports.DateTime, end: Imports.DateTime): Future[Seq[Alarm]]
+  def getAlarmsFuture(start: Date, end: Date): Future[Seq[Alarm]]
 
   def log(src: String, level: Int, desc: String, coldPeriod: Int = 30): Unit
+
+  def log(ar: Alarm): Unit = log(ar.src, ar.level, ar.desc)
 
   object Level {
     val INFO = 1

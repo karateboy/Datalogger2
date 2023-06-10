@@ -1,12 +1,14 @@
 package models.mongodb
 
-import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import models.{Alarm, AlarmDB}
+import org.bson.codecs.configuration.CodecRegistry
 import org.mongodb.scala._
 import play.api._
 
+import java.time.Instant
+import java.util.Date
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -14,26 +16,20 @@ import scala.language.implicitConversions
 
 @Singleton
 class AlarmOp @Inject()(mongodb: MongoDB) extends AlarmDB {
-  lazy private val collectionName = "alarms"
-  lazy private val collection = mongodb.database.getCollection(collectionName)
-  private def toDocument(ar: Alarm) = {
-    import org.mongodb.scala.bson._
-    Document("time" -> (ar.time: BsonDateTime), "src" -> ar.src, "level" -> ar.level, "desc" -> ar.desc)
-  }
 
-  private def toAlarm(doc: Document) = {
-    val time = new DateTime(doc.get("time").get.asDateTime().getValue)
-    val src = doc.get("src").get.asString().getValue
-    val level = doc.get("level").get.asInt32().getValue
-    val desc = doc.get("desc").get.asString().getValue
-    Alarm(time, src, level, desc)
-  }
+  import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
+  import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
+  import org.mongodb.scala.bson.codecs.Macros._
 
-  private def init() {
+  lazy val codecRegistry: CodecRegistry = fromRegistries(fromProviders(classOf[Alarm]), DEFAULT_CODEC_REGISTRY)
+  lazy val colName = "alarms"
+  lazy private val collection = mongodb.database.getCollection[Alarm](colName).withCodecRegistry(codecRegistry)
+
+  private def init(): Unit = {
     import org.mongodb.scala.model.Indexes._
     for(colNames <- mongodb.database.listCollectionNames().toFuture()) {
-      if (!colNames.contains(collectionName)) {
-        val f = mongodb.database.createCollection(collectionName).toFuture()
+      if (!colNames.contains(colName)) {
+        val f = mongodb.database.createCollection(colName).toFuture()
         f.onFailure(errorHandler)
         f.onSuccess({
           case _ =>
@@ -43,49 +39,35 @@ class AlarmOp @Inject()(mongodb: MongoDB) extends AlarmDB {
     }
   }
 
-  init
+  init()
 
   import org.mongodb.scala.model.Filters._
   import org.mongodb.scala.model.Sorts._
 
-  override def getAlarmsFuture(level: Int, start: DateTime, end: DateTime): Future[Seq[Alarm]] = {
-    import org.mongodb.scala.bson.BsonDateTime
-    val startB: BsonDateTime = start
-    val endB: BsonDateTime = end
-    val f = collection.find(and(gte("time", startB), lt("time", endB), gte("level", level))).sort(descending("time")).toFuture()
+  override def getAlarmsFuture(level: Int, start: Date, end: Date): Future[Seq[Alarm]] = {
+    val f = collection.find(and(gte("time", start), lt("time", end), equal("level", level)))
+      .sort(descending("time")).toFuture()
+
     f onFailure errorHandler()
-    for(docs<-f) yield
-      docs.map { toAlarm }
+    f
   }
 
-  override def getAlarmsFuture(src: String, level: Int, start: Imports.DateTime, end: Imports.DateTime): Future[Seq[Alarm]] = {
-    import org.mongodb.scala.bson.BsonDateTime
-    val startB: BsonDateTime = start
-    val endB: BsonDateTime = end
+  override def getAlarmsFuture(src: String, level: Int, start: Date, end: Date): Future[Seq[Alarm]] = {
     val f = collection.find(and(equal("src", src),
-      gte("time", startB),
-      lt("time", endB),
+      gte("time", start),
+      lt("time", end),
       equal("level", level))).sort(descending("time")).toFuture()
 
     f onFailure errorHandler()
-    for(docs<-f) yield
-      docs.map { toAlarm }
+    f
   }
-  override def getAlarmsFuture(start: DateTime, end: DateTime): Future[Seq[Alarm]] = {
-    import org.mongodb.scala.bson.BsonDateTime
-    val startB: BsonDateTime = start
-    val endB: BsonDateTime = end
-    val f = collection.find(and(gte("time", startB), lt("time", endB))).sort(descending("time")).toFuture()
+  override def getAlarmsFuture(start: Date, end: Date): Future[Seq[Alarm]] =
+    collection.find(and(gte("time", start), lt("time", end))).sort(descending("time")).toFuture()
 
-    for (docs <- f)
-      yield docs.map { toAlarm }
-  }
 
   private def logFilter(ar: Alarm, coldPeriod:Int = 30){
-    import org.mongodb.scala.bson.BsonDateTime
-    //None blocking...
-    val start: BsonDateTime = ar.time - coldPeriod.minutes
-    val end: BsonDateTime = ar.time
+    val start = Date.from(Instant.ofEpochMilli(ar.time.getTime).minusSeconds(coldPeriod * 60))
+    val end = ar.time
 
     val countObserver = collection.countDocuments(and(gte("time", start), lt("time", end),
       equal("src", ar.src), equal("level", ar.level), equal("desc", ar.desc)))
@@ -93,7 +75,7 @@ class AlarmOp @Inject()(mongodb: MongoDB) extends AlarmDB {
     countObserver.subscribe(
       (count: Long) => {
         if (count == 0){
-          val f = collection.insertOne(toDocument(ar)).toFuture()
+          collection.insertOne(ar).toFuture()
         }
       }, // onNext
       (ex: Throwable) => Logger.error("Alarm failed:", ex), // onError
