@@ -10,9 +10,9 @@ trait MonitorDB {
   implicit val mWrite = Json.writes[Monitor]
   implicit val mRead = Json.reads[Monitor]
 
+  def mvList: List[String] = mList.map(_._id)
   @volatile var map: Map[String, Monitor] = Map.empty[String, Monitor]
 
-  def mvList: Seq[String] = synchronized(map.keys.toSeq)
 
   def ensure(_id: String): Unit = synchronized{
     if (!map.contains(_id)) {
@@ -52,7 +52,7 @@ trait MonitorDB {
         m._id -> m
       }
 
-    for(activeId <- sysConfigDB.getActiveMonitorId())
+    for(activeId <- sysConfigDB.getActiveMonitorId)
       Monitor.setActiveMonitorId(activeId)
 
     map = pairs.toMap

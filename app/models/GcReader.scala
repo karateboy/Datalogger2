@@ -137,7 +137,7 @@ object GcReader {
 
 
     for (dateTime <- dateTimeOpt) {
-      val record = RecordList(dateTime.toDate, internalValues ++ actualValues, gcMonitorConfig.id)
+      val record = RecordList.factory(dateTime.toDate, internalValues ++ actualValues, gcMonitorConfig.id)
       record.mtDataList.foreach(mtRecord => {
         monitorTypeDB.ensure(mtRecord.mtName)
         recordOp.ensureMonitorType(mtRecord.mtName)

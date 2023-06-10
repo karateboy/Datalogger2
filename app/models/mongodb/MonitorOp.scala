@@ -11,7 +11,7 @@ import scala.collection.immutable
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 @Singleton
-class MonitorOp @Inject()(mongodb: MongoDB, config: Configuration, sysConfig: SysConfig) extends MonitorDB {
+class MonitorOp @Inject()(mongodb: MongoDB, sysConfig: SysConfig) extends MonitorDB {
 
   import Monitor._
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
@@ -45,10 +45,9 @@ class MonitorOp @Inject()(mongodb: MongoDB, config: Configuration, sysConfig: Sy
       refresh(sysConfig)
   }
 
-  override def mvList: immutable.Seq[String] = mList.map(_._id)
 
   override def mList: List[Monitor] = {
-    val f = collection.find().sort(Sorts.ascending("_id")).toFuture()
+    val f = collection.find().toFuture()
     val ret = waitReadyResult(f)
     ret.toList
   }

@@ -435,7 +435,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(s"Execute $seq")
   }
 
-  def monitorList = Security.Authenticated {
+  def monitorList: Action[AnyContent] = Security.Authenticated {
     implicit request =>
       val userInfo = Security.getUserinfo(request).get
       val group = groupOp.getGroupByID(userInfo.group).get
@@ -767,8 +767,8 @@ class HomeController @Inject()(environment: play.api.Environment,
   })
 
   def getEffectiveRatio = Security.Authenticated.async({
-    val f = sysConfig.getEffectiveRatio()
-    f onFailure (errorHandler)
+    val f = sysConfig.getEffectiveRatio
+    f onFailure errorHandler
     for (ret <- f) yield
       Ok(Json.toJson(ret))
   })

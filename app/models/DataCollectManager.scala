@@ -206,7 +206,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         }
 
         val mtDataList = calculateHourAvgMap(mtMap, alwaysValid, monitorTypeDB)
-        val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
+        val recordList = RecordList.factory(current.minusHours(1), mtDataList.toSeq, monitor)
         // Alarm check
         val alarms = alarmRuleDb.checkAlarm(TableType.hour, recordList, alarmRules)(monitorDB, monitorTypeDb, alarmDb)
         alarms.foreach(alarmDb.log)
@@ -216,7 +216,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
           f onComplete {
             case Success(_) =>
               manager ! ForwardHour
-              for (cdxConfig <- sysConfigDB.getCdxConfig() if cdxConfig.enable; cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes())
+              for (cdxConfig <- sysConfigDB.getCdxConfig if cdxConfig.enable; cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes)
                 cdxUploader.upload(recordList = recordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
 
             case Failure(exception) =>
@@ -234,7 +234,7 @@ object DataCollectManager {
   var effectiveRatio = 0.75
 
   def updateEffectiveRatio(sysConfig: SysConfigDB): Unit = {
-    for (ratio <- sysConfig.getEffectiveRatio())
+    for (ratio <- sysConfig.getEffectiveRatio)
       effectiveRatio = ratio
   }
 
@@ -434,7 +434,7 @@ calibrationDB: CalibrationDB,
   Logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
   DataCollectManager.updateEffectiveRatio(sysConfig)
 
-  for (aqiMonitorTypes <- sysConfig.getAqiMonitorTypes())
+  for (aqiMonitorTypes <- sysConfig.getAqiMonitorTypes)
     AQI.updateAqiTypeMapping(aqiMonitorTypes)
 
   val timer = {
@@ -806,7 +806,7 @@ calibrationDB: CalibrationDB,
 
         context become handler(instrumentMap, collectorInstrumentMap,
           latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap, calibrationListMap)
-        val recordList: RecordList = RecordList(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId)
+        val recordList: RecordList = RecordList.factory(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId)
         val f = recordOp.upsertRecord(recordOp.MinCollection)(recordList)
         f onComplete {
           case Success(_) =>
