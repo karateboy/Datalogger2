@@ -8,6 +8,8 @@ import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
 
+import java.time.Instant
+import java.util.Date
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -55,18 +57,15 @@ class AlarmForwarder @Inject()(alarmOp: AlarmDB, ws: WSClient)
   }
 
   def uploadAlarm(latestAlarm: Long) = {
-    val recordFuture = alarmOp.getAlarmsFuture(new DateTime(latestAlarm + 1), DateTime.now)
-    for (records <- recordFuture) {
-      if (!records.isEmpty) {
-        val recordJSON = records.map {
-          _.toJson
-        }
+    import alarmOp.write
+    val recordFuture = alarmOp.getAlarmsFuture(Date.from(Instant.ofEpochMilli(latestAlarm + 1)), new Date())
+    for (alarms <- recordFuture) {
+      if (alarms.nonEmpty) {
         val url = s"http://$server/AlarmRecord/$monitor"
-        import alarmOp.jsonWrite
-        val f = ws.url(url).put(Json.toJson(recordJSON))
+        val f = ws.url(url).put(Json.toJson(alarms))
         f onSuccess {
-          case response =>
-            context become handler(Some(records.last.time.getMillis))
+          case _ =>
+            context become handler(Some(alarms.last.time.getTime))
         }
         f onFailure {
           case ex: Throwable =>
