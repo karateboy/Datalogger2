@@ -1,11 +1,10 @@
 package models.sql
 
-import com.github.nscala_time.time
-import com.github.nscala_time.time.Imports
-import com.github.nscala_time.time.Imports.DateTime
 import models.{Alarm, AlarmDB}
 import scalikejdbc._
 
+import java.time.Instant
+import java.util.Date
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -15,35 +14,35 @@ class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
   private val tabName = "alarms"
 
   override def getAlarmsFuture(src: String, level: Int,
-                               start: time.Imports.DateTime, end: time.Imports.DateTime): Future[Seq[Alarm]] =
+                               start: Date, end: Date): Future[Seq[Alarm]] =
   Future {
     implicit val session: DBSession = AutoSession
     sql"""
           SELECT *
           FROM [dbo].[alarms]
-          Where src = $src and time >= ${start.toDate} and time < ${end.toDate} and [level] = $level
+          Where src = $src and time >= $start and time < $end and [level] = $level
           Order by time desc
          """.map(mapper).list().apply()
   }
 
-  override def getAlarmsFuture(level: Int, start: Imports.DateTime, end: Imports.DateTime): Future[List[Alarm]] =
+  override def getAlarmsFuture(level: Int, start: Date, end: Date): Future[List[Alarm]] =
   Future {
     implicit val session: DBSession = AutoSession
     sql"""
           SELECT *
           FROM [dbo].[alarms]
-          Where time >= ${start.toDate} and time < ${end.toDate} and [level] = $level
+          Where time >= $start and time < $end and [level] = $level
           Order by time desc
          """.map(mapper).list().apply()
   }
 
-  override def getAlarmsFuture(start: Imports.DateTime, end: Imports.DateTime): Future[Seq[Alarm]] = {
+  override def getAlarmsFuture(start: Date, end: Date): Future[Seq[Alarm]] = {
     implicit val session: DBSession = ReadOnlyAutoSession
     Future {
       sql"""
           SELECT *
           FROM [dbo].[alarms]
-          Where time >= ${start.toDate} and time < ${end.toDate}
+          Where time >= $start and time < $end
           Order by time desc
          """.map(mapper).list().apply()
     }
@@ -52,25 +51,25 @@ class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
   init()
 
   private def mapper(rs: WrappedResultSet) =
-    Alarm(rs.jodaDateTime("time"),
+    Alarm(rs.date("time"),
       rs.string("src"),
       rs.int("level"),
       rs.string("desc"))
 
   override def log(src: String, level: Int, desc: String, coldPeriod: Int = 30): Unit = {
-    val ar = Alarm(DateTime.now(), src, level, desc)
+    val ar = Alarm(Date.from(Instant.now), src, level, desc)
     logFilter(ar, coldPeriod)
   }
 
-  private def logFilter(ar: Alarm, coldPeriod: Int = 30) = {
+  private def logFilter(ar: Alarm, coldPeriod: Int = 30): Unit = {
     val start = ar.time
-    val end = ar.time.minusMinutes(coldPeriod)
+    val end  = Date.from(Instant.ofEpochMilli(ar.time.getTime).minusSeconds(coldPeriod * 60))
     implicit val session: DBSession = AutoSession
     val countOpt =
       sql"""
           Select Count(*)
           FROM [dbo].[alarms]
-          Where [time] >= ${start.toDate} and [time] < ${end.toDate} and [src] = ${ar.src} and [desc] = ${ar.desc}
+          Where [time] >= $start and [time] < $end and [src] = ${ar.src} and [desc] = ${ar.desc}
          """.map(rs => rs.int(1)).first().apply()
     for (count <- countOpt) {
       if (count == 0) {
@@ -78,7 +77,7 @@ class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
              INSERT INTO [dbo].[alarms]
                 ([time],[src],[level],[desc])
             VALUES
-            (${ar.time.toDate}, ${ar.src}, ${ar.level}, ${ar.desc})
+            (${ar.time}, ${ar.src}, ${ar.level}, ${ar.desc})
              """.execute().apply()
       }
     }

@@ -269,6 +269,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/alarm-rule-config',
+      name: 'alarm-rule-config',
+      component: () => import('@/views/AlarmRuleConfig.vue'),
+      meta: {
+        pageTitle: '警報規則管理',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '警報規則管理',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/sensor-management',
       name: 'sensor-management',
       component: () => import('@/views/SensorManagement.vue'),

@@ -83,8 +83,6 @@ case class WriteDO(bit: Int, on: Boolean)
 
 case object ResetCounter
 
-case object EvtOperationOverThreshold
-
 case object GetLatestData
 
 case object GetLatestSignal
@@ -104,35 +102,41 @@ case class UpdateCalibrationMap(map: CalibrationListMap)
 case object ReaderReset
 
 @Singleton
-class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentDB,
-                                     recordOp: RecordDB, alarmOp: AlarmDB, sysConfigDB: SysConfigDB,
+class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef,
+                                     instrumentOp: InstrumentDB,
+                                     recordOp: RecordDB,
+                                     alarmDb: AlarmDB,
+                                     monitorDB: MonitorDB,
+                                     monitorTypeDb: MonitorTypeDB,
+                                     sysConfigDB: SysConfigDB,
+                                     alarmRuleDb: AlarmRuleDb,
                                      cdxUploader: CdxUploader)() {
-  def startCollect(inst: Instrument) {
+  def startCollect(inst: Instrument): Unit = {
     manager ! StartInstrument(inst)
   }
 
-  def startCollect(id: String) {
+  def startCollect(id: String): Unit = {
     val instList = instrumentOp.getInstrument(id)
     instList.map { inst => manager ! StartInstrument(inst) }
   }
 
-  def stopCollect(id: String) {
+  def stopCollect(id: String): Unit = {
     manager ! StopInstrument(id)
   }
 
-  def setInstrumentState(id: String, state: String) {
+  def setInstrumentState(id: String, state: String): Unit = {
     manager ! SetState(id, state)
   }
 
-  def autoCalibration(id: String) {
+  def autoCalibration(id: String): Unit = {
     manager ! AutoCalibration(id)
   }
 
-  def zeroCalibration(id: String) {
+  def zeroCalibration(id: String): Unit = {
     manager ! ManualZeroCalibration(id)
   }
 
-  def spanCalibration(id: String) {
+  def spanCalibration(id: String): Unit = {
     manager ! ManualSpanCalibration(id)
   }
 
@@ -140,15 +144,15 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! WriteTargetDO(id, bit, on)
   }
 
-  def toggleTargetDO(id: String, bit: Int, seconds: Int) = {
+  def toggleTargetDO(id: String, bit: Int, seconds: Int): Unit = {
     manager ! ToggleTargetDO(id, bit, seconds)
   }
 
-  def executeSeq(seqName: String, on: Boolean) {
+  def executeSeq(seqName: String, on: Boolean): Unit = {
     manager ! ExecuteSeq(seqName, on)
   }
 
-  def getLatestData(): Future[Map[String, Record]] = {
+  def getLatestData: Future[Map[String, Record]] = {
     import akka.pattern.ask
     import akka.util.Timeout
 
@@ -159,7 +163,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     f.mapTo[Map[String, Record]]
   }
 
-  def getLatestSignal(): Future[Map[String, Boolean]] = {
+  def getLatestSignal: Future[Map[String, Boolean]] = {
     import akka.pattern.ask
     import akka.util.Timeout
 
@@ -170,19 +174,15 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     f.mapTo[Map[String, Boolean]]
   }
 
-  def writeSignal(mtId: String, bit: Boolean) = {
+  def writeSignal(mtId: String, bit: Boolean): Unit = {
     manager ! WriteSignal(mtId, bit)
-  }
-
-  def evtOperationHighThreshold {
-    alarmOp.log(alarmOp.src(), alarmOp.Level.INFO, "進行高值觸發事件行動..")
-    manager ! EvtOperationOverThreshold
   }
 
   def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean = false)
                          (mtList: Seq[String], monitorTypeDB: MonitorTypeDB): Future[UpdateResult] = {
     val ret =
-      for (recordMap <- recordOp.getMtRecordMapFuture(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current)) yield {
+      for (recordMap <- recordOp.getMtRecordMapFuture(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current);
+          alarmRules <- alarmRuleDb.getRulesAsync) yield {
         val mtMap = mutable.Map.empty[String, mutable.Map[String, ListBuffer[MtRecord]]]
 
         for {
@@ -206,6 +206,10 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 
         val mtDataList = calculateHourAvgMap(mtMap, alwaysValid, monitorTypeDB)
         val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
+        // Alarm check
+        val alarms = alarmRuleDb.checkAlarm(TableType.hour, recordList, alarmRules)(monitorDB, monitorTypeDb, alarmDb)
+        alarms.foreach(alarmDb.log)
+
         val f = recordOp.upsertRecord(recordOp.HourCollection)(recordList)
         if (forward) {
           f onComplete {
@@ -913,13 +917,6 @@ class DataCollectManager @Inject()
         digitalOutputOpt.get ! msg
       else {
         Logger.warn(s"DO is not online! Ignore output (${msg.bit} - ${msg.on}).")
-      }
-
-    case EvtOperationOverThreshold =>
-      if (digitalOutputOpt.isDefined)
-        digitalOutputOpt.get ! EvtOperationOverThreshold
-      else {
-        Logger.warn(s"DO is not online! Ignore EvtOperationOverThreshold.")
       }
 
     case GetLatestSignal =>

@@ -83,6 +83,7 @@ import 'vue2-datepicker/locale/zh-tw';
 const Ripple = require('vue-ripple-directive');
 import moment from 'moment';
 import axios from 'axios';
+import { mapMutations } from 'vuex';
 
 export default Vue.extend({
   components: {
@@ -93,13 +94,16 @@ export default Vue.extend({
     Ripple,
   },
   data() {
-    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
+    const range = [
+      moment().subtract(1, 'days').startOf('day').valueOf(),
+      moment().add(1, 'days').startOf('day').valueOf(),
+    ];
     return {
       display: false,
       alarmLevels: [
         { id: 1, txt: '資訊' },
         { id: 2, txt: '警告' },
-        { id: 3, txt: '嚴重' },
+        { id: 3, txt: '錯誤' },
       ],
       columns: [
         {
@@ -147,7 +151,7 @@ export default Vue.extend({
           },
         },
         {
-          key: 'info',
+          key: 'desc',
           label: '詳細資訊',
           sortable: true,
         },
@@ -160,12 +164,20 @@ export default Vue.extend({
     };
   },
   methods: {
+    ...mapMutations(['setLoading']),
     async query() {
-      this.display = true;
-      const url = `/AlarmReport/${this.form.alarmLevel}/${this.form.range[0]}/${this.form.range[1]}`;
-      const res = await axios.get(url);
-      const ret = res.data;
-      this.rows = ret;
+      try {
+        this.setLoading({ loading: true });
+        const url = `/AlarmReport/${this.form.alarmLevel}/${this.form.range[0]}/${this.form.range[1]}`;
+        const res = await axios.get(url);
+        this.display = true;
+        const ret = res.data;
+        this.rows = ret;
+      } catch (err) {
+        console.error(`${err}`);
+      } finally {
+        this.setLoading({ loading: false });
+      }
     },
     rowClass(item: any, type: any) {
       if (!item || type !== 'row') return;

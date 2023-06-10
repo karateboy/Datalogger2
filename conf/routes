@@ -145,3 +145,7 @@ PUT           /CdxConfig                                                        
 GET           /CdxMonitorTypes                                                                                   controllers.Cdx.getMonitorTypes
 PUT           /CdxMonitorTypes                                                                                   controllers.Cdx.putMonitorTypes
 GET           /CdxUpload/:start/:end                                                                             controllers.Cdx.CdxUploadData(start:Long, end:Long)
+
+GET           /AlarmRules                                                                                        controllers.DataLogger.getAlarmRules
+PUT           /AlarmRule                                                                                         controllers.DataLogger.upsertAlarmRule
+DELETE        /AlarmRule/:id                                                                                     controllers.DataLogger.deleteAlarmRule(id)

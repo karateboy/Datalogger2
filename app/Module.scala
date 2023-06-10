@@ -37,6 +37,7 @@ class Module(environment: Environment,
       bind(classOf[SysConfigDB]).to(classOf[SysConfig])
       bind(classOf[UserDB]).to(classOf[UserOp])
       bind(classOf[VariationRuleDB]).to(classOf[VariationRuleOp])
+      bind(classOf[AlarmRuleDb]).to(classOf[AlarmRuleOp])
     }else{
       import models.mongodb._
       bind(classOf[AlarmDB]).to(classOf[AlarmOp])
@@ -56,6 +57,7 @@ class Module(environment: Environment,
       bind(classOf[SysConfigDB]).to(classOf[SysConfig])
       bind(classOf[UserDB]).to(classOf[UserOp])
       bind(classOf[VariationRuleDB]).to(classOf[VariationRuleOp])
+      bind(classOf[AlarmRuleDb]).to(classOf[AlarmRuleOp])
     }
 
     bindActor[DataCollectManager]("dataCollectManager")
