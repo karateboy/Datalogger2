@@ -94,7 +94,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
       monitorTypeOp.ensure(mt)
 
     Logger.debug(s"parsing ${file.getAbsolutePath}")
-    val skipLines = waitReadyResult(sysConfig.getWeatherSkipLine())
+    val skipLines = waitReadyResult(sysConfig.getWeatherSkipLine)
 
     var processedLine = 0
     val src = Source.fromFile(file)(Codec.UTF8)
@@ -134,7 +134,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
               }
             }
 
-          docList.append(RecordList(time = Date.from(dt.atZone(ZoneId.systemDefault()).toInstant), monitor = Monitor.activeId,
+          docList.append(RecordList.factory(time = Date.from(dt.atZone(ZoneId.systemDefault()).toInstant), monitor = Monitor.activeId,
             mtDataList = mtRecordOpts.flatten))
         } catch {
           case ex: Throwable =>

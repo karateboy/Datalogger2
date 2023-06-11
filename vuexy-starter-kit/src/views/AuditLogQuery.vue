@@ -76,7 +76,10 @@ export default Vue.extend({
   },
 
   data() {
-    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
+    const range = [
+      moment().subtract(1, 'days').startOf('day').valueOf(),
+      moment().valueOf(),
+    ];
     return {
       display: false,
       columns: [

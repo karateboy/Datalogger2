@@ -4,6 +4,7 @@ import models.CdxUploader.{CdxConfig, CdxMonitorType}
 import org.mongodb.scala.result.UpdateResult
 
 import java.time.Instant
+import java.util.Date
 import scala.concurrent.Future
 
 trait SysConfigDB {
@@ -18,45 +19,45 @@ trait SysConfigDB {
   val CDX_MONITOR_TYPES = "CdxMonitorTypes"
   val ACTIVE_MONITOR_ID = "ActiveMonitorId"
   val AQI_MONITOR_TYPES = "AqiMonitorTypes"
+  val EPA_LAST_RECORD_TIME = "EPA_Last_Record_Time"
 
-  // def getLogo: Future[LogoImage]
-
-  // def setLogo(logo: LogoImage): Future[UpdateResult]
-
-  def getSpectrumLastParseTime(): Future[Instant]
+  def getSpectrumLastParseTime: Future[Instant]
 
   def setSpectrumLastParseTime(dt: Instant): Future[UpdateResult]
 
-  def getWeatherLastParseTime(): Future[Instant]
+  def getWeatherLastParseTime: Future[Instant]
 
   def setWeatherLastParseTime(dt: Instant): Future[UpdateResult]
 
-  def getWeatherSkipLine(): Future[Int]
+  def getWeatherSkipLine: Future[Int]
 
   def setWeatherSkipLine(v: Int): Future[UpdateResult]
 
-  def getEffectiveRatio(): Future[Double]
+  def getEffectiveRatio: Future[Double]
 
   def setEffectiveRation(v: Double): Future[UpdateResult]
 
-  def getAlertEmailTarget(): Future[Seq[String]]
+  def getAlertEmailTarget: Future[Seq[String]]
 
   def setAlertEmailTarget(emails: Seq[String]): Future[UpdateResult]
 
-  def getCdxConfig(): Future[CdxConfig]
+  def getCdxConfig: Future[CdxConfig]
 
   def setCdxConfig(config:CdxConfig): Future[UpdateResult]
 
-  def getCdxMonitorTypes() : Future[Seq[CdxMonitorType]]
+  def getCdxMonitorTypes: Future[Seq[CdxMonitorType]]
 
   def setCdxMonitorTypes(monitorTypes: Seq[CdxMonitorType]) : Future[UpdateResult]
 
-  def getActiveMonitorId() : Future[String]
+  def getActiveMonitorId: Future[String]
 
   def setActiveMonitorId(id:String) : Future[UpdateResult]
 
-  def getAqiMonitorTypes(): Future[Seq[String]]
+  def getAqiMonitorTypes: Future[Seq[String]]
 
   def setAqiMonitorTypes(monitorTypes: Seq[String]): Future[UpdateResult]
 
+  def getEpaLastRecordTime: Future[Date]
+
+  def setEpaLastRecordTime(v: Date): Future[UpdateResult]
 }

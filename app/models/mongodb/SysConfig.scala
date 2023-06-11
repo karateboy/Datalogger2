@@ -32,16 +32,17 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     CDX_CONFIG -> Document(valueKey -> Json.toJson(CdxUploader.defaultConfig).toString()),
     CDX_MONITOR_TYPES -> Document(valueKey -> Json.toJson(CdxUploader.defaultMonitorTypes).toString()),
     ACTIVE_MONITOR_ID -> Document(valueKey -> Monitor.activeId),
-    AQI_MONITOR_TYPES -> Document(valueKey ->AQI.defaultMappingTypes)
+    AQI_MONITOR_TYPES -> Document(valueKey ->AQI.defaultMappingTypes),
+    EPA_LAST_RECORD_TIME -> Document(valueKey -> Date.from(Instant.parse("2022-01-01T00:00:00.000Z")))
   )
 
-  override def getSpectrumLastParseTime(): Future[Instant] = getInstant(SpectrumLastParseTime)()
+  override def getSpectrumLastParseTime: Future[Instant] = getInstant(SpectrumLastParseTime)()
 
   init
 
   override def setSpectrumLastParseTime(dt: Instant): Future[UpdateResult] = setInstant(SpectrumLastParseTime)(dt)
 
-  override def getWeatherLastParseTime(): Future[Instant] = getInstant(WeatherLastParseTime)()
+  override def getWeatherLastParseTime: Future[Instant] = getInstant(WeatherLastParseTime)()
 
   private def getInstant(tag: String)(): Future[Instant] =
     get(tag).map(
@@ -73,11 +74,11 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
 
   private def setInstant(tag: String)(dt: Instant): Future[UpdateResult] = set(tag, BsonDateTime(Date.from(dt)))
 
-  override def getWeatherSkipLine(): Future[Int] = get(WeatherSkipLine).map(_.asNumber().intValue())
+  override def getWeatherSkipLine: Future[Int] = get(WeatherSkipLine).map(_.asNumber().intValue())
 
   override def setWeatherSkipLine(v: Int): Future[UpdateResult] = set(WeatherSkipLine, BsonNumber(v))
 
-  override def getEffectiveRatio(): Future[Double] = get(EffectiveRatio).map(_.asNumber().doubleValue())
+  override def getEffectiveRatio: Future[Double] = get(EffectiveRatio).map(_.asNumber().doubleValue())
 
   override def setEffectiveRation(v: Double): Future[UpdateResult] = set(EffectiveRatio, BsonNumber(v))
 
@@ -90,7 +91,7 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     f
   }
 
-  override def getAlertEmailTarget(): Future[Seq[String]] =
+  override def getAlertEmailTarget: Future[Seq[String]] =
     for (v <- get(AlertEmailTarget)) yield
       v.asArray().toSeq.map(_.asString().getValue)
 
@@ -133,22 +134,19 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     }
   }
 
-  override def getActiveMonitorId(): Future[String] = get(ACTIVE_MONITOR_ID).map(_.asString().getValue)
+  override def getActiveMonitorId: Future[String] = get(ACTIVE_MONITOR_ID).map(_.asString().getValue)
 
   override def setActiveMonitorId(id: String): Future[UpdateResult] = set(ACTIVE_MONITOR_ID, BsonString(id))
 
-  override def getAqiMonitorTypes(): Future[Seq[String]] =
+  override def getAqiMonitorTypes: Future[Seq[String]] =
     for (v <- get(AQI_MONITOR_TYPES)) yield
       v.asArray().toSeq.map(_.asString().getValue)
   override def setAqiMonitorTypes(monitorTypes: Seq[String]): Future[UpdateResult] =
     set(AQI_MONITOR_TYPES, monitorTypes)
 
 
-  /*
-  override def getAlertEmailTarget(): Future[Seq[String]] =
-    for (v <- get(AlertEmailTarget)) yield
-      v.asArray().toSeq.map(_.asString().getValue)
+  override def getEpaLastRecordTime: Future[Date] = get(EPA_LAST_RECORD_TIME)
+    .map(v => Date.from(Instant.ofEpochMilli(v.asDateTime().getValue)))
 
-  override def setAlertEmailTarget(emails: Seq[String]): Future[UpdateResult] = set(AlertEmailTarget, emails)
-*/
+  override def setEpaLastRecordTime(v: Date): Future[UpdateResult] = set(EPA_LAST_RECORD_TIME, BsonDateTime(v))
 }

@@ -158,7 +158,10 @@ export default Vue.extend({
   },
 
   data() {
-    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
+    const range = [
+      moment().subtract(1, 'days').startOf('day').valueOf(),
+      moment().valueOf(),
+    ];
     let includeRaw = false;
     return {
       statusFilters: [
@@ -212,7 +215,7 @@ export default Vue.extend({
       form: {
         monitors: Array<string>(),
         monitorTypes: Array<string>(),
-        reportUnit: 'Min',
+        reportUnit: 'Hour',
         statusFilter: 'all',
         chartType: 'line',
         range,

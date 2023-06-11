@@ -103,7 +103,7 @@ class Realtime @Inject()
   }
 
   def getAqiMonitorTypeMapping(): Action[AnyContent] = Security.Authenticated.async(
-    for (monitorTypes <- sysConfigDB.getAqiMonitorTypes()) yield {
+    for (monitorTypes <- sysConfigDB.getAqiMonitorTypes) yield {
       Ok(Json.toJson(monitorTypes))
     }
   )

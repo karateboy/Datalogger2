@@ -12,7 +12,7 @@ import scala.collection.mutable
 case class MtRecord(mtName: String, value: Option[Double], status: String, rawValue: Option[Double] = None)
 
 object RecordList {
-  def apply(time: Date, mtDataList: Seq[MtRecord], monitor: String): RecordList =
+  def factory(time: Date, mtDataList: Seq[MtRecord], monitor: String): RecordList =
     RecordList(mtDataList, RecordListID(time, monitor))
 
   implicit val mtRecordWrite: OWrites[MtRecord] = Json.writes[MtRecord]

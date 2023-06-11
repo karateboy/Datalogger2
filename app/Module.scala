@@ -61,6 +61,8 @@ class Module(environment: Environment,
     }
 
     bindActor[DataCollectManager]("dataCollectManager")
+    bindActor[OpenDataReceiver]("openDataReceiver")
+
     bindActorFactory[Adam6017Collector, Adam6017Collector.Factory]
     bindActorFactory[Adam6066Collector, Adam6066Collector.Factory]
     bindActorFactory[Adam4000Collector, Adam4000Collector.Factory]
