@@ -1,14 +1,15 @@
 <template>
   <div>
-    <b-card>
+    <b-card title="有效資料擷取率">
       <b-form @submit.prevent>
         <b-row>
-          <b-col cols="12">
+          <b-col>
             <b-form-group
               label="資料擷取率:"
               label-for="effectiveRatio"
               label-size="lg"
               label-class="font-weight-bold pt-0"
+              label-cols-md="3"
             >
               <b-form-input
                 id="effectiveRatio"
@@ -34,10 +35,10 @@
         </b-row>
       </b-form>
     </b-card>
-    <b-card v-if="aqiMonitorTypes.length !== 0">
+    <b-card v-if="aqiMonitorTypes.length !== 0" title="AQI測項">
       <b-form @submit.prevent>
         <b-row>
-          <b-col cols="12">
+          <b-col>
             <b-form-group
               label="臭氧(ppm) 八小時平均值測項"
               label-for="monitorType"
@@ -48,7 +49,7 @@
                 v-model="aqiMonitorTypes[0]"
                 label="desp"
                 :reduce="mt => mt._id"
-                :options="activatedMonitorTypes"                
+                :options="activatedMonitorTypes"
               />
             </b-form-group>
           </b-col>
@@ -63,7 +64,7 @@
                 v-model="aqiMonitorTypes[1]"
                 label="desp"
                 :reduce="mt => mt._id"
-                :options="activatedMonitorTypes"                
+                :options="activatedMonitorTypes"
               />
             </b-form-group>
           </b-col>
@@ -78,7 +79,7 @@
                 v-model="aqiMonitorTypes[2]"
                 label="desp"
                 :reduce="mt => mt._id"
-                :options="activatedMonitorTypes"                
+                :options="activatedMonitorTypes"
               />
             </b-form-group>
           </b-col>
@@ -93,7 +94,7 @@
                 v-model="aqiMonitorTypes[3]"
                 label="desp"
                 :reduce="mt => mt._id"
-                :options="activatedMonitorTypes"                
+                :options="activatedMonitorTypes"
               />
             </b-form-group>
           </b-col>
@@ -108,7 +109,7 @@
                 v-model="aqiMonitorTypes[4]"
                 label="desp"
                 :reduce="mt => mt._id"
-                :options="activatedMonitorTypes"                
+                :options="activatedMonitorTypes"
               />
             </b-form-group>
           </b-col>
@@ -153,7 +154,7 @@
                 v-model="aqiMonitorTypes[7]"
                 label="desp"
                 :reduce="mt => mt._id"
-                :options="activatedMonitorTypes"                
+                :options="activatedMonitorTypes"
               />
             </b-form-group>
           </b-col>

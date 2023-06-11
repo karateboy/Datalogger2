@@ -177,12 +177,12 @@ class HomeController @Inject()(environment: play.api.Environment,
                     monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog, recordDB)
                 }
             }
-            f3.map{
-             _=>
-               if (newInstrument.active)
-                 dataCollectManagerOp.startCollect(newInstrument)
+            f3.map {
+              _ =>
+                if (newInstrument.active)
+                  dataCollectManagerOp.startCollect(newInstrument)
 
-               Ok(Json.obj("ok" -> true))
+                Ok(Json.obj("ok" -> true))
             }
           } catch {
             case ex: Throwable =>
@@ -219,7 +219,7 @@ class HomeController @Inject()(environment: play.api.Environment,
 
       def getInfoClass: InstrumentInfo = {
         val mtStr = getMonitorTypes.map { mt =>
-          if(monitorTypeOp.map.contains(mt))
+          if (monitorTypeOp.map.contains(mt))
             monitorTypeOp.map(mt).desp
           else
             mt
@@ -442,16 +442,17 @@ class HomeController @Inject()(environment: play.api.Environment,
 
       implicit val writes = Json.writes[Monitor]
 
-      if (userInfo.isAdmin) {
-        val mList2 = monitorOp.mvList map { m => monitorOp.map(m) }
-        Ok(Json.toJson(mList2))
-      } else {
-        val mList2 =
+      val mList =
+        if (userInfo.isAdmin)
+          monitorOp.mvList map { m => monitorOp.map(m) }
+        else
           for (m <- group.monitors if monitorOp.map.contains(m)) yield
             monitorOp.map(m)
 
-        Ok(Json.toJson(mList2))
-      }
+      // Make active monitor first
+      val (active, rest) = mList.partition { m => m._id == Monitor.activeId }
+
+      Ok(Json.toJson(active ++ rest))
   }
 
   def upsertMonitor(id: String) = Security.Authenticated(BodyParsers.parse.json) {
