@@ -3,18 +3,13 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports._
 import models.ForwardManager.ForwardHourRecord
-import models.ModelHelper.errorHandler
-import models.mongodb.RecordOp
-import org.mongodb.scala.result.UpdateResult
 import play.api._
 
 import java.io.File
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths, StandardOpenOption}
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{Duration, FiniteDuration, MINUTES, SECONDS}
+import scala.concurrent.duration.{FiniteDuration, MINUTES}
 import scala.concurrent.{Future, blocking}
 import scala.util.{Failure, Success}
 
@@ -26,7 +21,7 @@ object VocReader {
   var count = 0
 
   def start(configuration: Configuration, actorSystem: ActorSystem, monitorOp: MonitorDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, dataCollectManager:ActorRef): Option[ActorRef] = {
+            recordOp: RecordDB, dataCollectManager: ActorRef): Option[ActorRef] = {
     def getConfig: Option[VocReaderConfig] = {
       def getMonitorConfig(config: Configuration) = {
         val id = config.getString("id").get
@@ -48,7 +43,7 @@ object VocReader {
 
     for (config <- getConfig if config.enable) yield {
       Logger.info(config.toString)
-      config.monitors.foreach(config=>{
+      config.monitors.foreach(config => {
         val m = Monitor(_id = config.id, desc = config.name, lat = Some(config.lat), lng = Some(config.lng))
         monitorOp.upsertMonitor(m)
       })
@@ -58,11 +53,11 @@ object VocReader {
   }
 
   def props(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, dataCollectManager: ActorRef) =
-    Props(classOf[VocReader], config, monitorTypeOp, recordOp, dataCollectManager)
+            recordOp: RecordDB, dataCollectManager: ActorRef): Props =
+    Props(new VocReader(config, monitorTypeOp, recordOp, dataCollectManager))
 
 
-  def getFileDateTime(fileName: String, year: Int, month: Int): Option[DateTime] = {
+  private def getFileDateTime(fileName: String, year: Int, month: Int): Option[DateTime] = {
     val dayHour = fileName.takeWhile { x => x != '.' }.dropWhile { x => !x.isDigit }
     if (dayHour.forall { x => x.isDigit }) {
       val day = dayHour.take(2).toInt
@@ -76,67 +71,24 @@ object VocReader {
 
   private case object ReadFile
 
-  private def getParsedFileList(dir:String): Seq[String] = {
-    val parsedFileName = s"$dir/parsed.list"
-      try {
-        Files.readAllLines(Paths.get(parsedFileName), StandardCharsets.UTF_8).asScala
-      } catch {
-        case ex: Throwable =>
-          Logger.info(s"Cannot open $parsedFileName")
-          Seq.empty[String]
-      }
-  }
-
-  private def removeParsedFileList(dir:String) = {
-    val parsedFileName = s"$dir/parsed.list"
-    try {
-      Files.delete(Paths.get(parsedFileName))
-    } catch {
-      case ex: Throwable =>
-        Logger.error(s"Cannot delete $parsedFileName", ex)
-    }
-  }
-
-  private def appendToParsedFileList(dir:String, filePath: String) = {
-    try {
-      Files.write(Paths.get(s"$dir/parsed.list"), (filePath + "\n").getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.APPEND)
-    } catch {
-      case ex: Throwable =>
-        Logger.warn(ex.getMessage)
-    }
-  }
-  def setArchive(f: File) {
-    import java.nio.file._
-    import java.nio.file.attribute.DosFileAttributeView
-
-    val path = Paths.get(f.getAbsolutePath)
-    val dfav = Files.getFileAttributeView(path, classOf[DosFileAttributeView])
-    dfav.setArchive(true)
-  }
-  def isArchive(f: File) = {
-    import java.nio.file._
-    import java.nio.file.attribute.DosFileAttributes
-
-    val dfa = Files.readAttributes(Paths.get(f.getAbsolutePath), classOf[DosFileAttributes])
-    dfa.isArchive()
-  }
 }
 
 class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, dataCollectManager: ActorRef)
   extends Actor with ActorLogging {
   Logger.info("VocReader start")
-  import VocReader._
 
+  import VocReader._
+  import ReaderHelper._
   def receive: Receive = handler(mutable.Map.empty[String, mutable.Set[String]], None)
 
-  def handler(parsedMap: mutable.Map[String, mutable.Set[String]], timerOpt:Option[Cancellable]) : Receive = {
+  def handler(parsedMap: mutable.Map[String, mutable.Set[String]], timerOpt: Option[Cancellable]): Receive = {
     case ReadFile =>
       Future {
         blocking {
           for (monitorConfig <- config.monitors) {
             val parsedFileSet = parsedMap.getOrElseUpdate(monitorConfig.path, mutable.Set.empty[String])
-            if(parsedFileSet.isEmpty)
-                parsedFileSet ++= getParsedFileList(monitorConfig.path)
+            if (parsedFileSet.isEmpty)
+              parsedFileSet ++= getParsedFileList(monitorConfig.path)
 
             parseMonitor(monitorConfig)(parsedFileSet)
           }
@@ -146,7 +98,7 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
       }
 
     case ReaderReset =>
-      for(timer<-timerOpt)
+      for (timer <- timerOpt)
         timer.cancel()
 
       for (monitorConfig <- config.monitors)
@@ -156,19 +108,19 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
       self ! ReadFile
   }
 
-  private def parseMonitor(monitorConfig: VocMonitorConfig)(parsedFileList: mutable.Set[String]): Unit ={
+  private def parseMonitor(monitorConfig: VocMonitorConfig)(parsedFileList: mutable.Set[String]): Unit = {
     val allFileAndDirs = new java.io.File(monitorConfig.path).listFiles().toList
     val dirs = allFileAndDirs.filter(p => p != null && p.isDirectory && !isArchive(p))
     val today = (DateTime.now() - 2.hour).toLocalDate
 
-    for(dir<-dirs) {
+    for (dir <- dirs) {
       val dirName = dir.getName
       val taiwanYear = dirName.take(3).toInt
       val year = taiwanYear + 1911
       val month = dirName.drop(3).toInt
       parseAllTx0(monitorConfig, year, month)(parsedFileList)
 
-      if(year > today.getYear || (year == today.getYear && month >= today.getMonthOfYear))
+      if (year > today.getYear || (year == today.getYear && month >= today.getMonthOfYear))
         return
 
       setArchive(dir)
@@ -207,7 +159,7 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
     }
   }
 
-  private def parser(monitorId:String, file: File, dateTime: DateTime): Unit = {
+  private def parser(monitorId: String, file: File, dateTime: DateTime): Unit = {
     import com.github.tototoshi.csv._
 
     val reader = CSVReader.open(file)
@@ -229,18 +181,18 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
         }
       }
     reader.close()
-    val mtDataList = dataList.flatten.map(data=> {
+    val mtDataList = dataList.flatten.map(data => {
       val (mt, (value, status)) = data
       val mtCase = monitorTypeOp.map(mt)
       monitorTypeOp.getMinMtRecordByRawValue(mt, Some(value), status)(mtCase.fixedM, mtCase.fixedB)
     })
 
-    val f = recordOp.upsertRecord(recordOp.HourCollection)(RecordList(dateTime.toDate, mtDataList, monitorId))
+    val f = recordOp.upsertRecord(recordOp.HourCollection)(RecordList.factory(dateTime.toDate, mtDataList, monitorId))
     f onComplete {
-      case Success(_)=>
+      case Success(_) =>
         dataCollectManager ! ForwardHourRecord(dateTime, dateTime.plusHours(1))
 
-      case Failure(exception)=>
+      case Failure(exception) =>
         Logger.error("failed", exception)
     }
   }

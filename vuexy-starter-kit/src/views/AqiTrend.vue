@@ -123,7 +123,10 @@ export default Vue.extend({
   },
 
   data() {
-    const range = [moment().subtract(7, 'days').valueOf(), moment().valueOf()];
+    const range = [
+      moment().subtract(7, 'days').startOf('day').valueOf(),
+      moment().valueOf(),
+    ];
     return {
       reportUnits: [
         { txt: '小時AQI', id: 'Hour' },
