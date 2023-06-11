@@ -97,7 +97,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
   }
 
   def processInputPath() = {
-    for (lastParseTime <- sysConfig.getSpectrumLastParseTime()) {
+    for (lastParseTime <- sysConfig.getSpectrumLastParseTime) {
       val files = listDirs(config.dir, lastParseTime)
 
       val resultFutureList: Seq[Future[Option[ParseResult]]] =
@@ -170,7 +170,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
             dataEnd = dt
 
           val mtCase = monitorTypeOp.map(mtName)
-          Some(RecordList(time = Date.from(dt), monitor = Monitor.activeId,
+          Some(RecordList.factory(time = Date.from(dt), monitor = Monitor.activeId,
             mtDataList = Seq(monitorTypeOp.getMinMtRecordByRawValue(mtName, Some(value), MonitorStatus.NormalStat)(mtCase.fixedM, mtCase.fixedB))))
         } catch {
           case ex: Throwable =>

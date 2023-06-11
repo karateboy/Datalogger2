@@ -33,7 +33,7 @@ class EmailTargetOp @Inject()(mongodb: MongoDB, sysConfig: SysConfigDB) extends 
   }
 
   private def importFromSysConfig(): Unit ={
-    for(targets <- sysConfig.getAlertEmailTarget()){
+    for(targets <- sysConfig.getAlertEmailTarget){
       val emailTargets = targets.map(email=>{
         EmailTarget(email, Seq.empty)
       })
