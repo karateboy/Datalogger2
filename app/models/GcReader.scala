@@ -20,7 +20,7 @@ object GcReader {
   var count = 0
 
   def start(configuration: Configuration, actorSystem: ActorSystem, monitorOp: MonitorDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB): Option[ActorRef] = {
+            recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, environment: Environment): Option[ActorRef] = {
     def getConfig: Option[GcReaderConfig] = {
       def getMonitorConfig(config: Configuration) = {
         val id = config.getString("id").get
@@ -46,13 +46,13 @@ object GcReader {
         monitorOp.ensure(Monitor(_id = config.id, desc = config.name, lat = Some(config.lat), lng = Some(config.lng)))
       })
       count = count + 1
-      actorSystem.actorOf(props(config, monitorTypeOp, recordOp, WSClient, monitorDB), s"GcReader${count}")
+      actorSystem.actorOf(props(config, monitorTypeOp, recordOp, WSClient, monitorDB, environment), s"GcReader${count}")
     }
   }
 
   private def props(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB,
-                    recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB) =
-    Props(new GcReader(config, monitorTypeOp, recordOp, WSClient, monitorDB))
+                    recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, environment: Environment) =
+    Props(new GcReader(config, monitorTypeOp, recordOp, WSClient, monitorDB, environment))
 
 
   case object ParseReport
@@ -77,14 +77,6 @@ object GcReader {
       List.empty[File]
     }
   }
-
-  def setArchive(f: File, archive:Boolean): Unit = {
-    import java.nio.file.attribute.DosFileAttributeView
-    val path = Paths.get(f.getAbsolutePath)
-    val dosView = Files.getFileAttributeView(path, classOf[DosFileAttributeView])
-    dosView.setArchive(archive)
-  }
-
 
   def parser(gcMonitorConfig: GcMonitorConfig, reportDir: File)
             (implicit recordOp: RecordDB, wsClient: WSClient, monitorDB: MonitorDB, monitorTypeDB: MonitorTypeDB): Boolean = {
@@ -158,7 +150,7 @@ object GcReader {
   } //End of process report.txt
 }
 
-private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB)
+private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, environment: play.api.Environment)
   extends Actor with ActorLogging {
   Logger.info("GcReader start")
 
@@ -168,15 +160,23 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
     //timer.cancel()
   }
 
-  override def receive: Receive = handler(Map.empty[String, Int])
+  override def receive: Receive = handler(Map.empty[String, Int], mutable.Set.empty[String])
 
   private val MAX_RETRY_COUNT = 120
   self ! ParseReport
 
-  def handler(retryMap: Map[String, Int]): Receive = {
+  import ReaderHelper._
+  val parsedFileRoot = environment.rootPath.getAbsolutePath
+  val parsedFile = "parsed.txt"
+  def handler(retryMap: Map[String, Int], parsedFileSet: mutable.Set[String]): Receive = {
     case ParseReport =>
       def processInputPath(gcMonitorConfig: GcMonitorConfig, parser: (GcMonitorConfig, File) => Boolean): Map[String, Int] = {
         var updatedRetryMap = retryMap
+        if(parsedFileSet.isEmpty) {
+          val parsedFileList = getParsedFileList(parsedFileRoot, parsedFile)
+          parsedFileSet ++= parsedFileList
+        }
+
         val dirs = listDirs(gcMonitorConfig.path)
         for (dir <- dirs) yield {
           val absPath = dir.getAbsolutePath
@@ -184,8 +184,16 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
             Logger.info(s"Processing $absPath")
 
           try {
+            if(!parsedFileSet.contains(absPath)) {
+              Logger.info(s"$absPath already parsed. Skip")
+              updatedRetryMap = updatedRetryMap - absPath
+              return updatedRetryMap
+            }
+
             parser(gcMonitorConfig, dir)
             Logger.info(s"Handle $absPath successfully. Mark $absPath as archive")
+            parsedFileSet += absPath
+            appendToParsedFileList(parsedFileRoot, parsedFile, absPath)
             updatedRetryMap = updatedRetryMap - absPath
           } catch {
             case ex: Throwable =>
@@ -195,7 +203,8 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
                 } else {
                   Logger.info(s"$absPath reach max retries. Give up!")
                   Logger.info(s"Mark $absPath as archive")
-                  setArchive(dir, archive = true)
+                  parsedFileSet += absPath
+                  appendToParsedFileList(parsedFileRoot, parsedFile, absPath)
                   updatedRetryMap = updatedRetryMap - absPath
                 }
               } else
@@ -213,7 +222,7 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
         for (gcMonitorConfig <- config.monitors) {
           Future {
             blocking {
-              context become handler(processInputPath(gcMonitorConfig, parser))
+              context become handler(processInputPath(gcMonitorConfig, parser), parsedFileSet)
             }
           }
         }
@@ -225,15 +234,8 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
       }
     case ReaderReset =>
       Logger.info("ReaderReset")
-      for (gcMonitorConfig <- config.monitors) {
-        val dirs = listDirs(gcMonitorConfig.path)
-        for (dir <- dirs) yield {
-          val absPath = dir.getAbsolutePath
-          Logger.info(s"clear archive $absPath")
-          setArchive(new File(absPath), archive = false)
-        }
-      }
-      context become handler(Map.empty[String, Int])
+      removeParsedFileList(parsedFileRoot, parsedFile)
+      context become handler(Map.empty[String, Int], mutable.Set.empty[String])
       // wait for the next 1 minute ParseReport event
   }
 }
