@@ -118,7 +118,14 @@ object GcReader {
       try {
         val mtName = line.slice(8, 35).trim
         val value = line.slice(59, 64).trim.toDouble
-        Some(MtRecord(mtName, Some(value), MonitorStatus.NormalStat))
+        val status = if (reportDir.getName.startsWith("B")) {
+          MonitorStatus.CalibratedStat
+        } else if (reportDir.getName.startsWith("Q")) {
+          MonitorStatus.CalibrationSampleStat
+        } else
+          MonitorStatus.NormalStat
+
+        Some(MtRecord(mtName, Some(value), status))
       } catch {
         case _: Throwable =>
           None
@@ -166,8 +173,8 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
   self ! ParseReport
 
   import ReaderHelper._
-  val parsedFileRoot = environment.rootPath.getAbsolutePath
-  val parsedFile = "parsed.txt"
+  private val parsedFileRoot = environment.rootPath.getAbsolutePath
+  private val parsedFile = "parsed.txt"
   def handler(retryMap: Map[String, Int], parsedFileSet: mutable.Set[String]): Receive = {
     case ParseReport =>
       def processInputPath(gcMonitorConfig: GcMonitorConfig, parser: (GcMonitorConfig, File) => Boolean): Map[String, Int] = {
@@ -184,8 +191,8 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
             Logger.info(s"Processing $absPath")
 
           try {
-            if(!parsedFileSet.contains(absPath)) {
-              Logger.info(s"$absPath already parsed. Skip")
+            if(parsedFileSet.contains(absPath)) {
+              Logger.debug(s"$absPath already parsed. Skip")
               updatedRetryMap = updatedRetryMap - absPath
               return updatedRetryMap
             }
@@ -193,7 +200,7 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
             parser(gcMonitorConfig, dir)
             Logger.info(s"Handle $absPath successfully. Mark $absPath as archive")
             parsedFileSet += absPath
-            appendToParsedFileList(parsedFileRoot, parsedFile, absPath)
+            appendToParsedFileList(parsedFileRoot, absPath, parsedFile)
             updatedRetryMap = updatedRetryMap - absPath
           } catch {
             case ex: Throwable =>
@@ -204,7 +211,7 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
                   Logger.info(s"$absPath reach max retries. Give up!")
                   Logger.info(s"Mark $absPath as archive")
                   parsedFileSet += absPath
-                  appendToParsedFileList(parsedFileRoot, parsedFile, absPath)
+                  appendToParsedFileList(parsedFileRoot, absPath, parsedFile)
                   updatedRetryMap = updatedRetryMap - absPath
                 }
               } else

@@ -1,14 +1,13 @@
 package models
 
-import com.google.inject.ImplementedBy
-import models.MonitorStatus.{BelowNormalStat, CalibrationDeviation, CalibrationResume, ExceedRangeStat, InvalidDataStat, MaintainStat, NormalStat, OverNormalStat, SpanCalibrationStat, ZeroCalibrationStat, getTagInfo}
-import play.api.libs.json.Json
+import models.MonitorStatus._
+import play.api.libs.json.{Json, OWrites, Reads}
 
 trait MonitorStatusDB {
-  implicit val reads = Json.reads[MonitorStatus]
-  implicit val writes = Json.writes[MonitorStatus]
+  implicit val reads: Reads[MonitorStatus] = Json.reads[MonitorStatus]
+  implicit val writes: OWrites[MonitorStatus] = Json.writes[MonitorStatus]
 
-  val defaultStatus = List(
+  val defaultStatus: List[MonitorStatus] = List(
     MonitorStatus(NormalStat, "正常"),
     MonitorStatus(OverNormalStat, "超過預設高值"),
     MonitorStatus(BelowNormalStat, "低於預設低值"),
@@ -16,11 +15,13 @@ trait MonitorStatusDB {
     MonitorStatus(SpanCalibrationStat, "全幅偏移校正"),
     MonitorStatus(CalibrationDeviation, "校正偏移"),
     MonitorStatus(CalibrationResume, "校正恢復"),
+    MonitorStatus(CalibratedStat, "空白"),
+    MonitorStatus(CalibrationSampleStat, "標準品"),
     MonitorStatus(InvalidDataStat, "無效數據"),
     MonitorStatus(MaintainStat, "維修、保養"),
     MonitorStatus(ExceedRangeStat, "超過量測範圍"))
 
-  var _map: Map[String, MonitorStatus] = refreshMap
+  var _map: Map[String, MonitorStatus] = refreshMap()
 
   protected def refreshMap(): Map[String, MonitorStatus] = {
     _map = Map(msList.map { s => s.info.toString() -> s }: _*)

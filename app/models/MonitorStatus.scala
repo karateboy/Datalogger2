@@ -5,7 +5,7 @@ object StatusType extends Enumeration {
   val Auto = Value("A")
   val ManualInvalid = Value("M")
   val ManualValid = Value("m")
-  def map = Map(Internal -> "系統",
+  def map: Map[StatusType.Value, String] = Map(Internal -> "系統",
     Auto -> "自動註記",
     ManualInvalid -> "人工註記:無效資料",
     ManualValid -> "人工註記:有效資料"
@@ -34,9 +34,12 @@ object MonitorStatus {
   val SpanCalibrationStat = "021"
   val CalibrationDeviation = "022"
   val CalibrationResume = "026"
+  val CalibratedStat = "027"
+  val CalibrationSampleStat = "028"
   val InvalidDataStat = "030"
   val MaintainStat = "031"
   val ExceedRangeStat = "032"
+
 
   def getTagInfo(tag: String) = {
     val id = tag.substring(1)

@@ -430,7 +430,8 @@ class DataCollectManager @Inject()
  instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentDB,
 calibrationDB: CalibrationDB,
  sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory,
- WSClient: WSClient) extends Actor with InjectedActorSupport {
+ WSClient: WSClient,
+ environment: Environment) extends Actor with InjectedActorSupport {
   Logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
   DataCollectManager.updateEffectiveRatio(sysConfig)
 
@@ -478,7 +479,7 @@ calibrationDB: CalibrationDB,
     for(readerRef<-VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
       readers.append(readerRef)
 
-    for(readerRef<-GcReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, WSClient, monitorOp))
+    for(readerRef<-GcReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, WSClient, monitorOp, environment))
       readers.append(readerRef)
 
     readers.toList
