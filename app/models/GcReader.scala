@@ -1,10 +1,13 @@
 package models
 
 import akka.actor._
+import org.apache.commons.io.FileUtils
+import org.apache.commons.io.filefilter.DirectoryFileFilter
 import play.api._
 import play.api.libs.ws.WSClient
 
 import java.io.File
+import scala.collection.JavaConverters.collectionAsScalaIterableConverter
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{FiniteDuration, MINUTES}
@@ -12,7 +15,15 @@ import scala.concurrent.{Future, blocking}
 import scala.language.implicitConversions
 import scala.util.{Failure, Success}
 
-case class GcMonitorConfig(id: String, name: String, lat: Double, lng: Double, path: String)
+case class GcMonitorConfig(id: String,
+                           name: String,
+                           lat: Double,
+                           lng: Double,
+                           path: String,
+                           fileName: String,
+                           mtPostfix: Option[String],
+                           mtAnnotation: Option[String]
+                          )
 
 case class GcReaderConfig(enable: Boolean, monitors: Seq[GcMonitorConfig])
 
@@ -28,7 +39,10 @@ object GcReader {
         val lat = config.getDouble("lat").get
         val lng = config.getDouble("lng").get
         val path = config.getString("path").get
-        GcMonitorConfig(id, name, lat, lng, path)
+        val fileName = config.getString("fileName").get
+        val mtPostfix = config.getString("mtPostfix")
+        val mtAnnotation = config.getString("mtAnnotation")
+        GcMonitorConfig(id, name, lat, lng, path, fileName = fileName, mtPostfix = mtPostfix, mtAnnotation = mtAnnotation)
       }
 
       for {config <- configuration.getConfig("gcReader")
@@ -64,13 +78,9 @@ object GcReader {
     //import java.io.FileFilter
     val path = new java.io.File(files_path)
     if (path.exists() && path.isDirectory) {
-      def isArchive(f: File) = {
-        val dfa = Files.readAttributes(Paths.get(f.getAbsolutePath), classOf[DosFileAttributes])
-        dfa.isArchive
-      }
-
-      val allFileAndDirs = new java.io.File(files_path).listFiles().toList
-      val dirs = allFileAndDirs.filter(p => p != null && p.isDirectory() && !isArchive(p))
+      import scala.collection.JavaConverters._
+      val allDirs = FileUtils.listFilesAndDirs(path, DirectoryFileFilter.DIRECTORY, DirectoryFileFilter.DIRECTORY).asScala.toList
+      val dirs = allDirs.filter(p => p != null && p.isDirectory)
       dirs.filter(p => p.getName.endsWith(".D"))
     } else {
       Logger.warn(s"invalid input path ${files_path}")
@@ -87,7 +97,7 @@ object GcReader {
     import scala.collection.JavaConverters._
 
     val fileLines =
-      Files.readAllLines(Paths.get(reportDir.getAbsolutePath, "quant.txt"), StandardCharsets.UTF_8).asScala
+      Files.readAllLines(Paths.get(reportDir.getAbsolutePath, gcMonitorConfig.fileName), StandardCharsets.UTF_8).asScala
 
     val dateTimeOpt = {
       for (line <- fileLines.find(line =>
@@ -112,11 +122,11 @@ object GcReader {
       head.takeWhile(!_.trim.startsWith("-------------"))
     }
 
-    //val recordMap = mutable.Map.empty[String, mutable.Map[DateTime, mutable.Map[String, (Double, String)]]]
-    //val timeMap = recordMap.getOrElseUpdate(monitor, mutable.Map.empty[DateTime, mutable.Map[String, (Double, String)]])
+    val mtPostfix = gcMonitorConfig.mtPostfix.getOrElse("")
+
     def lineToMtRecord(line: String): Option[MtRecord] =
       try {
-        val mtName = line.slice(8, 35).trim
+        val mtName = s"${line.slice(8, 35).trim}$mtPostfix"
         val value = line.slice(59, 64).trim.toDouble
         val status = if (reportDir.getName.startsWith("B")) {
           MonitorStatus.CalibratedStat
@@ -138,8 +148,19 @@ object GcReader {
     for (dateTime <- dateTimeOpt) {
       val record = RecordList.factory(dateTime.toDate, internalValues ++ actualValues, gcMonitorConfig.id)
       record.mtDataList.foreach(mtRecord => {
-        monitorTypeDB.ensure(mtRecord.mtName)
-        recordOp.ensureMonitorType(mtRecord.mtName)
+
+        if (mtPostfix.nonEmpty &&
+          monitorTypeDB.map.contains(mtRecord.mtName.dropRight(mtPostfix.length))) {
+
+          val srcMtCase = monitorTypeDB.map(mtRecord.mtName.dropRight(mtPostfix.length))
+          val mtCase = srcMtCase.copy(_id = mtRecord.mtName, desp = srcMtCase.desp + gcMonitorConfig.mtAnnotation.getOrElse(""))
+          monitorTypeDB.ensure(mtCase)
+          recordOp.ensureMonitorType(mtRecord.mtName)
+        } else {
+          monitorTypeDB.ensure(mtRecord.mtName)
+          recordOp.ensureMonitorType(mtRecord.mtName)
+        }
+
       })
 
       val f = recordOp.upsertRecord(recordOp.HourCollection)(record)
@@ -173,13 +194,15 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
   self ! ParseReport
 
   import ReaderHelper._
+
   private val parsedFileRoot = environment.rootPath.getAbsolutePath
   private val parsedFile = "parsed.txt"
+
   def handler(retryMap: Map[String, Int], parsedFileSet: mutable.Set[String]): Receive = {
     case ParseReport =>
       def processInputPath(gcMonitorConfig: GcMonitorConfig, parser: (GcMonitorConfig, File) => Boolean): Map[String, Int] = {
         var updatedRetryMap = retryMap
-        if(parsedFileSet.isEmpty) {
+        if (parsedFileSet.isEmpty) {
           val parsedFileList = getParsedFileList(parsedFileRoot, parsedFile)
           parsedFileSet ++= parsedFileList
         }
@@ -191,7 +214,7 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
             Logger.info(s"Processing $absPath")
 
           try {
-            if(parsedFileSet.contains(absPath)) {
+            if (parsedFileSet.contains(absPath)) {
               Logger.debug(s"$absPath already parsed. Skip")
               updatedRetryMap = updatedRetryMap - absPath
               return updatedRetryMap
@@ -243,6 +266,6 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
       Logger.info("ReaderReset")
       removeParsedFileList(parsedFileRoot, parsedFile)
       context become handler(Map.empty[String, Int], mutable.Set.empty[String])
-      // wait for the next 1 minute ParseReport event
+    // wait for the next 1 minute ParseReport event
   }
 }
