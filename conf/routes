@@ -149,3 +149,6 @@ GET           /CdxUpload/:start/:end                                            
 GET           /AlarmRules                                                                                        controllers.DataLogger.getAlarmRules
 PUT           /AlarmRule                                                                                         controllers.DataLogger.upsertAlarmRule
 DELETE        /AlarmRule/:id                                                                                     controllers.DataLogger.deleteAlarmRule(id)
+
+GET           /UpsertData/template                                                                               controllers.DataLogger.getUpsertTemplate
+POST          /UpsertData                                                                                        controllers.DataLogger.upsertData
