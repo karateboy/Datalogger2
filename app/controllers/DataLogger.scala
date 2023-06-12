@@ -5,11 +5,13 @@ import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc._
 
+import java.io.File
+import java.util.Date
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb) extends Controller {
+class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb, recordDB: RecordDB, excelUtility: ExcelUtility) extends Controller {
 
 
   def getAlarmRules: Action[AnyContent] = Security.Authenticated.async {
@@ -38,6 +40,44 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb) extends Controller {
     implicit request =>
       alarmRuleDb.deleteAsync(id).map { _ =>
         Ok(Json.obj("ok" -> true))
+      }
+  }
+
+  def getUpsertTemplate: Action[AnyContent] = Security.Authenticated.async {
+    implicit request =>
+      Assets.at("/public", "upsertTemplate.xlsx")(request)
+  }
+
+  private def upsertMinData(file: File): Boolean = {
+
+    true
+  }
+
+  def upsertData: Action[MultipartFormData[play.api.libs.Files.TemporaryFile]] = Security.Authenticated.async(parse.multipartFormData) {
+    implicit request =>
+      val file = request.body.file("data").get
+      val tmpFile = file.ref.file
+
+      val dataMaps = excelUtility.getUpsertMinData(tmpFile)
+      if (dataMaps.isEmpty) {
+        Future.successful(BadRequest(Json.obj("ok" -> false, "msg" -> "No data")))
+      } else {
+        val recordLists = dataMaps flatMap { dataMap =>
+          if(dataMap.contains("時間") && dataMap("時間").asInstanceOf[Date] != null) {
+            val time = dataMap("時間").asInstanceOf[Date]
+            val id = RecordListID(time, Monitor.activeId)
+            val mtData = (dataMap - "時間") map {
+              case (k, v) =>
+                val value = v.asInstanceOf[Double]
+                MtRecord(k, Option(value), MonitorStatus.NormalStat)
+            }
+            Some(RecordList(mtData.toList, id))
+          } else
+             None
+        }
+        for (_ <- recordDB.upsertManyRecords(recordDB.MinCollection)(recordLists)) yield {
+          Ok(Json.obj("ok" -> true))
+        }
       }
   }
 }
