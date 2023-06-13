@@ -32,6 +32,9 @@ object Uploader {
         InstrumentCode = mtData.status)
     })
 
+    if(!LoggerConfig.config.upload)
+      return
+
     val url = "https://www.yesylepb.com.tw/WebService/MonitorCarData.ashx"
     Logger.debug(s"upload to $url")
     Logger.debug(Json.toJson(UploadData(itemData)).toString())
