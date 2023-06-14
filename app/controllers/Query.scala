@@ -9,7 +9,7 @@ import play.api._
 import play.api.libs.json._
 import play.api.mvc._
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Paths}
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -161,7 +161,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
   import models.ModelHelper._
 
   def scatterChart(monitorStr: String, monitorTypeStr: String, tabTypeStr: String, statusFilterStr: String,
-                                 startNum: Long, endNum: Long) = Security.Authenticated.async {
+                   startNum: Long, endNum: Long) = Security.Authenticated.async {
     implicit request =>
       val monitors = monitorStr.split(':')
       val monitorTypeStrArray = monitorTypeStr.split(':')
@@ -178,8 +178,8 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
 
       assert(monitorTypes.length == 2)
 
-      for(chart <- compareChartHelper(monitors, monitorTypes, tabType, start, end)(statusFilter)) yield
-          Results.Ok(Json.toJson(chart))
+      for (chart <- compareChartHelper(monitors, monitorTypes, tabType, start, end)(statusFilter)) yield
+        Results.Ok(Json.toJson(chart))
   }
 
 
@@ -530,9 +530,9 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     val mt1 = monitorTypeOp.map(monitorTypes(0))
     val mt2 = monitorTypeOp.map(monitorTypes(1))
 
-    for(series<-getSeriesFuture()) yield
-      ScatterChart(Map("type"->"scatter", "zoomType"->"xy"),
-        Map("text"-> title),
+    for (series <- getSeriesFuture()) yield
+      ScatterChart(Map("type" -> "scatter", "zoomType" -> "xy"),
+        Map("text" -> title),
         ScatterAxis(Title(true, s"${mt1.desp}(${mt1.unit})"), getAxisLines(monitorTypes(0))),
         ScatterAxis(Title(true, s"${mt2.desp}(${mt2.unit})"), getAxisLines(monitorTypes(1))),
         series, Some(downloadFileName))
@@ -902,22 +902,21 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
       }
   }
 
-  case class EarthquakeYearEvents(year:Int, events:List[EarthQuakeData])
+  case class EarthquakeYearEvents(year: Int, events: List[EarthQuakeData])
+
   def getEarthquakeEvents() = Security.Authenticated {
     implicit val writes = Json.writes[EarthQuakeData]
     implicit val w1 = Json.writes[EarthquakeYearEvents]
-    val db = earthquakeDb.dataMap.toList.groupBy(entry=>entry._1.getYear)
-      .map(kv=>{
+    val db = earthquakeDb.dataMap.toList.groupBy(entry => entry._1.getYear)
+      .map(kv => {
         val events = kv._2.map(_._2)
-        EarthquakeYearEvents(year=kv._1, events=events)
+        EarthquakeYearEvents(year = kv._1, events = events)
       }).toList.sortBy(_.year)
     Ok(Json.toJson(db))
   }
 
-  private def sendEmptyPicture() = {
-    val path = Paths.get(environment.rootPath.getAbsolutePath, "/public/empty.png")
-    Ok.sendFile(path.toFile)
-  }
+  private def sendEmptyPicture(): Action[AnyContent] =
+      Assets.at("/public", "empty.png")
 
   def checkEarthquakeReport(dateTime: Long): Action[AnyContent] = Security.Authenticated {
     try {
@@ -937,47 +936,50 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     }
   }
 
-  def getEarthquakeReportImage(dateTime:Long): Action[AnyContent] = Security.Authenticated {
+  def getEarthquakeReportImage(dateTime: Long): Action[AnyContent] = Security.Authenticated.async {
+    implicit request =>
     val dt = new DateTime(dateTime)
     val dtStr = dt.toString("yyyyMMddHHmmss")
     val path = Paths.get(earthquakeDb.rootPath, s"EQ_REPORT/${dt.getYear}/${dtStr}.gif")
-    if(Files.exists(path))
-      Ok.sendFile(path.toFile)
+    if (Files.exists(path))
+      Future.successful(Ok.sendFile(path.toFile))
     else
-      sendEmptyPicture()
+      sendEmptyPicture()(request)
   }
 
 
-  def getEarthquakeBImage(dateTime:Long): Action[AnyContent] = Security.Authenticated {
+  def getEarthquakeBImage(dateTime: Long): Action[AnyContent] = Security.Authenticated.async {
+    implicit request =>
     val dt = new DateTime(dateTime)
     val dtStr = dt.toString("yyyyMMddHHmmss")
     val path = Paths.get(earthquakeDb.rootPath, s"EQ_CBPV_B/${dt.getYear}/CBPV-B_${dtStr}.png")
-    if(Files.exists(path))
-      Ok.sendFile(path.toFile)
+    if (Files.exists(path))
+      Future.successful(Ok.sendFile(path.toFile))
     else
-      sendEmptyPicture()
+      sendEmptyPicture()(request)
   }
-  def getEarthquakeDImage(dateTime:Long): Action[AnyContent] = Security.Authenticated {
+
+  def getEarthquakeDImage(dateTime: Long): Action[AnyContent] = Security.Authenticated.async {
+    implicit request =>
     val dt = new DateTime(dateTime)
     val dtStr = dt.toString("yyyyMMddHHmmss")
     val path = Paths.get(earthquakeDb.rootPath, s"EQ_CBPV_D/${dt.getYear}/CBPV-D_${dtStr}.png")
-    if(Files.exists(path))
-      Ok.sendFile(path.toFile)
+    if (Files.exists(path))
+      Future.successful(Ok.sendFile(path.toFile))
     else
-      sendEmptyPicture()
+      sendEmptyPicture()(request)
   }
 
-  def getWaveImage(dateTime:Long, src:String, sub:String)= Security.Authenticated {
-    try{
-      val dt = new DateTime(dateTime)
-      val dtStr = dt.toString("yyyyMMdd")
-      val path = Paths.get(earthquakeDb.rootPath, s"DAY_CBPV_${src}/${dt.getYear}/CBPV-${src}_${dtStr}.${sub}.png")
-      Ok.sendFile(path.toFile)
-    }catch {
-      case ex:Throwable=>
-        Logger.error("unable to get file", ex)
-        sendEmptyPicture()
-    }
+  def getWaveImage(dateTime: Long, src: String, sub: String) = Security.Authenticated.async {
+    implicit request =>
+    val dt = new DateTime(dateTime)
+    val dtStr = dt.toString("yyyyMMdd")
+    val path = Paths.get(earthquakeDb.rootPath, s"DAY_CBPV_${src}/${dt.getYear}/CBPV-${src}_${dtStr}.${sub}.png")
+    if (Files.exists(path))
+      Future.successful(Ok.sendFile(path.toFile))
+    else
+      sendEmptyPicture()(request)
+
   }
 
   case class InstrumentReport(columnNames: Seq[String], rows: Seq[RowData])

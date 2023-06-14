@@ -113,18 +113,8 @@ export default Vue.extend({
   },
   methods: {
     async query() {
-      this.display = false;
-      try {
-        let res = await axios.get(
-          `/CheckEarthquakeReport?dateTime=${this.form.date}`,
-        );
-        if (res.status === 200) {
-          this.display = true;
-          this.activeDateTime = this.form.date;
-        }
-      } catch (err) {
-        this.$bvModal.msgBoxOk('沒有對應的地震資料');
-      }
+      this.display = true;
+      this.activeDateTime = this.form.date;
     },
   },
 });
