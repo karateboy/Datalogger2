@@ -7,7 +7,6 @@ import play.api._
 import play.api.libs.ws.WSClient
 
 import java.io.File
-import scala.collection.JavaConverters.collectionAsScalaIterableConverter
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{FiniteDuration, MINUTES}
@@ -71,9 +70,6 @@ object GcReader {
 
   case object ParseReport
 
-  import java.nio.file._
-  import java.nio.file.attribute.DosFileAttributes
-
   def listDirs(files_path: String): List[File] = {
     //import java.io.FileFilter
     val path = new java.io.File(files_path)
@@ -104,7 +100,13 @@ object GcReader {
         line.trim.startsWith("Acq On"))) yield {
         import java.util.Locale
         val pattern = line.split(":", 2)(1).trim()
-        DateTime.parse(pattern, DateTimeFormat.forPattern("d MMM YYYY  hh:mm aa").withLocale(Locale.US))
+        val dtFormat =
+          if (pattern.equalsIgnoreCase("AM") || pattern.equalsIgnoreCase("PM"))
+            DateTimeFormat.forPattern("d MMM YYYY  hh:mm:ss aa").withLocale(Locale.US)
+          else
+            DateTimeFormat.forPattern("d MMM YYYY  HH:mm:ss").withLocale(Locale.US)
+
+        DateTime.parse(pattern, dtFormat)
           .minusHours(1)
           .withMinuteOfHour(0)
           .withSecondOfMinute(0)
