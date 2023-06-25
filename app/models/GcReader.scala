@@ -7,7 +7,8 @@ import play.api._
 import play.api.libs.ws.WSClient
 
 import java.io.File
-import java.time.Instant
+import java.time.format.DateTimeFormatter
+import java.time.{Instant, LocalDateTime, ZoneId}
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{FiniteDuration, MINUTES}
@@ -81,7 +82,7 @@ object GcReader {
       val dirs = allDirs.filter(p => p != null && p.isDirectory)
       dirs.filter(p => p.getName.endsWith(".D"))
     } else {
-      Logger.warn(s"invalid input path ${files_path}")
+      Logger.warn(s"invalid input path $files_path")
       List.empty[File]
     }
   }
@@ -103,7 +104,7 @@ object GcReader {
         import java.util.Locale
         val pattern = line.split(":", 2)(1).trim()
         val dtFormat =
-          if (pattern.equalsIgnoreCase("AM") || pattern.equalsIgnoreCase("PM"))
+          if (pattern.endsWith("am") || pattern.endsWith("pm"))
             DateTimeFormat.forPattern("d MMM YYYY  hh:mm aa").withLocale(Locale.US)
           else
             DateTimeFormat.forPattern("d MMM YYYY  HH:mm").withLocale(Locale.US)
@@ -237,7 +238,7 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
                 if (updatedRetryMap(absPath) + 1 <= MAX_RETRY_COUNT) {
                   updatedRetryMap = updatedRetryMap + (absPath -> (updatedRetryMap(absPath) + 1))
                 } else {
-                  Logger.info(s"$absPath reach max retries. Give up!")
+                  Logger.info(s"$absPath reach max retries. Give up! $ex")
                   parsedFileSet += absPath
                   appendToParsedFileList(parsedFileRoot, absPath, parsedFile)
                   updatedRetryMap = updatedRetryMap - absPath
@@ -258,8 +259,10 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
           Future {
             blocking {
               context become handler(processInputPath(gcMonitorConfig, parser), parsedFileSet, receiveTime)
-              if(receiveTime.plusSeconds(60*60).isBefore(Instant.now()))
-                alarmDB.log(alarmDB.src(), alarmDB.Level.ERR, s"未收到quant.txt警報，最後收到檔案時間為 ${receiveTime.toString}")
+              if(receiveTime.plusSeconds(90*60).isBefore(Instant.now())) {
+                val localDateTime = LocalDateTime.ofInstant(receiveTime, ZoneId.systemDefault())
+                alarmDB.log(alarmDB.src(), alarmDB.Level.ERR, s"未收到quant.txt警報，最後收到檔案時間為 ${localDateTime.format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"))}")
+              }
             }
           }
         }
