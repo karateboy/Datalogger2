@@ -7,6 +7,7 @@ import play.api._
 import play.api.libs.ws.WSClient
 
 import java.io.File
+import java.time.Instant
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{FiniteDuration, MINUTES}
@@ -30,7 +31,7 @@ object GcReader {
   var count = 0
 
   def start(configuration: Configuration, actorSystem: ActorSystem, monitorOp: MonitorDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, environment: Environment): Option[ActorRef] = {
+            recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, environment: Environment, alarmDB: AlarmDB): Option[ActorRef] = {
     def getConfig: Option[GcReaderConfig] = {
       def getMonitorConfig(config: Configuration) = {
         val id = config.getString("id").get
@@ -59,13 +60,14 @@ object GcReader {
         monitorOp.ensure(Monitor(_id = config.id, desc = config.name, lat = Some(config.lat), lng = Some(config.lng)))
       })
       count = count + 1
-      actorSystem.actorOf(props(config, monitorTypeOp, recordOp, WSClient, monitorDB, environment), s"GcReader${count}")
+      actorSystem.actorOf(props(config, monitorTypeOp, recordOp, WSClient, monitorDB, environment, alarmDB = alarmDB),
+        s"GcReader$count")
     }
   }
 
   private def props(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB,
-                    recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, environment: Environment) =
-    Props(new GcReader(config, monitorTypeOp, recordOp, WSClient, monitorDB, environment))
+                    recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, environment: Environment, alarmDB: AlarmDB) =
+    Props(new GcReader(config, monitorTypeOp, recordOp, WSClient, monitorDB, environment, alarmDB))
 
 
   case object ParseReport
@@ -180,7 +182,7 @@ object GcReader {
   } //End of process report.txt
 }
 
-private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, environment: play.api.Environment)
+private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, environment: play.api.Environment, alarmDB: AlarmDB)
   extends Actor with ActorLogging {
   Logger.info("GcReader start")
 
@@ -190,7 +192,7 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
     //timer.cancel()
   }
 
-  override def receive: Receive = handler(Map.empty[String, Int], mutable.Set.empty[String])
+  override def receive: Receive = handler(Map.empty[String, Int], mutable.Set.empty[String], Instant.now())
 
   private val MAX_RETRY_COUNT = 120
   self ! ParseReport
@@ -200,8 +202,9 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
   private val parsedFileRoot = environment.rootPath.getAbsolutePath
   private val parsedFile = "parsed.txt"
 
-  def handler(retryMap: Map[String, Int], parsedFileSet: mutable.Set[String]): Receive = {
+  def handler(retryMap: Map[String, Int], parsedFileSet: mutable.Set[String], lastReceiveTime:Instant): Receive = {
     case ParseReport =>
+      var receiveTime = lastReceiveTime
       def processInputPath(gcMonitorConfig: GcMonitorConfig, parser: (GcMonitorConfig, File) => Boolean): Map[String, Int] = {
         var updatedRetryMap = retryMap
         if (parsedFileSet.isEmpty) {
@@ -223,7 +226,8 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
             }
 
             parser(gcMonitorConfig, dir)
-            Logger.info(s"Handle $absPath successfully. Mark $absPath as archive")
+            Logger.info(s"Handle $absPath successfully.")
+            receiveTime = Instant.now()
             parsedFileSet += absPath
             appendToParsedFileList(parsedFileRoot, absPath, parsedFile)
             updatedRetryMap = updatedRetryMap - absPath
@@ -234,7 +238,6 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
                   updatedRetryMap = updatedRetryMap + (absPath -> (updatedRetryMap(absPath) + 1))
                 } else {
                   Logger.info(s"$absPath reach max retries. Give up!")
-                  Logger.info(s"Mark $absPath as archive")
                   parsedFileSet += absPath
                   appendToParsedFileList(parsedFileRoot, absPath, parsedFile)
                   updatedRetryMap = updatedRetryMap - absPath
@@ -254,7 +257,9 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
         for (gcMonitorConfig <- config.monitors) {
           Future {
             blocking {
-              context become handler(processInputPath(gcMonitorConfig, parser), parsedFileSet)
+              context become handler(processInputPath(gcMonitorConfig, parser), parsedFileSet, receiveTime)
+              if(receiveTime.plusSeconds(60*60).isBefore(Instant.now()))
+                alarmDB.log(alarmDB.src(), alarmDB.Level.ERR, s"未收到quant.txt警報，最後收到檔案時間為 ${receiveTime.toString}")
             }
           }
         }
@@ -267,7 +272,7 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
     case ReaderReset =>
       Logger.info("ReaderReset")
       removeParsedFileList(parsedFileRoot, parsedFile)
-      context become handler(Map.empty[String, Int], mutable.Set.empty[String])
+      context become handler(Map.empty[String, Int], mutable.Set.empty[String], Instant.now())
     // wait for the next 1 minute ParseReport event
   }
 }
