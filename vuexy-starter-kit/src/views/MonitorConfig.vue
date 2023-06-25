@@ -61,6 +61,18 @@
         <template #cell(desc)="row">
           <b-form-input v-model="row.item.desc" @change="markDirty(row.item)" />
         </template>
+        <template #cell(lat)="row">
+          <b-form-input
+            v-model.number="row.item.lat"
+            @change="markDirty(row.item)"
+          />
+        </template>
+        <template #cell(lng)="row">
+          <b-form-input
+            v-model.number="row.item.lng"
+            @change="markDirty(row.item)"
+          />
+        </template>
         <template #cell(measuring)="row">
           {{ activeID === row.item._id ? '是' : '否' }}
         </template>
@@ -86,6 +98,7 @@ const Ripple = require('vue-ripple-directive');
 import { mapActions, mapState } from 'vuex';
 import { Monitor } from '../store/monitors/types';
 import axios from 'axios';
+import { isNumber } from 'highcharts';
 
 interface EditMonitor extends Monitor {
   dirty: boolean;
@@ -109,6 +122,16 @@ export default Vue.extend({
       {
         key: 'desc',
         label: '名稱',
+        sortable: true,
+      },
+      {
+        key: 'lat',
+        label: '緯度',
+        sortable: true,
+      },
+      {
+        key: 'lng',
+        label: '經度',
         sortable: true,
       },
       {
@@ -143,6 +166,8 @@ export default Vue.extend({
       const all = Array<any>();
       for (const m of this.editMonitors) {
         if (m.dirty) {
+          m.lat = isNumber(m.lat) ? m.lat : undefined;
+          m.lng = isNumber(m.lng) ? m.lng : undefined;
           all.push(axios.put(`/Monitor/${m._id}`, m));
         }
       }

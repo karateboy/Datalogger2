@@ -46,6 +46,8 @@ libraryDependencies += "org.scalikejdbc" %% "scalikejdbc-play-initializer" % "2.
 
 // https://mvnrepository.com/artifact/commons-io/commons-io
 libraryDependencies += "commons-io" % "commons-io" % "2.13.0"
+// https://mvnrepository.com/artifact/com.typesafe.play/play-mailer
+libraryDependencies += "com.typesafe.play" %% "play-mailer" % "5.0.0"
 
 routesGenerator := StaticRoutesGenerator
 

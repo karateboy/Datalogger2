@@ -4,9 +4,13 @@ import play.api.Configuration
 
 import javax.inject.{Inject, Singleton}
 
-case class LoggerConfig(storeSecondData: Boolean, selfMonitor: Boolean,
-                        trendShowActual: Boolean, db: String, bypassLogin: Boolean,
-                        upload: Boolean = false)
+case class LoggerConfig(storeSecondData: Boolean,
+                        selfMonitor: Boolean,
+                        trendShowActual: Boolean,
+                        db: String,
+                        bypassLogin: Boolean,
+                        upload: Boolean,
+                        fromEmail:String)
 
 object LoggerConfig {
   var config: LoggerConfig = _
@@ -22,8 +26,9 @@ object LoggerConfig {
     val db = configuration.getString("logger.db").getOrElse("nosql")
     val bypassLogin = configuration.getBoolean("logger.bypassLogin").getOrElse(false)
     val upload = configuration.getBoolean("logger.upload").getOrElse(false)
+    val fromEmail = configuration.getString("logger.fromEmail").getOrElse("AirIoT <airiot@wecc.com.tw>")
     LoggerConfig(storeSecondData, selfMonitor = selfMonitor, trendShowActual = trendShowActual,
-      db = db, bypassLogin = bypassLogin, upload = upload)
+      db = db, bypassLogin = bypassLogin, upload = upload,fromEmail = fromEmail)
   }
 }
 
