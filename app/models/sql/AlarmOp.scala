@@ -63,8 +63,8 @@ class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mail
   }
 
   private def logFilter(ar: Alarm, coldPeriod: Int = 30): Unit = {
-    val start = ar.time
-    val end = Date.from(Instant.ofEpochMilli(ar.time.getTime).minusSeconds(coldPeriod * 60))
+    val start = Date.from(Instant.ofEpochMilli(ar.time.getTime).minusSeconds(coldPeriod * 60))
+    val end = ar.time
     implicit val session: DBSession = AutoSession
     val countOpt =
       sql"""
