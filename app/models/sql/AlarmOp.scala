@@ -1,6 +1,7 @@
 package models.sql
 
-import models.{Alarm, AlarmDB}
+import models.{Alarm, AlarmDB, AlertEmailSender}
+import play.api.libs.mailer.MailerClient
 import scalikejdbc._
 
 import java.time.Instant
@@ -10,31 +11,31 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
+class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mailerClient: MailerClient) extends AlarmDB {
   private val tabName = "alarms"
 
   override def getAlarmsFuture(src: String, level: Int,
                                start: Date, end: Date): Future[Seq[Alarm]] =
-  Future {
-    implicit val session: DBSession = AutoSession
-    sql"""
+    Future {
+      implicit val session: DBSession = AutoSession
+      sql"""
           SELECT *
           FROM [dbo].[alarms]
           Where src = $src and time >= $start and time < $end and [level] = $level
           Order by time desc
          """.map(mapper).list().apply()
-  }
+    }
 
   override def getAlarmsFuture(level: Int, start: Date, end: Date): Future[List[Alarm]] =
-  Future {
-    implicit val session: DBSession = AutoSession
-    sql"""
+    Future {
+      implicit val session: DBSession = AutoSession
+      sql"""
           SELECT *
           FROM [dbo].[alarms]
           Where time >= $start and time < $end and [level] = $level
           Order by time desc
          """.map(mapper).list().apply()
-  }
+    }
 
   override def getAlarmsFuture(start: Date, end: Date): Future[Seq[Alarm]] = {
     implicit val session: DBSession = ReadOnlyAutoSession
@@ -63,7 +64,7 @@ class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
 
   private def logFilter(ar: Alarm, coldPeriod: Int = 30): Unit = {
     val start = ar.time
-    val end  = Date.from(Instant.ofEpochMilli(ar.time.getTime).minusSeconds(coldPeriod * 60))
+    val end = Date.from(Instant.ofEpochMilli(ar.time.getTime).minusSeconds(coldPeriod * 60))
     implicit val session: DBSession = AutoSession
     val countOpt =
       sql"""
@@ -71,14 +72,19 @@ class AlarmOp @Inject()(sqlServer: SqlServer) extends AlarmDB {
           FROM [dbo].[alarms]
           Where [time] >= $start and [time] < $end and [src] = ${ar.src} and [desc] = ${ar.desc}
          """.map(rs => rs.int(1)).first().apply()
-    for (count <- countOpt) {
-      if (count == 0) {
-        sql"""
+    for (count <- countOpt if count == 0) {
+      sql"""
              INSERT INTO [dbo].[alarms]
                 ([time],[src],[level],[desc])
             VALUES
             (${ar.time}, ${ar.src}, ${ar.level}, ${ar.desc})
              """.execute().apply()
+
+      if (ar.level >= Level.ERR) {
+        emailTargetOp.getList().foreach { emailTargets =>
+          val emails = emailTargets.map(_._id)
+          AlertEmailSender.sendAlertMail(mailerClient = mailerClient)("警報通知", emails, ar.desc)
+        }
       }
     }
   }
