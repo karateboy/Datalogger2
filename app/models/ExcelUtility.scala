@@ -12,6 +12,8 @@ import java.io._
 import java.math.MathContext
 import java.nio.file._
 import javax.inject._
+import scala.collection.JavaConversions.asScalaIterator
+import scala.collection.JavaConverters.asScalaIteratorConverter
 import scala.math.BigDecimal.RoundingMode
 
 @Singleton
@@ -407,5 +409,47 @@ class ExcelUtility @Inject()
 
     }
     finishExcel(reportFilePath, pkg, wb)
+  }
+
+  def getUpsertMinData(file: File): Seq[Map[String, Any]] = {
+    val wb = new XSSFWorkbook(new FileInputStream(file))
+    val sheet = wb.getSheetAt(0)
+    val rowIterator = sheet.rowIterator().asScala
+    rowIterator.next()
+    rowIterator.next()
+    val header = rowIterator.next().cellIterator().asScala.map { cell =>
+      cell.getStringCellValue
+    }.toSeq
+
+    val data = rowIterator map { row: Row =>
+      val cells = row.cellIterator().asScala.toList
+      val rowMap = header.zip(cells).flatMap { case (key, cell) =>
+        try {
+          val value = key match {
+            case "時間" =>
+              try{
+                cell.getDateCellValue
+              }catch {
+                case _: Throwable =>
+                  try{
+                    DateTime.parse(cell.getStringCellValue, DateTimeFormat.forPattern("YYYY/MM/dd HH:mm:ss")).toDate
+                  }catch {
+                    case _: Throwable =>
+                      DateTime.parse(cell.getStringCellValue, DateTimeFormat.forPattern("YYYY/MM/dd HH:mm")).toDate
+                  }
+              }
+
+            case _ =>
+              cell.getNumericCellValue
+          }
+          Some(key -> value)
+        } catch {
+          case _: Throwable =>
+            None
+        }
+      }.toMap
+      rowMap
+    }
+    data.toSeq
   }
 }

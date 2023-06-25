@@ -1,14 +1,12 @@
 package models
-import com.google.inject.assistedinject.Assisted
-import play.api.libs.ws.WSClient
-
-import scala.concurrent.ExecutionContext.Implicits.global
 import akka.actor.{Actor, actorRef2Scala}
-import models.mongodb.RecordOp
+import com.google.inject.assistedinject.Assisted
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
+import play.api.libs.ws.WSClient
 
 import javax.inject._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object HourRecordForwarder {
   trait Factory {
@@ -51,16 +49,16 @@ class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordDB)
     }
   }
 
-  def uploadRecord(latestRecordTime: Long) = {
+  def uploadRecord(latestRecordTime: Long): Unit = {
     import com.github.nscala_time.time.Imports._
     val recordFuture =
-      recordOp.getRecordWithLimitFuture(recordOp.HourCollection)(new DateTime(latestRecordTime + 1), DateTime.now, 60)
+      recordOp.getRecordWithLimitFuture(recordOp.HourCollection)(new DateTime(latestRecordTime + 1), DateTime.now, 144)
 
-    Logger.info(s"uploadRecord from ${new DateTime(latestRecordTime + 1)} to ${DateTime.now}")
     for (records <- recordFuture) {
-      Logger.info(s"total ${records.size} hour records")
       val nonEmptyRecords = records.filter(_.mtDataList.nonEmpty)
       if (nonEmptyRecords.nonEmpty) {
+        Logger.info(s"uploadRecord from ${new DateTime(latestRecordTime + 1)} => ${DateTime.now}")
+        Logger.info(s"total ${records.size} hour records")
         val url = s"http://$server/HourRecord/$monitor"
         val f = ws.url(url).put(Json.toJson(nonEmptyRecords))
         f onSuccess {
@@ -86,21 +84,20 @@ class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordDB)
     }
   }
 
-  def delayForward = {
+  private def delayForward = {
     val currentMin = {
       import com.github.nscala_time.time.Imports._
       val now = DateTime.now()
       now.getMinuteOfHour
     }
     import scala.concurrent.duration._
-    import play.api.libs.concurrent.Akka
 
     if (currentMin < 58)
       context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ForwardHour)
   }
 
   import com.github.nscala_time.time.Imports._
-  def uploadRecord(start: DateTime, end: DateTime) = {
+  def uploadRecord(start: DateTime, end: DateTime): Unit = {
     Logger.info(s"upload hour ${start.toString()} => ${end.toString}")
 
     val recordFuture = recordOp.getRecordListFuture(recordOp.HourCollection)(start, end)
@@ -123,7 +120,7 @@ class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordDB)
           }
         }
       } else
-        Logger.info("No more hour record")
+        Logger.info(s"No hour record from $start => $end")
     }
   }
   def handler(latestRecordTimeOpt: Option[Long]): Receive = {

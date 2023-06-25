@@ -2,10 +2,11 @@ package models.mongodb
 
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
-import models.{Alarm, AlarmDB}
+import models.{Alarm, AlarmDB, AlertEmailSender}
 import org.bson.codecs.configuration.CodecRegistry
 import org.mongodb.scala._
 import play.api._
+import play.api.libs.mailer.MailerClient
 
 import java.time.Instant
 import java.util.Date
@@ -15,7 +16,7 @@ import scala.concurrent.Future
 import scala.language.implicitConversions
 
 @Singleton
-class AlarmOp @Inject()(mongodb: MongoDB) extends AlarmDB {
+class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTargetOp: EmailTargetOp) extends AlarmDB {
 
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
@@ -27,7 +28,7 @@ class AlarmOp @Inject()(mongodb: MongoDB) extends AlarmDB {
 
   private def init(): Unit = {
     import org.mongodb.scala.model.Indexes._
-    for(colNames <- mongodb.database.listCollectionNames().toFuture()) {
+    for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(colName)) {
         val f = mongodb.database.createCollection(colName).toFuture()
         f.onFailure(errorHandler)
@@ -61,11 +62,12 @@ class AlarmOp @Inject()(mongodb: MongoDB) extends AlarmDB {
     f onFailure errorHandler()
     f
   }
+
   override def getAlarmsFuture(start: Date, end: Date): Future[Seq[Alarm]] =
     collection.find(and(gte("time", start), lt("time", end))).sort(descending("time")).toFuture()
 
 
-  private def logFilter(ar: Alarm, coldPeriod:Int = 30){
+  private def logFilter(ar: Alarm, coldPeriod: Int = 30) {
     val start = Date.from(Instant.ofEpochMilli(ar.time.getTime).minusSeconds(coldPeriod * 60))
     val end = ar.time
 
@@ -74,8 +76,13 @@ class AlarmOp @Inject()(mongodb: MongoDB) extends AlarmDB {
 
     countObserver.subscribe(
       (count: Long) => {
-        if (count == 0){
+        if (count == 0) {
           collection.insertOne(ar).toFuture()
+          if (ar.level >= Level.ERR)
+            emailTargetOp.getList().foreach { emailTargets =>
+              val emails = emailTargets.map(_._id)
+              AlertEmailSender.sendAlertMail(mailerClient = mailerClient)("警報通知", emails, ar.desc)
+            }
         }
       }, // onNext
       (ex: Throwable) => Logger.error("Alarm failed:", ex), // onError
@@ -84,7 +91,7 @@ class AlarmOp @Inject()(mongodb: MongoDB) extends AlarmDB {
 
   }
 
-  override def log(src: String, level: Int, desc: String, coldPeriod:Int = 30): Unit = {
+  override def log(src: String, level: Int, desc: String, coldPeriod: Int = 30): Unit = {
     val ar = Alarm(DateTime.now(), src, level, desc)
     logFilter(ar, coldPeriod)
   }

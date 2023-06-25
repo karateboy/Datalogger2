@@ -50,6 +50,9 @@ libraryDependencies += "org.scalikejdbc" %% "scalikejdbc-config" % "3.5.0"
 // https://mvnrepository.com/artifact/org.scalikejdbc/scalikejdbc-play-initializer
 libraryDependencies += "org.scalikejdbc" %% "scalikejdbc-play-initializer" % "2.6.0"
 
+// https://mvnrepository.com/artifact/com.typesafe.play/play-mailer
+libraryDependencies += "com.typesafe.play" %% "play-mailer" % "5.0.0"
+
 routesGenerator := StaticRoutesGenerator
 
 mappings in Universal ++=
