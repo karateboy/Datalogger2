@@ -102,9 +102,9 @@ object GcReader {
         val pattern = line.split(":", 2)(1).trim()
         val dtFormat =
           if (pattern.equalsIgnoreCase("AM") || pattern.equalsIgnoreCase("PM"))
-            DateTimeFormat.forPattern("d MMM YYYY  hh:mm:ss aa").withLocale(Locale.US)
+            DateTimeFormat.forPattern("d MMM YYYY  hh:mm aa").withLocale(Locale.US)
           else
-            DateTimeFormat.forPattern("d MMM YYYY  HH:mm:ss").withLocale(Locale.US)
+            DateTimeFormat.forPattern("d MMM YYYY  HH:mm").withLocale(Locale.US)
 
         DateTime.parse(pattern, dtFormat)
           .minusHours(1)
