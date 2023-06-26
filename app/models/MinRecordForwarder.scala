@@ -3,7 +3,6 @@ import akka.actor.Actor
 import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
 import models.ModelHelper.errorHandler
-import models.mongodb.RecordOp
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
@@ -23,14 +22,14 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
                                   (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
   Logger.info(s"MinRecordForwarder created with server=$server monitor=$monitor")
 
-  val postUrl = s"http://$server/Record/Min/$monitor"
+  private val postUrl = s"http://$server/Record/Min/$monitor"
 
   import ForwardManager._
 
   self ! ForwardMin
 
-  def receive = handler(None)
-  def checkLatest = {
+  def receive: Receive = handler(None)
+  def checkLatest() = {
     val url = s"http://$server/MinRecordRange/$monitor"
     val f = ws.url(url).get().map {
       response =>
@@ -58,7 +57,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
     }
   }
 
-  def uploadRecord(latestRecordTime: Long) {
+  def uploadRecord(latestRecordTime: Long): Unit = {
 
     val serverRecordStart = new DateTime(latestRecordTime + 1)
     val recordFuture =
@@ -87,12 +86,11 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
     }
   }
 
-  def uploadRecord(start: DateTime, end: DateTime) = {
-    Logger.info(s"upload min ${start.toString()} => ${end.toString}")
-
+  def uploadRecord(start: DateTime, end: DateTime): Unit = {
     val recordFuture = recordOp.getRecordListFuture(recordOp.MinCollection)(start, end)
     for (record <- recordFuture) {
-      if (!record.isEmpty) {
+      if (record.nonEmpty) {
+        Logger.info(s"upload min ${start.toString()} => ${end.toString}")
         Logger.info(s"Total ${record.length} records")
 
         for (chunk <- record.grouped(60)) {
@@ -109,7 +107,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
           }
         }
       } else
-        Logger.error("No min record!")
+        Logger.error(s"No min record from $start to $end")
 
     }
   }
@@ -117,7 +115,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
   def handler(latestRecordTimeOpt: Option[Long]): Receive = {
     case ForwardMin =>
       if (latestRecordTimeOpt.isEmpty)
-        checkLatest
+        checkLatest()
       else
         uploadRecord(latestRecordTimeOpt.get)
 
