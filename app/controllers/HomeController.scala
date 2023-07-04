@@ -795,5 +795,9 @@ class HomeController @Inject()(environment: play.api.Environment,
         })
   }
 
+  def resetReaders(): Action[AnyContent] = Security.Authenticated {
+    dataCollectManagerOp.resetReaders()
+    Ok(Json.obj("ok" -> true))
+  }
   case class EditData(id: String, value: String)
 }

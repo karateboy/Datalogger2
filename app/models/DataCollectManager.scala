@@ -227,6 +227,10 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
       }
     ret.flatMap(x => x)
   }
+
+  def resetReaders(): Unit = {
+    manager ! ReaderReset
+  }
 }
 
 object DataCollectManager {
