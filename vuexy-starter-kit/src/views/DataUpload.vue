@@ -74,6 +74,14 @@
             >
               CDX上傳
             </b-button>
+            <b-button
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              variant="primary"
+              class="mr-1"
+              @click="resetReader"
+            >
+              VOC重新匯入
+            </b-button>
           </b-col>
         </b-row>
       </b-form>
@@ -227,6 +235,18 @@ export default Vue.extend({
         }
       } catch (err) {
         throw new Error('failed to upload data');
+      }
+    },
+    async resetReader() {
+      const url = `/ResetReaders`;
+
+      try {
+        const res = await axios.get(url);
+        if (res.status === 200) {
+          this.$bvModal.msgBoxOk('VOC重新匯入');
+        }
+      } catch (err) {
+        throw new Error('failed to reset reader');
       }
     },
     async getCdxUploadEvents() {
