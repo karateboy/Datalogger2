@@ -23,7 +23,8 @@ case class GcMonitorConfig(id: String,
                            path: String,
                            fileName: String,
                            mtPostfix: Option[String],
-                           mtAnnotation: Option[String]
+                           mtAnnotation: Option[String],
+                           backupPath: Option[String]
                           )
 
 case class GcReaderConfig(enable: Boolean, monitors: Seq[GcMonitorConfig])
@@ -43,7 +44,9 @@ object GcReader {
         val fileName = config.getString("fileName").get
         val mtPostfix = config.getString("mtPostfix")
         val mtAnnotation = config.getString("mtAnnotation")
-        GcMonitorConfig(id, name, lat, lng, path, fileName = fileName, mtPostfix = mtPostfix, mtAnnotation = mtAnnotation)
+        val backupPath = config.getString("backupPath")
+        GcMonitorConfig(id, name, lat, lng, path, fileName = fileName,
+          mtPostfix = mtPostfix, mtAnnotation = mtAnnotation, backupPath = backupPath)
       }
 
       for {config <- configuration.getConfig("gcReader")
@@ -193,25 +196,18 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
     //timer.cancel()
   }
 
-  override def receive: Receive = handler(Map.empty[String, Int], mutable.Set.empty[String], Instant.now())
+  override def receive: Receive = handler(Map.empty[String, Int], Instant.now())
 
   private val MAX_RETRY_COUNT = 120
   self ! ParseReport
 
   import ReaderHelper._
 
-  private val parsedFileRoot = environment.rootPath.getAbsolutePath
-  private val parsedFile = "parsed.txt"
-
-  def handler(retryMap: Map[String, Int], parsedFileSet: mutable.Set[String], lastReceiveTime:Instant): Receive = {
+  def handler(retryMap: Map[String, Int], lastReceiveTime:Instant): Receive = {
     case ParseReport =>
       var receiveTime = lastReceiveTime
       def processInputPath(gcMonitorConfig: GcMonitorConfig, parser: (GcMonitorConfig, File) => Boolean): Map[String, Int] = {
         var updatedRetryMap = retryMap
-        if (parsedFileSet.isEmpty) {
-          val parsedFileList = getParsedFileList(parsedFileRoot, parsedFile)
-          parsedFileSet ++= parsedFileList
-        }
 
         val dirs = listDirs(gcMonitorConfig.path)
         for (dir <- dirs) yield {
@@ -219,18 +215,19 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
           if (!retryMap.contains(absPath))
             Logger.info(s"Processing $absPath")
 
-          try {
-            if (parsedFileSet.contains(absPath)) {
-              Logger.debug(s"$absPath already parsed. Skip")
-              updatedRetryMap = updatedRetryMap - absPath
-              return updatedRetryMap
+          def moveDir(): Unit =
+            try {
+              FileUtils.moveToDirectory(dir, new File(gcMonitorConfig.backupPath.getOrElse("C:\\GC\\backup")), true)
+            } catch {
+              case ex: Throwable =>
+                Logger.error(s"Failed to move ${dir.getAbsolutePath} to backup folder ${gcMonitorConfig.backupPath.getOrElse("C:\\GC\\backup")}", ex)
             }
 
+          try {
             parser(gcMonitorConfig, dir)
             Logger.info(s"Handle $absPath successfully.")
             receiveTime = Instant.now()
-            parsedFileSet += absPath
-            appendToParsedFileList(parsedFileRoot, absPath, parsedFile)
+            moveDir()
             updatedRetryMap = updatedRetryMap - absPath
           } catch {
             case ex: Throwable =>
@@ -239,8 +236,7 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
                   updatedRetryMap = updatedRetryMap + (absPath -> (updatedRetryMap(absPath) + 1))
                 } else {
                   Logger.info(s"$absPath reach max retries. Give up! $ex")
-                  parsedFileSet += absPath
-                  appendToParsedFileList(parsedFileRoot, absPath, parsedFile)
+                  moveDir()
                   updatedRetryMap = updatedRetryMap - absPath
                 }
               } else
@@ -258,7 +254,7 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
         for (gcMonitorConfig <- config.monitors) {
           Future {
             blocking {
-              context become handler(processInputPath(gcMonitorConfig, parser), parsedFileSet, receiveTime)
+              context become handler(processInputPath(gcMonitorConfig, parser), receiveTime)
               if(receiveTime.plusSeconds(90*60).isBefore(Instant.now())) {
                 val localDateTime = LocalDateTime.ofInstant(receiveTime, ZoneId.systemDefault())
                 alarmDB.log(alarmDB.src(), alarmDB.Level.ERR, s"未收到quant.txt警報，最後收到檔案時間為 ${localDateTime.format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"))}")
@@ -274,8 +270,7 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
       }
     case ReaderReset =>
       Logger.info("ReaderReset")
-      removeParsedFileList(parsedFileRoot, parsedFile)
-      context become handler(Map.empty[String, Int], mutable.Set.empty[String], Instant.now())
+      context become handler(Map.empty[String, Int], Instant.now())
     // wait for the next 1 minute ParseReport event
   }
 }
