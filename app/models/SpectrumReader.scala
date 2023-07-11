@@ -94,6 +94,10 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
           }
         }
       }
+    case ReaderReset =>
+      Logger.info("SpectrumReader reset")
+      timer.cancel()
+      timer = context.system.scheduler.scheduleOnce(FiniteDuration(5, SECONDS), self, ParseReport)
   }
 
   def processInputPath() = {
