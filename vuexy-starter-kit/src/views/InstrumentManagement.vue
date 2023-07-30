@@ -1,13 +1,6 @@
 <template>
   <b-card>
-    <b-table
-      :items="instList"
-      :fields="fields"
-      select-mode="single"
-      selectable
-      responsive
-      @row-selected="onInstSelected"
-    >
+    <b-table :items="instList" :fields="fields" select-mode="single" selectable responsive @row-selected="onInstSelected">
       <template #cell(selected)="{ rowSelected }">
         <template v-if="rowSelected">
           <span aria-hidden="true">&check;</span>
@@ -21,93 +14,43 @@
       <template #thead-top>
         <b-tr>
           <b-td colspan="8">
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="primary"
-              class="mr-1"
-              @click="newInst"
-            >
+            <b-button v-ripple.400="'rgba(255, 255, 255, 0.15)'" variant="primary" class="mr-1" @click="newInst">
               新增
             </b-button>
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="primary"
-              class="mr-1"
-              :disabled="selected.length === 0"
-              @click="updateInst"
-            >
+            <b-button v-ripple.400="'rgba(255, 255, 255, 0.15)'" variant="primary" class="mr-1"
+              :disabled="selected.length === 0" @click="updateInst">
               變更
             </b-button>
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="danger"
-              class="mr-1"
-              :disabled="selected.length === 0"
-              @click="deleteInst"
-            >
+            <b-button v-ripple.400="'rgba(255, 255, 255, 0.15)'" variant="danger" class="mr-1"
+              :disabled="selected.length === 0" @click="deleteInst">
               刪除
             </b-button>
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="primary"
-              class="mr-1"
-              :disabled="!canToggleActivate"
-              @click="toggleActivateState"
-            >
+            <b-button v-ripple.400="'rgba(255, 255, 255, 0.15)'" variant="primary" class="mr-1"
+              :disabled="!canToggleActivate" @click="toggleActivateState">
               {{ toggleActivateName }}
             </b-button>
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="primary"
-              class="mr-1"
-              :disabled="selected.length === 0"
-              @click="toggleMaintenanceMode"
-            >
+            <b-button v-ripple.400="'rgba(255, 255, 255, 0.15)'" variant="primary" class="mr-1"
+              :disabled="selected.length === 0" @click="toggleMaintenanceMode">
               切換維修
             </b-button>
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="primary"
-              class="mr-1"
-              :disabled="selected.length === 0"
-              @click="calibrateInstrumentZero"
-            >
+            <b-button v-ripple.400="'rgba(255, 255, 255, 0.15)'" variant="primary" class="mr-1"
+              :disabled="selected.length === 0" @click="calibrateInstrumentZero">
               零點校正
             </b-button>
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="primary"
-              class="mr-1"
-              :disabled="selected.length === 0"
-              @click="calibrateInstrumentSpan"
-            >
+            <b-button v-ripple.400="'rgba(255, 255, 255, 0.15)'" variant="primary" class="mr-1"
+              :disabled="selected.length === 0" @click="calibrateInstrumentSpan">
               全幅校正
             </b-button>
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="primary"
-              class="mr-1"
-              :disabled="selected.length === 0"
-              @click="calibrateInstrument"
-            >
+            <b-button v-ripple.400="'rgba(255, 255, 255, 0.15)'" variant="primary" class="mr-1"
+              :disabled="selected.length === 0" @click="calibrateInstrument">
               完整校正
             </b-button>
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="primary"
-              class="mr-1"
-              :disabled="selected.length === 0"
-              @click="resetInstrument"
-            >
+            <b-button v-ripple.400="'rgba(255, 255, 255, 0.15)'" variant="primary" class="mr-1"
+              :disabled="selected.length === 0" @click="resetInstrument">
               中斷校正
             </b-button>
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="primary"
-              class="mr-1"
-              :disabled="selected.length === 0"
-              @click="showWriteDoDlg"
-            >
+            <b-button v-ripple.400="'rgba(255, 255, 255, 0.15)'" variant="primary" class="mr-1"
+              :disabled="selected.length === 0" @click="showWriteDoDlg">
               輸出DO
             </b-button>
           </b-td>
@@ -124,19 +67,8 @@
         </b-form-group>
       </b-form>
     </b-modal>
-    <b-modal
-      id="instModal"
-      :title="modalTitle"
-      hide-footer
-      size="xl"
-      modal-class="modal-primary"
-      no-close-on-backdrop
-    >
-      <instrument-wizard
-        :is-new="isNew"
-        :inst="selectedInstrument"
-        @submit="onSubmit"
-      />
+    <b-modal id="instModal" :title="modalTitle" hide-footer size="xl" modal-class="modal-primary" no-close-on-backdrop>
+      <instrument-wizard :is-new="isNew" :inst="selectedInstrument" @submit="onSubmit" />
     </b-modal>
   </b-card>
 </template>
@@ -271,15 +203,16 @@ export default Vue.extend({
     },
     async toggleActivateState() {
       try {
+        let res = undefined;
         if (this.selected[0].state === '停用') {
           this.selected[0].state = '啟動中';
-          const res = await axios.put(
+          res = await axios.put(
             `/ActivateInstrument/${this.selected[0]._id}`,
             {},
           );
         } else {
           this.selected[0].state = '停用中';
-          const res = await axios.put(
+          res = await axios.put(
             `/DeactivateInstrument/${this.selected[0]._id}`,
             {},
           );
