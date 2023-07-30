@@ -211,4 +211,25 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
     getDate(EPA_LAST_RECORD_TIME, Date.from(Instant.parse("2022-01-01T00:00:00.000Z")))
 
   override def setEpaLastRecordTime(v: Date): Future[UpdateResult] = setDate(EPA_LAST_RECORD_TIME)(v)
+
+  private def getSeqString(key: String, defaultValue: Seq[String]): Future[Seq[String]] = Future {
+    val valueOpt = get(key)
+    val ret =
+      for (value <- valueOpt) yield
+        value.v.split(",").filter(_.nonEmpty).toSeq
+    ret.getOrElse(defaultValue)
+  }
+
+  private def setSeqString(key: String)(v: Seq[String]): Future[UpdateResult] = Future {
+    val ret = set(key, v.mkString(","))
+    UpdateResult.acknowledged(ret, ret, null)
+  }
+
+  override def getVocMonitorTypes: Future[Seq[String]] = getSeqString(VOC_MONITOR_TYPES, Seq.empty)
+
+  override def setVocMonitorTypes(monitorTypes: Seq[String]): Future[UpdateResult] = setSeqString(VOC_MONITOR_TYPES)(monitorTypes)
+
+  override def getVocAuditMonitorTypes: Future[Seq[String]] = getSeqString(VOC_AUDIT_MONITOR_TYPES, Seq.empty)
+
+  override def setVocAuditMonitorTypes(monitorTypes: Seq[String]): Future[UpdateResult] = setSeqString(VOC_AUDIT_MONITOR_TYPES)(monitorTypes)
 }

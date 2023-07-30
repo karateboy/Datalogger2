@@ -149,4 +149,12 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     .map(v => Date.from(Instant.ofEpochMilli(v.asDateTime().getValue)))
 
   override def setEpaLastRecordTime(v: Date): Future[UpdateResult] = set(EPA_LAST_RECORD_TIME, BsonDateTime(v))
+
+  override def getVocMonitorTypes: Future[Seq[String]] = get(VOC_MONITOR_TYPES).map(_.asArray().toSeq.map(_.asString().getValue))
+
+  override def setVocMonitorTypes(monitorTypes: Seq[String]): Future[UpdateResult] = set(VOC_MONITOR_TYPES, monitorTypes)
+
+  override def getVocAuditMonitorTypes: Future[Seq[String]] = get(VOC_AUDIT_MONITOR_TYPES).map(_.asArray().toSeq.map(_.asString().getValue))
+
+  override def setVocAuditMonitorTypes(monitorTypes: Seq[String]): Future[UpdateResult] = set(VOC_AUDIT_MONITOR_TYPES, monitorTypes)
 }

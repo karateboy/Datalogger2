@@ -20,6 +20,8 @@ trait SysConfigDB {
   val ACTIVE_MONITOR_ID = "ActiveMonitorId"
   val AQI_MONITOR_TYPES = "AqiMonitorTypes"
   val EPA_LAST_RECORD_TIME = "EPA_Last_Record_Time"
+  val VOC_MONITOR_TYPES = "VocMonitorTypes"
+  val VOC_AUDIT_MONITOR_TYPES = "VocAuditMonitorTypes"
 
   def getSpectrumLastParseTime: Future[Instant]
 
@@ -60,4 +62,12 @@ trait SysConfigDB {
   def getEpaLastRecordTime: Future[Date]
 
   def setEpaLastRecordTime(v: Date): Future[UpdateResult]
+
+  def getVocMonitorTypes: Future[Seq[String]]
+
+  def setVocMonitorTypes(monitorTypes: Seq[String]): Future[UpdateResult]
+
+  def getVocAuditMonitorTypes: Future[Seq[String]]
+
+  def setVocAuditMonitorTypes(monitorTypes: Seq[String]): Future[UpdateResult]
 }

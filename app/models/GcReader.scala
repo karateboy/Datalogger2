@@ -1,6 +1,7 @@
 package models
 
 import akka.actor._
+import models.ModelHelper.waitReadyResult
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.filefilter.DirectoryFileFilter
 import play.api._
@@ -33,7 +34,7 @@ object GcReader {
   var count = 0
 
   def start(configuration: Configuration, actorSystem: ActorSystem, monitorOp: MonitorDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, environment: Environment, alarmDB: AlarmDB): Option[ActorRef] = {
+            recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, alarmDB: AlarmDB, sysConfigDB: SysConfigDB): Option[ActorRef] = {
     def getConfig: Option[GcReaderConfig] = {
       def getMonitorConfig(config: Configuration) = {
         val id = config.getString("id").get
@@ -64,14 +65,14 @@ object GcReader {
         monitorOp.ensure(Monitor(_id = config.id, desc = config.name, lat = Some(config.lat), lng = Some(config.lng)))
       })
       count = count + 1
-      actorSystem.actorOf(props(config, monitorTypeOp, recordOp, WSClient, monitorDB, environment, alarmDB = alarmDB),
+      actorSystem.actorOf(props(config, monitorTypeOp, recordOp, WSClient, monitorDB, alarmDB = alarmDB, sysConfigDB = sysConfigDB),
         s"GcReader$count")
     }
   }
 
   private def props(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB,
-                    recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, environment: Environment, alarmDB: AlarmDB) =
-    Props(new GcReader(config, monitorTypeOp, recordOp, WSClient, monitorDB, environment, alarmDB))
+                    recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, alarmDB: AlarmDB, sysConfigDB: SysConfigDB) =
+    Props(new GcReader(config, monitorTypeOp, recordOp, WSClient, monitorDB, alarmDB, sysConfigDB))
 
 
   case object ParseReport
@@ -90,13 +91,35 @@ object GcReader {
     }
   }
 
+  @volatile var vocMonitorTypes = Set.empty[String]
+  @volatile var vocAuditMonitorTypes = Set.empty[String]
+
   def parser(gcMonitorConfig: GcMonitorConfig, reportDir: File)
-            (implicit recordOp: RecordDB, wsClient: WSClient, monitorDB: MonitorDB, monitorTypeDB: MonitorTypeDB): Boolean = {
+            (implicit recordOp: RecordDB, wsClient: WSClient,
+             monitorDB: MonitorDB, monitorTypeDB: MonitorTypeDB, sysConfigDB: SysConfigDB): Boolean = {
     import com.github.nscala_time.time.Imports._
 
     import java.nio.charset.StandardCharsets
     import java.nio.file.{Files, Paths}
     import scala.collection.JavaConverters._
+
+    val f1 =
+      if(vocMonitorTypes.isEmpty) {
+        for (monitorTypes <- sysConfigDB.getVocMonitorTypes) yield {
+          vocMonitorTypes = monitorTypes.toSet
+        }
+      } else
+        Future.successful(())
+
+    val f2 =
+      if(vocAuditMonitorTypes.isEmpty) {
+        for (monitorTypes <- sysConfigDB.getVocAuditMonitorTypes) yield {
+          vocAuditMonitorTypes = monitorTypes.toSet
+        }
+      } else
+        Future.successful(())
+
+    waitReadyResult(Future.sequence(Seq(f1, f2)))
 
     val fileLines =
       Files.readAllLines(Paths.get(reportDir.getAbsolutePath, gcMonitorConfig.fileName), StandardCharsets.UTF_8).asScala
@@ -154,6 +177,8 @@ object GcReader {
 
 
     for (dateTime <- dateTimeOpt) {
+      var needUpdateVocMonitorTypes = false
+      var needUpdateVocAuditMonitorTypes = false
       val record = RecordList.factory(dateTime.toDate, internalValues ++ actualValues, gcMonitorConfig.id)
       record.mtDataList.foreach(mtRecord => {
 
@@ -164,12 +189,25 @@ object GcReader {
           val mtCase = srcMtCase.copy(_id = mtRecord.mtName, desp = srcMtCase.desp + gcMonitorConfig.mtAnnotation.getOrElse(""))
           monitorTypeDB.ensure(mtCase)
           recordOp.ensureMonitorType(mtRecord.mtName)
+          if(!vocAuditMonitorTypes.contains(mtRecord.mtName)) {
+            needUpdateVocAuditMonitorTypes = true
+            vocAuditMonitorTypes = vocAuditMonitorTypes + mtRecord.mtName
+          }
         } else {
           monitorTypeDB.ensure(mtRecord.mtName)
           recordOp.ensureMonitorType(mtRecord.mtName)
+          if(!vocMonitorTypes.contains(mtRecord.mtName)) {
+            needUpdateVocMonitorTypes = true
+            vocMonitorTypes = vocMonitorTypes + mtRecord.mtName
+          }
         }
-
       })
+
+      if(needUpdateVocMonitorTypes)
+        sysConfigDB.setVocMonitorTypes(vocMonitorTypes.toList)
+
+      if(needUpdateVocAuditMonitorTypes)
+        sysConfigDB.setVocAuditMonitorTypes(vocAuditMonitorTypes.toList)
 
       val f = recordOp.upsertRecord(recordOp.HourCollection)(record)
       f onComplete {
@@ -186,7 +224,8 @@ object GcReader {
   } //End of process report.txt
 }
 
-private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, environment: play.api.Environment, alarmDB: AlarmDB)
+private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, WSClient: WSClient,
+                       monitorDB: MonitorDB, alarmDB: AlarmDB, sysConfigDB: SysConfigDB)
   extends Actor with ActorLogging {
   Logger.info("GcReader start")
 
@@ -250,6 +289,7 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
       implicit val implicitWsClient: WSClient = WSClient
       implicit val implicitMonitorDB: MonitorDB = monitorDB
       implicit val implicitMonitorTypeDB: MonitorTypeDB = monitorTypeOp
+      implicit val implicitSysConfigDB: SysConfigDB = sysConfigDB
       try {
         for (gcMonitorConfig <- config.monitors) {
           Future {

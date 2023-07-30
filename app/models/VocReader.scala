@@ -85,13 +85,19 @@ class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp:
     case ReadFile =>
       Future {
         blocking {
-          for (monitorConfig <- config.monitors) {
-            val parsedFileSet = parsedMap.getOrElseUpdate(monitorConfig.path, mutable.Set.empty[String])
-            if (parsedFileSet.isEmpty)
-              parsedFileSet ++= getParsedFileList(monitorConfig.path)
+          try{
+            for (monitorConfig <- config.monitors) {
+              val parsedFileSet = parsedMap.getOrElseUpdate(monitorConfig.path, mutable.Set.empty[String])
+              if (parsedFileSet.isEmpty)
+                parsedFileSet ++= getParsedFileList(monitorConfig.path)
 
-            parseMonitor(monitorConfig)(parsedFileSet)
+              parseMonitor(monitorConfig)(parsedFileSet)
+            }
+          }catch{
+            case ex: Exception =>
+              Logger.error("Failed to ReadFile", ex)
           }
+
           val nextTimer = context.system.scheduler.scheduleOnce(FiniteDuration(5, MINUTES), self, ReadFile)
           context become handler(parsedMap, Some(nextTimer))
         }

@@ -483,7 +483,7 @@ calibrationDB: CalibrationDB,
     for(readerRef<-VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
       readers.append(readerRef)
 
-    for(readerRef<-GcReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, WSClient, monitorOp, environment, alarmOp))
+    for(readerRef<-GcReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, WSClient, monitorOp, alarmOp, sysConfig))
       readers.append(readerRef)
 
     readers.toList

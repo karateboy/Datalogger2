@@ -498,7 +498,17 @@ class HomeController @Inject()(environment: play.api.Environment,
       else
         monitorTypeOp.mtvList.filter(group.monitorTypes.contains) map monitorTypeOp.map
 
-      Ok(Json.toJson(mtList.sortBy(_.order)))
+      // populate group
+      val groupedMtList = mtList.map { mt =>
+        if(GcReader.vocMonitorTypes.contains(mt._id))
+          mt.copy(group = Some("Voc"))
+        else if(GcReader.vocAuditMonitorTypes.contains(mt._id))
+          mt.copy(group = Some("VocAudit"))
+        else
+          mt.copy(group = Some("Others"))
+      }
+
+      Ok(Json.toJson(groupedMtList.sortBy(_.order)))
   }
 
   def activatedMonitorTypes = Security.Authenticated {
