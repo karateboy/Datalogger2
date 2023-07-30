@@ -381,8 +381,8 @@ export default Vue.extend({
         text: '38400',
       },
       {
-        value: 38400,
-        text: '38400',
+        value: 57600,
+        text: '57600',
       },
       {
         value: 115200,

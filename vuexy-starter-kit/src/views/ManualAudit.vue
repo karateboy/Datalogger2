@@ -264,7 +264,7 @@ export default Vue.extend({
         this.columns = this.getColumns();
         const monitors = this.form.monitors.join(':');
         const monitorTypes = this.form.monitorTypes.join(':');
-        const url = `/HistoryReport/${monitors}/${monitorTypes}/${this.form.dataType}/true/${this.form.range[0]}/${this.form.range[1]}`;
+        const url = `/HistoryReport/${monitors}/${monitorTypes}/${this.form.dataType}/false/${this.form.range[0]}/${this.form.range[1]}`;
         const ret = await axios.get(url);
         this.rows.splice(0, this.rows.length);
         for (const row of ret.data.rows) {
