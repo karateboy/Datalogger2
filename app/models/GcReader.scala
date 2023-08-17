@@ -262,11 +262,20 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
                 Logger.error(s"Failed to move ${dir.getAbsolutePath} to backup folder ${gcMonitorConfig.backupPath.getOrElse("C:\\GC\\backup")}", ex)
             }
 
+          def deleteDir(): Unit =
+            try {
+              FileUtils.deleteDirectory(dir)
+            } catch {
+              case ex: Throwable =>
+                Logger.error(s"Failed to delete ${dir.getAbsolutePath}", ex)
+            }
+
           try {
             parser(gcMonitorConfig, dir)
             Logger.info(s"Handle $absPath successfully.")
             receiveTime = Instant.now()
-            moveDir()
+            //moveDir()
+            deleteDir()
             updatedRetryMap = updatedRetryMap - absPath
           } catch {
             case ex: Throwable =>
