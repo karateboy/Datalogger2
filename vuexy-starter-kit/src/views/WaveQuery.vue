@@ -46,6 +46,11 @@
         <b-col><b-img :src="getWaveDNImgUrl" fluid /></b-col>
         <b-col><b-img :src="getWaveDZImgUrl" fluid /></b-col>
       </b-row>
+      <b-row>
+        <b-col><b-img :src="getWaveEEImgUrl" fluid /></b-col>
+        <b-col><b-img :src="getWaveENImgUrl" fluid /></b-col>
+        <b-col><b-img :src="getWaveEZImgUrl" fluid /></b-col>
+      </b-row>
     </b-card>
   </div>
 </template>
@@ -109,6 +114,15 @@ export default Vue.extend({
     },
     getWaveDZImgUrl(): string {
       return `${this.baseUrl}WaveDZ?dateTime=${this.activeDateTime}`;
+    },
+    getWaveEEImgUrl(): string {
+      return `${this.baseUrl}WaveEE?dateTime=${this.activeDateTime}`;
+    },
+    getWaveENImgUrl(): string {
+      return `${this.baseUrl}WaveEN?dateTime=${this.activeDateTime}`;
+    },
+    getWaveEZImgUrl(): string {
+      return `${this.baseUrl}WaveEZ?dateTime=${this.activeDateTime}`;
     },
   },
   methods: {

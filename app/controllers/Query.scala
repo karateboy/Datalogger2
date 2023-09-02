@@ -970,11 +970,28 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
       sendEmptyPicture()(request)
   }
 
+  def getEarthquakeEImage(dateTime: Long): Action[AnyContent] = Security.Authenticated.async {
+    implicit request =>
+      val dt = new DateTime(dateTime)
+      val dtStr = dt.toString("yyyyMMddHHmmss")
+      val path = Paths.get(earthquakeDb.rootPath, s"EQ_TCPP_E/${dt.getYear}/TCPP-E_${dtStr}.png")
+      if (Files.exists(path))
+        Future.successful(Ok.sendFile(path.toFile))
+      else
+        sendEmptyPicture()(request)
+  }
+
   def getWaveImage(dateTime: Long, src: String, sub: String) = Security.Authenticated.async {
     implicit request =>
     val dt = new DateTime(dateTime)
     val dtStr = dt.toString("yyyyMMdd")
-    val path = Paths.get(earthquakeDb.rootPath, s"DAY_CBPV_${src}/${dt.getYear}/CBPV-${src}_${dtStr}.${sub}.png")
+    val path = if(src == "B" || src == "D")
+      Paths.get(earthquakeDb.rootPath, s"DAY_CBPV_${src}/${dt.getYear}/CBPV-${src}_${dtStr}.${sub}.png")
+    else if(src == "E")
+      Paths.get(earthquakeDb.rootPath, s"DAY_TCPP_${src}/${dt.getYear}/TCPP-${src}_${dtStr}.${sub}.png")
+    else
+      throw new Exception("invalid src")
+
     if (Files.exists(path))
       Future.successful(Ok.sendFile(path.toFile))
     else

@@ -129,12 +129,16 @@ GET     /CheckEarthquakeReport                  controllers.Query.checkEarthquak
 GET     /EarthquakeReport                       controllers.Query.getEarthquakeReportImage(dateTime:Long)
 GET     /EarthquakeBImg                         controllers.Query.getEarthquakeBImage(dateTime:Long)
 GET     /EarthquakeDImg                         controllers.Query.getEarthquakeDImage(dateTime:Long)
+GET     /EarthquakeEImg                         controllers.Query.getEarthquakeEImage(dateTime:Long)
 GET     /WaveBE                                 controllers.Query.getWaveImage(dateTime:Long, src="B", sub="E")
 GET     /WaveBN                                 controllers.Query.getWaveImage(dateTime:Long, src="B", sub="N")
 GET     /WaveBZ                                 controllers.Query.getWaveImage(dateTime:Long, src="B", sub="Z")
 GET     /WaveDE                                 controllers.Query.getWaveImage(dateTime:Long, src="D", sub="E")
 GET     /WaveDN                                 controllers.Query.getWaveImage(dateTime:Long, src="D", sub="N")
 GET     /WaveDZ                                 controllers.Query.getWaveImage(dateTime:Long, src="D", sub="Z")
+GET     /WaveEE                                 controllers.Query.getWaveImage(dateTime:Long, src="E", sub="E")
+GET     /WaveEN                                 controllers.Query.getWaveImage(dateTime:Long, src="E", sub="N")
+GET     /WaveEZ                                 controllers.Query.getWaveImage(dateTime:Long, src="E", sub="Z")
 
 #Rules
 GET     /SpikeRules                             controllers.RuleController.getSpikeRules

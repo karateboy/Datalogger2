@@ -30,6 +30,14 @@
               class="map_canvas"
             >
               <GmapMarker
+                v-for="(station, index) in stations"
+                :key="`station${index}`"
+                :position="station"
+                :title="station.name"
+                :icon="getStationIcon()"
+              >
+              </GmapMarker>
+              <GmapMarker
                 v-for="(evt, index) in earthquakeEvents"
                 :key="index"
                 :position="getEventPos(evt)"
@@ -62,6 +70,7 @@
         <b-col cols="4">
           <b-img :src="getBImgUrl()" fluid />
           <b-img :src="getDImgUrl()" fluid />
+          <b-img :src="getEImgUrl()" fluid />
         </b-col>
       </b-row>
     </b-modal>
@@ -75,7 +84,7 @@ import Vue from 'vue';
 const Ripple = require('vue-ripple-directive');
 import moment from 'moment';
 import axios from 'axios';
-import { faCircle, faStar } from '@fortawesome/free-solid-svg-icons';
+import { faCircle, faStar, faCaretUp } from '@fortawesome/free-solid-svg-icons';
 interface EarthquakeData {
   dateTime: number;
   lat: number;
@@ -128,6 +137,23 @@ export default Vue.extend({
       },
     ];
     let year = moment().year();
+    let stations = [
+      {
+        name: 'CBPV-B',
+        lng: 120.392139,
+        lat: 24.098523,
+      },
+      {
+        name: 'CBPV-D',
+        lng: 120.39126,
+        lat: 24.097976,
+      },
+      {
+        name: 'TCPP-E',
+        lng: 120.4913219,
+        lat: 24.2080094,
+      },
+    ];
     return {
       year,
       eventMap,
@@ -135,6 +161,7 @@ export default Vue.extend({
       eventTitle: '',
       activeDateTime: 0,
       mapLoaded: false,
+      stations,
     };
   },
   computed: {
@@ -200,6 +227,9 @@ export default Vue.extend({
     getDImgUrl(): string {
       return `${this.baseUrl}EarthquakeDImg?dateTime=${this.activeDateTime}`;
     },
+    getEImgUrl(): string {
+      return `${this.baseUrl}EarthquakeEImg?dateTime=${this.activeDateTime}`;
+    },
     getEventPos(evt: EarthquakeData): Position {
       let lat = evt.lat;
       let lng = evt.lon;
@@ -234,6 +264,20 @@ export default Vue.extend({
         strokeWeight: 1,
         strokeColor: '#ffffff',
         scale: 0.015,
+      };
+    },
+    getStationIcon(): any {
+      return {
+        path: faCaretUp.icon[4] as string,
+        fillColor: '#ff0000',
+        fillOpacity: 1,
+        anchor: new google.maps.Point(
+          faStar.icon[0] / 2, // width
+          faStar.icon[1], // height
+        ),
+        strokeWeight: 1,
+        strokeColor: '#ffffff',
+        scale: 0.04,
       };
     },
     onIconClick(evt: EarthquakeData, index: number) {
