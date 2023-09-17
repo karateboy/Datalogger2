@@ -987,10 +987,8 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     val dtStr = dt.toString("yyyyMMdd")
     val path = if(src == "B" || src == "D")
       Paths.get(earthquakeDb.rootPath, s"DAY_CBPV_${src}/${dt.getYear}/CBPV-${src}_${dtStr}.${sub}.png")
-    else if(src == "E")
-      Paths.get(earthquakeDb.rootPath, s"DAY_TCPP_${src}/${dt.getYear}/TCPP-${src}_${dtStr}.${sub}.png")
     else
-      throw new Exception("invalid src")
+      Paths.get(earthquakeDb.rootPath, s"DAY_TCPP_${src}/${dt.getYear}/TCPP-${src}_${dtStr}.${sub}.png")
 
     if (Files.exists(path))
       Future.successful(Ok.sendFile(path.toFile))

@@ -26,9 +26,9 @@ object GpsDataReader {
 
     val rootPath = environment.rootPath.toPath.resolve("report_template")
     val monitorConfigs = Seq(
-      MonitorConfig(Monitor("CB", "彰濱"), rootPath.resolve("20220809_CBPV.series")),
-      MonitorConfig(Monitor("DD", "大肚"), rootPath.resolve("20220809_DDSC.series")),
-      MonitorConfig(Monitor("TC", "台中"), rootPath.resolve("20220809_TCPP.series"))
+      MonitorConfig(Monitor("CB", "彰濱"), rootPath.resolve("CBPV20230830.series")),
+      MonitorConfig(Monitor("DD", "大肚"), rootPath.resolve("DDSC20230830.series")),
+      MonitorConfig(Monitor("TC", "台中"), rootPath.resolve("TCPP20230830.series"))
     )
     val config = GpsReaderConfig(monitorConfigs)
 
