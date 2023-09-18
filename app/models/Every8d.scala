@@ -1,44 +1,25 @@
 package models
-import com.every8d.ws.SMSSoap
 import play.api._
+import play.api.libs.ws.{WSClient, WSResponse}
+import play.api.libs.json._
 
 import javax.inject.{Inject, Singleton}
+import scala.concurrent.Future
 
 @Singleton
-class Every8d @Inject()(config: Configuration) {
+class Every8d @Inject()(config: Configuration, WSClient: WSClient) {
   private val account = config.getString("every8d.account").get
   val password: String = config.getString("every8d.password").get
   Logger.info(s"every8d account:$account password:$password")
 
-  val service: SMSSoap = {
-    val ctrl = new com.every8d.ws.SMS
-    ctrl.getSMSSoap
-  }
-
-  def sendSMS(subject:String, content:String, mobileList:List[String]) = {
-    val sessionStr = service.getConnection(account, password)
-    val sessionXML = xml.XML.loadString(sessionStr)
-    Logger.info(sessionStr)
-    sessionXML match {
-      case <SMS>{ connections @ _* }</SMS> =>
-        for (conn @ <GET_CONNECTION>{ _* }</GET_CONNECTION> <- connections) {
-          val code = conn \ "CODE"
-          val desp = conn \ "DESCRIPTION"
-          if (code.text.toInt == 0) {
-            val session = conn \ "SESSION_KEY"
-            val mobile = mobileList.mkString(",")
-            val xmlTag = service.sendSMS(session.text, subject, content, mobile, "")
-            val ret = xmlTag.split(",")
-            if(ret(0).toDouble >= 0)
-              Logger.info(s"success send SMS to $mobile")
-            else
-              Logger.error(s"failed to send SMS")
-
-            service.closeConnection(session.text)
-          }else{
-            Logger.error(s"${code.text}:${desp.text}")
-          }
-        }
-    }
+  def sendSMS(subject:String, content:String, mobileList:List[String]): Future[WSResponse] = {
+      WSClient.url("https://api.e8d.tw/API21/HTTP/sendSMS.ashx")
+        .post(Map(
+          "UID" -> Seq(account),
+          "PWD" -> Seq(password),
+          "SB" -> Seq(subject),
+          "MSG" -> Seq(content),
+          "DEST" -> Seq(mobileList.mkString(",")),
+          "ST" -> Seq("")))
   }
 }

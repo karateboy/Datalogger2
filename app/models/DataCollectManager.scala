@@ -88,6 +88,7 @@ object DataCollectManager {
   case object SendErrorReport
 
 }
+
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentOp, recordOp: RecordOp,
                                      alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
@@ -132,7 +133,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! ToggleTargetDO(id, bit, seconds)
   }
 
-  def toggleMonitorTypeDO(id: String, mt:String, seconds: Int) = {
+  def toggleMonitorTypeDO(id: String, mt: String, seconds: Int) = {
     manager ! ToggleMonitorTypeDO(id, mt, seconds)
   }
 
@@ -249,34 +250,34 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     } {
       if (MonitorStatus.isValid(status)) {
         val mtCaseFuture =
-          if(groupOpt.nonEmpty) {
+          if (groupOpt.nonEmpty) {
             val groupMtMapFuture = monitorTypeOp.getGroupMapAsync(groupOpt.get)
-            for(groupMtMap<-groupMtMapFuture) yield
+            for (groupMtMap <- groupMtMapFuture) yield
               groupMtMap.getOrElse(mt, monitorTypeOp.map(mt))
           } else
-            Future{
+            Future {
               monitorTypeOp.map(mt)
             }
 
-        for{mtCase<-mtCaseFuture
-            std_law <- mtCase.std_law if value > std_law
-            }{
-          for(groupID<-groupOpt){
+        for {mtCase <- mtCaseFuture
+             std_law <- mtCase.std_law if value > std_law
+             } {
+          for (groupID <- groupOpt) {
             val groupName = groupOp.map(groupID).name
             val msg = s"$groupName > ${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
             alarmOp.log(alarmOp.Src(groupID), alarmOp.Level.INFO, msg)
-            for(users<-userOp.getUsersByGroupFuture(groupID)){
-              users.foreach{
-                user=> {
-                  if (user.alertEmail.nonEmpty) {
-                    Future{
-                      blocking{
+            for (users <- userOp.getUsersByGroupFuture(groupID)) {
+              users.foreach {
+                user => {
+                  for (alertEmail <- user.alertEmail) {
+                    Future {
+                      blocking {
                         val subject = s"$groupName > ${mtCase.desp}超過分鐘高值"
                         val content = s"${user.name} 您好:\n$msg"
                         val mail = Email(
                           subject = subject,
                           from = "AirIot <airiot@wecc.com.tw>",
-                          to = Seq(user.alertEmail.get),
+                          to = alertEmail.split(","),
                           bodyHtml = Some(content)
                         )
                         try {
@@ -289,20 +290,18 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                       }
                     }
                   }
-                }
-                if(user.smsPhone.nonEmpty) {
-                  Future{
-                    blocking{
-                      every8d.sendSMS(s"$groupName > ${mtCase.desp}超過分鐘高值", msg, List(user.smsPhone.get))
-                    }
+
+                  for (smsPhone <- user.smsPhone) {
+                    every8d.sendSMS(s"$groupName > ${mtCase.desp}超過分鐘高值", msg, smsPhone.split(",").toList)
                   }
                 }
               }
             }
-            for(groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(groupID)){
+
+            for (groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(groupID)) {
               groupDoInstruments.foreach(
                 inst =>
-                  for(thresholdConfig <- mtCase.thresholdConfig){
+                  for (thresholdConfig <- mtCase.thresholdConfig) {
                     manager ! ToggleMonitorTypeDO(inst._id, MonitorType.SPRAY, thresholdConfig.elapseTime)
                   }
               )
@@ -731,7 +730,7 @@ class DataCollectManager @Inject()
       onceTimer = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
         self, WriteTargetDO(instId, bit, false)))
 
-    case ToggleMonitorTypeDO(instId, mtID, seconds)=>
+    case ToggleMonitorTypeDO(instId, mtID, seconds) =>
       onceTimer map { t => t.cancel() }
       Logger.debug(s"ToggleMonitorTypeDO($instId, $mtID)")
       instrumentMap.get(instId).map { param =>
@@ -739,7 +738,6 @@ class DataCollectManager @Inject()
         onceTimer = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
           param.actor, WriteMonitorTypeDO(mtID, false)))
       }
-
 
 
     case IsTargetConnected(instId) =>
@@ -791,7 +789,7 @@ class DataCollectManager @Inject()
         val disconnectedSet = targetMonitorIDSet -- connectedSet
         Logger.info(s"disconnectedSet=${disconnectedSet.size}")
         errorReportOp.setDisconnectRecordTime(today, DateTime.now().getTime)
-        for(m<-disconnectedSet)
+        for (m <- disconnectedSet)
           errorReportOp.addDisconnectedSensor(today, m)
 
         val disconnectEffectRateList = disconnectedSet.map(id => EffectiveRate(id, 0)).toList
@@ -828,10 +826,10 @@ class DataCollectManager @Inject()
     case SendErrorReport =>
       Logger.info("send daily error report")
       //val groups = groupOp.map
-      for(emailUsers <- userOp.getAlertEmailUsers()){
-        val alertEmails = emailUsers.flatMap{
-          user=>
-            for(email<-user.alertEmail; groupID <- user.group; myGroup <- groupOp.map.get(groupID)) yield
+      for (emailUsers <- userOp.getAlertEmailUsers()) {
+        val alertEmails = emailUsers.flatMap {
+          user =>
+            for (email <- user.alertEmail; groupID <- user.group; myGroup <- groupOp.map.get(groupID)) yield
               EmailTarget(email, myGroup.name, myGroup.monitors)
         }
         val f = errorReportOp.sendEmail(alertEmails)
