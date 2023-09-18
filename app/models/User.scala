@@ -15,7 +15,8 @@ import scala.language.implicitConversions
 case class User(_id: String, password: String, name: String,
                 isAdmin: Boolean, group: Option[String],
                 monitorTypeOfInterest: Seq[String],
-                alertEmail: Option[String])
+                alertEmail: Option[String],
+                smsPhone: Option[String]=None)
 
 import javax.inject._
 
@@ -82,7 +83,10 @@ class UserOp @Inject()(mongoDB: MongoDB) {
       val updateAlertEmailOpt = for(alertEmail<-user.alertEmail) yield
           Updates.set("alertEmail", alertEmail)
 
-      val updates = Updates.combine(commonUpdates ++ Seq(updateGroupOpt, updateAlertEmailOpt).flatten :_*)
+      val updateSmsPhoneOpt = for(smsPhone<-user.smsPhone) yield
+          Updates.set("smsPhone", smsPhone)
+
+      val updates = Updates.combine(commonUpdates ++ Seq(updateGroupOpt, updateAlertEmailOpt, updateSmsPhoneOpt).flatten :_*)
       val f = collection.findOneAndUpdate(equal("_id", user._id), updates).toFuture()
       waitReadyResult(f)
     }
@@ -129,4 +133,11 @@ class UserOp @Inject()(mongoDB: MongoDB) {
     f
   }
 
+  def getUsersByGroupFuture(group: String) = {
+    val f = collection.find(equal("group", group)).toFuture()
+    f.onFailure {
+      errorHandler
+    }
+    f
+  }
 }

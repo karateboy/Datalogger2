@@ -5,11 +5,12 @@ import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
+import play.api.libs.mailer.{Email, MailerClient}
 
 import javax.inject._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Future, blocking}
 import scala.concurrent.duration.SECONDS
 import scala.language.postfixOps
 import scala.util.Success
@@ -89,7 +90,9 @@ object DataCollectManager {
 }
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentOp, recordOp: RecordOp,
-                                     alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp, groupOp: GroupOp)() {
+                                     alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
+                                     groupOp: GroupOp, userOp: UserOp, mailerClient: MailerClient,
+                                     every8d: Every8d)() {
   val effectivRatio = 0.75
 
   def startCollect(inst: Instrument) {
@@ -262,6 +265,40 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
             val groupName = groupOp.map(groupID).name
             val msg = s"$groupName > ${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
             alarmOp.log(alarmOp.Src(groupID), alarmOp.Level.INFO, msg)
+            for(users<-userOp.getUsersByGroupFuture(groupID)){
+              users.foreach{
+                user=> {
+                  if (user.alertEmail.nonEmpty) {
+                    Future{
+                      blocking{
+                        val subject = s"$groupName > ${mtCase.desp}超過分鐘高值"
+                        val content = s"${user.name} 您好:\n$msg"
+                        val mail = Email(
+                          subject = subject,
+                          from = "AirIot <airiot@wecc.com.tw>",
+                          to = Seq(user.alertEmail.get),
+                          bodyHtml = Some(content)
+                        )
+                        try {
+                          Thread.currentThread().setContextClassLoader(getClass.getClassLoader)
+                          mailerClient.send(mail)
+                        } catch {
+                          case ex: Exception =>
+                            Logger.error("Failed to send email", ex)
+                        }
+                      }
+                    }
+                  }
+                }
+                if(user.smsPhone.nonEmpty) {
+                  Future{
+                    blocking{
+                      every8d.sendSMS(s"$groupName > ${mtCase.desp}超過分鐘高值", msg, List(user.smsPhone.get))
+                    }
+                  }
+                }
+              }
+            }
             for(groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(groupID)){
               groupDoInstruments.foreach(
                 inst =>

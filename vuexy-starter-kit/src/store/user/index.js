@@ -10,6 +10,7 @@ export default {
       group: '',
       monitorTypeOfInterest: [],
       alertEmail: undefined,
+      smsPhone: undefined,
     },
   },
   getters: {},
@@ -21,6 +22,7 @@ export default {
       state.userInfo.group = val.group;
       state.userInfo.monitorTypeOfInterest = val.monitorTypeOfInterest;
       state.userInfo.alertEmail = val.alertEmail;
+      state.userInfo.smsPhone = val.smsPhone;
     },
     setLogin(state, val) {
       state.login = val;

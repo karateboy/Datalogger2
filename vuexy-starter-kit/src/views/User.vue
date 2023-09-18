@@ -75,7 +75,14 @@
         <b-input
           v-model="user.alertEmail"
           aria-describedby="displayName-feedback"
-          placeholder="輸入電子信箱"
+          placeholder="電子信箱"
+        ></b-input>
+      </b-form-group>
+      <b-form-group label="SMS通報電話:" label-cols="3">
+        <b-input
+          v-model="user.smsPhone"
+          aria-describedby="displayName-feedback"
+          placeholder="手機號碼"
         ></b-input>
       </b-form-group>
       <b-row>
@@ -208,6 +215,7 @@ export default Vue.extend({
         user.group = self.group;
         user.monitorTypeOfInterest = self.monitorTypeOfInterest;
         user.alertEmail = self.alertEmail;
+        user.smsPhone = self.smsPhone;
       }
     },
     reset() {

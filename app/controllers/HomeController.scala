@@ -5,19 +5,22 @@ import com.github.nscala_time.time.Imports._
 import models._
 import play.api._
 import play.api.libs.json._
+import play.api.libs.mailer.{Email, MailerClient}
 import play.api.mvc._
 
 import java.nio.file.Files
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Future, blocking}
 
 class HomeController @Inject()(environment: play.api.Environment,
                                userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
                                monitorTypeOp: MonitorTypeOp, query: Query, monitorOp: MonitorOp, groupOp: GroupOp,
                                instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusOp,
                                recordOp: RecordOp, actorSystem: ActorSystem,
-                               sensorOp: MqttSensorOp, errorReportOp: ErrorReportOp) extends Controller {
+                               sensorOp: MqttSensorOp, errorReportOp: ErrorReportOp,
+                               mailerClient: MailerClient,
+                               every8d: Every8d) extends Controller {
 
   val title = "資料擷取器"
 
@@ -675,14 +678,50 @@ class HomeController @Inject()(environment: play.api.Environment,
   }
 
   def testAlertEmail(id: String) = Security.Authenticated {
+    Logger.info(s"testAlertEmail $id")
     val userOpt = userOp.getUserByEmail(id)
     for {
       user <- userOpt
       groupID <- user.group
       email <- user.alertEmail
     } yield {
-      val group = groupOp.map(groupID)
-      errorReportOp.sendEmail(Seq(EmailTarget(email, group.name, group.monitors)))
+      val subject = "測試信件"
+      val msg ="測試信件"
+      if(user.alertEmail.nonEmpty){
+        if (user.alertEmail.nonEmpty) {
+          Future{
+            blocking{
+              val content = s"${user.name} 您好:\n$msg"
+              val mail = Email(
+                subject = subject,
+                from = "AirIot <airiot@wecc.com.tw>",
+                to = Seq(user.alertEmail.get),
+                bodyHtml = Some(content)
+              )
+              try {
+                Thread.currentThread().setContextClassLoader(getClass.getClassLoader)
+                mailerClient.send(mail)
+              } catch {
+                case ex: Exception =>
+                  Logger.error("Failed to send email", ex)
+              }
+            }
+          }
+        }
+        for(smsPhone<-user.smsPhone){
+          Future{
+            blocking{
+              try {
+                every8d.sendSMS(subject, msg, List(smsPhone))
+              } catch {
+                case ex: Exception =>
+                  Logger.error("Failed to send sms", ex)
+              }
+            }
+          }
+        }
+      }
+
     }
     Ok(Json.obj("ok" -> true))
   }
