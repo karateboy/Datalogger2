@@ -10,8 +10,8 @@ import play.api.libs.mailer.{Email, MailerClient}
 import javax.inject._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Future, blocking}
 import scala.concurrent.duration.SECONDS
+import scala.concurrent.{Future, blocking}
 import scala.language.postfixOps
 import scala.util.Success
 
@@ -88,11 +88,17 @@ object DataCollectManager {
   case object SendErrorReport
 
 }
+
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef, instrumentOp: InstrumentOp, recordOp: RecordOp,
-                                     alarmOp: AlarmOp, monitorTypeOp: MonitorTypeOp,
-                                     groupOp: GroupOp, userOp: UserOp, mailerClient: MailerClient,
-                                     every8d: Every8d)() {
+                                     alarmOp: AlarmOp,
+                                     monitorOp: MonitorOp,
+                                     monitorTypeOp: MonitorTypeOp,
+                                     groupOp: GroupOp,
+                                     userOp: UserOp,
+                                     mailerClient: MailerClient,
+                                     every8d: Every8d,
+                                     mqttSensorOp: MqttSensorOp)() {
   val effectivRatio = 0.75
 
   def startCollect(inst: Instrument) {
@@ -132,7 +138,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! ToggleTargetDO(id, bit, seconds)
   }
 
-  def toggleMonitorTypeDO(id: String, mt:String, seconds: Int) = {
+  def toggleMonitorTypeDO(id: String, mt: String, seconds: Int) = {
     manager ! ToggleMonitorTypeDO(id, mt, seconds)
   }
 
@@ -153,12 +159,10 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 
   import scala.collection.mutable.ListBuffer
 
-  def evtOperationHighThreshold {
-    alarmOp.log(alarmOp.Src(), alarmOp.Level.INFO, "進行高值觸發事件行動..")
-    manager ! EvtOperationOverThreshold
-  }
-
-  def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean)(mtList: Seq[String]) = {
+  def recalculateHourData(monitor: String, current: DateTime, forward: Boolean,
+                          alwaysValid: Boolean,
+                          checkAlarm: Boolean = false)
+                         (mtList: Seq[String]) = {
     val recordMap = recordOp.getRecordMap(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current)
 
     import scala.collection.mutable.ListBuffer
@@ -187,6 +191,10 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 
     val mtDataList = calculateHourAvgMap(mtMap, alwaysValid)
     val recordList = RecordList(current.minusHours(1), mtDataList.toSeq, monitor)
+    if (checkAlarm) {
+      checkHourAlarm(mtDataList, monitor)
+    }
+
     val f = recordOp.upsertRecord(recordList)(recordOp.HourCollection)
     f
   }
@@ -240,7 +248,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     }
   }
 
-  def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord], groupOpt: Option[String] = None) = {
+  def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord], groupOpt: Option[String] = None): Unit = {
     for {
       hourMtData <- minMtAvgList
       mt = hourMtData.mtName
@@ -249,28 +257,28 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     } {
       if (MonitorStatus.isValid(status)) {
         val mtCaseFuture =
-          if(groupOpt.nonEmpty) {
+          if (groupOpt.nonEmpty) {
             val groupMtMapFuture = monitorTypeOp.getGroupMapAsync(groupOpt.get)
-            for(groupMtMap<-groupMtMapFuture) yield
+            for (groupMtMap <- groupMtMapFuture) yield
               groupMtMap.getOrElse(mt, monitorTypeOp.map(mt))
           } else
-            Future{
+            Future {
               monitorTypeOp.map(mt)
             }
 
-        for{mtCase<-mtCaseFuture
-            std_law <- mtCase.std_law if value > std_law
-            }{
-          for(groupID<-groupOpt){
+        for {mtCase <- mtCaseFuture
+             std_law <- mtCase.std_law if value > std_law
+             } {
+          for (groupID <- groupOpt) {
             val groupName = groupOp.map(groupID).name
             val msg = s"$groupName > ${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
             alarmOp.log(alarmOp.Src(groupID), alarmOp.Level.INFO, msg)
-            for(users<-userOp.getUsersByGroupFuture(groupID)){
-              users.foreach{
-                user=> {
+            for (users <- userOp.getUsersByGroupFuture(groupID)) {
+              users.foreach {
+                user => {
                   if (user.alertEmail.nonEmpty) {
-                    Future{
-                      blocking{
+                    Future {
+                      blocking {
                         val subject = s"$groupName > ${mtCase.desp}超過分鐘高值"
                         val content = s"${user.name} 您好:\n$msg"
                         val mail = Email(
@@ -290,22 +298,77 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                     }
                   }
                 }
-                if(user.smsPhone.nonEmpty) {
-                  Future{
-                    blocking{
-                      every8d.sendSMS(s"$groupName > ${mtCase.desp}超過分鐘高值", msg, List(user.smsPhone.get))
+              }
+            }
+            for (groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(groupID)) {
+              groupDoInstruments.foreach(
+                inst =>
+                  for (thresholdConfig <- mtCase.thresholdConfig) {
+                    manager ! ToggleMonitorTypeDO(inst._id, MonitorType.SPRAY, thresholdConfig.elapseTime)
+                  }
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private def checkHourAlarm(minMtAvgList: Iterable[MtRecord], monitor: String): Unit = {
+    for {
+      sensors <- mqttSensorOp.getSensor(monitor) if sensors.nonEmpty
+      sensor = sensors.head if sensor.group.nonEmpty
+      hourMtData <- minMtAvgList
+      mt = hourMtData.mtName
+      value = hourMtData.value
+      status = hourMtData.status
+    } {
+      if (MonitorStatus.isValid(status)) {
+        val mtCaseFuture = {
+          val groupMtMapFuture = monitorTypeOp.getGroupMapAsync(sensor.group)
+          for (groupMtMap <- groupMtMapFuture) yield
+            groupMtMap.getOrElse(mt, monitorTypeOp.map(mt))
+        }
+
+        for {mtCase <- mtCaseFuture
+             std_law <- mtCase.std_law if value > std_law
+             } {
+
+          val groupName = groupOp.map(sensor.group).name
+          val msg = s"$groupName > ${mtCase.desp}: 測點${monitorOp.map(monitor).desc} ${monitorTypeOp.format(mt, Some(value))}超過小時高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
+          alarmOp.log(alarmOp.Src(sensor), alarmOp.Level.INFO, msg)
+          for (users <- userOp.getUsersByGroupFuture(sensor.group)) {
+            users.foreach {
+              user => {
+                if (user.alertEmail.nonEmpty) {
+                  Future {
+                    blocking {
+                      val subject = s"$groupName > ${mtCase.desp}超過小時高值"
+                      val content = s"${user.name} 您好:\n$msg"
+                      val mail = Email(
+                        subject = subject,
+                        from = "AirIot <airiot@wecc.com.tw>",
+                        to = Seq(user.alertEmail.get),
+                        bodyHtml = Some(content)
+                      )
+                      try {
+                        Thread.currentThread().setContextClassLoader(getClass.getClassLoader)
+                        mailerClient.send(mail)
+                      } catch {
+                        case ex: Exception =>
+                          Logger.error("Failed to send email", ex)
+                      }
                     }
                   }
                 }
               }
-            }
-            for(groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(groupID)){
-              groupDoInstruments.foreach(
-                inst =>
-                  for(thresholdConfig <- mtCase.thresholdConfig){
-                    manager ! ToggleMonitorTypeDO(inst._id, MonitorType.SPRAY, thresholdConfig.elapseTime)
+                if (user.smsPhone.nonEmpty) {
+                  Future {
+                    blocking {
+                      every8d.sendSMS(s"$groupName > ${mtCase.desp}超過小時高值", msg, List(user.smsPhone.get))
+                    }
                   }
-              )
+                }
             }
           }
         }
@@ -731,7 +794,7 @@ class DataCollectManager @Inject()
       onceTimer = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
         self, WriteTargetDO(instId, bit, false)))
 
-    case ToggleMonitorTypeDO(instId, mtID, seconds)=>
+    case ToggleMonitorTypeDO(instId, mtID, seconds) =>
       onceTimer map { t => t.cancel() }
       Logger.debug(s"ToggleMonitorTypeDO($instId, $mtID)")
       instrumentMap.get(instId).map { param =>
@@ -739,7 +802,6 @@ class DataCollectManager @Inject()
         onceTimer = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
           param.actor, WriteMonitorTypeDO(mtID, false)))
       }
-
 
 
     case IsTargetConnected(instId) =>
@@ -791,7 +853,7 @@ class DataCollectManager @Inject()
         val disconnectedSet = targetMonitorIDSet -- connectedSet
         Logger.info(s"disconnectedSet=${disconnectedSet.size}")
         errorReportOp.setDisconnectRecordTime(today, DateTime.now().getTime)
-        for(m<-disconnectedSet)
+        for (m <- disconnectedSet)
           errorReportOp.addDisconnectedSensor(today, m)
 
         val disconnectEffectRateList = disconnectedSet.map(id => EffectiveRate(id, 0)).toList
@@ -828,10 +890,10 @@ class DataCollectManager @Inject()
     case SendErrorReport =>
       Logger.info("send daily error report")
       //val groups = groupOp.map
-      for(emailUsers <- userOp.getAlertEmailUsers()){
-        val alertEmails = emailUsers.flatMap{
-          user=>
-            for(email<-user.alertEmail; groupID <- user.group; myGroup <- groupOp.map.get(groupID)) yield
+      for (emailUsers <- userOp.getAlertEmailUsers()) {
+        val alertEmails = emailUsers.flatMap {
+          user =>
+            for (email <- user.alertEmail; groupID <- user.group; myGroup <- groupOp.map.get(groupID)) yield
               EmailTarget(email, myGroup.name, myGroup.monitors)
         }
         val f = errorReportOp.sendEmail(alertEmails)

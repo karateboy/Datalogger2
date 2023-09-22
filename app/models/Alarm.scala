@@ -33,6 +33,9 @@ class AlarmOp @Inject()(mongoDB: MongoDB) {
 
   def Src(src: String) = s"T:$src"
   def Src(inst: Instrument) = s"I:${inst._id}"
+
+  def Src(sensor: Sensor) = s"S:${sensor.id}"
+
   def instStr(id: String) = s"I:$id"
   def Src() = "S:System"
 

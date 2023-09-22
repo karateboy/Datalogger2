@@ -364,4 +364,14 @@ class RecordOp @Inject()(mongoDB: MongoDB, monitorTypeOp: MonitorTypeOp, monitor
     f
   }
 
+  def lowerH2SOver150(colName: String) = {
+    import org.mongodb.scala.model.Filters._
+    import org.mongodb.scala.model.Updates._
+
+    val col = getCollection(colName)
+    val f = col.updateMany(Filters.equal("mtDataList.mtName", "H2S"),
+      set("mtDataList.$.value", 149.9)).toFuture()
+    f onFailure errorHandler()
+    f
+  }
 }

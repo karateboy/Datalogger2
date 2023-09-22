@@ -4,6 +4,7 @@ import play.api.libs.json.Json
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.util.Success
 
 
@@ -49,6 +50,12 @@ class MqttSensorOp @Inject()(mongoDB: MongoDB, groupOp: GroupOp) {
 
       pairs.toMap
     }
+  }
+
+  def getSensor(id:String): Future[Seq[Sensor]] = {
+    val f = collection.find(Filters.equal("id", id)).toFuture()
+    f onFailure(errorHandler())
+    f
   }
 
   def upsert(sensor:Sensor)={

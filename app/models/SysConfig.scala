@@ -14,10 +14,13 @@ class SysConfig @Inject()(mongoDB: MongoDB){
 
   val valueKey = "value"
   val MonitorTypeVer = "Version"
+  val CleanH2SOver150 = "CleanH2SOver150"
 
 
   val defaultConfig = Map(
-    MonitorTypeVer -> Document(valueKey -> 1))
+    MonitorTypeVer -> Document(valueKey -> 1),
+    CleanH2SOver150 -> Document(valueKey -> false)
+  )
 
   def init() {
     for(colNames <- mongoDB.database.listCollectionNames().toFuture()) {

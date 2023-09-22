@@ -3,6 +3,8 @@ package controllers
 import akka.actor.ActorSystem
 import com.github.nscala_time.time.Imports._
 import models._
+import org.bson.BsonValue
+import org.mongodb.scala.bson.BsonBoolean
 import play.api._
 import play.api.libs.json._
 import play.api.libs.mailer.{Email, MailerClient}
@@ -20,7 +22,8 @@ class HomeController @Inject()(environment: play.api.Environment,
                                recordOp: RecordOp, actorSystem: ActorSystem,
                                sensorOp: MqttSensorOp, errorReportOp: ErrorReportOp,
                                mailerClient: MailerClient,
-                               every8d: Every8d) extends Controller {
+                               every8d: Every8d,
+                               sysConfig: SysConfig) extends Controller {
 
   val title = "資料擷取器"
 
@@ -727,4 +730,14 @@ class HomeController @Inject()(environment: play.api.Environment,
   }
 
   case class EditData(id: String, data: String)
+
+  for(lower<-sysConfig.get(sysConfig.CleanH2SOver150).map(_.asBoolean().getValue)){
+    Logger.info(s"Lower H2S over 150 $lower")
+    if(!lower){
+      Logger.info("Lower H2S over 150")
+      recordOp.lowerH2SOver150(recordOp.MinCollection)
+      recordOp.lowerH2SOver150(recordOp.HourCollection)
+      sysConfig.set(sysConfig.CleanH2SOver150, new BsonBoolean(true))
+    }
+  }
 }
