@@ -276,7 +276,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
             for (users <- userOp.getUsersByGroupFuture(groupID)) {
               users.foreach {
                 user => {
-                  if (user.alertEmail.nonEmpty) {
+                  for (alertEmail <- user.alertEmail) {
                     Future {
                       blocking {
                         val subject = s"$groupName > ${mtCase.desp}超過分鐘高值"
@@ -284,7 +284,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                         val mail = Email(
                           subject = subject,
                           from = "AirIot <airiot@wecc.com.tw>",
-                          to = Seq(user.alertEmail.get),
+                          to = alertEmail.split(","),
                           bodyHtml = Some(content)
                         )
                         try {
@@ -297,9 +297,14 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                       }
                     }
                   }
+
+                  for (smsPhone <- user.smsPhone) {
+                    every8d.sendSMS(s"$groupName > ${mtCase.desp}超過分鐘高值", msg, smsPhone.split(",").toList)
+                  }
                 }
               }
             }
+
             for (groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(groupID)) {
               groupDoInstruments.foreach(
                 inst =>
@@ -333,42 +338,38 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         for {mtCase <- mtCaseFuture
              std_law <- mtCase.std_law if value > std_law
              } {
-
           val groupName = groupOp.map(sensor.group).name
           val msg = s"$groupName > ${mtCase.desp}: 測點${monitorOp.map(monitor).desc} ${monitorTypeOp.format(mt, Some(value))}超過小時高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
           alarmOp.log(alarmOp.Src(sensor), alarmOp.Level.INFO, msg)
-          for (users <- userOp.getUsersByGroupFuture(sensor.group)) {
-            users.foreach {
-              user => {
-                if (user.alertEmail.nonEmpty) {
-                  Future {
-                    blocking {
-                      val subject = s"$groupName > ${mtCase.desp}超過小時高值"
-                      val content = s"${user.name} 您好:\n$msg"
-                      val mail = Email(
-                        subject = subject,
-                        from = "AirIot <airiot@wecc.com.tw>",
-                        to = Seq(user.alertEmail.get),
-                        bodyHtml = Some(content)
-                      )
-                      try {
-                        Thread.currentThread().setContextClassLoader(getClass.getClassLoader)
-                        mailerClient.send(mail)
-                      } catch {
-                        case ex: Exception =>
-                          Logger.error("Failed to send email", ex)
-                      }
-                    }
+          for {users <- userOp.getUsersByGroupFuture(sensor.group)
+               user <- users} {
+            if (user.alertEmail.nonEmpty) {
+              Future {
+                blocking {
+                  val subject = s"$groupName > ${mtCase.desp}超過小時高值"
+                  val content = s"${user.name} 您好:\n$msg"
+                  val mail = Email(
+                    subject = subject,
+                    from = "AirIot <airiot@wecc.com.tw>",
+                    to = Seq(user.alertEmail.get),
+                    bodyHtml = Some(content)
+                  )
+                  try {
+                    Thread.currentThread().setContextClassLoader(getClass.getClassLoader)
+                    mailerClient.send(mail)
+                  } catch {
+                    case ex: Exception =>
+                      Logger.error("Failed to send email", ex)
                   }
                 }
               }
-                if (user.smsPhone.nonEmpty) {
-                  Future {
-                    blocking {
-                      every8d.sendSMS(s"$groupName > ${mtCase.desp}超過小時高值", msg, List(user.smsPhone.get))
-                    }
-                  }
+            }
+            if (user.smsPhone.nonEmpty) {
+              Future {
+                blocking {
+                  every8d.sendSMS(s"$groupName > ${mtCase.desp}超過小時高值", msg, List(user.smsPhone.get))
                 }
+              }
             }
           }
         }

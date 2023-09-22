@@ -2,6 +2,7 @@ package controllers
 
 import akka.actor.ActorSystem
 import com.github.nscala_time.time.Imports._
+import models.ModelHelper.errorHandler
 import models._
 import org.bson.BsonValue
 import org.mongodb.scala.bson.BsonBoolean
@@ -14,6 +15,7 @@ import java.nio.file.Files
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, blocking}
+import scala.language.postfixOps
 
 class HomeController @Inject()(environment: play.api.Environment,
                                userOp: UserOp, instrumentOp: InstrumentOp, dataCollectManagerOp: DataCollectManagerOp,
@@ -689,38 +691,36 @@ class HomeController @Inject()(environment: play.api.Environment,
       email <- user.alertEmail
     } yield {
       val subject = "測試信件"
-      val msg ="測試信件"
-      if(user.alertEmail.nonEmpty){
+      val msg = "測試信件"
+      if (user.alertEmail.nonEmpty) {
         if (user.alertEmail.nonEmpty) {
-          Future{
-            blocking{
+          Future {
+            blocking {
               val content = s"${user.name} 您好:\n$msg"
-              val mail = Email(
-                subject = subject,
-                from = "AirIot <airiot@wecc.com.tw>",
-                to = Seq(user.alertEmail.get),
-                bodyHtml = Some(content)
-              )
-              try {
-                Thread.currentThread().setContextClassLoader(getClass.getClassLoader)
-                mailerClient.send(mail)
-              } catch {
-                case ex: Exception =>
-                  Logger.error("Failed to send email", ex)
+              for (alertEmail <- user.alertEmail) {
+                val mail = Email(
+                  subject = subject,
+                  from = "AirIot <airiot@wecc.com.tw>",
+                  to = alertEmail.split(","),
+                  bodyHtml = Some(content)
+                )
+                try {
+                  Thread.currentThread().setContextClassLoader(getClass.getClassLoader)
+                  mailerClient.send(mail)
+                } catch {
+                  case ex: Exception =>
+                    Logger.error("Failed to send email", ex)
+                }
               }
             }
           }
         }
-        for(smsPhone<-user.smsPhone){
-          Future{
-            blocking{
-              try {
-                every8d.sendSMS(subject, msg, List(smsPhone))
-              } catch {
-                case ex: Exception =>
-                  Logger.error("Failed to send sms", ex)
-              }
-            }
+        for (smsPhone <- user.smsPhone) {
+          try {
+            every8d.sendSMS(subject, msg, smsPhone.split(",").toList) onFailure errorHandler
+          } catch {
+            case ex: Exception =>
+              Logger.error("Failed to send sms", ex)
           }
         }
       }
