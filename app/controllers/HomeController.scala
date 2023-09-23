@@ -732,6 +732,7 @@ class HomeController @Inject()(environment: play.api.Environment,
   case class EditData(id: String, data: String)
 
   for(lower<-sysConfig.get(sysConfig.CleanH2SOver150).map(_.asBoolean().getValue)){
+    /*
     Logger.info(s"Lower H2S over 150 $lower")
     if(!lower){
       Logger.info("Lower H2S over 150")
@@ -739,5 +740,6 @@ class HomeController @Inject()(environment: play.api.Environment,
       recordOp.lowerH2SOver150(recordOp.HourCollection)
       sysConfig.set(sysConfig.CleanH2SOver150, new BsonBoolean(true))
     }
+     */
   }
 }
