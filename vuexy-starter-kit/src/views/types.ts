@@ -19,6 +19,7 @@ export interface Group {
   admin: boolean;
   abilities: Array<Ability>;
   parent: undefined | string;
+  lineToken: undefined | string;
 }
 
 export interface TextStrValue {

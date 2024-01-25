@@ -15,7 +15,7 @@ import scala.util.Success
 
 case class Ability(action:String, subject:String)
 case class Group(_id: String, name: String, monitors:Seq[String], monitorTypes: Seq[String],
-                 admin:Boolean, abilities: Seq[Ability], parent:Option[String] = None)
+                 admin:Boolean, abilities: Seq[Ability], parent:Option[String] = None, lineToken:Option[String] = None)
 
 import javax.inject._
 object Group {

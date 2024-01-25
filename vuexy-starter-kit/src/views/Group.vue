@@ -61,6 +61,13 @@
         >
         </b-form-checkbox-group>
       </b-form-group>
+      <b-form-group label="LINE Token:" label-for="lineToken" label-cols="3">
+        <b-input
+          id="lineToken"
+          v-model="group.lineToken"
+          aria-describedby="displayName-feedback"
+        ></b-input>
+      </b-form-group>
       <b-row>
         <b-col offset-md="3">
           <b-button
@@ -75,10 +82,18 @@
           </b-button>
           <b-button
             v-ripple.400="'rgba(186, 191, 199, 0.15)'"
+            class="mr-1"
             variant="outline-secondary"
             @click="reset"
           >
             取消
+          </b-button>
+          <b-button
+            variant="info"
+            :disabled="group.lineToken === undefined || group.lineToken === ''"
+            @click="testLineMessage"
+          >
+            測試LINE訊息
           </b-button>
         </b-col>
       </b-row>
@@ -115,6 +130,7 @@ export default Vue.extend({
       monitorTypes: [],
       abilities: [],
       parent: undefined,
+      lineToken: undefined,
     };
 
     const abilityOptions = [
@@ -169,8 +185,6 @@ export default Vue.extend({
       }
 
       for (const m of monitors) ret.push({ text: m.desc, value: m._id });
-      console.info('monitorOptions');
-      console.info(ret);
       return ret;
     },
     monitorTypeOptions(): Array<TextStrValue> {
@@ -212,10 +226,27 @@ export default Vue.extend({
         group.monitorTypes = self.monitorTypes;
         group.abilities = self.abilities;
         group.parent = self.parent;
+        group.lineToken = self.lineToken;
       }
     },
     reset() {
       this.copyProp(this.group);
+    },
+    testLineMessage() {
+      console.info('testLineMessage', this.group.lineToken);
+      axios.get(`/TestLINE/${this.group.lineToken}`).then(res => {
+        if (res.status === 200) {
+          this.$toast({
+            component: ToastificationContent,
+            props: {
+              title: '成功',
+              icon: 'GroupIcon',
+            },
+          });
+        } else {
+          this.$bvModal.msgBoxOk('失敗', { headerBgVariant: 'danger' });
+        }
+      });
     },
     async getGroupList() {
       const res = await axios.get('/Groups');
