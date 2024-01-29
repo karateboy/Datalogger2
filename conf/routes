@@ -23,6 +23,7 @@ PUT           /User/:id                                                         
 DELETE        /User/:id                                                                        controllers.HomeController.deleteUser(id)
 
 POST          /Group                                                                           controllers.HomeController.newGroup
+GET           /Group                                                                           controllers.HomeController.getMyGroup
 GET           /Groups                                                                          controllers.HomeController.getAllGroups
 PUT           /Group/:id                                                                       controllers.HomeController.updateGroup(id)
 DELETE        /Group/:id                                                                       controllers.HomeController.deleteGroup(id)

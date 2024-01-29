@@ -83,7 +83,7 @@ class AlarmOp @Inject()(mongoDB: MongoDB) {
     f
   }
 
-  private def logFilter(ar: Alarm, coldPeriod:Int = 30){
+  private def logFilter(ar: Alarm, coldPeriod:Int = 30): Unit = {
     val start = new DateTime(ar.time).minusMinutes(coldPeriod).toDate
     val end = new DateTime(ar.time).toDate
 
@@ -103,7 +103,7 @@ class AlarmOp @Inject()(mongoDB: MongoDB) {
 
   }
 
-  def log(src: String, level: Int, desc: String, coldPeriod:Int = 30) {
+  def log(src: String, level: Int, desc: String, coldPeriod:Int = 30): Unit = {
     val ar = Alarm(DateTime.now().toDate, src, level, desc)
     logFilter(ar, coldPeriod)
   }  

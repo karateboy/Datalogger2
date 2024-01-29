@@ -1,3 +1,4 @@
+<!-- eslint-disable prettier/prettier -->
 <template>
   <b-row class="match-height">
     <b-col :lg="statusLength" md="12">
@@ -135,10 +136,11 @@
 import moment from 'moment';
 import { mapActions, mapState, mapGetters } from 'vuex';
 import axios from 'axios';
-import { Monitor } from '../store/monitors/types';
+import { Monitor, Group } from '../store/monitors/types';
 export default {
   data() {
     const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
+    let group = undefined;
     return {
       dataTypes: [{ txt: '分鐘資料', id: 'min' }],
       form: {
@@ -167,6 +169,7 @@ export default {
           height: -35,
         },
       },
+      group,
     };
   },
   computed: {
@@ -296,7 +299,6 @@ export default {
           icon: markerIcon,
         });
       }
-      console.info(ret);
       return ret;
     },
   },
@@ -362,15 +364,21 @@ export default {
     },
     async refresh() {
       await this.fetchMonitorTypes();
-      if (this.monitorTypes.length !== 0) {
-        this.form.monitorTypes = [];
-        this.form.monitorTypes.push(this.monitorTypes[0]._id);
-      }
-
       await this.fetchMonitors();
-      if (this.monitors.length !== 0) {
-        this.form.monitors = [];
-        for (const m of this.monitors) this.form.monitors.push(m._id);
+      await this.getMyGroup();
+      if (this.group) {
+        this.form.monitors = this.group.monitors;
+        this.form.monitorTypes = this.group.monitorTypes;
+      } else {
+        if (this.monitorTypes.length !== 0) {
+          this.form.monitorTypes = [];
+          this.form.monitorTypes.push(this.monitorTypes[0]._id);
+        }
+
+        if (this.monitors.length !== 0) {
+          this.form.monitors = [];
+          for (const m of this.monitors) this.form.monitors.push(m._id);
+        }
       }
 
       this.query();
@@ -479,6 +487,12 @@ export default {
       var lngZoom = zoom(mapDim.width, WORLD_DIM.width, lngFraction);
 
       return Math.min(latZoom, lngZoom, ZOOM_MAX);
+    },
+    async getMyGroup() {
+      let ret = await axios.get('/Group');
+      if (ret.status === 200) {
+        this.group = ret.data;
+      }
     },
   },
 };

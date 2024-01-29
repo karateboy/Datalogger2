@@ -119,15 +119,22 @@ class HomeController @Inject()(environment: play.api.Environment,
         })
   }
 
+  def getMyGroup: Action[AnyContent] = Security.Authenticated {
+    implicit request=>
+    val userInfo = Security.getUserinfo(request).get
+    val group = groupOp.getGroupByID(userInfo.group).get
+    Ok(Json.toJson(group))
+  }
+
   def getAllGroups: Action[AnyContent] = Security.Authenticated {
-    val groups = groupOp.getAllGroups()
+    val groups = groupOp.getAllGroups
 
     Ok(Json.toJson(groups))
   }
 
   def getInstrumentTypes: Action[AnyContent] = Security.Authenticated {
-    implicit val w1 = Json.writes[ProtocolInfo]
-    implicit val write = Json.writes[InstrumentTypeInfo]
+    implicit val w1: OWrites[ProtocolInfo] = Json.writes[ProtocolInfo]
+    implicit val write: OWrites[InstrumentTypeInfo] = Json.writes[InstrumentTypeInfo]
     val iTypes =
       for (instType <- instrumentTypeOp.map.keys) yield {
         val t = instrumentTypeOp.map(instType)
@@ -454,7 +461,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       implicit val writes = Json.writes[Monitor]
 
       if (userInfo.isAdmin) {
-        val mList2 = monitorOp.mvList map { m => monitorOp.map(m) }
+        val mList2 = monitorOp.mvList map { m => monitorOp.map(m) } filter { m => m._id != "" }
         Ok(Json.toJson(mList2))
       } else {
         val mList2 =

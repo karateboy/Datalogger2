@@ -98,7 +98,8 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                                      userOp: UserOp,
                                      mailerClient: MailerClient,
                                      every8d: Every8d,
-                                     mqttSensorOp: MqttSensorOp)() {
+                                     mqttSensorOp: MqttSensorOp,
+                                     lineNotify: LineNotify)() {
   val effectivRatio = 0.75
 
   def startCollect(inst: Instrument) {
@@ -199,7 +200,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     f
   }
 
-  def calculateHourAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean) = {
+  private def calculateHourAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]], alwaysValid: Boolean): Iterable[MtRecord] = {
     for {
       mt <- mtMap.keys
       statusMap = mtMap(mt)
@@ -270,9 +271,18 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
              std_law <- mtCase.std_law if value > std_law
              } {
           for (groupID <- groupOpt) {
-            val groupName = groupOp.map(groupID).name
+            val group = groupOp.map(groupID)
+            val groupName = group.name
             val msg = s"$groupName > ${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
-            alarmOp.log(alarmOp.Src(groupID), alarmOp.Level.INFO, msg)
+            alarmOp.log(alarmOp.Src(groupID), alarmOp.Level.ERR, msg)
+            for(lineToken<-group.lineToken){
+              if(!Group.lastMinLineNotify.contains(groupID) ||
+                Group.lastMinLineNotify(groupID).plusMinutes(group.lineNotifyColdPeriod.getOrElse(30)) < DateTime.now()
+              ){
+                Group.lastHourLineNotify += groupID -> DateTime.now()
+                lineNotify.notify(lineToken, msg)
+              }
+            }
             for (users <- userOp.getUsersByGroupFuture(groupID)) {
               users.foreach {
                 user => {
@@ -338,9 +348,19 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         for {mtCase <- mtCaseFuture
              std_law <- mtCase.std_law if value > std_law
              } {
-          val groupName = groupOp.map(sensor.group).name
+          val group = groupOp.map(sensor.group)
+          val groupName = group.name
           val msg = s"$groupName > ${mtCase.desp}: 測點${monitorOp.map(monitor).desc} ${monitorTypeOp.format(mt, Some(value))}超過小時高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
-          alarmOp.log(alarmOp.Src(sensor), alarmOp.Level.INFO, msg)
+          alarmOp.log(alarmOp.Src(sensor), alarmOp.Level.ERR, msg)
+          for(lineToken<-group.lineToken){
+            if(!Group.lastHourLineNotify.contains(sensor.group) ||
+              Group.lastHourLineNotify(sensor.group).plusMinutes(group.lineNotifyColdPeriod.getOrElse(30)) < DateTime.now()
+            ){
+              Group.lastHourLineNotify += sensor.group -> DateTime.now()
+              lineNotify.notify(lineToken, msg)
+            }
+          }
+
           for {users <- userOp.getUsersByGroupFuture(sensor.group)
                user <- users} {
             if (user.alertEmail.nonEmpty) {
@@ -383,11 +403,11 @@ class DataCollectManager @Inject()
 (config: Configuration, recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorOp: MonitorOp,
  dataCollectManagerOp: DataCollectManagerOp,
  instrumentTypeOp: InstrumentTypeOp,
- alarmOp: AlarmOp,
  instrumentOp: InstrumentOp,
  errorReportOp: ErrorReportOp,
  groupOp: GroupOp,
- userOp: UserOp) extends Actor with InjectedActorSupport {
+ userOp: UserOp,
+ lineNotify: LineNotify) extends Actor with InjectedActorSupport {
   val effectivRatio = 0.75
   val storeSecondData = config.getBoolean("storeSecondData").getOrElse(false)
   Logger.info(s"store second data = $storeSecondData")
@@ -435,10 +455,6 @@ class DataCollectManager @Inject()
   var calibratorOpt: Option[ActorRef] = None
   var digitalOutputOpt: Option[ActorRef] = None
   var onceTimer: Option[Cancellable] = None
-
-  def evtOperationHighThreshold {
-    alarmOp.log(alarmOp.Src(), alarmOp.Level.INFO, "進行高值觸發事件行動..")
-  }
 
   {
     val instrumentList = instrumentOp.getInstrumentList()
@@ -664,11 +680,11 @@ class DataCollectManager @Inject()
         }
       }
 
-      def calculateMinData(currentMintues: DateTime) = {
+      def calculateMinData(currentMinutes: DateTime)(lineNotify: LineNotify) = {
         import scala.collection.mutable.Map
         val mtMap = Map.empty[String, Map[String, ListBuffer[(String, DateTime, Double)]]]
 
-        val currentData = mtDataList.takeWhile(d => d._1 >= currentMintues)
+        val currentData = mtDataList.takeWhile(d => d._1 >= currentMinutes)
         val minDataList = mtDataList.drop(currentData.length)
 
         for {
@@ -730,15 +746,15 @@ class DataCollectManager @Inject()
         dataCollectManagerOp.checkMinDataAlarm(minuteMtAvgList)
 
         context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData, restartList)
-        val f = recordOp.upsertRecord(RecordList(currentMintues.minusMinutes(1), minuteMtAvgList.toList, Monitor.SELF_ID))(recordOp.MinCollection)
+        val f = recordOp.upsertRecord(RecordList(currentMinutes.minusMinutes(1), minuteMtAvgList.toList, Monitor.SELF_ID))(recordOp.MinCollection)
 
         f
       }
 
       val current = DateTime.now().withSecondOfMinute(0).withMillisOfSecond(0)
       if (monitorOp.hasSelfMonitor) {
-        val f = calculateMinData(current)
-        f onFailure (errorHandler)
+        val f = calculateMinData(current)(lineNotify)
+        f onFailure errorHandler
         f.andThen({
           case Success(x) =>
             if (current.getMinuteOfHour == 0) {

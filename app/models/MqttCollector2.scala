@@ -84,7 +84,8 @@ import javax.inject._
 
 class MqttCollector2 @Inject()(monitorOp: MonitorOp, alarmOp: AlarmOp,
                               recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp,
-                               mqttSensorOp: MqttSensorOp)
+                               mqttSensorOp: MqttSensorOp,
+                               lineNotify: LineNotify)
                              (@Assisted id: String,
                               @Assisted protocolParam: ProtocolParam,
                               @Assisted config: MqttConfig2) extends Actor with MqttCallback {

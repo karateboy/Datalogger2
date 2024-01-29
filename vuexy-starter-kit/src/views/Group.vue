@@ -68,6 +68,18 @@
           aria-describedby="displayName-feedback"
         ></b-input>
       </b-form-group>
+      <b-form-group
+        label="不重複發送時間(分鐘):"
+        label-for="lineNotifyColdPeriod"
+        label-cols="3"
+      >
+        <b-input
+          id="lineNotifyColdPeriod"
+          v-model.number="group.lineNotifyColdPeriod"
+          type="number"
+          aria-describedby="displayName-feedback"
+        ></b-input>
+      </b-form-group>
       <b-row>
         <b-col offset-md="3">
           <b-button
@@ -131,6 +143,7 @@ export default Vue.extend({
       abilities: [],
       parent: undefined,
       lineToken: undefined,
+      lineNotifyColdPeriod: 30,
     };
 
     const abilityOptions = [
@@ -180,7 +193,9 @@ export default Vue.extend({
         }) as Group;
 
         monitors = this.monitors.filter((m: any) => {
-          return parentGroup.monitors.indexOf(m._id) !== -1;
+          if (parentGroup && parentGroup.monitors)
+            return parentGroup.monitors.indexOf(m._id) !== -1;
+          return false;
         });
       }
 
@@ -197,7 +212,9 @@ export default Vue.extend({
         }) as Group;
 
         monitorTyes = this.monitorTypes.filter((mt: any) => {
-          return parentGroup.monitorTypes.indexOf(mt._id) !== -1;
+          if (parentGroup && parentGroup.monitorTypes)
+            return parentGroup.monitorTypes.indexOf(mt._id) !== -1;
+          return false;
         });
       }
 
@@ -227,6 +244,7 @@ export default Vue.extend({
         group.abilities = self.abilities;
         group.parent = self.parent;
         group.lineToken = self.lineToken;
+        group.lineNotifyColdPeriod = self.lineNotifyColdPeriod;
       }
     },
     reset() {
@@ -254,6 +272,7 @@ export default Vue.extend({
     },
     sanityCheck() {
       this.group.monitors = this.group.monitors.filter(m => this.mMap.get(m));
+
     },
     upsert() {
       this.sanityCheck();
@@ -267,7 +286,7 @@ export default Vue.extend({
           this.$emit('created');
         });
       } else {
-        axios.put(`/Group/${this.currentGroup.Id}`, this.group).then(res => {
+        axios.put(`/Group/${this.currentGroup._id}`, this.group).then(res => {
           if (res.status === 200) {
             this.$toast({
               component: ToastificationContent,

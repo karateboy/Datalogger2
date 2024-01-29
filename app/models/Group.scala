@@ -1,10 +1,12 @@
 package models
 
+import com.github.nscala_time.time.Imports.DateTime
 import models.ModelHelper._
 import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import org.mongodb.scala.bson.codecs.Macros._
 import org.mongodb.scala.model.{Filters, Updates}
+import org.mongodb.scala.result.{DeleteResult, InsertOneResult, UpdateResult}
 import play.api.libs.json.Json
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -15,12 +17,16 @@ import scala.util.Success
 
 case class Ability(action:String, subject:String)
 case class Group(_id: String, name: String, monitors:Seq[String], monitorTypes: Seq[String],
-                 admin:Boolean, abilities: Seq[Ability], parent:Option[String] = None, lineToken:Option[String] = None)
+                 admin:Boolean, abilities: Seq[Ability], parent:Option[String] = None,
+                 lineToken:Option[String] = None,
+                 lineNotifyColdPeriod:Option[Int] = Some(30))
 
 import javax.inject._
 object Group {
   val PLATFORM_ADMIN = "platformAdmin"
   val PLATFORM_USER = "platformUser"
+  var lastHourLineNotify = Map.empty[String, DateTime]
+  var lastMinLineNotify = Map.empty[String, DateTime]
 }
 
 @Singleton
@@ -49,14 +55,14 @@ class GroupOp @Inject()(mongoDB: MongoDB) {
   val defaultGroup : Seq[Group] =
     Seq(
       Group(_id = PLATFORM_ADMIN, "平台管理團隊", Seq.empty[String], Seq.empty[String],
-        true, Seq(Ability(ACTION_MANAGE, SUBJECT_ALL))),
+        admin = true, Seq(Ability(ACTION_MANAGE, SUBJECT_ALL))),
       Group(_id = PLATFORM_USER, "平台使用者", Seq.empty[String], Seq.empty[String],
-        false, Seq(Ability(ACTION_READ, SUBJECT_DASHBOARD),
+        admin = false, Seq(Ability(ACTION_READ, SUBJECT_DASHBOARD),
           Ability(ACTION_READ, SUBJECT_DATA),
           Ability(ACTION_SET, SUBJECT_ALARM)))
     )
 
-  def init() {
+  def init(): Unit = {
     for(colNames <- mongoDB.database.listCollectionNames().toFuture()){
       if (!colNames.contains(ColName)) {
         val f = mongoDB.database.createCollection(ColName).toFuture()
@@ -69,16 +75,16 @@ class GroupOp @Inject()(mongoDB: MongoDB) {
     }
   }
 
-  init
+  init()
 
-  def createDefaultGroup = {
+  private def createDefaultGroup = {
     for(group <- defaultGroup) yield {
       val f = collection.insertOne(group).toFuture()
       f
     }
   }
 
-  def newGroup(group: Group) = {
+  def newGroup(group: Group): InsertOneResult = {
     val f = collection.insertOne(group).toFuture()
     waitReadyResult(f)
   }
@@ -90,43 +96,28 @@ class GroupOp @Inject()(mongoDB: MongoDB) {
     groups.map(g=>g._id->g).toMap
   }
 
-  def deleteGroup(_id: String) = {
+  def deleteGroup(_id: String): DeleteResult = {
     val f = collection.deleteOne(equal("_id", _id)).toFuture()
     map = map- _id
     waitReadyResult(f)
   }
 
-  def updateGroup(group: Group) = {
+  def updateGroup(group: Group): UpdateResult = {
     val f = collection.replaceOne(equal("_id", group._id), group).toFuture()
     map = map + (group._id->group)
     waitReadyResult(f)
   }
 
-  def getGroupByID(_id: String) = {
+  def getGroupByID(_id: String): Option[Group] = {
     val f = collection.find(equal("_id", _id)).first().toFuture()
     f.onFailure {
       errorHandler
     }
     val group = waitReadyResult(f)
-    if(group != null)
-      Some(group)
-    else
-      None
+    Option(group)
   }
 
-  def getGroupByIdAsync(_id: String): Future[Option[Group]] = {
-    val f = collection.find(equal("_id", _id)).toFuture()
-    f.onFailure {
-      errorHandler
-    }
-    for (rets <- f) yield
-      if (rets.nonEmpty)
-        Some(rets(0))
-      else
-        None
-  }
-
-  def getAllGroups() = {
+  def getAllGroups: Seq[Group] = {
     val f = collection.find().toFuture()
     f.onFailure {
       errorHandler
@@ -134,9 +125,9 @@ class GroupOp @Inject()(mongoDB: MongoDB) {
     waitReadyResult(f)
   }
 
-  def addMonitor(_id: String, monitorID:String)= {
+  def addMonitor(_id: String, monitorID:String): Future[UpdateResult] = {
     val f = collection.updateOne(Filters.equal("_id", _id), Updates.addToSet("monitors", monitorID)).toFuture()
-    f onFailure(errorHandler)
+    f onFailure errorHandler
     f
   }
 }

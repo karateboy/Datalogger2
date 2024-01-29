@@ -20,6 +20,7 @@ export interface Group {
   abilities: Array<Ability>;
   parent: undefined | string;
   lineToken: undefined | string;
+  lineNotifyColdPeriod: undefined | number;
 }
 
 export interface TextStrValue {
