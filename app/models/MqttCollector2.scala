@@ -247,7 +247,7 @@ class MqttCollector2 @Inject()(monitorOp: MonitorOp, alarmOp: AlarmOp,
           for (data <- message.data) yield {
             val sensor = (data \ "sensor").get.validate[String].get
             val value: Option[Double] = (data \ "value").get.validate[Double].fold(
-              err => {
+              _ => {
                 // Logger.error(s"MQTT2: value ${JsError.toJson(err)}")
                 None
               },
@@ -277,7 +277,7 @@ class MqttCollector2 @Inject()(monitorOp: MonitorOp, alarmOp: AlarmOp,
           val recordList = RecordList(time.toDate, mtDataList, sensor.monitor)
           val f = recordOp.upsertRecord(recordList)(recordOp.MinCollection)
           f.onFailure(ModelHelper.errorHandler)
-          dataCollectManagerOp.checkMinDataAlarm(recordList.mtDataList, Some(sensor.group))
+          dataCollectManagerOp.checkMinDataAlarm(sensor.monitor, recordList.mtDataList, Some(sensor.group))
         }
       })
   }

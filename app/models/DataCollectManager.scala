@@ -249,7 +249,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     }
   }
 
-  def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord], groupOpt: Option[String] = None): Unit = {
+  def checkMinDataAlarm(monitorName:String, minMtAvgList: Iterable[MtRecord], groupOpt: Option[String] = None): Unit = {
     for {
       hourMtData <- minMtAvgList
       mt = hourMtData.mtName
@@ -273,13 +273,12 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
           for (groupID <- groupOpt) {
             val group = groupOp.map(groupID)
             val groupName = group.name
-            val msg = s"$groupName > ${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
+            val msg = s"$groupName > $monitorName ${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
             alarmOp.log(alarmOp.Src(groupID), alarmOp.Level.ERR, msg)
             for(lineToken<-group.lineToken){
               if(!Group.lastMinLineNotify.contains(groupID) ||
                 Group.lastMinLineNotify(groupID).plusMinutes(group.lineNotifyColdPeriod.getOrElse(30)) < DateTime.now()
               ){
-                Logger.info(s"LINE notify $groupID $msg")
                 Group.lastMinLineNotify += groupID -> DateTime.now()
                 lineNotify.notify(lineToken, msg)
               }
@@ -290,7 +289,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                   for (alertEmail <- user.alertEmail) {
                     Future {
                       blocking {
-                        val subject = s"$groupName > ${mtCase.desp}超過分鐘高值"
+                        val subject = s"$groupName > $monitorName ${mtCase.desp}超過分鐘高值"
                         val content = s"${user.name} 您好:\n$msg"
                         val mail = Email(
                           subject = subject,
@@ -351,7 +350,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
              } {
           val group = groupOp.map(sensor.group)
           val groupName = group.name
-          val msg = s"$groupName > ${mtCase.desp}: 測點${monitorOp.map(monitor).desc} ${monitorTypeOp.format(mt, Some(value))}超過小時高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
+          val msg = s"$groupName > 測點${monitorOp.map(monitor).desc} ${mtCase.desp} ${monitorTypeOp.format(mt, Some(value))}超過小時高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
           alarmOp.log(alarmOp.Src(sensor), alarmOp.Level.ERR, msg)
           for(lineToken<-group.lineToken){
             if(!Group.lastHourLineNotify.contains(sensor.group) ||
@@ -681,7 +680,7 @@ class DataCollectManager @Inject()
         }
       }
 
-      def calculateMinData(currentMinutes: DateTime)(lineNotify: LineNotify) = {
+      def calculateMinData(currentMinutes: DateTime) = {
         import scala.collection.mutable.Map
         val mtMap = Map.empty[String, Map[String, ListBuffer[(String, DateTime, Double)]]]
 
@@ -744,7 +743,7 @@ class DataCollectManager @Inject()
 
         val minuteMtAvgList = calculateAvgMap(priorityMtMap)
 
-        dataCollectManagerOp.checkMinDataAlarm(minuteMtAvgList)
+        dataCollectManagerOp.checkMinDataAlarm(Monitor.selfMonitor.desc, minuteMtAvgList)
 
         context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData, restartList)
         val f = recordOp.upsertRecord(RecordList(currentMinutes.minusMinutes(1), minuteMtAvgList.toList, Monitor.SELF_ID))(recordOp.MinCollection)
@@ -754,7 +753,7 @@ class DataCollectManager @Inject()
 
       val current = DateTime.now().withSecondOfMinute(0).withMillisOfSecond(0)
       if (monitorOp.hasSelfMonitor) {
-        val f = calculateMinData(current)(lineNotify)
+        val f = calculateMinData(current)
         f onFailure errorHandler
         f.andThen({
           case Success(x) =>
