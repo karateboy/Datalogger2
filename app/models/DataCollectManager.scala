@@ -279,7 +279,8 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
               if(!Group.lastMinLineNotify.contains(groupID) ||
                 Group.lastMinLineNotify(groupID).plusMinutes(group.lineNotifyColdPeriod.getOrElse(30)) < DateTime.now()
               ){
-                Group.lastHourLineNotify += groupID -> DateTime.now()
+                Logger.info(s"LINE notify $groupID $msg")
+                Group.lastMinLineNotify += groupID -> DateTime.now()
                 lineNotify.notify(lineToken, msg)
               }
             }
