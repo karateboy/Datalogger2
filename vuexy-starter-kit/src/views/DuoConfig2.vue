@@ -112,7 +112,7 @@ export default Vue.extend({
           this.supportedMonitorTypes = res.data;
         }
       } catch (err) {
-        throw new Error(err);
+        throw new Error(`${err}`);
       }
     },
     onSelected(items: Array<DuoMonitorType>) {

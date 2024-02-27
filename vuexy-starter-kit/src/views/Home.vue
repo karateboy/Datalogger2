@@ -437,7 +437,7 @@ export default Vue.extend({
 
           let wx = weatherElements.find(p => p.elementName === 'Wx');
           if (wx !== undefined) {
-            this.weatherUrl = `https://www.cwb.gov.tw/V8/assets/img/weather_icons/weathers/svg_icon/day/${wx.time[0].elementValue[1].value}.svg`;
+            this.weatherUrl = `https://www.cwa.gov.tw/V8/assets/img/weather_icons/weathers/svg_icon/day/${wx.time[0].elementValue[1].value}.svg`;
           }
         }
       } catch (err) {

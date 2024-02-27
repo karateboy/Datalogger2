@@ -322,7 +322,7 @@ export default Vue.extend({
         const ret = res.data;
         this.rows = ret;
       } catch (err) {
-        throw new Error(err);
+        throw new Error(`${err}`);
       } finally {
         this.display = true;
       }
