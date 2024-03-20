@@ -130,7 +130,10 @@ export default Vue.extend({
     Ripple,
   },
   data() {
-    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
+    const range = [
+      moment().subtract(1, 'days').minute(0).second(0).millisecond(0).valueOf(),
+      moment().minute(0).second(0).millisecond(0).valueOf(),
+    ];
     return {
       display: false,
       columns: Array<any>(),

@@ -88,7 +88,7 @@ class CdxUploader @Inject()(alarmDB: AlarmDB, environment: Environment){
     </aqs:AirQualityData>
   }
 
-  def getXml(path: Path, recordList: RecordList, cdxConfig: CdxConfig, mtConfigs: Seq[CdxMonitorType]): String = {
+  private def getXml(path: Path, recordList: RecordList, cdxConfig: CdxConfig, mtConfigs: Seq[CdxMonitorType]): String = {
     val xmlList = recordList.mtDataList.flatMap { mtRecord =>
       try {
         val mt = mtRecord.mtName
@@ -128,12 +128,12 @@ class CdxUploader @Inject()(alarmDB: AlarmDB, environment: Environment){
 
     val dateTime = new DateTime(recordList._id.time)
     val tempFile = s"${serviceID}_${dateTime.toString("MMdd")}${dateTime.getHourOfDay}_${cdxConfig.user}.xml"
-    scala.xml.XML.save(path.resolve(tempFile).toString, xml, "UTF-8", true)
+    scala.xml.XML.save(path.resolve(tempFile).toString, xml, "UTF-8", xmlDecl = true)
     //scala.io.Source.fromFile(tempFile)("UTF-8").mkString
     xml.toString
   }
 
-  def upload(recordList: RecordList, cdxConfig: CdxConfig, mtConfigs: Seq[CdxMonitorType]) = {
+  def upload(recordList: RecordList, cdxConfig: CdxConfig, mtConfigs: Seq[CdxMonitorType]): Unit = {
     val localPath = environment.rootPath.toPath.resolve("cdxUpload")
     val dateTime = new DateTime(recordList._id.time)
     val fmt = DateTimeFormat.fullDateTime()

@@ -485,8 +485,8 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     buf.toList
   }
 
-  def compareChartHelper(monitors: Seq[String], monitorTypes: Seq[String], tabType: TableType.Value,
-                         start: DateTime, end: DateTime)(statusFilter: MonitorStatusFilter.Value): Future[ScatterChart] = {
+  private def compareChartHelper(monitors: Seq[String], monitorTypes: Seq[String], tabType: TableType.Value,
+                                 start: DateTime, end: DateTime)(statusFilter: MonitorStatusFilter.Value): Future[ScatterChart] = {
 
     val downloadFileName = {
       val startName = start.toString("YYMMdd")
@@ -518,26 +518,13 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
       }.map {
         _.get
       }
-      if (lines.length > 0)
+      if (lines.nonEmpty)
         Some(lines)
       else
         None
     }
 
-    val yAxisGroup: Map[String, Seq[(String, Option[Seq[AxisLine]])]] = monitorTypes.map(mt => {
-      (monitorTypeOp.map(mt).unit, getAxisLines(mt))
-    }).groupBy(_._1)
-    val yAxisGroupMap = yAxisGroup map {
-      kv =>
-        val lines: Seq[AxisLine] = kv._2.map(_._2).flatten.flatten
-        if (lines.nonEmpty)
-          kv._1 -> YAxis(None, AxisTitle(Some(Some(s"${kv._1}"))), Some(lines))
-        else
-          kv._1 -> YAxis(None, AxisTitle(Some(Some(s"${kv._1}"))), None)
-    }
-    val yAxisIndexList = yAxisGroupMap.toList.zipWithIndex
-
-    def getSeriesFuture() = {
+    def getSeriesFuture: Future[Seq[ScatterSeries]] = {
       val seqFuture = monitors.map(m => {
         for (records <- recordOp.getRecordListFuture(TableType.mapCollection(tabType))(start, end, Seq(m))) yield {
           val data = records.flatMap(rec => {
@@ -546,20 +533,27 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
                  mt1Value <- mt1.value
                  mt2Value <- mt2.value} yield Seq(mt1Value, mt2Value)
           })
-          ScatterSeries(name = s"${monitorOp.map(m).desc}", data = data)
+          ScatterSeries(name =
+            s"${monitorOp.map(m).desc}(${monitorTypeOp.map(monitorTypes.head).desp} ${monitorTypeOp.map(monitorTypes(1)).desp})", data = data)
         }
       })
-      Future.sequence(seqFuture)
+      for (ret <- Future.sequence(seqFuture)) yield {
+        val combinedData = ret.flatMap(series => series.data)
+        if (ret.size > 1)
+          ret :+ ScatterSeries(name = monitors.map(m => s"${monitorOp.map(m).desc}").mkString("+"), data = combinedData)
+        else
+          ret
+      }
     }
 
-    val mt1 = monitorTypeOp.map(monitorTypes(0))
+    val mt1 = monitorTypeOp.map(monitorTypes.head)
     val mt2 = monitorTypeOp.map(monitorTypes(1))
 
-    for (series <- getSeriesFuture()) yield
+    for (series <- getSeriesFuture) yield
       ScatterChart(Map("type" -> "scatter", "zoomType" -> "xy"),
         Map("text" -> title),
-        ScatterAxis(Title(true, s"${mt1.desp}(${mt1.unit})"), getAxisLines(monitorTypes(0))),
-        ScatterAxis(Title(true, s"${mt2.desp}(${mt2.unit})"), getAxisLines(monitorTypes(1))),
+        ScatterAxis(Title(enabled = true, s"${mt1.desp}(${mt1.unit})"), getAxisLines(monitorTypes.head)),
+        ScatterAxis(Title(enabled = true, s"${mt2.desp}(${mt2.unit})"), getAxisLines(monitorTypes(1))),
         series, Some(downloadFileName))
   }
 
