@@ -297,10 +297,19 @@ object DataCollectManager {
                 Some(values.max)
               else
                 Some(values.sum)
+
             case MonitorType.PM10 =>
-              Some(values.last)
+              if(LoggerConfig.config.pm25HourAvgUseLastRecord)
+                Some(values.last)
+              else
+                Some(values.sum / values.length)
+
             case MonitorType.PM25 =>
-              Some(values.last)
+              if(LoggerConfig.config.pm25HourAvgUseLastRecord)
+                Some(values.last)
+              else
+                Some(values.sum / values.length)
+                
             case _ =>
               if(mtCase.acoustic.contains(true)){
                 val noNanValues = values.filter(v => !v.isNaN)
@@ -392,9 +401,17 @@ object DataCollectManager {
               else
                 Some(values.sum)
             case MonitorType.PM10 =>
-              Some(values.last)
+              if(LoggerConfig.config.pm25HourAvgUseLastRecord)
+                Some(values.last)
+              else
+                Some(values.sum / values.length)
+
             case MonitorType.PM25 =>
-              Some(values.last)
+              if(LoggerConfig.config.pm25HourAvgUseLastRecord)
+                Some(values.last)
+              else
+                Some(values.sum / values.length)
+
             case _ =>
               if (mtCase.acoustic.contains(true)) {
                 val noNanValues = values.filter(v => !v.isNaN)
