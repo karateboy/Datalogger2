@@ -215,7 +215,8 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
           f onComplete {
             case Success(_) =>
               manager ! ForwardHour
-              for (cdxConfig <- sysConfigDB.getCdxConfig if cdxConfig.enable; cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes)
+              for {cdxConfig <- sysConfigDB.getCdxConfig if cdxConfig.enable && monitor == Monitor.activeId
+                   cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes}
                 cdxUploader.upload(recordList = recordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
 
             case Failure(exception) =>
@@ -296,10 +297,19 @@ object DataCollectManager {
                 Some(values.max)
               else
                 Some(values.sum)
+
             case MonitorType.PM10 =>
-              Some(values.last)
+              if(LoggerConfig.config.pm25HourAvgUseLastRecord)
+                Some(values.last)
+              else
+                Some(values.sum / values.length)
+
             case MonitorType.PM25 =>
-              Some(values.last)
+              if(LoggerConfig.config.pm25HourAvgUseLastRecord)
+                Some(values.last)
+              else
+                Some(values.sum / values.length)
+                
             case _ =>
               if(mtCase.acoustic.contains(true)){
                 val noNanValues = values.filter(v => !v.isNaN)
@@ -391,9 +401,17 @@ object DataCollectManager {
               else
                 Some(values.sum)
             case MonitorType.PM10 =>
-              Some(values.last)
+              if(LoggerConfig.config.pm25HourAvgUseLastRecord)
+                Some(values.last)
+              else
+                Some(values.sum / values.length)
+
             case MonitorType.PM25 =>
-              Some(values.last)
+              if(LoggerConfig.config.pm25HourAvgUseLastRecord)
+                Some(values.last)
+              else
+                Some(values.sum / values.length)
+
             case _ =>
               if (mtCase.acoustic.contains(true)) {
                 val noNanValues = values.filter(v => !v.isNaN)
