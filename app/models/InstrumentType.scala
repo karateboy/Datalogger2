@@ -75,6 +75,7 @@ class InstrumentTypeOp @Inject()
  ecoPhysics88PFactory: EcoPhysics88P.Factory,
  hydreonRainGaugeFactory: HydreonRainGauge.Factory,
  upsFactory: UpsDrv.Factory,
+ yiModbusFactory: YiModbusCollector.Factory,
  monitorTypeOp: MonitorTypeDB) extends InjectedActorSupport {
 
   import Protocol._
@@ -99,6 +100,7 @@ class InstrumentTypeOp @Inject()
     InstrumentType(Horiba370Collector, horiba370Factory),
     InstrumentType(moxaE1240Drv, moxaE1240Factory),
     InstrumentType(moxaE1212Drv, moxaE1212Factory),
+    InstrumentType(YiModbus, yiModbusFactory),
     InstrumentType(MqttCollector2, mqtt2Factory),
     InstrumentType(T100Collector, t100Factory, false, Some(t100CliFactory)),
     InstrumentType(T200Collector, t200Factory, false, Some(t200CliFactory)),

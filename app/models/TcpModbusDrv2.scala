@@ -1,6 +1,7 @@
 package models
 
 import akka.actor.Actor
+import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
 import com.serotonin.modbus4j.code.DataType
@@ -11,20 +12,22 @@ import play.api._
 import play.api.libs.json._
 
 import java.io.{File, InputStream, OutputStream}
+import java.util
 
 case class DeviceConfig(slaveID: Option[Int], calibrationTime: Option[LocalTime] = None,
                         monitorTypes: Option[List[String]] = None,
-                        raiseTime: Option[Int]= None,
-                        downTime: Option[Int]= None,
-                        holdTime: Option[Int]= None,
-                        calibrateZeoSeq: Option[String]= None,
-                        calibrateSpanSeq: Option[String]= None,
-                        calibratorPurgeSeq: Option[String]= None,
-                        calibratorPurgeTime: Option[Int]= None,
-                        calibrateZeoDO: Option[Int]= None,
-                        calibrateSpanDO: Option[Int]= None,
-                        skipInternalVault: Option[Boolean]= None)
-object DeviceConfig{
+                        raiseTime: Option[Int] = None,
+                        downTime: Option[Int] = None,
+                        holdTime: Option[Int] = None,
+                        calibrateZeoSeq: Option[String] = None,
+                        calibrateSpanSeq: Option[String] = None,
+                        calibratorPurgeSeq: Option[String] = None,
+                        calibratorPurgeTime: Option[Int] = None,
+                        calibrateZeoDO: Option[Int] = None,
+                        calibrateSpanDO: Option[Int] = None,
+                        skipInternalVault: Option[Boolean] = None)
+
+object DeviceConfig {
   val default = DeviceConfig(Some(1))
 }
 
@@ -32,12 +35,12 @@ case class DataReg(monitorType: String, address: Int, multiplier: Float)
 
 case class CalibrationReg(zeroAddress: Int, spanAddress: Int)
 
-case class FilterRule(monitorType:String, min:Double, max:Double)
+case class FilterRule(monitorType: String, min: Double, max: Double)
 
 case class TcpModelReg(dataRegs: List[DataReg], calibrationReg: Option[CalibrationReg],
                        inputRegs: List[InputReg], holdingRegs: List[HoldingReg],
                        modeRegs: List[DiscreteInputReg], warnRegs: List[DiscreteInputReg],
-                       coilRegs: List[CoilReg], multiplier: Float = 1, byteSwapMode:Int = DataType.FOUR_BYTE_FLOAT,
+                       coilRegs: List[CoilReg], multiplier: Float = 1, byteSwapMode: Int = DataType.FOUR_BYTE_FLOAT,
                        filterRules: Seq[FilterRule] = Seq.empty[FilterRule])
 
 
@@ -48,9 +51,11 @@ object TcpModbusDrv2 {
 
   def getInstrumentTypeList(environment: play.api.Environment, factory: TcpModbusDrv2.Factory, monitorTypeOp: MonitorTypeDB): Array[InstrumentType] = {
     val docRoot = environment.rootPath + "/conf/TcpModbus/"
-    val files = Option(new File(docRoot).listFiles()).getOrElse(Array.empty[File]).filter(p=>p.getName.toLowerCase().endsWith("conf"))
+    val files = Option(new File(docRoot).listFiles()).getOrElse(Array.empty[File]).filter(p => p.getName.toLowerCase().endsWith("conf"))
     for (file <- files) yield {
+      Logger.info("Loading " + file.getName)
       val device: TcpModbusDeviceModel = getDeviceModel(file)
+      Logger.info(s"device $device")
 
       InstrumentType(
         new TcpModbusDrv2(s"${deviceTypeHead}${device.id}", device.description, device.protocols.toList, device.tcpModelReg), factory)
@@ -66,8 +71,8 @@ object TcpModbusDrv2 {
     val description = driverConfig.getString("description")
     val protocols: Seq[String] = try {
       driverConfig.getStringList("protocol").asScala
-    }catch{
-      case _:Throwable =>
+    } catch {
+      case _: Throwable =>
         Seq(Protocol.tcp)
     }
 
@@ -80,39 +85,77 @@ object TcpModbusDrv2 {
 
     val byteSwapMode: Int = try {
       driverConfig.getInt("byteSwapMode")
-    }catch {
-      case _:Throwable =>
+    } catch {
+      case _: Throwable =>
         DataType.FOUR_BYTE_FLOAT
+    }
+
+    def getDataType(typeName: String) = {
+      typeName.toLowerCase() match {
+        case "short" =>
+          DataType.TWO_BYTE_INT_UNSIGNED
+        case _ =>
+          DataType.FOUR_BYTE_FLOAT
+      }
+    }
+
+    def getScale(scaleStr:String) = {
+      scaleStr match {
+        case "1" =>
+          1.0
+        case _ =>
+          scaleStr.toDouble
+      }
     }
 
     val inputRegList = {
       val inputRegAnyList = driverConfig.getAnyRefList(s"Input.reg")
       for {
-        i <- 0 to inputRegAnyList.size() - 1
+        i <- 0 until inputRegAnyList.size()
         reg = inputRegAnyList.get(i)
-        v = reg.asInstanceOf[ArrayList[Any]]
+        v = reg.asInstanceOf[util.ArrayList[Any]]
       } yield {
-        InputReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String], v.get(2).asInstanceOf[String])
+        val dataType = if (v.size() < 4)
+          DataType.FOUR_BYTE_FLOAT
+        else
+          getDataType(v.get(3).asInstanceOf[String])
+
+        val scale = if (v.size() < 5)
+          1.0
+        else
+          getScale(v.get(4).asInstanceOf[String])
+
+        InputReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String], v.get(2).asInstanceOf[String], dataType, scale)
       }
     }
 
     val holdingRegList = {
       val holdingRegAnyList = driverConfig.getAnyRefList(s"Holding.reg")
       for {
-        i <- 0 to holdingRegAnyList.size() - 1
+        i <- 0 until holdingRegAnyList.size()
         reg = holdingRegAnyList.get(i)
-        v = reg.asInstanceOf[ArrayList[Any]]
+        v = reg.asInstanceOf[util.ArrayList[Any]]
       } yield {
-        HoldingReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String], v.get(2).asInstanceOf[String])
+        val dataType = if (v.size() < 4)
+          DataType.FOUR_BYTE_FLOAT
+        else
+          getDataType(v.get(3).asInstanceOf[String])
+
+        val scale = if (v.size() < 5)
+          1.0
+        else
+          v.get(4).asInstanceOf[Double]
+
+        HoldingReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String], v.get(2).asInstanceOf[String], dataType, scale)
       }
     }
 
     val modeRegList = {
       val modeRegAnyList = driverConfig.getAnyRefList(s"DiscreteInput.mode")
       for {
-        i <- 0 to modeRegAnyList.size() - 1
+        i <- 0 until modeRegAnyList.size()
         reg = modeRegAnyList.get(i)
-        v = reg.asInstanceOf[ArrayList[Any]]
+        v = reg.asInstanceOf[util.ArrayList[Any]]
       } yield {
         DiscreteInputReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String])
       }
@@ -121,9 +164,9 @@ object TcpModbusDrv2 {
     val warnRegList = {
       val warnRegAnyList = driverConfig.getAnyRefList(s"DiscreteInput.warning")
       for {
-        i <- 0 to warnRegAnyList.size() - 1
+        i <- 0 until warnRegAnyList.size()
         reg = warnRegAnyList.get(i)
-        v = reg.asInstanceOf[ArrayList[Any]]
+        v = reg.asInstanceOf[util.ArrayList[Any]]
       } yield {
         DiscreteInputReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String])
       }
@@ -132,9 +175,9 @@ object TcpModbusDrv2 {
     val coilRegList = {
       val coilRegAnyList = driverConfig.getAnyRefList(s"Coil.reg")
       for {
-        i <- 0 to coilRegAnyList.size() - 1
+        i <- 0 until coilRegAnyList.size()
         reg = coilRegAnyList.get(i)
-        v = reg.asInstanceOf[ArrayList[Any]]
+        v = reg.asInstanceOf[util.ArrayList[Any]]
       } yield {
         CoilReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String])
       }
@@ -143,11 +186,11 @@ object TcpModbusDrv2 {
     val dataRegList = {
       val dataRegList = driverConfig.getAnyRefList(s"Data")
       for {
-        i <- 0 to dataRegList.size() - 1
+        i <- 0 until dataRegList.size()
         reg = dataRegList.get(i)
-        v = reg.asInstanceOf[ArrayList[Any]]
+        v = reg.asInstanceOf[util.ArrayList[Any]]
       } yield {
-        val multiplier = if(v.size() <3 )
+        val multiplier = if (v.size() < 3)
           1f
         else {
           val test = v.get(2)
@@ -176,23 +219,23 @@ object TcpModbusDrv2 {
     }
 
     val filterRules: Seq[FilterRule] = {
-      def getNumber(v:Any):Double={
+      def getNumber(v: Any): Double = {
         v match {
           case v: Integer =>
             v.asInstanceOf[Integer].toDouble
           case v: Double =>
             v.asInstanceOf[Double]
-          case v:Float=>
+          case v: Float =>
             v.asInstanceOf[Float].toDouble
         }
       }
 
-      try{
+      try {
         val filterRules = driverConfig.getAnyRefList(s"Filter")
         for {
-          i <- 0 to filterRules.size() - 1
+          i <- 0 until filterRules.size()
           rule = filterRules.get(i)
-          v = rule.asInstanceOf[ArrayList[Any]]
+          v = rule.asInstanceOf[util.ArrayList[Any]]
         } yield {
           FilterRule(v.get(0).asInstanceOf[String], getNumber(v.get(1)), getNumber(v.get(2)))
         }
@@ -201,7 +244,7 @@ object TcpModbusDrv2 {
           Seq.empty[FilterRule]
       }
     }
-    if(filterRules.nonEmpty)
+    if (filterRules.nonEmpty)
       Logger.info(s"$id applies filters=>$filterRules")
 
     TcpModbusDeviceModel(id = id, description = description, protocols = protocols,
@@ -211,7 +254,7 @@ object TcpModbusDrv2 {
   }
 
   trait Factory {
-    def apply(@Assisted("instId") instId: String, @Assisted("desc") desc:String,modelReg: TcpModelReg, config: DeviceConfig,
+    def apply(@Assisted("instId") instId: String, @Assisted("desc") desc: String, modelReg: TcpModelReg, config: DeviceConfig,
               @Assisted("protocol") protocol: ProtocolParam): Actor
   }
 
@@ -249,7 +292,7 @@ class TcpModbusDrv2(_id: String, desp: String, protocols: List[String], tcpModel
   implicit val cfgReads = Json.reads[DeviceConfig]
   implicit val cfgWrites = Json.writes[DeviceConfig]
 
-  override def verifyParam(json: String) = {
+  override def verifyParam(json: String): String = {
     val ret = Json.parse(json).validate[DeviceConfig]
     ret.fold(
       error => {
@@ -277,12 +320,12 @@ class TcpModbusDrv2(_id: String, desp: String, protocols: List[String], tcpModel
       List.empty[String]
   }
 
-  override def getCalibrationTime(param: String) = {
+  override def getCalibrationTime(param: String): Option[Imports.LocalTime] = {
     val config = validateParam(param)
     config.calibrationTime
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt: Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[TcpModbusDrv2.Factory])
     val f2 = f.asInstanceOf[TcpModbusDrv2.Factory]
     val config = validateParam(param)

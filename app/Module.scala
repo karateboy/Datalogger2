@@ -98,6 +98,7 @@ class Module(environment: Environment,
     bindActorFactory[EcoPhysics88PCollector, EcoPhysics88P.Factory]
     bindActorFactory[HydreonRainGaugeCollector, HydreonRainGauge.Factory]
     bindActorFactory[UpsCollector, UpsDrv.Factory]
+    bindActorFactory[YiModbusCollector, YiModbusCollector.Factory]
     bindActorFactory[ForwardManager, ForwardManager.Factory]
     bindActorFactory[HourRecordForwarder, HourRecordForwarder.Factory]
     bindActorFactory[MinRecordForwarder, MinRecordForwarder.Factory]
