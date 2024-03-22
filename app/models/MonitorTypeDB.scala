@@ -48,6 +48,7 @@ trait MonitorTypeDB {
     rangeType(NOISE, "NOISE", "dB", 2),
     rangeType(H2S, "H2S", "ppb", 2),
     rangeType(H2, "H2", "ppb", 2),
+    rangeType(WIND_VOLUME, "風量", "cmm", 2),
     /////////////////////////////////////////////////////
     signalType(DOOR, "門禁"),
     signalType(SMOKE, "煙霧"),

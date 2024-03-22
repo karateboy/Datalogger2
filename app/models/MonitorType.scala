@@ -90,6 +90,7 @@ object MonitorType {
   val NOY_NO = "NOY-NO"
   val NOY = "NOY"
   val PH_RAIN = "PH_RAIN"
+  val WIND_VOLUME = "WIND_VOLUME"
   var rangeOrder = 0
   var signalOrder = 1000
 
