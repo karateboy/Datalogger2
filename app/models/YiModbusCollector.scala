@@ -90,7 +90,7 @@ class YiModbusCollector @Inject()
             import com.serotonin.modbus4j.locator.BaseLocator
 
 
-            batch.addLocator(0, BaseLocator.holdingRegister(1, 0x2025, DataType.TWO_BYTE_INT_UNSIGNED))
+            batch.addLocator(0, BaseLocator.inputRegister(1, 2024, DataType.TWO_BYTE_INT_UNSIGNED))
 
             batch.setContiguousRequests(true)
 
