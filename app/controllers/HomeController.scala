@@ -762,7 +762,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     }
   }
 
-  def weatherReport() = Security.Authenticated.async {
+  def weatherReport(): Action[AnyContent] = Security.Authenticated.async {
     val f = WSClient.url(s"https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-033?format=JSON&locationName=萬巒鄉")
       .withHeaders(("Authorization", "CWB-978789A6-C800-47D7-B4C6-5BF330B61FA6"))
       .get()

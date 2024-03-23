@@ -282,7 +282,7 @@ export default Vue.extend({
     ...mapActions('user', ['getUserInfo']),
     async refresh(): Promise<void> {
       this.currentTime = moment().format('lll');
-      this.plotLatestData();
+      await this.plotLatestData();
     },
     async plotLatestData(): Promise<void> {
       await this.getRealtimeStatus();
@@ -441,7 +441,7 @@ export default Vue.extend({
           }
         }
       } catch (err) {
-        throw new Error('fail to get weather report');
+        console.error(err);
       }
     },
     getMtName(mt: string) {
