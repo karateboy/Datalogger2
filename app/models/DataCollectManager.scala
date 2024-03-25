@@ -412,9 +412,6 @@ object DataCollectManager {
               else
                 Some(values.sum / values.length)
 
-            case MonitorType.WIND_VOLUME =>
-                Some(values.sum)
-
             case _ =>
               if (mtCase.acoustic.contains(true)) {
                 val noNanValues = values.filter(v => !v.isNaN)
