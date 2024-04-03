@@ -52,7 +52,7 @@ class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mail
   init()
 
   private def mapper(rs: WrappedResultSet) =
-    Alarm(rs.date("time"),
+    Alarm(rs.timestamp("time"),
       rs.string("src"),
       rs.int("level"),
       rs.string("desc"))
