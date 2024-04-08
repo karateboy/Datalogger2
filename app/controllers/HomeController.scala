@@ -23,6 +23,7 @@ class HomeController @Inject()(environment: play.api.Environment,
                                emailTargetOp: EmailTargetDB,
                                sysConfig: SysConfigDB, recordDB: RecordDB,
                                calibrationDB: CalibrationDB,
+                               lineNotify: LineNotify,
                                @Named("dataCollectManager") manager: ActorRef) extends Controller {
 
   val title = "資料擷取器"
@@ -34,7 +35,7 @@ class HomeController @Inject()(environment: play.api.Environment,
   import groupOp.{read, write}
   import monitorTypeOp.{mtRead, mtWrite}
 
-  def newUser = Security.Authenticated(BodyParsers.parse.json) {
+  def newUser: Action[JsValue] = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
       val newUserParam = request.body.validate[User]
 
@@ -49,7 +50,7 @@ class HomeController @Inject()(environment: play.api.Environment,
         })
   }
 
-  def deleteUser(email: String) = Security.Authenticated {
+  def deleteUser(email: String): Action[AnyContent] = Security.Authenticated {
     implicit request =>
       val userInfoOpt = Security.getUserinfo(request)
       val userInfo = userInfoOpt.get
@@ -58,7 +59,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       Ok(Json.obj("ok" -> true))
   }
 
-  def updateUser(id: String) = Security.Authenticated(BodyParsers.parse.json) {
+  def updateUser(id: String): Action[JsValue] = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
       val userParam = request.body.validate[User]
 
@@ -73,7 +74,7 @@ class HomeController @Inject()(environment: play.api.Environment,
         })
   }
 
-  def getAllUsers = Security.Authenticated {
+  def getAllUsers: Action[AnyContent] = Security.Authenticated {
     val users = userOp.getAllUsers()
     implicit val userWrites = Json.writes[User]
 
@@ -95,13 +96,13 @@ class HomeController @Inject()(environment: play.api.Environment,
         })
   }
 
-  def deleteGroup(id: String) = Security.Authenticated {
+  def deleteGroup(id: String): Action[AnyContent] = Security.Authenticated {
     implicit request =>
       val ret = groupOp.deleteGroup(id)
       Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
   }
 
-  def updateGroup(id: String) = Security.Authenticated(BodyParsers.parse.json) {
+  def updateGroup(id: String): Action[JsValue] = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
       val userParam = request.body.validate[Group]
 
@@ -116,13 +117,13 @@ class HomeController @Inject()(environment: play.api.Environment,
         })
   }
 
-  def getAllGroups = Security.Authenticated {
+  def getAllGroups: Action[AnyContent] = Security.Authenticated {
     val groups = groupOp.getAllGroups()
 
     Ok(Json.toJson(groups))
   }
 
-  def getInstrumentTypes = Security.Authenticated {
+  def getInstrumentTypes: Action[AnyContent] = Security.Authenticated {
     implicit val w1 = Json.writes[ProtocolInfo]
     implicit val write = Json.writes[InstrumentTypeInfo]
     val iTypes =
@@ -135,7 +136,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.toJson(sorted.toList))
   }
 
-  def getInstrumentType(id: String) = Security.Authenticated {
+  def getInstrumentType(id: String): Action[AnyContent] = Security.Authenticated {
     implicit val w1 = Json.writes[ProtocolInfo]
     implicit val write = Json.writes[InstrumentTypeInfo]
     val iTypes = {
@@ -146,7 +147,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.toJson(iTypes))
   }
 
-  def newInstrument = Security.Authenticated.async(BodyParsers.parse.json) {
+  def newInstrument: Action[JsValue] = Security.Authenticated.async(BodyParsers.parse.json) {
     implicit request =>
       implicit val r1 = Json.reads[InstrumentStatusType]
       implicit val reads = Json.reads[Instrument]
@@ -195,7 +196,7 @@ class HomeController @Inject()(environment: play.api.Environment,
   implicit val w1 = Json.writes[InstrumentStatusType]
   implicit val w = Json.writes[Instrument]
 
-  def getInstrumentInfoList = Security.Authenticated {
+  def getInstrumentInfoList: Action[AnyContent] = Security.Authenticated {
     implicit val write = Json.writes[InstrumentInfo]
     val ret = instrumentOp.getInstrumentList()
 
@@ -268,7 +269,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     }
   }
 
-  def removeInstrument(instruments: String) = Security.Authenticated {
+  def removeInstrument(instruments: String): Action[AnyContent] = Security.Authenticated {
     val ids = instruments.split(",")
     try {
       ids.foreach {
@@ -289,7 +290,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.obj("ok" -> true))
   }
 
-  def deactivateInstrument(instruments: String) = Security.Authenticated {
+  def deactivateInstrument(instruments: String): Action[AnyContent] = Security.Authenticated {
     val ids = instruments.split(",")
     try {
       ids.foreach {
@@ -307,7 +308,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.obj("ok" -> true))
   }
 
-  def activateInstrument(instruments: String) = Security.Authenticated {
+  def activateInstrument(instruments: String): Action[AnyContent] = Security.Authenticated {
     val ids = instruments.split(",")
     try {
       val f = ids.map {
@@ -325,7 +326,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.obj("ok" -> true))
   }
 
-  def toggleMaintainInstrument(instruments: String) = Security.Authenticated {
+  def toggleMaintainInstrument(instruments: String): Action[AnyContent] = Security.Authenticated {
     val ids = instruments.split(",")
     try {
       ids.map { id =>
@@ -348,7 +349,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.obj("ok" -> true))
   }
 
-  def calibrateInstrument(instruments: String, zeroCalibrationStr: String) = Security.Authenticated {
+  def calibrateInstrument(instruments: String, zeroCalibrationStr: String): Action[AnyContent] = Security.Authenticated {
     val ids = instruments.split(",")
     val zeroCalibration = zeroCalibrationStr.toBoolean
     Logger.debug(s"zeroCalibration=$zeroCalibration")
@@ -369,7 +370,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.obj("ok" -> true))
   }
 
-  def calibrateInstrumentFull(instruments: String) = Security.Authenticated {
+  def calibrateInstrumentFull(instruments: String): Action[AnyContent] = Security.Authenticated {
     val ids = instruments.split(",")
     try {
       ids.foreach { id =>
@@ -384,10 +385,10 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.obj("ok" -> true))
   }
 
-  def resetInstrument(instruments: String) = Security.Authenticated {
+  def resetInstrument(instruments: String): Action[AnyContent] = Security.Authenticated {
     val ids = instruments.split(",")
     try {
-      ids.map { id =>
+      ids.foreach { id =>
         dataCollectManagerOp.setInstrumentState(id, MonitorStatus.NormalStat)
       }
     } catch {
@@ -399,7 +400,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.obj("ok" -> true))
   }
 
-  def writeDO(instruments: String) = Security.Authenticated(BodyParsers.parse.json) {
+  def writeDO(instruments: String): Action[JsValue] = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
       implicit val read = Json.reads[WriteDO]
       val mResult = request.body.validate[WriteDO]
@@ -423,7 +424,7 @@ class HomeController @Inject()(environment: play.api.Environment,
         })
   }
 
-  def getExecuteSeq(seq: String, on: Boolean) = Security.Authenticated {
+  def getExecuteSeq(seq: String, on: Boolean): Action[AnyContent] = Security.Authenticated {
     try {
       dataCollectManagerOp.executeSeq(seq, on)
     } catch {
@@ -455,7 +456,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       Ok(Json.toJson(active ++ rest))
   }
 
-  def upsertMonitor(id: String) = Security.Authenticated(BodyParsers.parse.json) {
+  def upsertMonitor(id: String): Action[JsValue] = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
       implicit val read = Json.reads[Monitor]
       val mResult = request.body.validate[Monitor]
@@ -470,16 +471,16 @@ class HomeController @Inject()(environment: play.api.Environment,
         })
   }
 
-  def deleteMonitor(id: String) = Security.Authenticated.async {
+  def deleteMonitor(id: String): Action[AnyContent] = Security.Authenticated.async {
     for (ret <- monitorOp.delete(id, sysConfig)) yield
       Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
   }
 
-  def getActiveMonitorID = Security.Authenticated {
+  def getActiveMonitorID: Action[AnyContent] = Security.Authenticated {
     Ok(Monitor.activeId)
   }
 
-  def setActiveMonitorID(id: String) = Security.Authenticated {
+  def setActiveMonitorID(id: String): Action[AnyContent] = Security.Authenticated {
     if (monitorOp.map.contains(id)) {
       Monitor.activeId = id
       sysConfig.setActiveMonitorId(id)
@@ -488,7 +489,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       BadRequest("Invalid monitor ID")
   }
 
-  def monitorTypeList = Security.Authenticated {
+  def monitorTypeList: Action[AnyContent] = Security.Authenticated {
     implicit request =>
       val userInfo = Security.getUserinfo(request).get
       val group = groupOp.getGroupByID(userInfo.group).get
@@ -501,7 +502,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       Ok(Json.toJson(mtList.sortBy(_.order)))
   }
 
-  def activatedMonitorTypes = Security.Authenticated {
+  def activatedMonitorTypes: Action[AnyContent] = Security.Authenticated {
     implicit request =>
       val userInfo = Security.getUserinfo(request).get
       val group = groupOp.getGroupByID(userInfo.group).get
@@ -514,7 +515,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       Ok(Json.toJson(mtList.sortBy(_.order)))
   }
 
-  def upsertMonitorType = Security.Authenticated.async(BodyParsers.parse.json) {
+  def upsertMonitorType: Action[JsValue] = Security.Authenticated.async(BodyParsers.parse.json) {
     implicit request =>
       val mtResult = request.body.validate[MonitorType]
 
@@ -530,32 +531,32 @@ class HomeController @Inject()(environment: play.api.Environment,
         })
   }
 
-  def deleteMonitorType(id: String) = Security.Authenticated {
+  def deleteMonitorType(id: String): Action[AnyContent] = Security.Authenticated {
     implicit request =>
       monitorTypeOp.deleteMonitorType(id)
       Ok("")
   }
 
-  def signalTypeList = Security.Authenticated {
+  def signalTypeList: Action[AnyContent] = Security.Authenticated {
     implicit request =>
       val mtList = monitorTypeOp.signalMtvList map monitorTypeOp.map
 
       Ok(Json.toJson(mtList))
   }
 
-  def signalValues = Security.Authenticated.async {
+  def signalValues: Action[AnyContent] = Security.Authenticated.async {
     implicit request =>
       for (ret <- dataCollectManagerOp.getLatestSignal) yield
         Ok(Json.toJson(ret))
   }
 
-  def setSignal(mtId: String, bit: Boolean) = Security.Authenticated {
+  def setSignal(mtId: String, bit: Boolean): Action[AnyContent] = Security.Authenticated {
     implicit request =>
       dataCollectManagerOp.writeSignal(mtId, bit)
       Ok("")
   }
 
-  def recalculateHour(monitorStr: String, startNum: Long, endNum: Long) = Security.Authenticated {
+  def recalculateHour(monitorStr: String, startNum: Long, endNum: Long): Action[AnyContent] = Security.Authenticated {
     val monitors = monitorStr.split(":")
     val start = new DateTime(startNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
     val end = new DateTime(endNum).withMinuteOfHour(23).withSecondOfMinute(59).withMillisOfSecond(0)
@@ -571,7 +572,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.obj("ok" -> true))
   }
 
-  def uploadData(startNum: Long, endNum: Long) = Security.Authenticated {
+  def uploadData(startNum: Long, endNum: Long): Action[AnyContent] = Security.Authenticated {
     val start = new DateTime(startNum)
     val end = new DateTime(endNum)
 
@@ -581,14 +582,14 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.obj("ok" -> true))
   }
 
-  def getSensors = Security.Authenticated.async {
+  def getSensors: Action[AnyContent] = Security.Authenticated.async {
     import MqttSensor.write
     val f = sensorOp.getAllSensorList
     for (ret <- f) yield
       Ok(Json.toJson(ret))
   }
 
-  def upsertSensor(id: String) = Security.Authenticated.async(BodyParsers.parse.json) {
+  def upsertSensor(id: String): Action[JsValue] = Security.Authenticated.async(BodyParsers.parse.json) {
     implicit request =>
       import MqttSensor.read
       val ret = request.body.validate[Sensor]
@@ -608,19 +609,19 @@ class HomeController @Inject()(environment: play.api.Environment,
         })
   }
 
-  def deleteSensor(id: String) = Security.Authenticated.async {
+  def deleteSensor(id: String): Action[AnyContent] = Security.Authenticated.async {
     for (ret <- sensorOp.delete(id)) yield
       Ok(Json.obj("ok" -> ret.getDeletedCount))
   }
 
-  def getUser(id: String) = Security.Authenticated {
+  def getUser(id: String): Action[AnyContent] = Security.Authenticated {
     implicit request =>
       implicit val write = Json.writes[User]
       val user = userOp.getUserByEmail(id)
       Ok(Json.toJson(user))
   }
 
-  def probeDuoMonitorTypes(host: String) = Security.Authenticated.async {
+  def probeDuoMonitorTypes(host: String): Action[AnyContent] = Security.Authenticated.async {
     val url = s"http://$host/pub/GetRealTimeValuesList.asp"
     val f = WSClient.url(s"http://$host/pub/GetRealTimeValuesList.asp").get()
     f onFailure (errorHandler)
@@ -663,7 +664,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     }
   }
 
-  def configureDuoMonitorTypes(host: String) = Security.Authenticated.async(BodyParsers.parse.json) {
+  def configureDuoMonitorTypes(host: String): Action[JsValue] = Security.Authenticated.async(BodyParsers.parse.json) {
     implicit request =>
       import Duo._
       val ret = request.body.validate[Seq[DuoMonitorType]]
@@ -702,7 +703,7 @@ class HomeController @Inject()(environment: play.api.Environment,
         })
   }
 
-  def getDuoFixedMonitorTypes() = Security.Authenticated {
+  def getDuoFixedMonitorTypes(): Action[AnyContent] = Security.Authenticated {
     {
       val instants = Seq("LeqAF", "LeqA", "LeqZ")
       val spectrums = Seq("LeqZ")
@@ -740,7 +741,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     }
   }
 
-  def getAlertEmailTargets = Security.Authenticated.async({
+  def getAlertEmailTargets: Action[AnyContent] = Security.Authenticated.async({
     import EmailTarget._
     val f = emailTargetOp.getList()
     f onFailure (errorHandler)
@@ -767,14 +768,14 @@ class HomeController @Inject()(environment: play.api.Environment,
         })
   })
 
-  def getEffectiveRatio = Security.Authenticated.async({
+  def getEffectiveRatio: Action[AnyContent] = Security.Authenticated.async({
     val f = sysConfig.getEffectiveRatio
     f onFailure errorHandler
     for (ret <- f) yield
       Ok(Json.toJson(ret))
   })
 
-  def saveEffectiveRatio() = Security.Authenticated(BodyParsers.parse.json) {
+  def saveEffectiveRatio(): Action[JsValue] = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
       implicit val reads = Json.reads[EditData]
       val ret = request.body.validate[EditData]
@@ -799,5 +800,38 @@ class HomeController @Inject()(environment: play.api.Environment,
     dataCollectManagerOp.resetReaders()
     Ok(Json.obj("ok" -> true))
   }
+
+
+  def saveLineToken(): Action[JsValue] = Security.Authenticated(BodyParsers.parse.json) {
+    implicit request =>
+      implicit val reads: Reads[EditData] = Json.reads[EditData]
+      val ret = request.body.validate[EditData]
+
+      ret.fold(
+        error => {
+          Logger.error(JsError.toJson(error).toString())
+          BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+        },
+        param => {
+          val token = param.value
+          sysConfig.setLineToken(token)
+          Ok(Json.obj("ok" -> true))
+        })
+  }
+
+  def getLineToken: Action[AnyContent] = Security.Authenticated.async {
+    val f = sysConfig.getLineToken
+    f onFailure errorHandler
+    for (ret <- f) yield
+      Ok(Json.toJson(ret))
+  }
+
+  def verifyLineToken(token: String): Action[AnyContent] = Security.Authenticated.async {
+    val f = lineNotify.notify(token, "測試訊息")
+    f onFailure errorHandler
+    for (ret <- f) yield
+      Ok(Json.obj("ok" -> ret))
+  }
+
   case class EditData(id: String, value: String)
 }

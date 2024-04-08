@@ -127,6 +127,9 @@ GET           /SystemConfig/EffectiveRatio                                      
 POST          /SystemConfig/EffectiveRatio                                                                       controllers.HomeController.saveEffectiveRatio
 GET           /SystemConfig/AqiMonitorTypes                                                                      controllers.Realtime.getAqiMonitorTypeMapping
 POST          /SystemConfig/AqiMonitorTypes                                                                      controllers.Realtime.postAqiMonitorTypeMapping
+POST          /SystemConfig/LineToken                                                                            controllers.HomeController.saveLineToken
+GET           /SystemConfig/LineToken                                                                            controllers.HomeController.getLineToken
+GET           /SystemConfig/LineToken/Verify/:token                                                              controllers.HomeController.verifyLineToken(token)
 
 #Rules
 GET           /SpikeRules                                                                                        controllers.RuleController.getSpikeRules

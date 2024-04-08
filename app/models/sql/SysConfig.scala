@@ -211,4 +211,18 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
     getDate(EPA_LAST_RECORD_TIME, Date.from(Instant.parse("2022-01-01T00:00:00.000Z")))
 
   override def setEpaLastRecordTime(v: Date): Future[UpdateResult] = setDate(EPA_LAST_RECORD_TIME)(v)
+
+  override def getLineToken: Future[String] =  Future {
+    val valueOpt = get(LINE_TOKEN)
+    val ret =
+      for (value <- valueOpt) yield
+        value.v
+    ret.getOrElse("")
+  }
+
+  override def setLineToken(token: String): Future[UpdateResult] =
+    Future {
+      val ret = set(LINE_TOKEN, token)
+      UpdateResult.acknowledged(ret, ret, null)
+    }
 }
