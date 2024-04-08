@@ -5,29 +5,29 @@
         <b-row>
           <b-col>
             <b-form-group
-              label="資料擷取率:"
-              label-for="effectiveRatio"
-              label-size="lg"
-              label-class="font-weight-bold pt-0"
-              label-cols-md="3"
+                label="資料擷取率:"
+                label-for="effectiveRatio"
+                label-size="lg"
+                label-class="font-weight-bold pt-0"
+                label-cols-md="3"
             >
               <b-form-input
-                id="effectiveRatio"
-                v-model.number="form.effectiveRatio"
+                  id="effectiveRatio"
+                  v-model.number="form.effectiveRatio"
               />
             </b-form-group>
           </b-col>
         </b-row>
-        <br />
+        <br/>
         <b-row>
           <b-col offset-md="3">
             <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              type="submit"
-              variant="primary"
-              class="mr-1"
-              :disabled="!canSaveEffectiveRatio"
-              @click="setEffectiveRatio"
+                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                type="submit"
+                variant="primary"
+                class="mr-1"
+                :disabled="!canSaveEffectiveRatio"
+                @click="setEffectiveRatio"
             >
               儲存
             </b-button>
@@ -40,135 +40,135 @@
         <b-row>
           <b-col>
             <b-form-group
-              label="臭氧(ppm) 八小時平均值測項"
-              label-for="monitorType"
-              label-cols-md="3"
+                label="臭氧(ppm) 八小時平均值測項"
+                label-for="monitorType"
+                label-cols-md="3"
             >
               <v-select
-                id="monitorType"
-                v-model="aqiMonitorTypes[0]"
-                label="desp"
-                :reduce="mt => mt._id"
-                :options="activatedMonitorTypes"
+                  id="monitorType"
+                  v-model="aqiMonitorTypes[0]"
+                  label="desp"
+                  :reduce="mt => mt._id"
+                  :options="activatedMonitorTypes"
               />
             </b-form-group>
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="臭氧(ppm) 小時平均值測項"
-              label-for="monitorType"
-              label-cols-md="3"
+                label="臭氧(ppm) 小時平均值測項"
+                label-for="monitorType"
+                label-cols-md="3"
             >
               <v-select
-                id="monitorType"
-                v-model="aqiMonitorTypes[1]"
-                label="desp"
-                :reduce="mt => mt._id"
-                :options="activatedMonitorTypes"
+                  id="monitorType"
+                  v-model="aqiMonitorTypes[1]"
+                  label="desp"
+                  :reduce="mt => mt._id"
+                  :options="activatedMonitorTypes"
               />
             </b-form-group>
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="PM2.5(μg/m3) 平均值測項"
-              label-for="monitorType"
-              label-cols-md="3"
+                label="PM2.5(μg/m3) 平均值測項"
+                label-for="monitorType"
+                label-cols-md="3"
             >
               <v-select
-                id="monitorType"
-                v-model="aqiMonitorTypes[2]"
-                label="desp"
-                :reduce="mt => mt._id"
-                :options="activatedMonitorTypes"
+                  id="monitorType"
+                  v-model="aqiMonitorTypes[2]"
+                  label="desp"
+                  :reduce="mt => mt._id"
+                  :options="activatedMonitorTypes"
               />
             </b-form-group>
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="PM10(μg/m3 )平均值測項"
-              label-for="monitorType"
-              label-cols-md="3"
+                label="PM10(μg/m3 )平均值測項"
+                label-for="monitorType"
+                label-cols-md="3"
             >
               <v-select
-                id="monitorType"
-                v-model="aqiMonitorTypes[3]"
-                label="desp"
-                :reduce="mt => mt._id"
-                :options="activatedMonitorTypes"
+                  id="monitorType"
+                  v-model="aqiMonitorTypes[3]"
+                  label="desp"
+                  :reduce="mt => mt._id"
+                  :options="activatedMonitorTypes"
               />
             </b-form-group>
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="CO(ppm) 8小時平均值測項"
-              label-for="monitorType"
-              label-cols-md="3"
+                label="CO(ppm) 8小時平均值測項"
+                label-for="monitorType"
+                label-cols-md="3"
             >
               <v-select
-                id="monitorType"
-                v-model="aqiMonitorTypes[4]"
-                label="desp"
-                :reduce="mt => mt._id"
-                :options="activatedMonitorTypes"
+                  id="monitorType"
+                  v-model="aqiMonitorTypes[4]"
+                  label="desp"
+                  :reduce="mt => mt._id"
+                  :options="activatedMonitorTypes"
               />
             </b-form-group>
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="SO2(ppb) 小時平均值測項"
-              label-for="monitorType"
-              label-cols-md="3"
+                label="SO2(ppb) 小時平均值測項"
+                label-for="monitorType"
+                label-cols-md="3"
             >
               <v-select
-                id="monitorType"
-                v-model="aqiMonitorTypes[5]"
-                label="desp"
-                :reduce="mt => mt._id"
-                :options="activatedMonitorTypes"
+                  id="monitorType"
+                  v-model="aqiMonitorTypes[5]"
+                  label="desp"
+                  :reduce="mt => mt._id"
+                  :options="activatedMonitorTypes"
               />
             </b-form-group>
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="SO2(ppb) 24小時平均值測項"
-              label-for="monitorType"
-              label-cols-md="3"
+                label="SO2(ppb) 24小時平均值測項"
+                label-for="monitorType"
+                label-cols-md="3"
             >
               <v-select
-                id="monitorType"
-                v-model="aqiMonitorTypes[6]"
-                label="desp"
-                :reduce="mt => mt._id"
-                :options="activatedMonitorTypes"
+                  id="monitorType"
+                  v-model="aqiMonitorTypes[6]"
+                  label="desp"
+                  :reduce="mt => mt._id"
+                  :options="activatedMonitorTypes"
               />
             </b-form-group>
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="NO2(ppb) 小時平均值測項"
-              label-for="monitorType"
-              label-cols-md="3"
+                label="NO2(ppb) 小時平均值測項"
+                label-for="monitorType"
+                label-cols-md="3"
             >
               <v-select
-                id="monitorType"
-                v-model="aqiMonitorTypes[7]"
-                label="desp"
-                :reduce="mt => mt._id"
-                :options="activatedMonitorTypes"
+                  id="monitorType"
+                  v-model="aqiMonitorTypes[7]"
+                  label="desp"
+                  :reduce="mt => mt._id"
+                  :options="activatedMonitorTypes"
               />
             </b-form-group>
           </b-col>
         </b-row>
-        <br />
+        <br/>
         <b-row>
           <b-col offset-md="3">
             <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              type="submit"
-              variant="primary"
-              class="mr-1"
-              :disabled="!canSaveEffectiveRatio"
-              @click="setAqiMapping"
+                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                type="submit"
+                variant="primary"
+                class="mr-1"
+                :disabled="!canSaveEffectiveRatio"
+                @click="setAqiMapping"
             >
               儲存
             </b-button>
@@ -182,24 +182,24 @@
           <b-tr>
             <b-td colspan="2">
               <b-button
-                variant="gradient-primary"
-                class="mr-1"
-                @click="newEmail"
+                  variant="gradient-primary"
+                  class="mr-1"
+                  @click="newEmail"
               >
                 新增
               </b-button>
 
               <b-button
-                variant="gradient-primary"
-                class="mr-1"
-                @click="saveEmail"
+                  variant="gradient-primary"
+                  class="mr-1"
+                  @click="saveEmail"
               >
                 儲存
               </b-button>
               <b-button
-                variant="gradient-primary"
-                class="mr-1"
-                @click="testAllEmail"
+                  variant="gradient-primary"
+                  class="mr-1"
+                  @click="testAllEmail"
               >
                 測試全部
               </b-button>
@@ -207,24 +207,69 @@
           </b-tr>
         </template>
         <template #cell(_id)="row">
-          <b-form-input v-model="row.item._id" />
+          <b-form-input v-model="row.item._id"/>
         </template>
         <template #cell(operation)="row">
           <b-button
-            variant="gradient-danger"
-            class="mr-2"
-            @click="deleteEmail(row.index)"
-            >刪除</b-button
+              variant="gradient-danger"
+              class="mr-2"
+              @click="deleteEmail(row.index)"
+          >刪除
+          </b-button
           >
           <b-button
-            variant="gradient-info"
-            class="mr-2"
-            :disabled="!validateEmail(row.index)"
-            @click="testEmail(row.index)"
-            >測試</b-button
+              variant="gradient-info"
+              class="mr-2"
+              :disabled="!validateEmail(row.index)"
+              @click="testEmail(row.index)"
+          >測試
+          </b-button
           >
         </template>
       </b-table>
+      <br/>
+      <b-table-simple bordered>
+        <b-thead>
+          <b-tr>
+            <b-th>
+              Line通報Token
+            </b-th>
+            <b-th>
+              操作
+            </b-th>
+          </b-tr>
+        </b-thead>
+        <b-tbody>
+          <b-tr>
+            <b-td>
+              <b-form-input
+                  id="lineToken"
+                  v-model="lineToken"
+              />
+            </b-td>
+            <b-td>
+              <b-button
+                  v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                  type="submit"
+                  variant="primary"
+                  class="mr-1"
+                  @click="saveLineToken"
+              >
+                儲存
+              </b-button>
+              <b-button
+                  v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                  type="submit"
+                  variant="primary"
+                  class="mr-1"
+                  @click="testLineToken"
+              >
+                測試
+              </b-button>
+            </b-td>
+          </b-tr>
+        </b-tbody>
+      </b-table-simple>
     </b-card>
   </div>
 </template>
@@ -233,10 +278,11 @@
 </style>
 <script lang="ts">
 import Vue from 'vue';
-const Ripple = require('vue-ripple-directive');
 import axios from 'axios';
-import { isNumber } from 'highcharts';
-import { mapState, mapGetters, mapActions } from 'vuex';
+import {isNumber} from 'highcharts';
+import {mapActions, mapGetters, mapState} from 'vuex';
+
+const Ripple = require('vue-ripple-directive');
 
 interface EmailTarget {
   _id: string;
@@ -244,7 +290,7 @@ interface EmailTarget {
 }
 
 const emailRegx =
-  /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 
 export default Vue.extend({
   directives: {
@@ -273,6 +319,7 @@ export default Vue.extend({
       fields,
       aqiMonitorTypes,
       disconnectCheckTime: '',
+      lineToken: '',
     };
   },
   computed: {
@@ -290,8 +337,9 @@ export default Vue.extend({
     },
   },
   async mounted() {
-    this.getEffectiveRatio();
-    this.getAlertEmailTarget();
+    await this.getEffectiveRatio();
+    await this.getAlertEmailTarget();
+    await this.getLineToken();
     await this.fetchMonitorTypes();
     await this.getAqiMapping();
   },
@@ -307,7 +355,7 @@ export default Vue.extend({
         value: this.form.effectiveRatio.toString(),
       });
       if (res.status === 200) {
-        this.$bvModal.msgBoxOk('成功', { headerBgVariant: 'info' });
+        this.$bvModal.msgBoxOk('成功', {headerBgVariant: 'info'});
       } else {
         this.$bvModal.msgBoxOk(`失敗 ${res.status} - ${res.statusText}`, {
           headerBgVariant: 'danger',
@@ -327,8 +375,8 @@ export default Vue.extend({
     async setAqiMapping() {
       try {
         const res = await axios.post(
-          '/SystemConfig/AqiMonitorTypes',
-          this.aqiMonitorTypes,
+            '/SystemConfig/AqiMonitorTypes',
+            this.aqiMonitorTypes,
         );
         if (res.status === 200) {
           this.$bvModal.msgBoxOk('成功更新');
@@ -382,9 +430,40 @@ export default Vue.extend({
     async testAllEmail() {
       try {
         const res = await axios.get('/TestAllAlertEmail');
-        if (res.status === 200) this.$bvModal.msgBoxOk('成功');
+        if (res.status === 200) await this.$bvModal.msgBoxOk('成功');
       } catch (err) {
         throw new Error('failed to test email!');
+      }
+    },
+    async getLineToken() {
+      try {
+        const res = await axios.get('/SystemConfig/LineToken');
+        this.lineToken = res.data;
+      } catch (err) {
+        throw new Error('failed to get Line Token!');
+      }
+    },
+    async saveLineToken() {
+      try {
+        const res = await axios.post('/SystemConfig/LineToken', {
+          id: '',
+          value: this.lineToken,
+        });
+        if (res.status === 200) {
+          await this.$bvModal.msgBoxOk('成功');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    async testLineToken() {
+      try {
+        const res = await axios.get(`/SystemConfig/LineToken/Verify/${this.lineToken}`);
+        if (res.status === 200) {
+          await this.$bvModal.msgBoxOk('成功');
+        }
+      } catch (err) {
+        console.error(err);
       }
     },
   },
