@@ -2,7 +2,7 @@ package models.mongodb
 
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
-import models.{Alarm, AlarmDB, AlertEmailSender}
+import models.{Alarm, AlarmDB, AlertEmailSender, LineNotify}
 import org.bson.codecs.configuration.CodecRegistry
 import org.mongodb.scala._
 import play.api._
@@ -16,7 +16,8 @@ import scala.concurrent.Future
 import scala.language.implicitConversions
 
 @Singleton
-class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTargetOp: EmailTargetOp) extends AlarmDB {
+class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTargetOp: EmailTargetOp,
+                        lineNotify: LineNotify, sysConfig: SysConfig) extends AlarmDB {
 
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
@@ -67,7 +68,7 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
     collection.find(and(gte("time", start), lt("time", end))).sort(descending("time")).toFuture()
 
 
-  private def logFilter(ar: Alarm, coldPeriod: Int = 30) {
+  private def logFilter(ar: Alarm, coldPeriod: Int = 30): Unit = {
     val start = Date.from(Instant.ofEpochMilli(ar.time.getTime).minusSeconds(coldPeriod * 60))
     val end = ar.time
 
@@ -83,6 +84,10 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
               val emails = emailTargets.map(_._id)
               AlertEmailSender.sendAlertMail(mailerClient = mailerClient)("警報通知", emails, ar.desc)
             }
+
+          for(token <- sysConfig.getLineToken if token.nonEmpty) {
+            lineNotify.notify(token, ar.desc)
+          }
         }
       }, // onNext
       (ex: Throwable) => Logger.error("Alarm failed:", ex), // onError
