@@ -182,7 +182,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                          (mtList: Seq[String], monitorTypeDB: MonitorTypeDB): Future[UpdateResult] = {
     val ret =
       for (recordMap <- recordOp.getMtRecordMapFuture(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current);
-          alarmRules <- alarmRuleDb.getRulesAsync) yield {
+           alarmRules <- alarmRuleDb.getRulesAsync) yield {
         val mtMap = mutable.Map.empty[String, mutable.Map[String, ListBuffer[MtRecord]]]
 
         for {
@@ -299,21 +299,21 @@ object DataCollectManager {
                 Some(values.sum)
 
             case MonitorType.PM10 =>
-              if(LoggerConfig.config.pm25HourAvgUseLastRecord)
+              if (LoggerConfig.config.pm25HourAvgUseLastRecord)
                 Some(values.last)
               else
                 Some(values.sum / values.length)
 
             case MonitorType.PM25 =>
-              if(LoggerConfig.config.pm25HourAvgUseLastRecord)
+              if (LoggerConfig.config.pm25HourAvgUseLastRecord)
                 Some(values.last)
               else
                 Some(values.sum / values.length)
-                
+
             case _ =>
-              if(mtCase.acoustic.contains(true)){
+              if (mtCase.acoustic.contains(true)) {
                 val noNanValues = values.filter(v => !v.isNaN)
-                if(noNanValues.isEmpty)
+                if (noNanValues.isEmpty)
                   None
                 else
                   Some(10 * Math.log10(noNanValues.map(v => Math.pow(10, v / 10)).sum / noNanValues.size))
@@ -401,13 +401,13 @@ object DataCollectManager {
               else
                 Some(values.sum)
             case MonitorType.PM10 =>
-              if(LoggerConfig.config.pm25HourAvgUseLastRecord)
+              if (LoggerConfig.config.pm25HourAvgUseLastRecord)
                 Some(values.last)
               else
                 Some(values.sum / values.length)
 
             case MonitorType.PM25 =>
-              if(LoggerConfig.config.pm25HourAvgUseLastRecord)
+              if (LoggerConfig.config.pm25HourAvgUseLastRecord)
                 Some(values.last)
               else
                 Some(values.sum / values.length)
@@ -415,7 +415,7 @@ object DataCollectManager {
             case _ =>
               if (mtCase.acoustic.contains(true)) {
                 val noNanValues = values.filter(v => !v.isNaN)
-                if(noNanValues.isEmpty)
+                if (noNanValues.isEmpty)
                   None
                 else
                   Some(10 * Math.log10(noNanValues.map(v => Math.pow(10, v / 10)).sum / noNanValues.size))
@@ -489,13 +489,13 @@ class DataCollectManager @Inject()
   def startReaders(): List[ActorRef] = {
     val readers: ListBuffer[ActorRef] = ListBuffer.empty[ActorRef]
 
-    for(readerRef<-SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp))
+    for (readerRef <- SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp))
       readers.append(readerRef)
 
-    for(readerRef<-WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp))
+    for (readerRef <- WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp))
       readers.append(readerRef)
 
-    for(readerRef<-VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
+    for (readerRef <- VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
       readers.append(readerRef)
 
     readers.toList
@@ -1008,8 +1008,9 @@ class DataCollectManager @Inject()
       for (minRecordMap <- f) {
         for (kv <- instrumentMap) {
           val (instID, instParam) = kv;
-          if (instParam.mtList.exists(mt => !minRecordMap.contains(mt) ||
-            minRecordMap.contains(mt) && minRecordMap(mt).size < 45)) {
+          if (instParam.mtList.filter(mt => !monitorTypeOp.map(mt).signalType)
+            .exists(mt => !minRecordMap.contains(mt) ||
+              minRecordMap.contains(mt) && minRecordMap(mt).size < 45)) {
             Logger.error(s"$instID has less than 45 minRecords. Restart $instID")
             alarmOp.log(alarmOp.srcInstrumentID(instID), alarmOp.Level.ERR, s"$instID 每小時分鐘資料小於45筆. 重新啟動 $instID 設備")
             self ! RestartInstrument(instID)
