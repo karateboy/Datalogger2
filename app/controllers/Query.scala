@@ -450,9 +450,9 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
       }
   }
 
-  def queryData(group: Int, monitorTypeStr:String, tabTypeStr: String, startNum: Long, endNum: Long): Action[AnyContent] = Action.async {
+  def queryData(groupId: String, monitorTypeStr:String, tabTypeStr: String, startNum: Long, endNum: Long): Action[AnyContent] = Action.async {
     val monitors =
-      if (group == 1) {
+      if (groupId == "1") {
         Seq("355001090059923",
           "355001090037531",
           "355001090024034",
@@ -473,7 +473,11 @@ class Query @Inject()(recordOp: RecordOp, monitorTypeOp: MonitorTypeOp, monitorO
           "352818664023636"
         )
       }else{
-        Seq.empty[String]
+        val groupOpt = groupOp.getGroupByID(groupId)
+        if(groupOpt.isEmpty)
+          Seq.empty[String]
+        else
+          groupOpt.get.monitors
       }
 
     val monitorTypes = monitorTypeStr.split(':')

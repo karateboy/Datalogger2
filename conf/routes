@@ -34,7 +34,7 @@ GET           /HistoryTrend/:monitor/:monitorType/:reportUnit/:statusFilter/:sta
 GET           /HistoryReport/:monitor/:monitorType/:tabType/:start/:end                        controllers.Query.historyData(monitor, monitorType, tabType, start: Long, end: Long)
 GET           /LatestData/:monitor/:monitorType/:tabType                                       controllers.Query.latestData(monitor, monitorType, tabType)
 GET           /RealtimeStatus                                                                  controllers.Query.realtimeStatus()
-GET           /QueryData/:group/:monitorType/:tabType/:start/:end                              controllers.Query.queryData(group:Int, monitorType, tabType, start: Long, end: Long)
+GET           /QueryData/:groupId/:monitorType/:tabType/:start/:end                              controllers.Query.queryData(groupId, monitorType, tabType, start: Long, end: Long)
 
 GET           /CalibrationReport/:start/:end                                                   controllers.Query.calibrationReport(start:Long, end:Long)
 

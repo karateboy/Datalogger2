@@ -5,7 +5,7 @@
         <GmapMap
             ref="mapRef"
             :center="mapCenter"
-            :zoom="16"
+            :zoom="13"
             map-type-id="terrain"
             class="map_canvas"
         >
