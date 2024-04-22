@@ -32,6 +32,7 @@ class HomeController @Inject()(environment: play.api.Environment,
 
   implicit val userParamRead: Reads[User] = Json.reads[User]
 
+  val logger: Logger = Logger(this.getClass)
   import groupOp.{read, write}
   import monitorTypeOp.{mtRead, mtWrite}
 
@@ -41,7 +42,7 @@ class HomeController @Inject()(environment: play.api.Environment,
 
       newUserParam.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
         },
         param => {
@@ -65,7 +66,7 @@ class HomeController @Inject()(environment: play.api.Environment,
 
       userParam.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
         },
         param => {
@@ -87,7 +88,7 @@ class HomeController @Inject()(environment: play.api.Environment,
 
       newUserParam.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
         },
         param => {
@@ -108,7 +109,7 @@ class HomeController @Inject()(environment: play.api.Environment,
 
       userParam.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
         },
         param => {
@@ -155,7 +156,7 @@ class HomeController @Inject()(environment: play.api.Environment,
 
       instrumentResult.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           Future.successful(BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString())))
         },
         rawInstrument => {
@@ -283,7 +284,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       }
     } catch {
       case ex: Exception =>
-        Logger.error(ex.getMessage, ex)
+        logger.error(ex.getMessage, ex)
         Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
     }
 
@@ -301,7 +302,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       }
     } catch {
       case ex: Throwable =>
-        Logger.error(ex.getMessage, ex)
+        logger.error(ex.getMessage, ex)
         Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
     }
 
@@ -319,7 +320,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       }
     } catch {
       case ex: Throwable =>
-        Logger.error(ex.getMessage, ex)
+        logger.error(ex.getMessage, ex)
         Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
     }
 
@@ -342,7 +343,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       }
     } catch {
       case ex: Throwable =>
-        Logger.error(ex.getMessage, ex)
+        logger.error(ex.getMessage, ex)
         Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
     }
 
@@ -352,7 +353,7 @@ class HomeController @Inject()(environment: play.api.Environment,
   def calibrateInstrument(instruments: String, zeroCalibrationStr: String): Action[AnyContent] = Security.Authenticated {
     val ids = instruments.split(",")
     val zeroCalibration = zeroCalibrationStr.toBoolean
-    Logger.debug(s"zeroCalibration=$zeroCalibration")
+    logger.debug(s"zeroCalibration=$zeroCalibration")
 
     try {
       ids.foreach { id =>
@@ -363,7 +364,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       }
     } catch {
       case ex: Throwable =>
-        Logger.error(ex.getMessage, ex)
+        logger.error(ex.getMessage, ex)
         Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
     }
 
@@ -378,7 +379,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       }
     } catch {
       case ex: Throwable =>
-        Logger.error(ex.getMessage, ex)
+        logger.error(ex.getMessage, ex)
         Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
     }
 
@@ -393,7 +394,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       }
     } catch {
       case ex: Throwable =>
-        Logger.error(ex.getMessage, ex)
+        logger.error(ex.getMessage, ex)
         Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
     }
 
@@ -406,7 +407,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       val mResult = request.body.validate[WriteDO]
       mResult.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
         },
         writeDO => {
@@ -418,7 +419,7 @@ class HomeController @Inject()(environment: play.api.Environment,
             Ok(Json.obj("ok" -> true))
           } catch {
             case ex: Throwable =>
-              Logger.error(ex.getMessage, ex)
+              logger.error(ex.getMessage, ex)
               Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
           }
         })
@@ -429,7 +430,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       dataCollectManagerOp.executeSeq(seq, on)
     } catch {
       case ex: Throwable =>
-        Logger.error(ex.getMessage, ex)
+        logger.error(ex.getMessage, ex)
         Ok(ex.getMessage)
     }
 
@@ -462,7 +463,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       val mResult = request.body.validate[Monitor]
       mResult.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
         },
         m => {
@@ -521,11 +522,11 @@ class HomeController @Inject()(environment: play.api.Environment,
 
       mtResult.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           Future.successful(BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString())))
         },
         mt => {
-          Logger.info(s"upsertMt ${mt.toString}")
+          logger.info(s"upsertMt ${mt.toString}")
           for (_ <- monitorTypeOp.upsertMonitorType(mt)) yield
             Ok(Json.obj("ok" -> true))
         })
@@ -561,7 +562,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     val start = new DateTime(startNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
     val end = new DateTime(endNum).withMinuteOfHour(23).withSecondOfMinute(59).withMillisOfSecond(0)
 
-    Logger.info(s"Recalculate Hour from $start to $end")
+    logger.info(s"Recalculate Hour from $start to $end")
 
     for {
       monitor <- monitors
@@ -594,7 +595,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       import MqttSensor.read
       val ret = request.body.validate[Sensor]
       ret.fold(err => {
-        Logger.error(JsError.toJson(err).toString())
+        logger.error(JsError.toJson(err).toString())
         Future {
           BadRequest(JsError.toJson(err).toString())
         }
@@ -659,7 +660,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       val monitorTypes = instantMonitorTypes ++ spectrumMonitorTypes ++ weatherMonitorTypes
       implicit val writes = Json.writes[DuoMonitorType]
 
-      Logger.info(monitorTypes.toString)
+      logger.info(monitorTypes.toString)
       Ok(Json.toJson(monitorTypes))
     }
   }
@@ -669,7 +670,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       import Duo._
       val ret = request.body.validate[Seq[DuoMonitorType]]
       ret.fold(err => {
-        Logger.error(JsError.toJson(err).toString())
+        logger.error(JsError.toJson(err).toString())
         Future {
           BadRequest(JsError.toJson(err).toString())
         }
@@ -736,7 +737,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       val monitorTypes = instantMonitorTypes ++ spectrumMonitorTypes ++ weatherMonitorTypes
       implicit val writes = Json.writes[DuoMonitorType]
 
-      Logger.info(monitorTypes.toString)
+      logger.info(monitorTypes.toString)
       Ok(Json.toJson(monitorTypes))
     }
   }
@@ -755,7 +756,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       val ret = request.body.validate[Seq[EmailTarget]]
       ret.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           Future {
             BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
           }
@@ -782,7 +783,7 @@ class HomeController @Inject()(environment: play.api.Environment,
 
       ret.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
         },
         param => {
@@ -809,7 +810,7 @@ class HomeController @Inject()(environment: play.api.Environment,
 
       ret.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
         },
         param => {
@@ -834,4 +835,27 @@ class HomeController @Inject()(environment: play.api.Environment,
   }
 
   case class EditData(id: String, value: String)
+
+  def splitTable(): Action[JsValue] = Security.Authenticated.async(BodyParsers.parse.json) {
+    implicit request =>
+      implicit val reads: Reads[EditData] = Json.reads[EditData]
+      val ret = request.body.validate[EditData]
+
+      ret.fold(
+        error => {
+          logger.error(JsError.toJson(error).toString())
+          Future.successful(BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString())))
+        },
+        param => {
+          val year = param.value.toInt
+          val f1 = recordDB.moveRecordToYearTable(recordDB.MinCollection)(year)
+          val f2 = recordDB.moveRecordToYearTable(recordDB.HourCollection)(year)
+          for {
+            _ <- f1
+            _ <- f2
+          } yield {
+            Ok(Json.obj("ok" -> true))
+          }
+        })
+  }
 }
