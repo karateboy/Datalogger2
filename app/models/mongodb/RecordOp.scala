@@ -1,7 +1,7 @@
 package models.mongodb
 
 import com.github.nscala_time.time.Imports.DateTime
-import models.ModelHelper.errorHandler
+import models.ModelHelper.{errorHandler, waitReadyResult}
 import models._
 import org.mongodb.scala.result.{InsertManyResult, UpdateResult}
 import org.mongodb.scala.{BulkWriteResult, FindObservable, MongoCollection}
@@ -9,7 +9,6 @@ import play.api.Logger
 
 import java.util.Date
 import javax.inject.{Inject, Singleton}
-import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Success
@@ -64,15 +63,15 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
   }
 
   override def getRecordMapFuture(colName: String)
-                                 (monitor: String, mtList: Seq[String], startTime: DateTime, endTime: DateTime, includeRaw:Boolean): Future[Map[String, Seq[Record]]] = {
+                                 (monitor: String, mtList: Seq[String], startTime: DateTime, endTime: DateTime, includeRaw: Boolean): Future[Map[String, Seq[Record]]] = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
     val col = getCollection(colName)
     val operation: FindObservable[RecordList] = col.find(
-      and(equal("_id.monitor", monitor),
-        gte("_id.time", startTime.toDate),
-        lt("_id.time", endTime.toDate)))
+        and(equal("_id.monitor", monitor),
+          gte("_id.time", startTime.toDate),
+          lt("_id.time", endTime.toDate)))
       .sort(ascending("time"))
 
     val f: Future[Seq[RecordList]] = if (mongodb.below44)
@@ -104,7 +103,7 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
 
     val col = getCollection(colName)
     val f = col.find(and(equal("_id.monitor", monitor),
-      gte("_id.time", startTime.toDate()), lt("_id.time", endTime.toDate())))
+        gte("_id.time", startTime.toDate()), lt("_id.time", endTime.toDate())))
       .limit(limit).sort(ascending("_id.time")).toFuture()
     f onFailure errorHandler
     f
@@ -190,4 +189,27 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
   }
 
   override def ensureMonitorType(mt: String): Unit = {}
+
+  override def moveRecordToYearTable(colName: String)(year: Int): Future[Boolean] = {
+    val col = getCollection(colName)
+    val yearColName = s"${colName}_$year"
+    for (colNames <- mongodb.database.listCollectionNames().toFuture()) yield {
+      if (!colNames.contains(yearColName)) {
+        val f = mongodb.database.createCollection(yearColName).toFuture()
+        waitReadyResult(f)
+        val yearCollection = getCollection(yearColName)
+        yearCollection.createIndex(Indexes.descending("_id.time", "_id.monitor"), new IndexOptions().unique(true))
+      }
+
+      val splitDate = new DateTime(year + 1, 1, 1, 0, 0)
+      val f1 = col.aggregate(
+        Seq(
+          Aggregates.filter(Filters.lte("_id.time", splitDate.toDate)),
+          Aggregates.out(yearColName))).toFuture()
+      for (_ <- f1) yield {
+        col.deleteMany(Filters.lte("_id.time", splitDate.toDate)).toFuture()
+      }
+      true
+    }
+  }
 }

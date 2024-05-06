@@ -1,40 +1,81 @@
 <template>
   <div>
-    <b-card title="有效資料擷取率">
-      <b-form @submit.prevent>
-        <b-row>
-          <b-col>
-            <b-form-group
-                label="資料擷取率:"
-                label-for="effectiveRatio"
-                label-size="lg"
-                label-class="font-weight-bold pt-0"
-                label-cols-md="3"
-            >
-              <b-form-input
-                  id="effectiveRatio"
-                  v-model.number="form.effectiveRatio"
-              />
-            </b-form-group>
-          </b-col>
-        </b-row>
-        <br/>
-        <b-row>
-          <b-col offset-md="3">
-            <b-button
-                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-                type="submit"
-                variant="primary"
-                class="mr-1"
-                :disabled="!canSaveEffectiveRatio"
-                @click="setEffectiveRatio"
-            >
-              儲存
-            </b-button>
-          </b-col>
-        </b-row>
-      </b-form>
-    </b-card>
+    <b-row>
+      <b-col>
+        <b-card title="有效資料擷取率">
+          <b-form @submit.prevent>
+            <b-row>
+              <b-col>
+                <b-form-group
+                    label="資料擷取率:"
+                    label-for="effectiveRatio"
+                    label-size="lg"
+                    label-class="font-weight-bold pt-0"
+                    label-cols-md="3"
+                >
+                  <b-form-input
+                      id="effectiveRatio"
+                      v-model.number="form.effectiveRatio"
+                  />
+                </b-form-group>
+              </b-col>
+            </b-row>
+            <br/>
+            <b-row>
+              <b-col offset-md="3">
+                <b-button
+                    v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                    type="submit"
+                    variant="primary"
+                    class="mr-1"
+                    :disabled="!canSaveEffectiveRatio"
+                    @click="setEffectiveRatio"
+                >
+                  儲存
+                </b-button>
+              </b-col>
+            </b-row>
+          </b-form>
+        </b-card>
+      </b-col>
+      <b-col>
+        <b-card title="資料表分割">
+          <b-form @submit.prevent>
+            <b-row>
+              <b-col>
+                <b-form-group
+                    label="分割年度:"
+                    label-for="splitYear"
+                    label-size="lg"
+                    label-class="font-weight-bold pt-0"
+                    label-cols-md="3"
+                >
+                  <b-form-input
+                      id="splitYear"
+                      v-model.number="form.splitYear"
+                  />
+                </b-form-group>
+              </b-col>
+            </b-row>
+            <br/>
+            <b-row>
+              <b-col offset-md="3">
+                <b-button
+                    v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                    type="submit"
+                    variant="primary"
+                    class="mr-1"
+                    @click="splitTable"
+                >
+                  分割
+                </b-button>
+              </b-col>
+            </b-row>
+          </b-form>
+        </b-card>
+      </b-col>
+    </b-row>
+
     <b-card v-if="aqiMonitorTypes.length !== 0" title="AQI測項">
       <b-form @submit.prevent>
         <b-row>
@@ -280,7 +321,8 @@
 import Vue from 'vue';
 import axios from 'axios';
 import {isNumber} from 'highcharts';
-import {mapActions, mapGetters, mapState} from 'vuex';
+import {mapActions, mapGetters, mapMutations, mapState} from 'vuex';
+import moment from "moment";
 
 const Ripple = require('vue-ripple-directive');
 
@@ -310,9 +352,11 @@ export default Vue.extend({
       },
     ];
 
+    let splitYear = moment().year() - 2;
     return {
       form: {
         effectiveRatio: 0.75,
+        splitYear,
       },
       selected: [],
       emails,
@@ -345,6 +389,7 @@ export default Vue.extend({
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
+    ...mapMutations(['setLoading']),
     async getEffectiveRatio() {
       const res = await axios.get('/SystemConfig/EffectiveRatio');
       this.form.effectiveRatio = res.data;
@@ -464,6 +509,23 @@ export default Vue.extend({
         }
       } catch (err) {
         console.error(err);
+      }
+    },
+    async splitTable() {
+      try {
+        this.setLoading({ loading: true });
+        const res = await axios.post('/SystemConfig/SplitTable', {
+          id: '',
+          value: this.form.splitYear.toString(),
+        });
+        if (res.status === 200) {
+          this.$bvModal.msgBoxOk('成功');
+        }
+      } catch (err) {
+        this.$bvModal.msgBoxOk(`失敗:${err}`);
+        console.error(err);
+      } finally {
+        this.setLoading({ loading: false });
       }
     },
   },
