@@ -130,6 +130,7 @@ POST          /SystemConfig/AqiMonitorTypes                                     
 POST          /SystemConfig/LineToken                                                                            controllers.HomeController.saveLineToken
 GET           /SystemConfig/LineToken                                                                            controllers.HomeController.getLineToken
 GET           /SystemConfig/LineToken/Verify/:token                                                              controllers.HomeController.verifyLineToken(token)
+POST          /SystemConfig/SplitTable                                                                           controllers.HomeController.splitTable
 
 #Rules
 GET           /SpikeRules                                                                                        controllers.RuleController.getSpikeRules

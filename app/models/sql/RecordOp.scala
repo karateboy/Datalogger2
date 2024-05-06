@@ -288,4 +288,24 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
       ) ON [PRIMARY]
       """.execute().apply()
   }
+
+  override def moveRecordToYearTable(colName: String)(year: Int): Future[Boolean] = {
+    val tab = getTab(colName)
+    val yearTabName = s"${colName}_$year"
+    if (sqlServer.getTables().contains(yearTabName))
+      Future.successful(false)
+    else
+      Future {
+        val yearTab = getTab(yearTabName)
+        implicit val session: DBSession = AutoSession
+        sql"""
+        Select * into $yearTab
+        FROM $tab WHERE YEAR([time]) <= $year;
+
+        Delete From $tab
+        Where Year([time]) <= $year;
+         """.execute().apply()
+        true
+      }
+  }
 }

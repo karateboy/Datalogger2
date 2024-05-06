@@ -169,7 +169,7 @@ export default Vue.extend({
         },
       },
       {
-        key: 'info',
+        key: 'desc',
         label: '詳細資訊',
         sortable: true,
       },

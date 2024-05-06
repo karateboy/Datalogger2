@@ -150,4 +150,7 @@ trait RecordDB {
     }
     resultMap.toMap
   }
+
+  def moveRecordToYearTable(colName:String)(year:Int): Future[Boolean]
+
 }
