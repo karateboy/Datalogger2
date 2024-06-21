@@ -70,6 +70,7 @@ class InstrumentTypeOp @Inject()
  tca08Factory: Tca08Drv.Factory,
  picarroG2401Factory: PicarroG2401.Factory,
  picarroG2131iFactory: PicarroG2131i.Factory,
+ picarroG2307Collector: PicarroG2307.Factory,
  ma350Factory: Ma350Drv.Factory,
  metOne1020Factory: MetOne1020.Factory,
  ecoPhysics88PFactory: EcoPhysics88P.Factory,
@@ -86,27 +87,27 @@ class InstrumentTypeOp @Inject()
     TcpModbusDrv2.getInstrumentTypeList(environment, tcpModbusFactory, monitorTypeOp)
       .map(dt => dt.id -> dt).toMap
 
-  val akDeviceTypeMap: Map[String, InstrumentType] =
+  private val akDeviceTypeMap: Map[String, InstrumentType] =
     AkDrv.getInstrumentTypeList(environment, akDrvFactory, monitorTypeOp)
     .map(dt => dt.id -> dt).toMap
 
-  val otherDeviceList = Seq(
-    InstrumentType(Adam4000, adam4000Factory, true),
-    InstrumentType(adam6017Drv, adam6017Factory, true),
-    InstrumentType(adam6066Drv, adam6066Factory, true),
+  private val otherDeviceList = Seq(
+    InstrumentType(Adam4000, adam4000Factory, analog = true),
+    InstrumentType(adam6017Drv, adam6017Factory, analog = true),
+    InstrumentType(adam6066Drv, adam6066Factory, analog = true),
     InstrumentType(Baseline9000Collector, baseline9000Factory),
     InstrumentType(GpsCollector, gpsFactory),
     InstrumentType(Horiba370Collector, horiba370Factory),
     InstrumentType(moxaE1240Drv, moxaE1240Factory),
     InstrumentType(moxaE1212Drv, moxaE1212Factory),
     InstrumentType(MqttCollector2, mqtt2Factory),
-    InstrumentType(T100Collector, t100Factory, false, Some(t100CliFactory)),
-    InstrumentType(T200Collector, t200Factory, false, Some(t200CliFactory)),
+    InstrumentType(T100Collector, t100Factory, analog = false, Some(t100CliFactory)),
+    InstrumentType(T200Collector, t200Factory, analog = false, Some(t200CliFactory)),
     InstrumentType(T201Collector, t201Factory),
-    InstrumentType(T300Collector, t300Factory, false, Some(t300CliFactory)),
+    InstrumentType(T300Collector, t300Factory, analog = false, Some(t300CliFactory)),
     InstrumentType(T360Collector, t360Factory),
-    InstrumentType(T400Collector, t400Factory, false, Some(t400CliFactory)),
-    InstrumentType(T700Collector, t700Factory, false, Some(t700CliFactory)),
+    InstrumentType(T400Collector, t400Factory, analog = false, Some(t400CliFactory)),
+    InstrumentType(T700Collector, t700Factory, analog = false, Some(t700CliFactory)),
     InstrumentType(VerewaF701Collector, verewaF701Factory),
     InstrumentType(ThetaCollector, thetaFactory),
     InstrumentType(Sabio4010, sabio4010Factory),
@@ -114,6 +115,7 @@ class InstrumentTypeOp @Inject()
     InstrumentType(Tca08Drv, tca08Factory),
     InstrumentType(PicarroG2401, picarroG2401Factory),
     InstrumentType(PicarroG2131i, picarroG2131iFactory),
+    InstrumentType(PicarroG2307, picarroG2307Collector),
     InstrumentType(Ma350Drv, ma350Factory),
     InstrumentType(MetOne1020, metOne1020Factory),
     InstrumentType(EcoPhysics88P, ecoPhysics88PFactory),
@@ -121,10 +123,10 @@ class InstrumentTypeOp @Inject()
     InstrumentType(UpsDrv, upsFactory)
   )
 
-  val otherMap = otherDeviceList.map(dt=> dt.id->dt).toMap
+  private val otherMap = otherDeviceList.map(dt=> dt.id->dt).toMap
   val map: Map[String, InstrumentType] = tcpModbusDeviceTypeMap ++ akDeviceTypeMap ++ otherMap
 
-  val DoInstruments = otherDeviceList.filter(_.driver.isDoInstrument)
+  val DoInstruments: Seq[InstrumentType] = otherDeviceList.filter(_.driver.isDoInstrument)
   var count = 0
 
   def getInstInfoPair(instType: InstrumentType): (String, InstrumentType) = {

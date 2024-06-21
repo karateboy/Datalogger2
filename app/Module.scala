@@ -91,6 +91,7 @@ class Module(environment: Environment,
     bindActorFactory[Tca08Collector, Tca08Drv.Factory]
     bindActorFactory[PicarroG2401Collector, PicarroG2401.Factory]
     bindActorFactory[PicarroG2131iCollector, PicarroG2131i.Factory]
+    bindActorFactory[PicarroG2307Collector, PicarroG2307.Factory]
     bindActorFactory[Ma350Collector, Ma350Drv.Factory]
     bindActorFactory[MetOne1020Collector, MetOne1020.Factory]
   	bindActorFactory[AkDrvCollector, AkDrv.Factory]

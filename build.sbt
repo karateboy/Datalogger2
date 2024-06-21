@@ -4,7 +4,7 @@ val distVersion = ""
 version := s"$mainVersion$distVersion"
 
 lazy val root = (project in file("."))
-  .enablePlugins(PlayScala, LauncherJarPlugin, JavaAppPackaging, WindowsPlugin)
+  .enablePlugins(PlayScala, LauncherJarPlugin, JavaAppPackaging, WindowsPlugin, BuildInfoPlugin)
 
 scalaVersion := "2.11.12"
 
