@@ -221,10 +221,10 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
             for (module <- moduleList if module.module == ADAM4080) {
               val adam4080cfg = module.get4080Cfg
               for((ch, n) <- adam4080cfg.channelList.zipWithIndex if ch.enable) {
-                val readCmd = s"$$${module.address}$n\r"
+                val readCmd = s"#${module.address}$n\r"
                 os.write(readCmd.getBytes)
                 val strList = comm.getLineWithTimeout(2)
-                decode4080(strList(0), ch)
+                decode4080(strList.head, ch)
               }
             }
           } catch errorHandler
