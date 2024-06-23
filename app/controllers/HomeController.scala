@@ -619,7 +619,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       val groupID = userInfo.group
       for (groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(groupID)) {
         groupDoInstruments.foreach(inst =>
-          dataCollectManagerOp.toggleMonitorTypeDO(inst._id, MonitorType.SPRAY, 10))
+          dataCollectManagerOp.sprayAction(inst._id, 5))
       }
       Ok("ok")
   }

@@ -3,6 +3,7 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
+import org.mongodb.scala.result.UpdateResult
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
 import play.api.libs.mailer.{Email, MailerClient}
@@ -42,21 +43,13 @@ case class ManualZeroCalibration(instId: String)
 
 case class ManualSpanCalibration(instId: String)
 
-case class CalibrationType(auto: Boolean, zero: Boolean)
-
-object AutoZero extends CalibrationType(true, true)
-
-object AutoSpan extends CalibrationType(true, false)
-
-object ManualZero extends CalibrationType(false, true)
-
-object ManualSpan extends CalibrationType(false, false)
-
 case class WriteTargetDO(instId: String, bit: Int, on: Boolean)
 
 case class ToggleTargetDO(instId: String, bit: Int, seconds: Int)
 
 case class WriteDO(bit: Int, on: Boolean)
+
+case class SprayAction(instId: String, seconds: Int)
 
 case class ToggleMonitorTypeDO(instId: String, mtID: String, seconds: Int)
 
@@ -75,17 +68,15 @@ case object IsConnected
 case object CleanOldData
 
 object DataCollectManager {
-  val effectivRatio = 0.75
 
-  case class SetCheckConstantTime(localTime: LocalTime)
 
-  case object CheckSensorStstus
+  private case object CheckSensorStstus
 
-  case object CheckConstantSensor
+  private case object CheckConstantSensor
 
   case object CleanupOldRecord
 
-  case object SendErrorReport
+  private case object SendErrorReport
 
 }
 
@@ -100,34 +91,34 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                                      every8d: Every8d,
                                      mqttSensorOp: MqttSensorOp,
                                      lineNotify: LineNotify)() {
-  val effectivRatio = 0.75
+  private val effectivRatio = 0.75
 
   def startCollect(inst: Instrument) {
     manager ! StartInstrument(inst)
   }
 
-  def startCollect(id: String) {
+  def startCollect(id: String): Unit = {
     val instList = instrumentOp.getInstrument(id)
     instList.map { inst => manager ! StartInstrument(inst) }
   }
 
-  def stopCollect(id: String) {
+  def stopCollect(id: String): Unit = {
     manager ! StopInstrument(id)
   }
 
-  def setInstrumentState(id: String, state: String) {
+  def setInstrumentState(id: String, state: String): Unit = {
     manager ! SetState(id, state)
   }
 
-  def autoCalibration(id: String) {
+  def autoCalibration(id: String): Unit = {
     manager ! AutoCalibration(id)
   }
 
-  def zeroCalibration(id: String) {
+  def zeroCalibration(id: String): Unit = {
     manager ! ManualZeroCalibration(id)
   }
 
-  def spanCalibration(id: String) {
+  def spanCalibration(id: String): Unit = {
     manager ! ManualSpanCalibration(id)
   }
 
@@ -135,24 +126,24 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! WriteTargetDO(id, bit, on)
   }
 
-  def toggleTargetDO(id: String, bit: Int, seconds: Int) = {
-    manager ! ToggleTargetDO(id, bit, seconds)
+  def sprayAction(id: String, seconds: Int): Unit = {
+    manager ! SprayAction(id, seconds)
   }
 
-  def toggleMonitorTypeDO(id: String, mt: String, seconds: Int) = {
+  def toggleMonitorTypeDO(id: String, mt: String, seconds: Int): Unit = {
     manager ! ToggleMonitorTypeDO(id, mt, seconds)
   }
 
-  def executeSeq(seq: Int) {
-    manager ! ExecuteSeq(seq, true)
+  def executeSeq(seq: Int): Unit = {
+    manager ! ExecuteSeq(seq, on = true)
   }
 
-  def getLatestData() = {
+  def getLatestData: Future[Map[String, Record]] = {
     import akka.pattern.ask
     import akka.util.Timeout
 
     import scala.concurrent.duration._
-    implicit val timeout = Timeout(Duration(3, SECONDS))
+    implicit val timeout: Timeout = Timeout(Duration(3, SECONDS))
 
     val f = manager ? GetLatestData
     f.mapTo[Map[String, Record]]
@@ -163,7 +154,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
   def recalculateHourData(monitor: String, current: DateTime, forward: Boolean,
                           alwaysValid: Boolean,
                           checkAlarm: Boolean = false)
-                         (mtList: Seq[String]) = {
+                         (mtList: Seq[String]): Future[UpdateResult] = {
     val recordMap = recordOp.getRecordMap(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current)
 
     import scala.collection.mutable.ListBuffer
@@ -249,7 +240,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     }
   }
 
-  def checkMinDataAlarm(monitorName:String, minMtAvgList: Iterable[MtRecord], groupOpt: Option[String] = None): Unit = {
+  def checkMinDataAlarm(monitorName: String, minMtAvgList: Iterable[MtRecord], groupOpt: Option[String] = None): Unit = {
     for {
       hourMtData <- minMtAvgList
       mt = hourMtData.mtName
@@ -275,10 +266,10 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
             val groupName = group.name
             val msg = s"$groupName > $monitorName ${mtCase.desp}: ${monitorTypeOp.format(mt, Some(value))}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
             alarmOp.log(alarmOp.Src(groupID), alarmOp.Level.ERR, msg)
-            for(lineToken<-group.lineToken){
-              if(!Group.lastMinLineNotify.contains(groupID) ||
+            for (lineToken <- group.lineToken) {
+              if (!Group.lastMinLineNotify.contains(groupID) ||
                 Group.lastMinLineNotify(groupID).plusMinutes(group.lineNotifyColdPeriod.getOrElse(30)) < DateTime.now()
-              ){
+              ) {
                 Group.lastMinLineNotify += groupID -> DateTime.now()
                 lineNotify.notify(lineToken, msg)
               }
@@ -319,7 +310,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
               groupDoInstruments.foreach(
                 inst =>
                   for (thresholdConfig <- mtCase.thresholdConfig) {
-                    manager ! ToggleMonitorTypeDO(inst._id, MonitorType.SPRAY, thresholdConfig.elapseTime)
+                    manager ! SprayAction(inst._id, thresholdConfig.elapseTime)
                   }
               )
             }
@@ -352,10 +343,10 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
           val groupName = group.name
           val msg = s"$groupName > 測點${monitorOp.map(monitor).desc} ${mtCase.desp} ${monitorTypeOp.format(mt, Some(value))}超過小時高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
           alarmOp.log(alarmOp.Src(sensor), alarmOp.Level.ERR, msg)
-          for(lineToken<-group.lineToken){
-            if(!Group.lastHourLineNotify.contains(sensor.group) ||
+          for (lineToken <- group.lineToken) {
+            if (!Group.lastHourLineNotify.contains(sensor.group) ||
               Group.lastHourLineNotify(sensor.group).plusMinutes(group.lineNotifyColdPeriod.getOrElse(30)) < DateTime.now()
-            ){
+            ) {
               Group.lastHourLineNotify += sensor.group -> DateTime.now()
               lineNotify.notify(lineToken, msg)
             }
@@ -406,67 +397,28 @@ class DataCollectManager @Inject()
  instrumentOp: InstrumentOp,
  errorReportOp: ErrorReportOp,
  groupOp: GroupOp,
- userOp: UserOp,
- lineNotify: LineNotify) extends Actor with InjectedActorSupport {
-  val effectivRatio = 0.75
-  val storeSecondData = config.getBoolean("storeSecondData").getOrElse(false)
+ userOp: UserOp) extends Actor with InjectedActorSupport {
+  private val effectivRatio = 0.75
+  private val storeSecondData = config.getBoolean("storeSecondData").getOrElse(false)
   Logger.info(s"store second data = $storeSecondData")
 
   import DataCollectManager._
 
-  val timer = {
+  val timer: Cancellable = {
     import scala.concurrent.duration._
     val next30 = DateTime.now().withSecondOfMinute(30).plusMinutes(1)
     val postSeconds = new org.joda.time.Duration(DateTime.now, next30).getStandardSeconds
     context.system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
   }
 
-  val updateErrorReportTimer: Cancellable = {
-    val localtime = LocalTime.now().withMillisOfDay(0)
-      .withHourOfDay(7).withMinuteOfHour(30).withSecondOfMinute(0) // 07:00
-    val emailTime = DateTime.now().toLocalDate().toDateTime(localtime)
-    val duration = if (DateTime.now() < emailTime)
-      new Duration(DateTime.now(), emailTime)
-    else
-      new Duration(DateTime.now(), emailTime + 1.day)
-
-    import scala.concurrent.duration._
-    context.system.scheduler.schedule(
-      Duration(duration.getStandardSeconds + 1, SECONDS),
-      Duration(1, DAYS), self, CheckSensorStstus)
+  instrumentOp.getInstrumentList().foreach {
+    inst =>
+      if (inst.active)
+        self ! StartInstrument(inst)
   }
+  Logger.info("DataCollect manager started")
 
-  val alertEmailTimer: Cancellable = {
-    val localtime = LocalTime.now().withMillisOfDay(0)
-      .withHourOfDay(8).withMinuteOfHour(0) // 20:00
-    val emailTime = DateTime.now().toLocalDate().toDateTime(localtime)
-    val duration = if (DateTime.now() < emailTime)
-      new Duration(DateTime.now(), emailTime)
-    else
-      new Duration(DateTime.now(), emailTime + 1.day)
-
-    Logger.info(s"setup to fire SendErrorReport ${duration.getStandardHours}:${duration.getStandardMinutes} latter")
-    import scala.concurrent.duration._
-    context.system.scheduler.schedule(
-      Duration(duration.getStandardSeconds + 1, SECONDS),
-      Duration(1, DAYS), self, SendErrorReport)
-  }
-
-  var calibratorOpt: Option[ActorRef] = None
-  var digitalOutputOpt: Option[ActorRef] = None
-  var onceTimer: Option[Cancellable] = None
-
-  {
-    val instrumentList = instrumentOp.getInstrumentList()
-    instrumentList.foreach {
-      inst =>
-        if (inst.active)
-          self ! StartInstrument(inst)
-    }
-    Logger.info("DataCollect manager started")
-  }
-
-  def calculateAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]]) = {
+  private def calculateAvgMap(mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]]) = {
     for {
       mt <- mtMap.keys
       statusMap = mtMap(mt)
@@ -546,11 +498,6 @@ class DataCollectManager @Inject()
       }
 
       val instrumentParam = InstrumentParam(collector, monitorTypes, timerOpt)
-      if (inst.instType == InstrumentType.T700) {
-        calibratorOpt = Some(collector)
-      } else if (inst.instType == InstrumentType.MOXAE1212 || inst.instType == InstrumentType.ADAM4068) {
-        digitalOutputOpt = Some(collector)
-      }
 
       context become handler(
         instrumentMap + (inst._id -> instrumentParam),
@@ -565,12 +512,6 @@ class DataCollectManager @Inject()
         Logger.info(s"remove ${param.mtList.toString()}")
         param.calibrationTimerOpt.map { timer => timer.cancel() }
         param.actor ! PoisonPill
-
-        if (calibratorOpt == Some(param.actor)) {
-          calibratorOpt = None
-        } else if (digitalOutputOpt == Some(param.actor)) {
-          digitalOutputOpt = None
-        }
 
         if (!restartList.contains(id))
           context become handler(instrumentMap - (id), collectorInstrumentMap - param.actor,
@@ -804,20 +745,17 @@ class DataCollectManager @Inject()
       }
 
     case ToggleTargetDO(instId, bit: Int, seconds) =>
-      //Cancel previous timer if any
-      onceTimer map { t => t.cancel() }
       Logger.debug(s"ToggleTargetDO($instId, $bit)")
-      self ! WriteTargetDO(instId, bit, true)
-      onceTimer = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
-        self, WriteTargetDO(instId, bit, false)))
+      self ! WriteTargetDO(instId, bit, on = true)
+      context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
+        self, WriteTargetDO(instId, bit, on = false))
 
     case ToggleMonitorTypeDO(instId, mtID, seconds) =>
-      onceTimer map { t => t.cancel() }
-      Logger.debug(s"ToggleMonitorTypeDO($instId, $mtID)")
+      Logger.info(s"ToggleMonitorTypeDO($instId, $mtID)")
       instrumentMap.get(instId).map { param =>
-        param.actor ! WriteMonitorTypeDO(mtID, true)
-        onceTimer = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
-          param.actor, WriteMonitorTypeDO(mtID, false)))
+        param.actor ! WriteMonitorTypeDO(mtID, on = true)
+        context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
+          param.actor, WriteMonitorTypeDO(mtID, on = false))
       }
 
 
@@ -826,32 +764,23 @@ class DataCollectManager @Inject()
       import akka.util.Timeout
 
       import scala.concurrent.duration._
-      implicit val timeout = Timeout(Duration(3, SECONDS))
+      implicit val timeout: Timeout = Timeout(Duration(3, SECONDS))
       instrumentMap.get(instId).map { param =>
         val f = param.actor ? IsTargetConnected(instId)
         for (ret <- f.mapTo[Boolean]) yield
           sender ! ret
       }
     case msg: ExecuteSeq =>
-      if (calibratorOpt.isDefined)
-        calibratorOpt.get ! msg
-      else {
-        Logger.warn(s"Calibrator is not online! Ignore execute (${msg.seq} - ${msg.on}).")
-      }
+        Logger.error(s"Unexpected message! Calibrator is not online! Ignore execute (${msg.seq} - ${msg.on}).")
+
 
     case msg: WriteDO =>
-      if (digitalOutputOpt.isDefined)
-        digitalOutputOpt.get ! msg
-      else {
-        Logger.warn(s"DO is not online! Ignore output (${msg.bit} - ${msg.on}).")
-      }
+        Logger.warn(s"Unexpected message! DO is not online! Ignore output (${msg.bit} - ${msg.on}).")
+
 
     case EvtOperationOverThreshold =>
-      if (digitalOutputOpt.isDefined)
-        digitalOutputOpt.get ! EvtOperationOverThreshold
-      else {
-        Logger.warn(s"DO is not online! Ignore EvtOperationOverThreshold.")
-      }
+        Logger.warn(s"Unexpected message! DO is not online! Ignore EvtOperationOverThreshold.")
+
 
     case CheckSensorStstus =>
       val today = DateTime.now().withMillisOfDay(0)
@@ -948,13 +877,21 @@ class DataCollectManager @Inject()
       context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, mtDataList, restartList)
 
       sender ! latestMap
+
+    case SprayAction(instId: String, seconds: Int) =>
+      // |SPRAY_WARN|--------|SPRAY|--------|SPRAY|-------
+      // |  0       |  1     |  2  |  3     |  4  |  5
+      self ! ToggleMonitorTypeDO(instId, MonitorType.SPRAY_WARN, seconds)
+
+      context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds * 2, SECONDS),
+        self, ToggleMonitorTypeDO(instId, MonitorType.SPRAY, seconds))
+
+      context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds * 4, SECONDS),
+        self, ToggleMonitorTypeDO(instId, MonitorType.SPRAY, seconds))
   }
 
   override def postStop(): Unit = {
     timer.cancel()
-    onceTimer map {
-      _.cancel()
-    }
   }
 
   case class InstrumentParam(actor: ActorRef, mtList: List[String], calibrationTimerOpt: Option[Cancellable])

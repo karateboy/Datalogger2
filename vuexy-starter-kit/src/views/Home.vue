@@ -1,114 +1,176 @@
 <!-- eslint-disable prettier/prettier -->
 <template>
   <b-row class="match-height">
-    <b-col :lg="statusLength" md="12">
-      <b-card ref="loadingContainer" title="最新監測資訊">
-        <b-table
-          striped
-          hover
-          :fields="columns"
-          :items="rows"
-          show-empty
-          responsive
-          empty-text="無資料"
-        >
-          <template #thead-top>
-            <b-tr>
-              <b-th></b-th>
-              <b-th
-                v-for="mt in userInfo.monitorTypeOfInterest"
-                :key="mt"
-                :colspan="form.monitors.length"
-                class="text-center"
-                style="text-transform: none"
-                >{{ getMtDesc(mt) }}</b-th
+    <b-col lg="6" md="12">
+      <b-card border-variant="primary" no-body>
+        <b-table-simple borderless table-variant="success">
+          <b-tbody>
+            <b-tr class="p-0">
+              <b-td class="text-left align-middle p-1 pb-0"
+              ><h4><strong>即時空氣品質監測</strong></h4></b-td
               >
+              <b-td class="p-1 pb-0 float-right">
+                <b-form-group v-slot="{ ariaDescribedby }">
+                  <b-form-radio-group
+                      id="radio-group-1"
+                      v-model="mapMonitorType"
+                      :options="myMonitorTypes"
+                      :aria-describedby="ariaDescribedby"
+                      name="radio-options"
+                  ></b-form-radio-group>
+                </b-form-group>
+              </b-td>
             </b-tr>
-          </template>
-        </b-table>
-      </b-card>
-    </b-col>
-    <b-col v-if="hasSpray" lg="3" md="12">
-      <b-card title="灑水系統">
-        <b-row no-gutters>
-          <b-col cols="3" class="pt-2">
-            <b-img
-              src="../assets/images/sprinkler.svg"
-              class="rounded-0 align-middle"
-            />
-          </b-col>
-          <b-col cols="9">
-            <b-card-body>
-              <b-card-text :class="{ 'text-danger': !spray }"
-                >啟動:{{ sprayStatus }}</b-card-text
-              >
-              <b-card-text :class="{ 'text-danger': !spray_connected }"
-                >連線狀態:{{ sprayConnected }}</b-card-text
-              >
-              <b-button
-                variant="primary"
-                :disabled="timer !== 0"
-                @click="testSpray"
-                >測試</b-button
-              >
-            </b-card-body>
-          </b-col>
-        </b-row>
-      </b-card>
-    </b-col>
-    <b-col lg="12" md="12">
-      <b-card>
-        <b-row>
-          <b-col lg="6" md="12">
-            <b-table-simple borderless>
-              <b-tbody>
-                <b-tr>
-                  <b-td class="text-left align-middle"
-                    ><h3>監測地圖🚀</h3></b-td
-                  >
-                </b-tr>
-              </b-tbody>
-            </b-table-simple>
-          </b-col>
-          <b-col lg="6" md="12"
-            ><b-img src="../assets/images/legend.png" fluid class="float-right"
-          /></b-col>
-        </b-row>
+            <b-tr>
+              <b-td colspan="2" class="p-0">
+                <b-img v-if="mapMonitorType==='PM25'" src="../assets/images/pm25_legend.png" fluid-grow
+                       class="float-right"/>
+                <b-img v-else-if="mapMonitorType==='PM10'" src="../assets/images/pm10_legend.png" fluid-grow
+                       class="float-right"/>
+              </b-td>
+            </b-tr>
+          </b-tbody>
+        </b-table-simple>
         <div class="map_container">
           <GmapMap
-            ref="mapRef"
-            :center="mapCenter"
-            :zoom="16"
-            map-type-id="terrain"
-            class="map_canvas"
+              ref="mapRef"
+              :center="mapCenter"
+              :zoom="18"
+              map-type-id="terrain"
+              class="map_canvas"
           >
             <div v-if="mapLoaded">
               <GmapMarker
-                v-for="(m, index) in markers"
-                :key="index"
-                :position="m.position"
-                :clickable="true"
-                :title="m.title"
-                :label="{
+                  v-for="(m, index) in markers"
+                  :key="index"
+                  :position="m.position"
+                  :clickable="true"
+                  :title="m.title"
+                  :label="{
                   text: m.label,
                   className: 'map-label bg-white rounded border border-primary',
                   color: 'black',
                   fontSize: '12px',
                   fontWeight: '400',
                 }"
-                :icon="m.icon"
-                @click="toggleInfoWindow(m, index)"
+                  :icon="m.icon"
+                  @click="toggleInfoWindow(m, index)"
               />
               <gmap-info-window
-                :options="infoOptions"
-                :position="infoWindowPos"
-                :opened="infoWinOpen"
-                @closeclick="infoWinOpen = false"
+                  :options="infoOptions"
+                  :position="infoWindowPos"
+                  :opened="infoWinOpen"
+                  @closeclick="infoWinOpen = false"
               />
             </div>
           </GmapMap>
         </div>
       </b-card>
+    </b-col>
+    <b-col lg="6" md="12">
+      <b-row>
+        <b-col>
+          <b-card border-variant="primary">
+            <b-row no-gutters>
+              <b-col lg="8" md="6">
+                <h3>即時空氣品質監測</h3>
+                <b-table-simple borderless>
+                  <b-tr>
+                    <b-th colspan="3">即時最高濃度</b-th>
+                  </b-tr>
+                  <b-tr>
+                    <b-th>PM10最高值</b-th>
+                    <b-th>{{ realtimeSummary.maxPM10 }}&nbsp; µg/m<sup>3</sup></b-th>
+                    <b-td>
+                      <span v-if="isValueNormal('PM10', realtimeSummary.maxPM10)">
+                      <b-img src="../assets/images/normal.png"
+                             width="25px"
+                             fluid/>
+                        &nbsp;
+                        <strong>正常</strong>
+                      </span>
+                      <span v-else>
+                        <b-img src="../assets/images/over_std.png"
+                               width="25px"
+                               fluid/>
+                        &nbsp;
+                        <strong>超標</strong>
+                      </span>
+                    </b-td>
+                  </b-tr>
+                  <b-tr>
+                    <b-th>PM2.5最高值</b-th>
+                    <b-th>{{ realtimeSummary.maxPM25 }}&nbsp; µg/m<sup>3</sup></b-th>
+                    <b-td>
+                      <span v-if="isValueNormal('PM25', realtimeSummary.maxPM25)">
+                      <b-img src="../assets/images/normal.png"
+                             width="25px"
+                             fluid/>
+                        &nbsp;
+                        <strong>正常</strong>
+                      </span>
+                      <span v-else>
+                        <b-img src="../assets/images/over_std.png"
+                               width="25px"
+                               fluid/>
+                        &nbsp;
+                        <strong>超標</strong>
+                      </span>
+                    </b-td>
+                  </b-tr>
+                  <b-tr>
+                    <b-th>感測器連項狀況</b-th>
+                    <b-th colspan="2">正常:{{ realtimeSummary.connected }} 斷線:{{
+                        realtimeSummary.disconnected
+                      }}
+                    </b-th>
+                  </b-tr>
+                </b-table-simple>
+              </b-col>
+              <b-col lg="4" md="6">
+                <b-row>
+                  <b-col cols="4" class="pt-2">
+                    <b-img fluid
+                           src="../assets/images/sprinkler.svg"
+                           class="rounded-0 align-middle"
+                    />
+                  </b-col>
+                  <b-col cols="8">
+                    <b-card-body>
+                      <b-card-text v-if="timer" class="text-info">剩餘時間:{{ countdown }}</b-card-text>
+                      <b-card-text :class="{ 'text-danger': !spray}">啟動:{{ sprayStatus }}</b-card-text>
+                      <b-card-text :class="{ 'text-danger': !spray_connected}">連線狀態:{{
+                          sprayConnected
+                        }}
+                      </b-card-text>
+                      <b-button
+                          variant="primary"
+                          :disabled="timer !== 0"
+                          @click="testSpray"
+                      >測試
+                      </b-button
+                      >
+                    </b-card-body>
+                  </b-col>
+                </b-row>
+              </b-col>
+            </b-row>
+          </b-card>
+        </b-col>
+      </b-row>
+      <b-row>
+        <b-col
+            v-for="mt in myMonitorTypes"
+            :key="mt"
+            cols="12"
+            md="6"
+            lg="6"
+        >
+          <b-card border-variant="primary">
+            <div :id="`history_${mt}`"></div>
+          </b-card>
+        </b-col>
+      </b-row>
     </b-col>
   </b-row>
 </template>
@@ -134,15 +196,23 @@
 </style>
 <script>
 import moment from 'moment';
-import { mapActions, mapState, mapGetters } from 'vuex';
+import {mapActions, mapGetters, mapState} from 'vuex';
 import axios from 'axios';
-import { Monitor, Group } from '../store/monitors/types';
+import highcharts from "highcharts";
+
 export default {
   data() {
     const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
     let group = undefined;
+    const myMonitorTypes = ['PM10', 'PM25']
+    let realtimeSummary = {
+      maxPM25: undefined,
+      maxPM10: undefined,
+      connected: 0,
+      disconnected: 0
+    };
     return {
-      dataTypes: [{ txt: '分鐘資料', id: 'min' }],
+      dataTypes: [{txt: '分鐘資料', id: 'min'}],
       form: {
         monitors: [],
         dataType: 'min',
@@ -156,6 +226,7 @@ export default {
       spray_connected: false,
       loader: undefined,
       timer: 0,
+      countdown: 0,
       refreshTimer: 0,
       infoWindowPos: null,
       infoWinOpen: false,
@@ -170,6 +241,9 @@ export default {
         },
       },
       group,
+      mapMonitorType: 'PM25',
+      myMonitorTypes,
+      realtimeSummary
     };
   },
   computed: {
@@ -178,10 +252,6 @@ export default {
     ...mapState('user', ['userInfo']),
     ...mapGetters('monitorTypes', ['mtMap']),
     ...mapGetters('monitors', ['mMap']),
-    statusLength() {
-      if (this.hasSpray) return 9;
-      else return 12;
-    },
     sprayStatus() {
       if (!this.spray_connected) return '未知';
 
@@ -194,10 +264,10 @@ export default {
     },
     mapCenter() {
       let count = 0,
-        latMax = -1,
-        latMin = 1000,
-        lngMax = -1,
-        lngMin = 1000;
+          latMax = -1,
+          latMin = 1000,
+          lngMax = -1,
+          lngMin = 1000;
 
       for (const stat of this.realTimeStatus) {
         const monitor = this.mMap.get(stat._id.monitor);
@@ -211,14 +281,11 @@ export default {
         count++;
       }
 
-      if (count === 0) return { lat: 23.9534736767587, lng: 120.9682970796872 };
+      if (count === 0) return {lat: 23.9534736767587, lng: 120.9682970796872};
 
       let lat = (latMax + latMin) / 2;
       let lng = (lngMax + lngMin) / 2;
-      return { lat, lng };
-    },
-    zoomLevel() {
-      return {};
+      return {lat, lng};
     },
     markers() {
       const ret = [];
@@ -232,27 +299,38 @@ export default {
           let mtCase = this.mtMap.get(mt);
           if (mtEntry.data.value) {
             valueStrList.push(
-              `${mtCase.desp}:${mtEntry.data.value.toFixed(mtCase.prec)}`,
+                `${mtCase.desp}:${mtEntry.data.value.toFixed(mtCase.prec)}`,
             );
-            if (mt === 'PM25') v = mtEntry.data.value;
+            if (mt === this.mapMonitorType) v = mtEntry.data.value;
           }
         }
         valueStr = valueStrList.join(', ');
 
-        let fillColor = '';
-        if (v < 15.4) fillColor = `#009865`;
-        else if (v < 35.4) fillColor = `#FFFB26`;
-        else if (v < 54.4) fillColor = `#FF9835`;
-        else if (v < 150.4) fillColor = `#CA0034`;
-        else if (v < 250.4) fillColor = `#670099`;
-        else if (v < 350.4) fillColor = `#7E0123`;
-        else fillColor = `#7E0123`;
+        let fillColor;
+        if(this.mapMonitorType === 'PM25') {
+          if (v < 15) fillColor = `#009865`;
+          else if (v < 35) fillColor = `#FFFB26`;
+          else if (v < 54) fillColor = `#FF9835`;
+          else if (v < 150) fillColor = `#CA0034`;
+          else if (v < 250) fillColor = `#670099`;
+          else if (v < 350) fillColor = `#7E0123`;
+          else fillColor = `#7E0123`;
+        } else {
+          // PM10
+          if (v < 50) fillColor = `#009865`;
+          else if (v < 100) fillColor = `#FFFB26`;
+          else if (v < 254) fillColor = `#FF9835`;
+          else if (v < 354) fillColor = `#CA0034`;
+          else if (v < 424) fillColor = `#670099`;
+          else if (v < 504) fillColor = `#7E0123`;
+          else fillColor = `#7E0123`;
+        }
 
         let markerIcon = {
           path: google.maps.SymbolPath.CIRCLE,
           fillColor,
           fillOpacity: 1,
-          scale: 7,
+          scale: 12,
           strokeColor: 'white',
           strokeWeight: 0.5,
         };
@@ -280,19 +358,19 @@ export default {
           ];
         });
 
-        const { markerIcon, valueStr, pm25desc } = getMtUrl(mtEntries);
+        const {markerIcon, valueStr, pm25desc} = getMtUrl(mtEntries);
 
         const monitor = this.mMap.get(stat._id.monitor);
         if (!monitor) continue;
         let label = pm25desc
-          ? `${monitor.desc}-${pm25desc}`
-          : `${monitor.desc}`;
+            ? `${monitor.desc}-${pm25desc}`
+            : `${monitor.desc}`;
 
         let lat = monitor.location[0];
         let lng = monitor.location[1];
         ret.push({
           title: valueStr,
-          position: { lat, lng },
+          position: {lat, lng},
           pm25,
           infoText: `<strong>${monitor.desc}</strong>`,
           label,
@@ -343,25 +421,6 @@ export default {
         this.currentMidx = idx;
       }
     },
-    getPM25Explain(v) {
-      if (v < 50) return '良好';
-      else if (v <= 100) return '普通';
-      else if (v <= 150) return '對敏感族群不健康';
-      else if (v <= 200) return '對所有族群不健康';
-      else return '危害';
-    },
-    getPM25Class(v) {
-      if (v < 12) return { FPMI1: true };
-      else if (v < 24) return { FPMI2: true };
-      else if (v < 36) return { FPMI3: true };
-      else if (v < 42) return { FPMI4: true };
-      else if (v < 48) return { FPMI5: true };
-      else if (v < 54) return { FPMI6: true };
-      else if (v < 59) return { FPMI7: true };
-      else if (v < 65) return { FPMI8: true };
-      else if (v < 71) return { FPMI9: true };
-      else return { FPMI10: true };
-    },
     async refresh() {
       await this.fetchMonitorTypes();
       await this.fetchMonitors();
@@ -381,9 +440,13 @@ export default {
         }
       }
 
-      this.query();
-      this.getRealtimeStatus();
-      this.getSignalValues();
+      await this.query();
+      for (const mt of this.myMonitorTypes) {
+        await this.drawTrendChart(mt);
+      }
+      await this.getRealtimeSummary();
+      await this.getRealtimeStatus();
+      await this.getSignalValues();
     },
     async query() {
       this.rows.splice(0, this.rows.length);
@@ -399,10 +462,80 @@ export default {
 
       this.rows = ret.data.rows;
     },
+    async drawTrendChart(mt) {
+      let now = new Date().getTime();
+
+      const oneHourBefore = now - 60 * 60 * 1000;
+      const myMonitors = this.monitors.map(m => m._id).join(":");
+      //const url = `/HistoryTrend/${myMonitors}/${mt}/all/Min/normal/${oneHourBefore}/${now}`;
+      const url = `/HistoryTrend/${myMonitors}/${mt}/Min/normal/${oneHourBefore}/${now}`;
+      const res = await axios.get(url);
+      const ret = res.data;
+
+      ret.chart = {
+        type: "spline",
+        zoomType: "x",
+        panning: {
+          enabled: true,
+        },
+        panKey: "shift",
+        alignTicks: false,
+      };
+
+      const pointFormatter = function pointFormatter() {
+        const d = new Date(this.x);
+        return `${d.toLocaleString()}:${Math.round(this.y)}度`;
+      };
+
+      let mtInfo = this.mtMap.get(mt);
+      ret.title.text = `${mtInfo.desp}趨勢圖`;
+      ret.tooltip = {valueDecimals: 2};
+      ret.legend = {enabled: true};
+      ret.credits = {
+        enabled: false,
+        href: "http://www.wecc.com.tw/",
+      };
+
+      ret.tooltip = {valueDecimals: 2};
+      ret.legend = {enabled: true};
+      ret.credits = {
+        enabled: false,
+        href: 'http://www.wecc.com.tw/',
+      };
+      ret.xAxis.type = 'datetime';
+      ret.xAxis.dateTimeLabelFormats = {
+        day: '%b%e日',
+        week: '%b%e日',
+        month: '%y年%b',
+      };
+
+      ret.plotOptions = {
+        scatter: {
+          tooltip: {
+            pointFormatter,
+          },
+        },
+      };
+      ret.time = {
+        timezoneOffset: -480,
+      };
+      ret.exporting = {
+        enabled: false,
+      };
+      highcharts.chart(`history_${mt}`, ret);
+    },
     async getRealtimeStatus() {
       try {
         const ret = await axios.get('/RealtimeStatus');
         this.realTimeStatus = ret.data;
+      } catch (ex) {
+        throw new Error('failed');
+      }
+    },
+    async getRealtimeSummary() {
+      try {
+        const res = await axios.get('/RealtimeSummary');
+        this.realtimeSummary = res.data;
       } catch (ex) {
         throw new Error('failed');
       }
@@ -451,18 +584,18 @@ export default {
     },
     async testSpray() {
       await axios.get('/TestSpray');
-      let countdown = 15;
+      this.countdown = 5 * 6;
       this.timer = setInterval(() => {
-        countdown--;
+        this.countdown--;
         this.getSignalValues();
-        if (countdown === 0) {
+        if (this.countdown === 0) {
           clearInterval(this.timer);
           this.timer = 0;
         }
       }, 1000);
     },
     getBoundsZoomLevel(bounds, mapDim) {
-      var WORLD_DIM = { height: 256, width: 256 };
+      var WORLD_DIM = {height: 256, width: 256};
       var ZOOM_MAX = 21;
 
       function latRad(lat) {
@@ -494,6 +627,18 @@ export default {
         this.group = ret.data;
       }
     },
+    isValueNormal(mt, value) {
+      if (this.mtMap === undefined) return true;
+
+      let mtCase = this.mtMap.get(mt);
+      if (mtCase === undefined) return true;
+
+      let std = mtCase.std_law;
+      if (value === undefined || std === undefined || value <= std) return true;
+
+      console.info(`mt=${mt} value=${value}, std=${std}`);
+      return false;
+    }
   },
 };
 </script>

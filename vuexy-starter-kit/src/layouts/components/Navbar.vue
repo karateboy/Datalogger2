@@ -10,11 +10,10 @@
     </ul>
 
     <!-- Left Col -->
-    <div
-      class="bookmark-wrapper align-items-center flex-grow-1 d-none d-lg-flex"
-    >
-      <dark-Toggler class="d-none d-lg-block" />
-    </div>
+
+    <dark-Toggler class="d-none d-lg-block" />
+    <div class="flex-grow-1 text-center"><h1 class="mt-0 mb-0"><strong>空氣品質感測器監控系統</strong></h1></div>
+
 
     <b-navbar-nav class="nav align-items-center ml-auto">
       <b-nav-item-dropdown
