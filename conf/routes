@@ -52,7 +52,7 @@ GET           /Instruments                                                      
 GET           /Instruments/DO                                                                  controllers.HomeController.getDoInstrumentList
 GET           /Instrument/:id                                                                  controllers.HomeController.getInstrument(id)
 DELETE        /Instrument/:ids                                                                 controllers.HomeController.removeInstrument(ids)
-
+GET           /MyGroupDoInstrument                                                             controllers.HomeController.getMyDoInstrumentList
 
 
 PUT           /DeactivateInstrument/:ids                                                       controllers.HomeController.deactivateInstrument(ids)

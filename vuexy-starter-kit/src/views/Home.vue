@@ -2,36 +2,28 @@
 <template>
   <b-row class="match-height">
     <b-col lg="6" md="12">
-      <b-card border-variant="primary" no-body>
-        <b-table-simple borderless table-variant="success">
-          <b-tbody>
-            <b-tr class="p-0">
-              <b-td class="text-left align-middle p-1 pb-0"
-              ><h4><strong>即時空氣品質監測</strong></h4></b-td
-              >
-              <b-td class="p-1 pb-0 float-right">
-                <b-form-group v-slot="{ ariaDescribedby }">
-                  <b-form-radio-group
-                      id="radio-group-1"
-                      v-model="mapMonitorType"
-                      :options="myMonitorTypes"
-                      :aria-describedby="ariaDescribedby"
-                      name="radio-options"
-                  ></b-form-radio-group>
-                </b-form-group>
-              </b-td>
-            </b-tr>
-            <b-tr>
-              <b-td colspan="2" class="p-0">
-                <b-img v-if="mapMonitorType==='PM25'" src="../assets/images/pm25_legend.png" fluid-grow
-                       class="float-right"/>
-                <b-img v-else-if="mapMonitorType==='PM10'" src="../assets/images/pm10_legend.png" fluid-grow
-                       class="float-right"/>
-              </b-td>
-            </b-tr>
-          </b-tbody>
-        </b-table-simple>
+      <b-card
+          class="text-center"
+          no-body>
+        <b-card-header header-class="header-bg-color pt-1 pl-1 pb-0">
+          <h4><strong>即時空氣品質監測</strong></h4>
+          <b-form-group v-slot="{ ariaDescribedby }">
+            <b-form-radio-group
+                id="radio-group-1"
+                v-model="mapMonitorType"
+                :options="myMonitorTypesOptions"
+                :aria-describedby="ariaDescribedby"
+                name="radio-options"
+            ></b-form-radio-group>
+          </b-form-group>
+        </b-card-header>
         <div class="map_container">
+          <div id="mapLegend" class="mb-2 rounded">
+            <b-img v-if="mapMonitorType==='PM25'" src="../assets/images/pm25_legend.png" width="400" fluid
+                   class="float-right"/>
+            <b-img v-else-if="mapMonitorType==='PM10'" src="../assets/images/pm10_legend.png" width="400" fluid
+                   class="float-right"/>
+          </div>
           <GmapMap
               ref="mapRef"
               :center="mapCenter"
@@ -70,18 +62,19 @@
     <b-col lg="6" md="12">
       <b-row>
         <b-col>
-          <b-card border-variant="primary">
-            <b-row no-gutters>
-              <b-col lg="8" md="6">
-                <h3>即時空氣品質監測</h3>
-                <b-table-simple borderless>
-                  <b-tr>
-                    <b-th colspan="3">即時最高濃度</b-th>
-                  </b-tr>
-                  <b-tr>
-                    <b-th>PM10最高值</b-th>
-                    <b-th>{{ realtimeSummary.maxPM10 }}&nbsp; µg/m<sup>3</sup></b-th>
-                    <b-td>
+          <b-card no-body>
+              <b-row no-gutters>
+                <b-col class="header-bg-color pt-1 pl-1 pb-0" lg="6"><h4><strong>即時空氣品質監測</strong></h4></b-col>
+                <b-col class="header-bg-color pt-1 pl-1 pb-0" lg="6"><h4><strong>灑水系統狀態</strong></h4></b-col>
+                <b-col lg="6" class="border-right">
+                  <b-table-simple borderless>
+                    <b-tr>
+                      <b-th colspan="3">即時最高濃度</b-th>
+                    </b-tr>
+                    <b-tr>
+                      <b-th>PM10最高值</b-th>
+                      <b-th>{{ realtimeSummary.maxPM10 }}&nbsp; µg/m<sup>3</sup></b-th>
+                      <b-td>
                       <span v-if="isValueNormal('PM10', realtimeSummary.maxPM10)">
                       <b-img src="../assets/images/normal.png"
                              width="25px"
@@ -89,19 +82,19 @@
                         &nbsp;
                         <strong>正常</strong>
                       </span>
-                      <span v-else>
+                        <span v-else>
                         <b-img src="../assets/images/over_std.png"
                                width="25px"
                                fluid/>
                         &nbsp;
                         <strong>超標</strong>
                       </span>
-                    </b-td>
-                  </b-tr>
-                  <b-tr>
-                    <b-th>PM2.5最高值</b-th>
-                    <b-th>{{ realtimeSummary.maxPM25 }}&nbsp; µg/m<sup>3</sup></b-th>
-                    <b-td>
+                      </b-td>
+                    </b-tr>
+                    <b-tr>
+                      <b-th>PM2.5最高值</b-th>
+                      <b-th>{{ realtimeSummary.maxPM25 }}&nbsp; µg/m<sup>3</sup></b-th>
+                      <b-td>
                       <span v-if="isValueNormal('PM25', realtimeSummary.maxPM25)">
                       <b-img src="../assets/images/normal.png"
                              width="25px"
@@ -109,52 +102,59 @@
                         &nbsp;
                         <strong>正常</strong>
                       </span>
-                      <span v-else>
+                        <span v-else>
                         <b-img src="../assets/images/over_std.png"
                                width="25px"
                                fluid/>
                         &nbsp;
                         <strong>超標</strong>
                       </span>
-                    </b-td>
-                  </b-tr>
-                  <b-tr>
-                    <b-th>感測器連項狀況</b-th>
-                    <b-th colspan="2">正常:{{ realtimeSummary.connected }} 斷線:{{
-                        realtimeSummary.disconnected
-                      }}
-                    </b-th>
-                  </b-tr>
-                </b-table-simple>
-              </b-col>
-              <b-col lg="4" md="6">
-                <b-row>
-                  <b-col cols="4" class="pt-2">
-                    <b-img fluid
-                           src="../assets/images/sprinkler.svg"
-                           class="rounded-0 align-middle"
-                    />
-                  </b-col>
-                  <b-col cols="8">
-                    <b-card-body>
-                      <b-card-text v-if="timer" class="text-info">剩餘時間:{{ countdown }}</b-card-text>
-                      <b-card-text :class="{ 'text-danger': !spray}">啟動:{{ sprayStatus }}</b-card-text>
-                      <b-card-text :class="{ 'text-danger': !spray_connected}">連線狀態:{{
-                          sprayConnected
+                      </b-td>
+                    </b-tr>
+                    <b-tr>
+                      <b-th>感測器連項狀況</b-th>
+                      <b-th colspan="2">正常:{{ realtimeSummary.connected }} 斷線:{{
+                          realtimeSummary.disconnected
                         }}
-                      </b-card-text>
-                      <b-button
-                          variant="primary"
-                          :disabled="timer !== 0"
-                          @click="testSpray"
-                      >測試
-                      </b-button
-                      >
-                    </b-card-body>
-                  </b-col>
-                </b-row>
-              </b-col>
-            </b-row>
+                      </b-th>
+                    </b-tr>
+                  </b-table-simple>
+                </b-col>
+                <b-col lg="6" class="d-flex flex-row flex-fill">
+                    <b-col v-if="hasSpray" class="d-flex flex-column justify-content-center">
+                        <b-button
+                            class="m-2"
+                            size="sm"
+                            variant="primary"
+                            :disabled="timer !== 0"
+                            @click="testSpray"
+                        >啟動
+                        </b-button>
+                        <b-button
+                            class="m-2"
+                            size="sm"
+                            variant="danger"
+                            :disabled="timer === 0"
+                            @click="testSpray">停止</b-button>
+
+                    </b-col>
+                    <b-col class="d-flex flex-column justify-content-around">
+                      <b-img fluid
+                             width="50"
+                             src="../assets/images/sprinkler.svg"
+                             class="rounded-0 align-middle"
+                      />
+                    </b-col>
+                    <b-col class="d-flex flex-column justify-content-around">
+                      <h4 v-if="timer" class="text-info">剩餘時間:{{ countdown }}</h4>
+                      <h4 :class="{ 'text-danger': !spray}"><strong>啟動:{{ sprayStatus }}</strong></h4>
+                      <h4 :class="{ 'text-danger': !spray_connected}"><strong>連線:{{
+                          sprayConnected
+                        }}</strong>
+                      </h4>
+                    </b-col>
+                </b-col>
+              </b-row>
           </b-card>
         </b-col>
       </b-row>
@@ -162,11 +162,11 @@
         <b-col
             v-for="mt in myMonitorTypes"
             :key="mt"
-            cols="12"
-            md="6"
-            lg="6"
         >
-          <b-card border-variant="primary">
+          <b-card no-body>
+            <b-card-header header-class="header-bg-color pt-1 pl-1 pb-0 text-center">
+              <h4 class="flex-fill"><strong>{{ mtMap.get(mt).desp }}趨勢圖</strong></h4>
+            </b-card-header>
             <div :id="`history_${mt}`"></div>
           </b-card>
         </b-col>
@@ -193,6 +193,14 @@
   margin-top: 3rem !important;
   padding: 0.2rem !important;
 }
+
+.header-bg-color {
+  background-color: #c3efd7 !important;
+}
+
+.sensorFilter {
+  background-color: white;
+}
 </style>
 <script>
 import moment from 'moment';
@@ -204,7 +212,6 @@ export default {
   data() {
     const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
     let group = undefined;
-    const myMonitorTypes = ['PM10', 'PM25']
     let realtimeSummary = {
       maxPM25: undefined,
       maxPM10: undefined,
@@ -242,8 +249,7 @@ export default {
       },
       group,
       mapMonitorType: 'PM25',
-      myMonitorTypes,
-      realtimeSummary
+      realtimeSummary,
     };
   },
   computed: {
@@ -252,13 +258,24 @@ export default {
     ...mapState('user', ['userInfo']),
     ...mapGetters('monitorTypes', ['mtMap']),
     ...mapGetters('monitors', ['mMap']),
+    myMonitorTypes() {
+      const defaultMonitorTypes = ['PM10', 'PM25'];
+      if(this.monitorTypes === undefined) return defaultMonitorTypes;
+      return defaultMonitorTypes.filter(mt => this.mtMap.get(mt) !== undefined);
+    },
+    myMonitorTypesOptions() {
+      return this.myMonitorTypes.map(mt => {
+        return {value: mt, text: this.mtMap.get(mt).desp};
+      });
+    },
     sprayStatus() {
+      if(!this.hasSpray) return '未安裝';
       if (!this.spray_connected) return '未知';
-
       if (this.spray) return '否';
       else return '是';
     },
     sprayConnected() {
+      if(!this.hasSpray) return '未安裝';
       if (this.spray_connected) return '正常';
       else return '斷線';
     },
@@ -383,15 +400,16 @@ export default {
   async mounted() {
     this.$gmapApiPromiseLazy().then(() => {
       this.mapLoaded = true;
+      const mapLegend = document.getElementById('mapLegend');
+      if (mapLegend !== null) {
+        const ref = this.$refs.mapRef;
+        ref.$mapPromise.then(map => {
+          map.controls[google.maps.ControlPosition.BOTTOM_LEFT].push(mapLegend);
+        });
+      }
     });
-    /*
-    this.loader = this.$loading.show({
-      // Optional parameters
-      container: null,
-      canCancel: false,
-    }); */
 
-    await this.getSignalInstrumentList();
+    await this.getGroupDoInstrumentList();
     this.refresh();
     this.refreshTimer = setInterval(() => {
       this.refresh();
@@ -448,6 +466,11 @@ export default {
       await this.getRealtimeStatus();
       await this.getSignalValues();
     },
+    async getGroupDoInstrumentList() {
+      const res = await axios.get('/MyGroupDoInstrument');
+      if (res.data.length === 0) this.hasSpray = false;
+      else this.hasSpray = true;
+    },
     async query() {
       this.rows.splice(0, this.rows.length);
       this.columns = this.getColumns();
@@ -488,7 +511,7 @@ export default {
       };
 
       let mtInfo = this.mtMap.get(mt);
-      ret.title.text = `${mtInfo.desp}趨勢圖`;
+      ret.title.text = "";
       ret.tooltip = {valueDecimals: 2};
       ret.legend = {enabled: true};
       ret.credits = {
@@ -572,15 +595,8 @@ export default {
     },
     async getSignalValues() {
       const res = await axios.get('/SignalValues');
-      if (res.data.SPRAY === true) this.spray = true;
-      else this.spray = false;
-      if (res.data.SPRAY === undefined) this.spray_connected = false;
-      else this.spray_connected = true;
-    },
-    async getSignalInstrumentList() {
-      const res = await axios.get('/DoInstrumentInfoList');
-      if (res.data.length === 0) this.hasSpray = false;
-      else this.hasSpray = true;
+      this.spray = res.data.SPRAY === true;
+      this.spray_connected = res.data.SPRAY !== undefined;
     },
     async testSpray() {
       await axios.get('/TestSpray');

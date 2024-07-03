@@ -258,6 +258,17 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.toJson(ret))
   }
 
+  def getMyDoInstrumentList(): Action[AnyContent] = Security.Authenticated {
+    implicit request=>
+      val userInfo = Security.getUserinfo(request).get
+      val group = groupOp.getGroupByID(userInfo.group).get
+
+    val ret = instrumentOp.getInstrumentList().filter(p => p.group.contains(group._id)
+      && InstrumentType.DoInstruments.contains(p.instType))
+
+    Ok(Json.toJson(ret))
+  }
+
   def getInstrument(id: String): Action[AnyContent] = Security.Authenticated {
     val ret = instrumentOp.getInstrument(id)
     if (ret.isEmpty)
