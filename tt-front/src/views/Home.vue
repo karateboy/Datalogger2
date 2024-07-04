@@ -196,7 +196,7 @@ export default {
 
         const monitor = this.mMap.get(stat._id.monitor);
         if (!monitor) continue;
-        let label = pm25desc
+        const label = pm25desc
             ? `${monitor.desc}-${pm25desc}`
             : `${monitor.desc}`;
 
@@ -206,7 +206,7 @@ export default {
           title: valueStr,
           position: {lat, lng},
           pm25,
-          infoText: `<strong>${monitor.desc}</strong>`,
+          infoText: `<strong>${monitor.desc}</strong><i>${valueStr}</i>`,
           label,
           icon: markerIcon
         });
