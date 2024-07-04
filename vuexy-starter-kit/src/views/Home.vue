@@ -112,7 +112,7 @@
                       </b-td>
                     </b-tr>
                     <b-tr>
-                      <b-th>感測器連項狀況</b-th>
+                      <b-th>感測器連接狀況</b-th>
                       <b-th colspan="2">正常:{{ realtimeSummary.connected }} 斷線:{{
                           realtimeSummary.disconnected
                         }}
