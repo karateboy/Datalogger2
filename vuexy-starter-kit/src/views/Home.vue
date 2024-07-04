@@ -394,6 +394,23 @@ export default {
           icon: markerIcon,
         });
       }
+
+      // auto fit the map
+      const ref = this.$refs.mapRef;
+      if (ref) {
+        ref.$mapPromise.then(map => {
+          let bounds = new google.maps.LatLngBounds();
+          for (let marker of ret) {
+            bounds.extend(marker.position);
+          }
+          let mapDim = {
+            height: map.getDiv().clientHeight,
+            width: map.getDiv().clientWidth,
+          };
+          map.fitBounds(bounds);
+          map.setZoom(this.getBoundsZoomLevel(bounds, mapDim));
+        });
+      }
       return ret;
     },
   },
