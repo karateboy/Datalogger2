@@ -76,7 +76,7 @@ class PicarroG2307Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
     alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
 
-  import PicarroG2131i._
+  import PicarroG2307._
 
   @volatile var socketOpt: Option[Socket] = None
   @volatile var outOpt: Option[OutputStream] = None
@@ -101,15 +101,11 @@ class PicarroG2307Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
             }
 
             val cmd = "_Meas_GetConc\r"
-            Logger.debug(s"DAS=>Picarro ${cmd}")
+            Logger.debug(s"DAS=>Picarro $cmd")
             out.write(cmd.getBytes())
             val resp = readUntileNonEmpty()
             Logger.debug(s"Picarro=>DAS $resp")
             val tokens = resp.split(";")
-            if (tokens.length != predefinedIST.length) {
-              Logger.error(s"Data length ${tokens.length} != ${predefinedIST.length}")
-              Logger.error(resp)
-            }
 
             val inputs =
               for (ist <- predefinedIST if ist.addr < tokens.length) yield {
