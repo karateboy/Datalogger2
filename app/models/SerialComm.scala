@@ -8,20 +8,20 @@ import java.io.{InputStream, OutputStream}
 
 case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputStream) {
   var clearBuffer: Boolean = false
-  var readBuffer = Array.empty[Byte]
+  private var readBuffer = Array.empty[Byte]
 
   def getLineWithTimeout(timeout: Int): List[String] = handleWithTimeout(getLine)(timeout)
 
-  def handleWithTimeout(readFunction: () => List[String])(timeout: Int): List[String] = {
-    import com.github.nscala_time.time.Imports._
+  private def handleWithTimeout(readFunction: () => List[String])(timeout: Int): List[String] = {
+    import java.time._
     var strList: List[String] = readFunction()
-    val startTime = DateTime.now
-    while (strList.length == 0) {
+    val startTime = Instant.now()
+    while (strList.isEmpty) {
       Thread.sleep(100)
-      val elapsedTime = new Duration(startTime, DateTime.now)
-      if (elapsedTime.getStandardSeconds > timeout) {
+      val elapsedTime = Duration.between(startTime, Instant.now())
+      if (elapsedTime.getSeconds > timeout) {
         clearBuffer = true
-        throw new Exception("Read timeout!")
+        throw new Exception(s"Read timeout! elapsed time: ${elapsedTime.getSeconds} seconds")
       }
       strList = readFunction()
     }

@@ -416,6 +416,8 @@ export default Vue.extend({
         'baseline9000',
         'horiba370',
         'picarroG2401',
+        'picarroG2131i',
+        'picarroG2307',
         'EcoPhysics88P',
       ];
       for (const t of types) {

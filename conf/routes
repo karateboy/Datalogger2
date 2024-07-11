@@ -14,6 +14,7 @@ GET           /dist/*file                                                       
 GET           /logout                                                                                            controllers.Login.logout
 POST          /login                                                                                             controllers.Login.authenticate
 GET           /login                                                                                             controllers.Login.isLogin
+GET           /version                                                                                           controllers.HomeController.version
 
 POST          /User                                                                                              controllers.HomeController.newUser
 GET           /User                                                                                              controllers.HomeController.getAllUsers
