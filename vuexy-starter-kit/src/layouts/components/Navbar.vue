@@ -14,7 +14,8 @@
       class="bookmark-wrapper align-items-center flex-grow-1 d-none d-lg-flex"
     >
       <dark-Toggler class="d-none d-lg-block" />
-      <h2 class="m-0">空氣品質資料蒐集系統</h2>
+      <h2 class="m-0">空氣品質資料蒐集系統&nbsp;&nbsp;&nbsp;</h2>
+      <sub class="text-muted">{{ version }}</sub>
     </div>
 
     <b-navbar-nav class="nav align-items-center ml-auto">
@@ -95,7 +96,20 @@ export default {
       return '使用者';
     },
   },
+  async mounted() {
+    await this.getVersion();
+  },
+  data() {
+    return {
+      version : "1.0.0",
+    };
+  },
   methods: {
+    async getVersion() {
+      let res = await axios.get('/version');
+      if(res.status === 200)
+        this.version = res.data.version;
+    },
     logout() {
       axios.get('/logout').then(() => {
         jscookie.remove('authentication');

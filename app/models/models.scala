@@ -1,9 +1,13 @@
 package models
 
 import com.github.nscala_time.time.Imports._
+import controllers.Assets.BadRequest
 import play.api._
+import play.api.data.validation.ValidationError
 import play.api.libs.json._
+import play.api.mvc.Result
 
+import scala.concurrent.Future
 import scala.language.implicitConversions
 
 /**
@@ -54,6 +58,15 @@ object ModelHelper {
     case ex: Throwable =>
       Logger.error(prompt, ex)
       throw ex
+  }
+
+  def handleJsonValidateError(error: Seq[(JsPath, Seq[ValidationError])]): Result = {
+    Logger.error(JsError.toJson(error).toString(), new Exception("Json validate error"))
+    BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+  }
+
+  def handleJsonValidateErrorFuture(error: Seq[(JsPath, Seq[ValidationError])]): Future[Result] = {
+    Future.successful(handleJsonValidateError(error))
   }
 
   def directionAvg(sum_sin: Double, sum_cos: Double): Double = {
