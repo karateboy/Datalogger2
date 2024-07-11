@@ -1,5 +1,5 @@
 name := """DataLogger2"""
-val mainVersion = "1.4.27"
+val mainVersion = "1.4.29"
 val distVersion = ""
 version := s"$mainVersion$distVersion"
 
@@ -19,7 +19,8 @@ libraryDependencies ++= Seq(
 libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "4.2.0"
 
 // https://mvnrepository.com/artifact/com.github.nscala-time/nscala-time
-libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "2.28.0"
+libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "2.32.0"
+
 
 // https://mvnrepository.com/artifact/org.eclipse.paho/org.eclipse.paho.client.mqttv3
 libraryDependencies += "org.eclipse.paho" % "org.eclipse.paho.client.mqttv3" % "1.2.5"

@@ -41,18 +41,6 @@ object PicarroG2131i extends AbstractDrv(_id = "picarroG2131i", desp = "Picarro 
     f2(id, desc = super.description, config, protocol)
   }
 
-  override def verifyParam(json: String) = {
-    val mt = getDataRegList.map(_.monitorType)
-    val newParam = DeviceConfig(Some(1), None, Some(mt),
-      None, None, None,
-      None, None,
-      None, None,
-      None, None,
-      None)
-
-    Json.toJson(newParam).toString()
-  }
-
   override def getDataRegList: List[DataReg] =
     predefinedIST.filter(p => dataAddress.contains(p.addr)).map {
       ist =>
