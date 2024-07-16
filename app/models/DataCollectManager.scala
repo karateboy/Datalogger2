@@ -294,7 +294,7 @@ object DataCollectManager {
               }
             case MonitorType.RAIN =>
               if (mtCase.accumulated.contains(true))
-                Some(values.max)
+                Some(values.last)
               else
                 Some(values.sum)
 
@@ -375,7 +375,7 @@ object DataCollectManager {
 
       def hourAccumulator(values: Seq[Double], isRaw: Boolean): Option[Double] = {
         if (values.isEmpty)
-          return None
+          None
         else {
           val mtCase = monitorTypeDB.map(mt)
           mt match {
@@ -397,7 +397,7 @@ object DataCollectManager {
               }
             case MonitorType.RAIN =>
               if (mtCase.accumulated.contains(true))
-                Some(values.max)
+                Some(values.last)
               else
                 Some(values.sum)
             case MonitorType.PM10 =>

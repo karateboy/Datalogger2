@@ -299,7 +299,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
         for (holdTime <- deviceConfig.holdTime) yield
           context.system.scheduler.scheduleOnce(Duration(holdTime, SECONDS), self, DownStart)
       }
-      context become calibrationPhase(calibrationType, startTime, true, calibrationReadingList,
+      context become calibrationPhase(calibrationType, startTime, recordCalibration = true, calibrationReadingList,
         zeroReading, endState, calibrationTimer)
 
     case DownStart =>
@@ -307,7 +307,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
       import scala.concurrent.duration._
 
       if (calibrationType.auto && calibrationType.zero) {
-        context become calibrationPhase(calibrationType, startTime, false, calibrationReadingList,
+        context become calibrationPhase(calibrationType, startTime, recordCalibration = false, calibrationReadingList,
           zeroReading, endState, None)
         // Auto zero calibration will jump to end immediately
         self ! CalibrateEnd
@@ -318,7 +318,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           for (downTime <- deviceConfig.downTime) yield
             context.system.scheduler.scheduleOnce(Duration(downTime, SECONDS), self, CalibrateEnd)
 
-        context become calibrationPhase(calibrationType, startTime, false, calibrationReadingList,
+        context become calibrationPhase(calibrationType, startTime, recordCalibration = false, calibrationReadingList,
           zeroReading, endState, calibrationTimerOpt)
       }
 
@@ -329,7 +329,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           else
             triggerSpanCalibration(false)
         }
-      } onFailure (calibrationErrorHandler(instId, calibrationTimerOpt, endState))
+      } onFailure calibrationErrorHandler(instId, calibrationTimerOpt, endState)
 
     case rd: ReportData =>
       if (recordCalibration)
@@ -363,10 +363,10 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
           collectorState = MonitorStatus.NormalStat
           instrumentOp.setState(instId, collectorState)
           val raiseStartTimer = Some(purgeCalibrator)
-          context become calibrationPhase(AutoSpan, startTime, false, List.empty[ReportData],
+          context become calibrationPhase(AutoSpan, startTime, recordCalibration = false, List.empty[ReportData],
             values, endState, raiseStartTimer)
         } else {
-          context become calibrationPhase(AutoSpan, startTime, false, List.empty[ReportData],
+          context become calibrationPhase(AutoSpan, startTime, recordCalibration = false, List.empty[ReportData],
             values, endState, None)
           self ! RaiseStart
         }
