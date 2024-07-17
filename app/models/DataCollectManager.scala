@@ -244,7 +244,7 @@ object DataCollectManager {
 
   def calculateMinAvgMap(monitorTypeDB: MonitorTypeDB,
                          mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]],
-                         alwaysValid: Boolean)(calibrationMap: CalibrationListMap, dateTime: DateTime): immutable.Iterable[MtRecord] = {
+                         alwaysValid: Boolean)(calibrationMap: CalibrationListMap, target: DateTime): immutable.Iterable[MtRecord] = {
     for {
       (mt, statusMap) <- mtMap
       total = statusMap.map {
@@ -255,7 +255,7 @@ object DataCollectManager {
         val totalSize = statusMap map {
           _._2.length
         } sum
-        val statusKV = {
+        val statusValues = {
           val kv = statusMap.maxBy(kv => kv._2.length)
           if (kv._1 == MonitorStatus.NormalStat && (alwaysValid ||
             statusMap(kv._1).size < totalSize * effectiveRatio)) {
@@ -265,8 +265,8 @@ object DataCollectManager {
           } else
             kv
         }
-        val values = statusKV._2.map(_._2)
-        val avgOpt = if (values.length == 0)
+        val values = statusValues._2.map(_._2)
+        val avgOpt = if (values.isEmpty)
           None
         else {
           val mtCase = monitorTypeDB.map(mt)
@@ -331,10 +331,10 @@ object DataCollectManager {
           val roundedAvg =
             for (avg <- avgOpt) yield
               BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
-          (roundedAvg, statusKV._1)
+          (roundedAvg, statusValues._1)
         } catch {
           case _: Throwable =>
-            (None, statusKV._1)
+            (None, statusValues._1)
         }
       }
 
@@ -344,7 +344,7 @@ object DataCollectManager {
         rawValue
       })
 
-      val (mOpt, bOpt) = findTargetCalibrationMB(calibrationMap, mt, dateTime).getOrElse((None, None))
+      val (mOpt, bOpt) = findTargetCalibrationMB(calibrationMap, mt, target).getOrElse((None, None))
       monitorTypeDB.getMinMtRecordByRawValue(mt, minuteRawAvg._1, minuteRawAvg._2)(mOpt, bOpt)
     }
   }
@@ -684,7 +684,7 @@ class DataCollectManager @Inject()
           signalTypeHandlerMap, signalDataMap, calibrationListMap)
       }
 
-    case CalculateData => {
+    case CalculateData =>
       import scala.collection.mutable.ListBuffer
 
       val now = DateTime.now()
@@ -762,8 +762,7 @@ class DataCollectManager @Inject()
       }
 
       def calculateMinData(current: DateTime, calibrationMap: CalibrationListMap): Future[UpdateResult] = {
-        import scala.collection.mutable.Map
-        val mtMap = Map.empty[String, Map[String, ListBuffer[(String, DateTime, Double)]]]
+        val mtMap = mutable.Map.empty[String, mutable.Map[String, ListBuffer[(String, DateTime, Double)]]]
 
         val currentData = mtDataList.takeWhile(d => d._1 >= current)
         val minDataList = mtDataList.drop(currentData.length)
@@ -774,13 +773,13 @@ class DataCollectManager @Inject()
           data <- dl._3
         } {
           val statusMap = mtMap.getOrElse(data.mt, {
-            val map = Map.empty[String, ListBuffer[(String, DateTime, Double)]]
+            val map = mutable.Map.empty[String, ListBuffer[(String, DateTime, Double)]]
             mtMap.put(data.mt, map)
             map
           })
 
           val lb = statusMap.getOrElseUpdate(data.status, ListBuffer.empty[(String, DateTime, Double)])
-          lb.append((instrumentId, dl._1, data.value))
+          lb.prepend((instrumentId, dl._1, data.value))
         }
 
         val priorityMtPair =
@@ -849,7 +848,6 @@ class DataCollectManager @Inject()
             errorHandler(exception)
         }
       }
-    }
 
     case UpdateCalibrationMap(map) =>
       context become handler(instrumentMap, collectorInstrumentMap,

@@ -308,7 +308,7 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
           MonitorStatus.NormalStat
 
         val mtd = MonitorTypeData(mt, value, status)
-        Logger.info(s"$instId: 4080 $mt $value $status")
+        Logger.debug(s"$instId: 4080 $mt $value $status")
         context.parent ! ReportData(List(mtd))
       }
     } catch {

@@ -6,6 +6,7 @@ import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
 object TapiTxxCollector extends InjectedActorSupport {
   case object ConnectHost
@@ -390,22 +391,22 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
       } onFailure calibrationErrorHandler(instId, timerOpt, endState)
 
     case HoldStart =>
-      Logger.info(s"${self.path.name} => HoldStart")
-      import scala.concurrent.duration._
       val calibrationTimerOpt =
-        for (holdTime <- tapiConfig.holdTime) yield
-          context.system.scheduler.scheduleOnce(Duration(holdTime, SECONDS), self, DownStart)
+        for (holdTime <- tapiConfig.holdTime) yield {
+          Logger.info(s"${self.path.name} => HoldStart (hold for ${holdTime} second)")
+          context.system.scheduler.scheduleOnce(FiniteDuration(holdTime, SECONDS), self, DownStart)
+        }
 
-      context become calibration(calibrationType, startTime, true, calibrationReadingList,
+      context become calibration(calibrationType, startTime, recordCalibration = true, calibrationReadingList,
         zeroReading, endState, calibrationTimerOpt)
 
 
     case DownStart =>
-      Logger.info(s"${self.path.name} => DownStart (${calibrationReadingList.length})")
+      Logger.info(s"${self.path.name} => DownStart (${calibrationReadingList.length} calibration records)")
       import scala.concurrent.duration._
 
       if (calibrationType.auto && calibrationType.zero) {
-        context become calibration(calibrationType, startTime, false, calibrationReadingList,
+        context become calibration(calibrationType, startTime, recordCalibration = false, calibrationReadingList,
           zeroReading, endState, None)
         self ! CalibrateEnd
       } else {
