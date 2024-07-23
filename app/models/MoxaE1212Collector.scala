@@ -13,17 +13,6 @@ object MoxaE1212Collector {
 
   var count = 0
 
-  def start(id: String, protocolParam: ProtocolParam, param: MoxaE1212Param)(implicit context: ActorContext) = {
-    val prop = Props(classOf[MoxaE1212Collector], id, protocolParam, param)
-    val collector = context.actorOf(prop, name = "MoxaE1212Collector" + count)
-    count += 1
-    assert(protocolParam.protocol == Protocol.tcp)
-    val host = protocolParam.host.get
-    collector ! ConnectHost
-    collector
-
-  }
-
   trait Factory {
     def apply(id: String, protocol: ProtocolParam, param: MoxaE1212Param): Actor
   }
@@ -39,7 +28,7 @@ class MoxaE1212Collector @Inject()
 
   import MoxaE1212Collector._
 
-  val resetTimer = {
+  val resetTimer: Cancellable = {
     import com.github.nscala_time.time.Imports._
 
     val resetTime = DateTime.now().withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0) + 1.hour
@@ -52,7 +41,7 @@ class MoxaE1212Collector @Inject()
 
   self ! ConnectHost
 
-  def decodeDiCounter(values: Seq[Int], collectorState: String) = {
+  private def decodeDiCounter(values: Seq[Int], collectorState: String): Unit = {
     val dataOptList =
       for {
         cfg <- param.chs.zipWithIndex
@@ -78,7 +67,7 @@ class MoxaE1212Collector @Inject()
 
   import scala.concurrent.{Future, blocking}
 
-  def receive = handler(MonitorStatus.NormalStat, None)
+  def receive: Receive = handler(MonitorStatus.NormalStat, None)
 
   def handler(collectorState: String, masterOpt: Option[ModbusMaster]): Receive = {
     case ConnectHost =>
@@ -182,9 +171,7 @@ class MoxaE1212Collector @Inject()
         val resetRegAddr = 272
 
         for {
-          ch_idx <- param.chs.zipWithIndex if ch_idx._1.enable && ch_idx._1.mt == Some(MonitorType.RAIN)
-          ch = ch_idx._1
-          idx = ch_idx._2
+          (ch, idx) <- param.chs.zipWithIndex if ch.enable && ch.mt.contains(MonitorType.RAIN)
         } {
           val locator = BaseLocator.coilStatus(1, resetRegAddr + idx)
           masterOpt.get.setValue(locator, true)

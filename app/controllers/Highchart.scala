@@ -18,7 +18,7 @@ object Highchart {
   case class Tooltip(valueDecimals:Int)
   case class YAxis(labels: Option[String], title: AxisTitle, plotLines: Option[Seq[AxisLine]], opposite:Boolean=false, 
       floor:Option[Int]=None, ceiling:Option[Int]=None, min:Option[Int]=None, max:Option[Int]=None, tickInterval:Option[Int]=None, 
-      gridLineWidth:Option[Int]=None, gridLineColor:Option[String]=None)
+      gridLineWidth:Option[Int]=None, gridLineColor:Option[String]=None, softMax:Option[Double]=None, softMin:Option[Double]=None)
       
   case class seqData(name: String, data: Seq[(Long, Option[Double])], yAxis:Int=0,
                      chartType:Option[String]=None, tooltip: Tooltip= Tooltip(2), statusList: Seq[Option[String]] =Seq.empty[Option[String]])
@@ -31,12 +31,12 @@ object Highchart {
 
   case class FrequencyTab(header:Seq[String], body:Seq[Seq[String]], footer:Seq[String])                         
   case class WindRoseReport(chart:HighchartData, table:FrequencyTab)
-  implicit val xaWrite = Json.writes[XAxis]
-  implicit val axisLineLabelWrite = Json.writes[AxisLineLabel]
-  implicit val axisLineWrite = Json.writes[AxisLine]
-  implicit val axisTitleWrite = Json.writes[AxisTitle]
-  implicit val tooltipWrite = Json.writes[Tooltip]
-  implicit val yaWrite = Json.writes[YAxis]
+  implicit val xaWrite: OWrites[XAxis] = Json.writes[XAxis]
+  implicit val axisLineLabelWrite: OWrites[AxisLineLabel] = Json.writes[AxisLineLabel]
+  implicit val axisLineWrite: OWrites[AxisLine] = Json.writes[AxisLine]
+  implicit val axisTitleWrite: OWrites[AxisTitle] = Json.writes[AxisTitle]
+  implicit val tooltipWrite: OWrites[Tooltip] = Json.writes[Tooltip]
+  implicit val yaWrite: OWrites[YAxis] = Json.writes[YAxis]
   type LOD = (Long, Option[Double])
 
   implicit val lof:Writes[LOD] = new Writes[(Long, Option[Double])] {
