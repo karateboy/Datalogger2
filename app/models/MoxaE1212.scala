@@ -1,6 +1,9 @@
 package models
 
 import akka.actor._
+import com.github.nscala_time.time
+import com.github.nscala_time.time.Imports
+import com.github.nscala_time.time.Imports.LocalTime
 import models.Protocol.tcp
 import play.api._
 import play.api.libs.json._
@@ -16,10 +19,10 @@ class MoxaE1212 @Inject()
 (monitorTypeOp: MonitorTypeDB)
   extends DriverOps {
 
-  implicit val cfgReads = Json.reads[E1212ChannelCfg]
-  implicit val reads = Json.reads[MoxaE1212Param]
+  implicit val cfgReads: Reads[E1212ChannelCfg] = Json.reads[E1212ChannelCfg]
+  implicit val reads: Reads[MoxaE1212Param] = Json.reads[MoxaE1212Param]
 
-  override def getMonitorTypes(param: String) = {
+  override def getMonitorTypes(param: String): List[String] = {
     val e1212Param = validateParam(param)
     e1212Param.chs.filter {
       _.enable
@@ -28,7 +31,7 @@ class MoxaE1212 @Inject()
     }.toList.filter { mt => monitorTypeOp.allMtvList.contains(mt) }
   }
 
-  def validateParam(json: String) = {
+  def validateParam(json: String): MoxaE1212Param = {
     val ret = Json.parse(json).validate[MoxaE1212Param]
     ret.fold(
       error => {
@@ -42,7 +45,7 @@ class MoxaE1212 @Inject()
 
   import Protocol.ProtocolParam
 
-  override def verifyParam(json: String) = {
+  override def verifyParam(json: String): String = {
     val ret = Json.parse(json).validate[MoxaE1212Param]
     ret.fold(
       error => {
@@ -74,7 +77,7 @@ class MoxaE1212 @Inject()
 
   }
 
-  override def getCalibrationTime(param: String) = None
+  override def getCalibrationTime(param: String): Option[LocalTime] = None
 
   override def id: String = "moxaE1212"
 

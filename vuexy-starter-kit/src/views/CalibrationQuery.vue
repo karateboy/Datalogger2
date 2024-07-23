@@ -50,6 +50,8 @@
       </b-form>
     </b-card>
     <b-card v-show="display">
+      <div id="zero_chart" />
+      <div id="span_chart" />
       <b-table striped hover :fields="columns" :items="rows" />
     </b-card>
   </div>
@@ -69,6 +71,7 @@ import { mapActions, mapGetters } from 'vuex';
 import { MonitorType } from './types';
 const excel = require('../libs/excel');
 const _ = require('lodash');
+import highcharts from "highcharts";
 
 interface CalibrationJSON {
   monitorType: string;
@@ -326,12 +329,85 @@ export default Vue.extend({
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
+    chartAdjust(ret: highcharts.Options) {
+      ret.chart = {
+        type: "spline",
+        zoomType: "x",
+        panning: {
+          enabled: true,
+          type: "x",
+        },
+        panKey: "shift",
+        alignTicks: false,
+        borderColor: "#000000",
+        plotBorderColor: "#000000",
+      };
+
+      const pointFormatter = function pointFormatter(this: any) {
+        const d = new Date(this.x);
+        return `${d.toLocaleString()}:${Math.round(this.y)}度`;
+      };
+
+      ret.tooltip = { valueDecimals: 2 };
+      ret.legend = { enabled: true };
+      ret.credits = {
+        enabled: false,
+        href: "http://www.wecc.com.tw/",
+      };
+      let xAxis = ret.xAxis as highcharts.XAxisOptions;
+      xAxis.type = "datetime";
+      xAxis.dateTimeLabelFormats = {
+        day: "%b%e日",
+        week: "%b%e日",
+        month: "%Y年%b",
+      };
+      xAxis.gridLineColor = "#666666";
+      xAxis.lineColor = "#000000";
+      xAxis.tickColor = "#000000";
+      xAxis.labels = {
+        style: {
+          color: "#000000",
+          fontSize: "1rem",
+        },
+      };
+      let yAxisArray = ret.yAxis as Array<highcharts.YAxisOptions>;
+      for (let yAxis of yAxisArray) {
+        //yAxis.max = (typeof this.form.YMax) === "number" ? this.form.YMax : undefined;
+        //yAxis.min = this.form.YMin;
+        yAxis.gridLineColor = "#666666";
+        yAxis.lineColor = "#000000";
+        yAxis.tickColor = "#000000";
+        yAxis.labels = {
+          style: {
+            color: "#000000",
+            fontSize: "1rem",
+          },
+        };
+      }
+      ret.plotOptions = {
+        scatter: {
+          tooltip: {
+            pointFormatter,
+          },
+        },
+      };
+      ret.time = {
+        timezoneOffset: -480,
+      };
+      for (let s of ret.series as Array<highcharts.SeriesOptionsType>) {
+        s.visible = false;
+      }
+    },
     async query() {
       try {
         const url = `/CalibrationRecord/${this.form.range[0]}/${this.form.range[1]}`;
         const res = await axios.get(url);
         const ret = res.data;
-        this.rows = ret;
+        this.rows = ret.calibrations;
+        this.chartAdjust(ret.spanChart);
+        this.chartAdjust(ret.zeroChart);
+        highcharts.chart("zero_chart", ret.zeroChart);
+        highcharts.chart("span_chart", ret.spanChart);
       } catch (err) {
         throw new Error('failed');
       } finally {

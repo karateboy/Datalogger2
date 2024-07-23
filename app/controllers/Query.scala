@@ -13,6 +13,7 @@ import play.api.libs.json._
 import play.api.mvc._
 
 import java.nio.file.Files
+import java.util.Date
 import javax.inject._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -813,29 +814,162 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
       }
   }
 
+  case class CalibrationQueryResult(calibrations: Seq[CalibrationJSON], zeroChart: HighchartData, spanChart: HighchartData)
+
   def calibrationRecordList(start: Long, end: Long, outputTypeStr: String) = Action.async {
-    implicit request =>
       val startTime = new DateTime(start)
       val endTime = new DateTime(end)
       val outputType = OutputType.withName(outputTypeStr)
       val recordListF = calibrationOp.calibrationReportFuture(startTime, endTime)
       implicit val w = Json.writes[Calibration]
-      for (recordList <- recordListF) yield {
+      for (records <- recordListF) yield {
         outputType match {
           case OutputType.html =>
-            implicit val write = Json.writes[CalibrationJSON]
-            Ok(Json.toJson(recordList.map(_.toJSON)))
+            implicit val write: OWrites[CalibrationJSON] = Json.writes[CalibrationJSON]
+            implicit val write2 = Json.writes[CalibrationQueryResult]
+
+            val result = CalibrationQueryResult(records.map(_.toJSON),
+              calibrationTrendChart(records, zero = true, startTime, endTime),
+              calibrationTrendChart(records, zero = false, startTime, endTime)
+            )
+            Ok(Json.toJson(result))
           case OutputType.excel =>
-            val excelFile = excelUtility.calibrationReport(startTime, endTime, recordList)
+            val excelFile = excelUtility.calibrationReport(startTime, endTime, records)
             Ok.sendFile(excelFile, fileName = _ =>
               s"校正紀錄.xlsx",
               onClose = () => {
-                Files.deleteIfExists(excelFile.toPath())
+                Files.deleteIfExists(excelFile.toPath)
               })
         }
       }
+  }
+
+  private def calibrationTrendChart(calibrationList: Seq[Calibration],
+                                    zero: Boolean,
+                                    start: DateTime,
+                                    end: DateTime): HighchartData = {
+
+    val monitorTypes = calibrationList.map(_.monitorType).toSet.toList
+    val downloadFileName = "校正趨勢圖"
+
+    val calibrationMap = mutable.Map.empty[String, mutable.Map[Date, Option[Double]]]
+    for {
+      calibration <- calibrationList
+    } {
+      val mtMap = calibrationMap.getOrElseUpdate(calibration.monitorType, mutable.Map.empty[Date, Option[Double]])
+      if (zero)
+        mtMap += calibration.startTime.toDate -> calibration.zero_val
+      else
+        mtMap += calibration.startTime.toDate -> calibration.span_val
+    }
+
+    val calibrationName = if (zero)
+      "零點校正"
+    else
+      "全幅校正"
+
+    val title =
+      s"${calibrationName}趨勢圖 (${start.toString("YYYY年MM月dd日")}~${end.toString("YYYY年MM月dd日")})"
+
+    def getAxisLines(mt: String): Option[Seq[AxisLine]] = {
+      val mtCase = monitorTypeOp.map(mt)
+
+      val standardOpt =
+        if (zero) {
+          for (zd <- mtCase.zd_law) yield
+            (-zd, zd)
+        } else {
+          for (span <- mtCase.span; dev <- mtCase.span_dev_law) yield
+            (span * (1 - dev/100), span * (1 + dev/100))
+        }
 
 
+      for (standard <- standardOpt) yield
+        Seq(AxisLine("#FF0000", 2, standard._1, Some(AxisLineLabel("right", s"${calibrationName}下限值"))),
+          AxisLine("#FF0000", 2, standard._2, Some(AxisLineLabel("right", s"${calibrationName}上限值"))))
+    }
+
+    val yAxisGroup: Map[String, Seq[(String, Option[Seq[AxisLine]])]] = monitorTypes.map(mt => {
+      (monitorTypeOp.map(mt).desp, getAxisLines(mt))
+    }).groupBy(_._1)
+
+    val yAxisGroupMap = yAxisGroup map {
+      kv =>
+        val lines: Seq[AxisLine] = kv._2.flatMap(_._2).flatten
+        if (lines.nonEmpty) {
+          val softMax = lines.map(_.value).max
+          val softMin = lines.map(_.value).min
+          kv._1 -> YAxis(None, title = AxisTitle(Some(Some(s"${kv._1}"))), plotLines = Some(lines), softMax = Some(softMax), softMin = Some(softMin))
+        } else
+          kv._1 -> YAxis(None, title = AxisTitle(Some(Some(s"${kv._1}"))), plotLines = None)
+    }
+    val yAxisIndexList = yAxisGroupMap.toList.zipWithIndex
+    val yAxisUnitMap = yAxisIndexList.map(kv => kv._1._1 -> kv._2).toMap
+    val yAxisList = yAxisIndexList.map(_._1._2)
+
+    def getSeries: Seq[seqData] = {
+      for {
+        mt <- monitorTypes
+        valueMap = calibrationMap.getOrElseUpdate(mt, mutable.Map.empty[Date, Option[Double]])
+      } yield {
+        val timeData =
+          for (time <- valueMap.keys.toList.sorted) yield {
+            (time.getTime, Some(valueMap(time)))
+          }
+
+        val timeValues = timeData.map {
+          t =>
+            val time = t._1
+            val valueOpt = for (x <- t._2) yield x
+            (time, valueOpt.flatten)
+        }
+
+        val timeStatus = timeData.map {
+          _ =>
+            if (zero)
+              Some(MonitorStatus.ZeroCalibrationStat)
+            else
+              Some(MonitorStatus.SpanCalibrationStat)
+        }
+        seqData(name = s"${monitorTypeOp.map(mt).desp}",
+          data = timeValues, yAxis = yAxisUnitMap(monitorTypeOp.map(mt).desp),
+          tooltip = Tooltip(monitorTypeOp.map(mt).prec), statusList = timeStatus)
+      }
+    }
+
+    val series = getSeries
+
+    val xAxis: XAxis = {
+      val duration = new Duration(start, end)
+      if (duration.getStandardDays > 2)
+        XAxis(None, gridLineWidth = Some(1), None)
+      else
+        XAxis(None)
+    }
+
+    val chart =
+      if (monitorTypes.length == 1) {
+        val mt = monitorTypes.head
+        val mtCase = monitorTypeOp.map(monitorTypes.head)
+
+        HighchartData(
+          Map("type" -> "line"),
+          Map("text" -> title),
+          xAxis,
+          Seq(YAxis(None, AxisTitle(Some(Some(s"${mtCase.desp} (${mtCase.unit})"))), getAxisLines(mt))),
+          series,
+          Some(downloadFileName))
+      } else {
+        HighchartData(
+          Map("type" -> "line"),
+          Map("text" -> title),
+          xAxis,
+          yAxisList,
+          series,
+          Some(downloadFileName))
+      }
+
+    chart
   }
 
   def windRoseReport(monitor: String, monitorType: String, tabTypeStr: String, nWay: Int, start: Long, end: Long) = Security.Authenticated.async {
