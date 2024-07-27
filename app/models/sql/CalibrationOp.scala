@@ -41,8 +41,8 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
     }
 
   private def mapper(rs: WrappedResultSet) = Calibration(rs.string("monitorType"),
-    rs.jodaDateTime("startTime"),
-    rs.jodaDateTime("endTime"),
+    rs.timestamp("startTime"),
+    rs.timestamp("endTime"),
     rs.doubleOpt("zero_val"),
     rs.doubleOpt("span_std"),
     rs.doubleOpt("span_val"))
@@ -69,8 +69,8 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
            ,[span_val])
      VALUES
            (${cal.monitorType}
-           ,${cal.startTime.toDate}
-           ,${cal.endTime.toDate}
+           ,${cal.startTime}
+           ,${cal.endTime}
            ,${cal.zero_val}
            ,${cal.span_std}
            ,${cal.span_val})

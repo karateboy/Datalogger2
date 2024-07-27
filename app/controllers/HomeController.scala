@@ -2,7 +2,6 @@ package controllers
 
 import akka.actor.ActorRef
 import buildinfo.BuildInfo
-import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import models.ForwardManager.{ForwardHourRecord, ForwardMinRecord}
 import models.ModelHelper.{errorHandler, handleJsonValidateError, handleJsonValidateErrorFuture}
@@ -16,15 +15,15 @@ import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class HomeController @Inject()(environment: play.api.Environment,
-                               userOp: UserDB, instrumentOp: InstrumentDB, dataCollectManagerOp: DataCollectManagerOp,
-                               monitorTypeOp: MonitorTypeDB, query: Query, monitorOp: MonitorDB, groupOp: GroupDB,
-                               instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusDB,
-                               sensorOp: MqttSensorDB, WSClient: WSClient,
-                               emailTargetOp: EmailTargetDB,
-                               sysConfig: SysConfigDB, recordDB: RecordDB,
-                               lineNotify: LineNotify,
-                               @Named("dataCollectManager") manager: ActorRef) extends Controller {
+class HomeController @Inject()(
+                                userOp: UserDB, instrumentOp: InstrumentDB, dataCollectManagerOp: DataCollectManagerOp,
+                                monitorTypeOp: MonitorTypeDB, query: Query, monitorOp: MonitorDB, groupOp: GroupDB,
+                                instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusDB,
+                                sensorOp: MqttSensorDB, WSClient: WSClient,
+                                emailTargetOp: EmailTargetDB,
+                                sysConfig: SysConfigDB, recordDB: RecordDB,
+                                lineNotify: LineNotify,
+                                @Named("dataCollectManager") manager: ActorRef) extends Controller {
 
   val title = "資料擷取器"
 
@@ -40,10 +39,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       val newUserParam = request.body.validate[User]
 
       newUserParam.fold(
-        error => {
-          logger.error(JsError.toJson(error).toString())
-          BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
-        },
+        error => handleJsonValidateError(error),
         param => {
           userOp.newUser(param)
           Ok(Json.obj("ok" -> true))
@@ -91,9 +87,8 @@ class HomeController @Inject()(environment: play.api.Environment,
   }
 
   def deleteGroup(id: String): Action[AnyContent] = Security.Authenticated {
-    implicit request =>
-      val ret = groupOp.deleteGroup(id)
-      Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
+    val ret = groupOp.deleteGroup(id)
+    Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
   }
 
   def updateGroup(id: String): Action[JsValue] = Security.Authenticated(BodyParsers.parse.json) {
@@ -115,8 +110,8 @@ class HomeController @Inject()(environment: play.api.Environment,
   }
 
   def getInstrumentTypes: Action[AnyContent] = Security.Authenticated {
-    implicit val w1 = Json.writes[ProtocolInfo]
-    implicit val write = Json.writes[InstrumentTypeInfo]
+    implicit val w1: OWrites[ProtocolInfo] = Json.writes[ProtocolInfo]
+    implicit val write: OWrites[InstrumentTypeInfo] = Json.writes[InstrumentTypeInfo]
     val iTypes =
       for (instType <- instrumentTypeOp.map.keys) yield {
         val t = instrumentTypeOp.map(instType)
@@ -124,7 +119,7 @@ class HomeController @Inject()(environment: play.api.Environment,
           t.protocol.map { p => ProtocolInfo(p, Protocol.map(p)) })
       }
     val sorted = iTypes.toList.sortWith((a, b) => a.desp < b.desp)
-    Ok(Json.toJson(sorted.toList))
+    Ok(Json.toJson(sorted))
   }
 
   def getInstrumentType(id: String): Action[AnyContent] = Security.Authenticated {
@@ -201,7 +196,7 @@ class HomeController @Inject()(environment: play.api.Environment,
           "停用"
       }
 
-      def getCalibrationTime: Option[Imports.LocalTime] = {
+      def getCalibrationTime: Option[LocalTime] = {
         val instTypeCase = instrumentTypeOp.map(inst.instType)
         instTypeCase.driver.getCalibrationTime(inst.param)
       }
@@ -511,22 +506,18 @@ class HomeController @Inject()(environment: play.api.Environment,
   }
 
   def deleteMonitorType(id: String): Action[AnyContent] = Security.Authenticated {
-    implicit request =>
-      monitorTypeOp.deleteMonitorType(id)
-      Ok("")
+    monitorTypeOp.deleteMonitorType(id)
+    Ok("")
   }
 
   def signalTypeList: Action[AnyContent] = Security.Authenticated {
-    implicit request =>
-      val mtList = monitorTypeOp.signalMtvList map monitorTypeOp.map
-
-      Ok(Json.toJson(mtList))
+    val mtList = monitorTypeOp.signalMtvList map monitorTypeOp.map
+    Ok(Json.toJson(mtList))
   }
 
   def signalValues: Action[AnyContent] = Security.Authenticated.async {
-    implicit request =>
-      for (ret <- dataCollectManagerOp.getLatestSignal) yield
-        Ok(Json.toJson(ret))
+    for (ret <- dataCollectManagerOp.getLatestSignal) yield
+      Ok(Json.toJson(ret))
   }
 
   def setSignal(mtId: String, bit: Boolean): Action[AnyContent] = Security.Authenticated {

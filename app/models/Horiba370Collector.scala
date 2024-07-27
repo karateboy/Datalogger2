@@ -567,16 +567,16 @@ class Horiba370Collector @Inject()
               mt <- monitorTypes
               zeroValue = zeroMap(mt)
               avg = mtAvgMap(mt)
-            } yield Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, zeroValue, monitorTypeOp.map(mt).span, avg)
+            } yield Calibration(mt, startTime.toDate, com.github.nscala_time.time.Imports.DateTime.now.toDate, zeroValue, monitorTypeOp.map(mt).span, avg)
           } else {
             for {
               mt <- monitorTypes
               avg = mtAvgMap(mt)
             } yield {
               if (calibrationType.zero) {
-                Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, avg, None, None)
+                Calibration(mt, startTime.toDate, com.github.nscala_time.time.Imports.DateTime.now.toDate, avg, None, None)
               } else {
-                Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, None, monitorTypeOp.map(mt).span, avg)
+                Calibration(mt, startTime.toDate, com.github.nscala_time.time.Imports.DateTime.now.toDate, None, monitorTypeOp.map(mt).span, avg)
               }
             }
           }

@@ -1,9 +1,11 @@
 package models.mongodb
 
-import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import models._
+import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
+import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
+import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.model._
 
 import javax.inject._
@@ -13,8 +15,14 @@ import scala.concurrent.Future
 @Singleton
 class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
 
-  lazy val collectionName = "calibration"
-  lazy val collection = mongodb.database.getCollection(collectionName)
+  import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
+  import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
+  import org.mongodb.scala.bson.codecs.Macros._
+
+  lazy val codecRegistry = fromRegistries(fromProviders(classOf[Calibration]), DEFAULT_CODEC_REGISTRY)
+  lazy val colName = "calibration"
+  lazy val collection: MongoCollection[Calibration] = mongodb.database.getCollection[Calibration](colName).withCodecRegistry(codecRegistry)
+
 
   import org.mongodb.scala._
   import org.mongodb.scala.model.Indexes._
@@ -23,52 +31,28 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
-    val f = collection.find(and(gte("startTime", start.toDate()), lt("startTime", end.toDate()))).sort(ascending("startTime")).toFuture()
-    val docs = waitReadyResult(f)
-    docs.map {
-      toCalibration
-    }
+    val f = collection.find(and(gte("startTime", start.toDate), lt("startTime", end.toDate))).sort(ascending("startTime")).toFuture()
+    f onFailure errorHandler
+    waitReadyResult(f)
   }
 
   init
-
-  def toCalibration(doc: Document) = {
-    import org.mongodb.scala.bson.BsonDouble
-    def doublePf: PartialFunction[org.mongodb.scala.bson.BsonValue, Double] = {
-      case t: BsonDouble =>
-        t.getValue
-    }
-
-    val startTime = new DateTime(doc.get("startTime").get.asDateTime().getValue)
-    val endTime = new DateTime(doc.get("endTime").get.asDateTime().getValue)
-    val monitorType = (doc.get("monitorType").get.asString().getValue)
-    val zero_val = doc.get("zero_val").collect(doublePf)
-
-    val span_std = doc.get("span_std").collect(doublePf)
-    val span_val = doc.get("span_val").collect(doublePf)
-    Calibration(monitorType, startTime, endTime, zero_val, span_std, span_val)
-  }
 
   override def calibrationReportFuture(start: DateTime, end: DateTime): Future[Seq[Calibration]] = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
-    val f = collection.find(and(gte("startTime", start.toDate()), lt("startTime", end.toDate()))).sort(ascending("startTime")).toFuture()
-    for (docs <- f)
-      yield docs.map {
-        toCalibration
-      }
+    val f = collection.find(and(gte("startTime", start.toDate), lt("startTime", end.toDate))).sort(ascending("startTime")).toFuture()
+    f onFailure errorHandler
+    f
   }
 
   override def calibrationReportFuture(start: DateTime): Future[Seq[Calibration]] = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
-
-    val f = collection.find(gte("startTime", start.toDate())).sort(ascending("startTime")).toFuture()
-    for (docs <- f)
-      yield docs.map {
-        toCalibration
-      }
+    val f = collection.find(gte("startTime", start.toDate)).sort(ascending("startTime")).toFuture()
+    f onFailure errorHandler
+    f
   }
 
   override def calibrationReport(mt: String, start: DateTime, end: DateTime): Seq[Calibration] = {
@@ -76,32 +60,18 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
     import org.mongodb.scala.model.Sorts._
 
     val f = collection.find(and(equal("monitorType", mt), gte("startTime", start.toDate()), lt("startTime", end.toDate()))).sort(ascending("startTime")).toFuture()
-    val docs = waitReadyResult(f)
-    docs.map {
-      toCalibration
-    }
+    f onFailure errorHandler
+    waitReadyResult(f)
   }
 
-  override def insertFuture(cal: Calibration) = {
-    import ModelHelper._
-    val f = collection.insertOne(toDocument(cal)).toFuture()
-    f onFailure ({
-      case ex: Exception =>
-        logException(ex)
-    })
-  }
-
-  def toDocument(cal: Calibration) = {
-    import org.mongodb.scala.bson._
-    Document("monitorType" -> cal.monitorType, "startTime" -> (cal.startTime: BsonDateTime),
-      "endTime" -> (cal.endTime: BsonDateTime), "zero_val" -> cal.zero_val,
-      "span_std" -> cal.span_std, "span_val" -> cal.span_val)
+  override def insertFuture(cal: Calibration): Unit = {
+    collection.insertOne(cal).toFuture()
   }
 
   private def init() {
     for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
-      if (!colNames.contains(collectionName)) {
-        val f = mongodb.database.createCollection(collectionName).toFuture()
+      if (!colNames.contains(colName)) {
+        val f = mongodb.database.createCollection(colName).toFuture()
         f.onFailure(errorHandler)
         f.onSuccess({
           case _ =>

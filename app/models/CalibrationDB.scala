@@ -3,18 +3,21 @@ package models
 import com.github.nscala_time.time.Imports._
 import models.Calibration.CalibrationListMap
 import models.ModelHelper._
-import play.api.libs.json.Json
+import play.api.libs.json.{Json, OWrites, Reads}
 
+import java.util.Date
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-case class CalibrationJSON(monitorType: String, startTime: Long, endTime: Long, zero_val: Option[Double],
-                           span_std: Option[Double], span_val: Option[Double])
 
-case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTime, zero_val: Option[Double],
-                       span_std: Option[Double], span_val: Option[Double]) {
+case class Calibration(monitorType: String,
+                       startTime: Date,
+                       endTime: Date,
+                       zero_val: Option[Double],
+                       span_std: Option[Double],
+                       span_val: Option[Double]) {
   def zero_dev: Option[Double] = zero_val.map(Math.abs)
 
   def span_dev_ratioOpt: Option[Double] = for (s_dev <- span_devOpt; std <- span_std)
@@ -23,11 +26,6 @@ case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTi
   def span_devOpt: Option[Double] =
     for (span <- span_val; std <- span_std)
       yield Math.abs(span - std)
-
-  def toJSON = {
-    CalibrationJSON(monitorType, startTime.getMillis, endTime.getMillis, zero_val,
-      span_std, span_val)
-  }
 
   def success(implicit monitorTypeOp: MonitorTypeDB): Boolean = {
     val mtCase = monitorTypeOp.map(monitorType)
@@ -87,12 +85,13 @@ object Calibration {
       candidate.lastOption
     }).map(calibration=>(calibration.M, calibration.B))
   }
+
 }
+
 trait CalibrationDB {
 
   implicit val reads = Json.reads[Calibration]
   implicit val writes = Json.writes[Calibration]
-  implicit val jsonWrites = Json.writes[CalibrationJSON]
 
   def calibrationReport(start: DateTime, end: DateTime): Seq[Calibration]
 
@@ -114,7 +113,7 @@ trait CalibrationDB {
         val resultMap = mutable.Map.empty[String, ListBuffer[(DateTime, Calibration)]]
         for (item <- calibrationList.filter { c => c.success } if item.monitorType != MonitorType.NO2) {
           val lb = resultMap.getOrElseUpdate(item.monitorType, ListBuffer.empty[(DateTime, Calibration)])
-          lb.append((item.endTime, item))
+          lb.append((new DateTime(item.endTime), item))
         }
         resultMap.map(kv => kv._1 -> kv._2.toList).toMap
       }
