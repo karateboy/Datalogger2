@@ -106,6 +106,10 @@ export default [
         route: 'monitor-type-config',
       },
       {
+        title: '多點校正管理',
+        route: 'calibration-config',
+      },
+      {
         title: '警報規則管理',
         route: 'alarm-rule-config',
       },

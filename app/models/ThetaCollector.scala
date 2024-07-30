@@ -8,26 +8,24 @@ import models.MonitorType._
 import models.Protocol.{ProtocolParam, serial}
 import models.mongodb.AlarmOp
 import play.api._
-import play.api.libs.json.{JsError, Json}
+import play.api.libs.json.{JsError, Json, OWrites, Reads}
 import play.libs.Scala.None
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, SECONDS}
 import scala.concurrent.{Future, blocking}
 
-case class CalibrationConfig(monitorType: String, value: Double)
-
-case class ThetaConfig(calibrations: Seq[CalibrationConfig])
+case class ThetaCalibrationConfig(monitorType: String, value: Double)
+case class ThetaConfig(calibrations: Seq[ThetaCalibrationConfig])
 
 object ThetaCollector extends DriverOps {
-
   var count = 0
-  implicit val calibrationWrite = Json.writes[CalibrationConfig]
-  implicit val calibrationRead = Json.reads[CalibrationConfig]
-  implicit val configRead = Json.reads[ThetaConfig]
-  implicit val configWrite = Json.writes[ThetaConfig]
+  implicit val calibrationWrite: OWrites[ThetaCalibrationConfig] = Json.writes[ThetaCalibrationConfig]
+  implicit val calibrationRead: Reads[ThetaCalibrationConfig] = Json.reads[ThetaCalibrationConfig]
+  implicit val configRead: Reads[ThetaConfig] = Json.reads[ThetaConfig]
+  implicit val configWrite: OWrites[ThetaConfig] = Json.writes[ThetaConfig]
 
-  override def verifyParam(json: String) = {
+  override def verifyParam(json: String): String = {
     val ret = Json.parse(json).validate[ThetaConfig]
     ret.fold(
       error => {

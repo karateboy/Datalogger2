@@ -21,7 +21,9 @@ class HomeController @Inject()(
                                 instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusDB,
                                 sensorOp: MqttSensorDB, WSClient: WSClient,
                                 emailTargetOp: EmailTargetDB,
-                                sysConfig: SysConfigDB, recordDB: RecordDB,
+                                sysConfig: SysConfigDB,
+                                recordDB: RecordDB,
+                                calibrationConfigDB: CalibrationConfigDB,
                                 lineNotify: LineNotify,
                                 @Named("dataCollectManager") manager: ActorRef) extends Controller {
 
@@ -819,5 +821,30 @@ class HomeController @Inject()(
 
   def version: Action[AnyContent] = Security.Authenticated {
     Ok(Json.obj("version" -> BuildInfo.version, "scalaVersion" -> BuildInfo.scalaVersion, "sbtVersion" -> BuildInfo.sbtVersion))
+  }
+
+  import calibrationConfigDB._
+  def getCalibrationConfig: Action[AnyContent] = Security.Authenticated.async {
+    val f = calibrationConfigDB.getListFuture
+    f onFailure errorHandler
+    for (ret <- f) yield
+      Ok(Json.toJson(ret))
+  }
+
+  def upsertCalibrationConfig: Action[JsValue] = Security.Authenticated.async(BodyParsers.parse.json) {
+    implicit request =>
+      val ret = request.body.validate[CalibrationConfig]
+
+      ret.fold(
+        error => handleJsonValidateErrorFuture(error),
+        param => {
+          for (_ <- calibrationConfigDB.upsertFuture(param)) yield
+            Ok(Json.obj("ok" -> true))
+        })
+  }
+
+  def deleteCalibrationConfig(id: String): Action[AnyContent] = Security.Authenticated.async {
+    for (ret <- calibrationConfigDB.deleteFuture(id)) yield
+      Ok(Json.obj("ok" -> ret))
   }
 }

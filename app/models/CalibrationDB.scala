@@ -17,11 +17,25 @@ case class Calibration(monitorType: String,
                        endTime: Date,
                        zero_val: Option[Double],
                        span_std: Option[Double],
-                       span_val: Option[Double]) {
-  def zero_dev: Option[Double] = zero_val.map(Math.abs)
+                       span_val: Option[Double],
+                       zero_success: Option[Boolean] = None,
+                       span_success: Option[Boolean] = None,
+                       point3: Option[Double] = None,
+                       point3_std: Option[Double] = None,
+                       point3_success: Option[Boolean] = None,
+                       point4: Option[Double] = None,
+                       point4_std: Option[Double] = None,
+                       point4_success: Option[Boolean] = None,
+                       point5: Option[Double] = None,
+                       point5_std: Option[Double] = None,
+                       point5_success: Option[Boolean] = None,
+                       point6: Option[Double] = None,
+                       point6_std: Option[Double] = None,
+                       point6_success: Option[Boolean] = None) {
 
-  def span_dev_ratioOpt: Option[Double] = for (s_dev <- span_devOpt; std <- span_std)
-    yield s_dev / std * 100
+  private def span_dev_ratioOpt: Option[Double] =
+    for (s_dev <- span_devOpt; std <- span_std)
+      yield s_dev / std * 100
 
   def span_devOpt: Option[Double] =
     for (span <- span_val; std <- span_std)
@@ -33,7 +47,7 @@ case class Calibration(monitorType: String,
       passSpanStandard(mtCase)
   }
 
-  def passZeroStandard(vOpt: Option[Double], stdOpt: Option[Double]): Boolean = {
+  private def passZeroStandard(vOpt: Option[Double], stdOpt: Option[Double]): Boolean = {
     val retOpt =
       for {
         v <- vOpt
@@ -46,7 +60,7 @@ case class Calibration(monitorType: String,
     retOpt.getOrElse(true)
   }
 
-  def passSpanStandard(mtCase: MonitorType): Boolean = {
+  private def passSpanStandard(mtCase: MonitorType): Boolean = {
     val retOpt =
       for (span_dev_ratio <- span_dev_ratioOpt; span_dev_law <- mtCase.span_dev_law) yield
         span_dev_ratio < span_dev_law
@@ -62,13 +76,13 @@ case class Calibration(monitorType: String,
          } yield
       (value - zeroVal) * spanStd / (spanValue - zeroVal)
 
-  val M: Option[Double] =
+  private val M: Option[Double] =
     for {zeroVal <- zero_val
          spanVal <- span_val
          spanStd <- span_std if spanVal != zeroVal} yield
       spanStd / (spanVal - zeroVal)
 
-  val B: Option[Double] =
+  private val B: Option[Double] =
     for {
       zeroVal <- zero_val
       spanVal <- span_val
@@ -76,22 +90,24 @@ case class Calibration(monitorType: String,
       (-zeroVal * spanStd) / (spanVal - zeroVal)
 
 }
+
 object Calibration {
   type CalibrationListMap = Map[String, List[(DateTime, Calibration)]]
   val emptyCalibrationListMap = Map.empty[String, List[(DateTime, Calibration)]]
-  def findTargetCalibrationMB(calibrationListMap: CalibrationListMap, mt:String, target:DateTime): Option[(Option[Double], Option[Double])] = {
-    calibrationListMap.get(mt).flatMap(calibrationList=>{
+
+  def findTargetCalibrationMB(calibrationListMap: CalibrationListMap, mt: String, target: DateTime): Option[(Option[Double], Option[Double])] = {
+    calibrationListMap.get(mt).flatMap(calibrationList => {
       val candidate = calibrationList.takeWhile(p => p._1 < target).map(_._2)
       candidate.lastOption
-    }).map(calibration=>(calibration.M, calibration.B))
+    }).map(calibration => (calibration.M, calibration.B))
   }
 
 }
 
 trait CalibrationDB {
 
-  implicit val reads = Json.reads[Calibration]
-  implicit val writes = Json.writes[Calibration]
+  implicit val reads: Reads[Calibration] = Json.reads[Calibration]
+  implicit val writes: OWrites[Calibration] = Json.writes[Calibration]
 
   def calibrationReport(start: DateTime, end: DateTime): Seq[Calibration]
 

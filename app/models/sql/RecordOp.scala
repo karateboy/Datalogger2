@@ -40,10 +40,14 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
     val ret =
       if (doc.mtDataList.isEmpty) {
         sql"""
-           INSERT INTO $tab
-           ([monitor], [time])
-           VALUES
-           (${doc._id.monitor}, ${doc._id.time})
+           MERGE INTO $tab AS target
+                USING (SELECT ${doc._id.monitor} AS monitor, ${doc._id.time} AS time) AS source
+                ON (target.monitor = source.monitor AND target.time = source.time)
+                WHEN NOT MATCHED THEN
+                  INSERT
+                  ([monitor], [time])
+                  VALUES
+                  (${doc._id.monitor}, ${doc._id.time});
            """.update().apply()
       } else {
         val values = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"${toStr(record.value)}, '${record.status}'").mkString(","))

@@ -71,7 +71,7 @@ import { mapActions, mapGetters } from 'vuex';
 import { MonitorType } from './types';
 const excel = require('../libs/excel');
 const _ = require('lodash');
-import highcharts from "highcharts";
+import highcharts from 'highcharts';
 
 interface CalibrationJSON {
   monitorType: string;
@@ -331,16 +331,16 @@ export default Vue.extend({
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     chartAdjust(ret: highcharts.Options) {
       ret.chart = {
-        type: "spline",
-        zoomType: "x",
+        type: 'spline',
+        zoomType: 'x',
         panning: {
           enabled: true,
-          type: "x",
+          type: 'x',
         },
-        panKey: "shift",
+        panKey: 'shift',
         alignTicks: false,
-        borderColor: "#000000",
-        plotBorderColor: "#000000",
+        borderColor: '#000000',
+        plotBorderColor: '#000000',
       };
 
       const pointFormatter = function pointFormatter(this: any) {
@@ -352,35 +352,35 @@ export default Vue.extend({
       ret.legend = { enabled: true };
       ret.credits = {
         enabled: false,
-        href: "http://www.wecc.com.tw/",
+        href: 'http://www.wecc.com.tw/',
       };
       let xAxis = ret.xAxis as highcharts.XAxisOptions;
-      xAxis.type = "datetime";
+      xAxis.type = 'datetime';
       xAxis.dateTimeLabelFormats = {
-        day: "%b%e日",
-        week: "%b%e日",
-        month: "%Y年%b",
+        day: '%b%e日',
+        week: '%b%e日',
+        month: '%Y年%b',
       };
-      xAxis.gridLineColor = "#666666";
-      xAxis.lineColor = "#000000";
-      xAxis.tickColor = "#000000";
+      xAxis.gridLineColor = '#666666';
+      xAxis.lineColor = '#000000';
+      xAxis.tickColor = '#000000';
       xAxis.labels = {
         style: {
-          color: "#000000",
-          fontSize: "1rem",
+          color: '#000000',
+          fontSize: '1rem',
         },
       };
       let yAxisArray = ret.yAxis as Array<highcharts.YAxisOptions>;
       for (let yAxis of yAxisArray) {
         //yAxis.max = (typeof this.form.YMax) === "number" ? this.form.YMax : undefined;
         //yAxis.min = this.form.YMin;
-        yAxis.gridLineColor = "#666666";
-        yAxis.lineColor = "#000000";
-        yAxis.tickColor = "#000000";
+        yAxis.gridLineColor = '#666666';
+        yAxis.lineColor = '#000000';
+        yAxis.tickColor = '#000000';
         yAxis.labels = {
           style: {
-            color: "#000000",
-            fontSize: "1rem",
+            color: '#000000',
+            fontSize: '1rem',
           },
         };
       }
@@ -406,8 +406,8 @@ export default Vue.extend({
         this.rows = ret.calibrations;
         this.chartAdjust(ret.spanChart);
         this.chartAdjust(ret.zeroChart);
-        highcharts.chart("zero_chart", ret.zeroChart);
-        highcharts.chart("span_chart", ret.spanChart);
+        highcharts.chart('zero_chart', ret.zeroChart);
+        highcharts.chart('span_chart', ret.spanChart);
       } catch (err) {
         throw new Error('failed');
       } finally {

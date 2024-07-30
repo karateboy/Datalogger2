@@ -12,17 +12,21 @@ import play.api.Logger
 import javax.inject.Inject
 import scala.concurrent.Future
 
-object UpsDrv extends AbstractDrv(_id = "Ups", desp = "Ups 1 Series",
-  protocols = List(Protocol.serial)) {
+object PseudoDevice extends AbstractDrv(_id = "PseudoDevice", desp = "Pseudo Device",
+  protocols = List(Protocol.tcp)) {
 
-  val predefinedIST = List.empty[InstrumentStatusType]
+  val predefinedIST: List[InstrumentStatusType] =
+    List(InstrumentStatusType(MonitorType.NO, 0, "NO", "ppm"),
+    InstrumentStatusType(MonitorType.NO2, 1, "NO2", "ppm"),
+    InstrumentStatusType(MonitorType.NOX, 2, "NOX", "ppm")
+  )
 
   val map: Map[Int, InstrumentStatusType] = predefinedIST.map(p=>p.addr->p).toMap
 
 
-  val dataAddress = List.empty[Int]
+  val dataAddress: List[Int] = List(0, 1, 2)
 
-  override def getMonitorTypes(param: String): List[String] = List.empty[String]
+  override def getMonitorTypes(param: String): List[String] = List(MonitorType.NO, MonitorType.NO2, MonitorType.NOX)
 
   override def verifyParam(json: String): String = json
 
@@ -35,7 +39,7 @@ object UpsDrv extends AbstractDrv(_id = "Ups", desp = "Ups 1 Series",
   override def getCalibrationTime(param: String): Option[LocalTime] = None
 
   override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
-    val f2 = f.asInstanceOf[UpsDrv.Factory]
+    val f2 = f.asInstanceOf[PseudoDevice.Factory]
     val config = DeviceConfig.default
     f2(id, desc = super.description, config, protocol)
   }
@@ -44,10 +48,9 @@ object UpsDrv extends AbstractDrv(_id = "Ups", desp = "Ups 1 Series",
     def apply(@Assisted("instId") instId: String, @Assisted("desc") desc: String, @Assisted("config") config: DeviceConfig,
               @Assisted("protocolParam") protocol: ProtocolParam): Actor
   }
-  val UPS_SHUTDOWN = "UPS_SHUTDOWN"
 }
 
-class UpsCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
+class PseudoDeviceCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
                                alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
                                calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                               (@Assisted("instId") instId: String, @Assisted("desc") desc: String,
@@ -57,45 +60,55 @@ class UpsCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monito
     alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
 
-  monitorTypeOp.ensure(monitorTypeOp.signalType(UPS_SHUTDOWN, "中斷UPS電源"))
 
-  context.parent ! AddSignalTypeHandler(UPS_SHUTDOWN, bit=>{
-    self ! WriteSignal(UPS_SHUTDOWN, bit)
-  })
-
-
-  @volatile var serialOpt: Option[SerialComm] = None
-
-  override def onWriteSignal(mt: String, bit: Boolean): Unit = {
-    Logger.info(s"UPS receive $mt signal cmd")
-    for(serial <- serialOpt){
-      if(bit) {
-        serial.port.writeBytes("S.2R0600\r".getBytes)
-        serial.readPort
-      }
-    }
-  }
-
-  override def probeInstrumentStatusType: Seq[InstrumentStatusType] = UpsDrv.predefinedIST
+  override def probeInstrumentStatusType: Seq[InstrumentStatusType] = PseudoDevice.predefinedIST
 
   override def readReg(statusTypeList: List[InstrumentStatusType], full:Boolean): Future[Option[ModelRegValue2]] =
-    Future.successful(None)
+    Future.successful({
+      val values = statusTypeList.map { statusType =>
+        val value = statusType.key match {
+          case MonitorType.NO =>
+            if(zeroGate)
+              0.0
+            else
+              1.0
+          case MonitorType.NO2 =>
+            if(spanGate)
+              1.0
+            else
+              0.0
+          case MonitorType.NOX =>
+            if(zeroGate)
+              0.0
+            else
+              1.0
+        }
 
-  override def connectHost: Unit = {
-    serialOpt =
-      Some(SerialComm.open(protocolParam.comPort.get, protocolParam.speed.getOrElse(2400)))
+        (statusType, value)
+      }
+      Some(ModelRegValue2(values,
+        List.empty[(InstrumentStatusType, Boolean)],
+        List.empty[(InstrumentStatusType, Boolean)]))
+    })
+
+  override def connectHost: Unit = {}
+
+  override def getDataRegList: Seq[DataReg] = PseudoDevice.getDataRegList
+
+  @volatile private var zeroGate: Boolean = false
+  @volatile private var spanGate: Boolean = false
+
+  // zero is 0, span is 1
+  override def getCalibrationReg: Option[CalibrationReg] = Some(CalibrationReg(0, 1))
+
+  override def setCalibrationReg(address: Int, on: Boolean): Unit = {
+    if(address == 0)
+      zeroGate = on
+    else if(address == 1)
+      spanGate = on
   }
 
-  override def getDataRegList: Seq[DataReg] = UpsDrv.getDataRegList
-
-  override def getCalibrationReg: Option[CalibrationReg] = None
-
-  override def setCalibrationReg(address: Int, on: Boolean): Unit = {}
-
   override def postStop(): Unit = {
-    for (serial <- serialOpt)
-      serial.port.closePort()
-
     super.postStop()
   }
 }

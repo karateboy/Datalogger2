@@ -269,6 +269,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/calibration-config',
+      name: 'calibration-config',
+      component: () => import('@/views/CalibrationConfig.vue'),
+      meta: {
+        pageTitle: '多點校正管理',
+        breadcrumb: [
+          {
+            text: '系統管理',
+            active: true,
+          },
+          {
+            text: '多點校正管理',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/alarm-rule-config',
       name: 'alarm-rule-config',
       component: () => import('@/views/AlarmRuleConfig.vue'),

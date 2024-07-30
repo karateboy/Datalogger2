@@ -160,3 +160,8 @@ DELETE        /AlarmRule/:id                                                    
 
 GET           /UpsertData/template                                                                               controllers.DataLogger.getUpsertTemplate
 POST          /UpsertData                                                                                        controllers.DataLogger.upsertData
+
+#Calibration Config
+GET           /CalibrationConfig                                                                                 controllers.HomeController.getCalibrationConfig
+POST          /CalibrationConfig                                                                                 controllers.HomeController.upsertCalibrationConfig
+DELETE        /CalibrationConfig/:id                                                                             controllers.HomeController.deleteCalibrationConfig(id)
