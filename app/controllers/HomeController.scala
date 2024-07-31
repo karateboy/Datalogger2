@@ -385,6 +385,7 @@ class HomeController @Inject()(
     Ok(Json.obj("ok" -> true))
   }
 
+  import DataCollectManager.WriteDO
   def writeDO(instruments: String): Action[JsValue] = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
       implicit val read: Reads[WriteDO] = Json.reads[WriteDO]

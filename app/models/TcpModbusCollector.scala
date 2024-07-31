@@ -22,6 +22,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
   import TapiTxxCollector._
   import com.serotonin.modbus4j._
   import com.serotonin.modbus4j.ip.IpParameters
+  import DataCollectManager._
 
   val HoldingKey = "Holding"
   val ModeKey = "Mode"
@@ -207,7 +208,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: 
 
   def receive(): Receive = normalReceive
 
-  def readRegFuture(recordCalibration: Boolean) =
+  def readRegFuture(recordCalibration: Boolean): Future[Unit] =
     Future {
       blocking {
         try {

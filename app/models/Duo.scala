@@ -147,7 +147,7 @@ class DuoCollector @Inject()
 (@Assisted instId: String, @Assisted protocolParam: ProtocolParam, @Assisted config: DuoConfig) extends Actor {
 
   import Duo._
-
+  import DataCollectManager._
   import scala.concurrent.duration._
 
   val timer = if (config.fixed)

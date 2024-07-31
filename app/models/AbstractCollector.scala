@@ -6,7 +6,6 @@ import models.Protocol.ProtocolParam
 import models.TapiTxx.T700_STANDBY_SEQ
 import play.api._
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 import scala.util.{Failure, Success}
@@ -25,6 +24,9 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
                                 (instId: String, desc: String, deviceConfig: DeviceConfig, protocol: ProtocolParam) extends Actor {
 
   import TapiTxxCollector._
+  import DataCollectManager._
+  import AbstractCollector._
+  import context.dispatcher
 
   self ! ConnectHost
   @volatile var readRegTimer: Option[Cancellable] = None

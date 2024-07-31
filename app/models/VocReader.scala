@@ -8,7 +8,6 @@ import play.api._
 import java.io.File
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{FiniteDuration, MINUTES}
 import scala.concurrent.{Future, blocking}
 import scala.util.{Failure, Success}
@@ -73,12 +72,18 @@ object VocReader {
 
 }
 
-class VocReader(config: VocReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, dataCollectManager: ActorRef)
+class VocReader(config: VocReaderConfig,
+                monitorTypeOp: MonitorTypeDB,
+                recordOp: RecordDB,
+                dataCollectManager: ActorRef)
   extends Actor with ActorLogging {
   Logger.info("VocReader start")
 
+  import DataCollectManager._
   import VocReader._
   import ReaderHelper._
+  import context.dispatcher
+
   def receive: Receive = handler(mutable.Map.empty[String, mutable.Set[String]], None)
 
   def handler(parsedMap: mutable.Map[String, mutable.Set[String]], timerOpt: Option[Cancellable]): Receive = {

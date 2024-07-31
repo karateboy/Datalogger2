@@ -3,7 +3,6 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports._
 import models.Calibration.{CalibrationListMap, emptyCalibrationListMap, findTargetCalibrationMB}
-import models.DataCollectManager.{calculateHourAvgMap, calculateMinAvgMap}
 import models.ForwardManager.{ForwardHour, ForwardHourRecord, ForwardMin, ForwardMinRecord}
 import models.ModelHelper._
 import models.TapiTxx.T700_STANDBY_SEQ
@@ -21,230 +20,87 @@ import scala.language.postfixOps
 import scala.math.BigDecimal.RoundingMode
 import scala.util.{Failure, Success}
 
-
-case class StartInstrument(inst: Instrument)
-
-case class StopInstrument(id: String)
-
-case class RestartInstrument(id: String)
-
-case object RestartMyself
-
-case class SetState(instId: String, state: String)
-
-case class SetMonitorTypeState(instId: String, mt: String, state: String)
-
-case class MonitorTypeData(mt: String, var value: Double, status: String)
-
-case class ReportData(private val _dataList: List[MonitorTypeData]) {
-  def dataList(monitorTypeDB: MonitorTypeDB): List[MonitorTypeData] =
-    _dataList.map(mtd => {
-      val mtCase = monitorTypeDB.map(mtd.mt)
-      val m: Double = mtCase.fixedM.getOrElse(1d)
-      val b: Double = mtCase.fixedB.getOrElse(0d)
-      mtd.value = mtd.value * m + b
-      mtd
-    })
-}
-
-case class SignalData(mt: String, value: Boolean)
-
-case class ReportSignalData(dataList: Seq[SignalData])
-
-case class ExecuteSeq(seqName: String, on: Boolean)
-
-case object PurgeSeq
-
-case object CalculateData
-
-case object AutoSetState
-
-case class AutoCalibration(instId: String)
-
-case class ManualZeroCalibration(instId: String)
-
-case class ManualSpanCalibration(instId: String)
-
-case class CalibrationType(auto: Boolean, zero: Boolean)
-
-object AutoZero extends CalibrationType(true, true)
-
-object AutoSpan extends CalibrationType(true, false)
-
-object ManualZero extends CalibrationType(false, true)
-
-object ManualSpan extends CalibrationType(false, false)
-
-case class WriteTargetDO(instId: String, bit: Int, on: Boolean)
-
-case class ToggleTargetDO(instId: String, bit: Int, seconds: Int)
-
-case class WriteDO(bit: Int, on: Boolean)
-
-case object ResetCounter
-
-case object GetLatestData
-
-case object GetLatestSignal
-
-case class IsTargetConnected(instId: String)
-
-case object IsConnected
-
-case class AddSignalTypeHandler(mtId: String, handler: Boolean => Unit)
-
-case class WriteSignal(mtId: String, bit: Boolean)
-
-case object CheckInstruments
-
-case class UpdateCalibrationMap(map: CalibrationListMap)
-
-case object ReaderReset
-
-@Singleton
-class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef,
-                                     instrumentOp: InstrumentDB,
-                                     recordOp: RecordDB,
-                                     alarmDb: AlarmDB,
-                                     monitorDB: MonitorDB,
-                                     monitorTypeDb: MonitorTypeDB,
-                                     sysConfigDB: SysConfigDB,
-                                     alarmRuleDb: AlarmRuleDb,
-                                     cdxUploader: CdxUploader)() {
-  def startCollect(inst: Instrument): Unit = {
-    manager ! StartInstrument(inst)
-  }
-
-  def startCollect(id: String): Unit = {
-    val instList = instrumentOp.getInstrument(id)
-    instList.map { inst => manager ! StartInstrument(inst) }
-  }
-
-  def stopCollect(id: String): Unit = {
-    manager ! StopInstrument(id)
-  }
-
-  def setInstrumentState(id: String, state: String): Unit = {
-    manager ! SetState(id, state)
-  }
-
-  def autoCalibration(id: String): Unit = {
-    manager ! AutoCalibration(id)
-  }
-
-  def zeroCalibration(id: String): Unit = {
-    manager ! ManualZeroCalibration(id)
-  }
-
-  def spanCalibration(id: String): Unit = {
-    manager ! ManualSpanCalibration(id)
-  }
-
-  def writeTargetDO(id: String, bit: Int, on: Boolean): Unit = {
-    manager ! WriteTargetDO(id, bit, on)
-  }
-
-  def toggleTargetDO(id: String, bit: Int, seconds: Int): Unit = {
-    manager ! ToggleTargetDO(id, bit, seconds)
-  }
-
-  def executeSeq(seqName: String, on: Boolean): Unit = {
-    manager ! ExecuteSeq(seqName, on)
-  }
-
-  def getLatestData: Future[Map[String, Record]] = {
-    import akka.pattern.ask
-    import akka.util.Timeout
-
-    import scala.concurrent.duration._
-    implicit val timeout = Timeout(Duration(3, SECONDS))
-
-    val f = manager ? GetLatestData
-    f.mapTo[Map[String, Record]]
-  }
-
-  def getLatestSignal: Future[Map[String, Boolean]] = {
-    import akka.pattern.ask
-    import akka.util.Timeout
-
-    import scala.concurrent.duration._
-    implicit val timeout = Timeout(Duration(3, SECONDS))
-
-    val f = manager ? GetLatestSignal
-    f.mapTo[Map[String, Boolean]]
-  }
-
-  def writeSignal(mtId: String, bit: Boolean): Unit = {
-    manager ! WriteSignal(mtId, bit)
-  }
-
-  def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean = false)
-                         (mtList: Seq[String], monitorTypeDB: MonitorTypeDB): Future[UpdateResult] = {
-    val ret =
-      for (recordMap <- recordOp.getMtRecordMapFuture(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current);
-           alarmRules <- alarmRuleDb.getRulesAsync) yield {
-        val mtMap = mutable.Map.empty[String, mutable.Map[String, ListBuffer[MtRecord]]]
-
-        for {
-          (mt, mtRecordList) <- recordMap
-          mtRecord <- mtRecordList
-        } {
-          val statusMap = mtMap.getOrElseUpdate(mt, mutable.Map.empty[String, ListBuffer[MtRecord]])
-          val tagInfo = MonitorStatus.getTagInfo(mtRecord.status)
-          val status = tagInfo.statusType match {
-            case StatusType.ManualValid =>
-              MonitorStatus.NormalStat
-            case _ =>
-              mtRecord.status
-          }
-
-          val lb = statusMap.getOrElseUpdate(status, ListBuffer.empty[MtRecord])
-
-          for (v <- mtRecord.value if !v.isNaN)
-            lb.append(mtRecord)
-        }
-
-        val mtDataList = calculateHourAvgMap(mtMap, alwaysValid, monitorTypeDB)
-        val recordList = RecordList.factory(current.minusHours(1), mtDataList.toSeq, monitor)
-        // Alarm check
-        val alarms = alarmRuleDb.checkAlarm(TableType.hour, recordList, alarmRules)(monitorDB, monitorTypeDb, alarmDb)
-        alarms.foreach(alarmDb.log)
-
-        val f = recordOp.upsertRecord(recordOp.HourCollection)(recordList)
-        if (forward) {
-          f onComplete {
-            case Success(_) =>
-              manager ! ForwardHour
-              for {cdxConfig <- sysConfigDB.getCdxConfig if monitor == Monitor.activeId
-                   cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes}
-                cdxUploader.upload(recordList = recordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
-
-            case Failure(exception) =>
-              Logger.error("failed", exception)
-          }
-        }
-
-        f
-      }
-    ret.flatMap(x => x)
-  }
-
-  def resetReaders(): Unit = {
-    manager ! ReaderReset
-  }
-}
-
 object DataCollectManager {
   var effectiveRatio = 0.75
 
-  def updateEffectiveRatio(sysConfig: SysConfigDB): Unit = {
+  case object ReaderReset
+
+  case class WriteTargetDO(instId: String, bit: Int, on: Boolean)
+
+  case class ToggleTargetDO(instId: String, bit: Int, seconds: Int)
+
+  case class WriteDO(bit: Int, on: Boolean)
+
+  case object GetLatestData
+
+  case object GetLatestSignal
+
+  case class IsTargetConnected(instId: String)
+
+  case class AddSignalTypeHandler(mtId: String, handler: Boolean => Unit)
+
+  case class WriteSignal(mtId: String, bit: Boolean)
+
+  case object CheckInstruments
+
+  case class UpdateCalibrationMap(map: CalibrationListMap)
+
+  case class StartInstrument(inst: Instrument)
+
+  case class StopInstrument(id: String)
+
+  case class RestartInstrument(id: String)
+
+  case object RestartMyself
+
+  case class SetState(instId: String, state: String)
+
+  case class MonitorTypeData(mt: String, var value: Double, status: String)
+
+  case class ReportData(private val _dataList: List[MonitorTypeData]) {
+    def dataList(monitorTypeDB: MonitorTypeDB): List[MonitorTypeData] =
+      _dataList.map(mtd => {
+        val mtCase = monitorTypeDB.map(mtd.mt)
+        val m: Double = mtCase.fixedM.getOrElse(1d)
+        val b: Double = mtCase.fixedB.getOrElse(0d)
+        mtd.value = mtd.value * m + b
+        mtd
+      })
+  }
+
+  case class SignalData(mt: String, value: Boolean)
+
+  case class ReportSignalData(dataList: Seq[SignalData])
+
+  case class ExecuteSeq(seqName: String, on: Boolean)
+
+  case object CalculateData
+
+  case class AutoCalibration(instId: String)
+
+  case class ManualZeroCalibration(instId: String)
+
+  case class ManualSpanCalibration(instId: String)
+
+  case class CalibrationType(auto: Boolean, zero: Boolean)
+
+  object AutoZero extends CalibrationType(true, true)
+
+  object AutoSpan extends CalibrationType(true, false)
+
+  object ManualZero extends CalibrationType(false, true)
+
+  object ManualSpan extends CalibrationType(false, false)
+
+  private def updateEffectiveRatio(sysConfig: SysConfigDB): Unit = {
     for (ratio <- sysConfig.getEffectiveRatio)
       effectiveRatio = ratio
   }
 
-  def calculateMinAvgMap(monitorTypeDB: MonitorTypeDB,
-                         mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]],
-                         alwaysValid: Boolean)(calibrationMap: CalibrationListMap, target: DateTime): immutable.Iterable[MtRecord] = {
+  private def calculateMinAvgMap(monitorTypeDB: MonitorTypeDB,
+                                 mtMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]],
+                                 alwaysValid: Boolean)
+                                (calibrationMap: CalibrationListMap, target: DateTime): immutable.Iterable[MtRecord] = {
     for {
       (mt, statusMap) <- mtMap
       total = statusMap.map {
@@ -444,13 +300,159 @@ object DataCollectManager {
 
 }
 
+
+@Singleton
+class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef,
+                                     instrumentOp: InstrumentDB,
+                                     recordOp: RecordDB,
+                                     alarmDb: AlarmDB,
+                                     monitorDB: MonitorDB,
+                                     monitorTypeDb: MonitorTypeDB,
+                                     sysConfigDB: SysConfigDB,
+                                     alarmRuleDb: AlarmRuleDb,
+                                     cdxUploader: CdxUploader)() {
+
+  import DataCollectManager._
+
+  def startCollect(inst: Instrument): Unit = {
+    manager ! StartInstrument(inst)
+  }
+
+  def startCollect(id: String): Unit = {
+    val instList = instrumentOp.getInstrument(id)
+    instList.foreach { inst => manager ! StartInstrument(inst) }
+  }
+
+  def stopCollect(id: String): Unit = {
+    manager ! StopInstrument(id)
+  }
+
+  def setInstrumentState(id: String, state: String): Unit = {
+    manager ! SetState(id, state)
+  }
+
+  def autoCalibration(id: String): Unit = {
+    manager ! AutoCalibration(id)
+  }
+
+  def zeroCalibration(id: String): Unit = {
+    manager ! ManualZeroCalibration(id)
+  }
+
+  def spanCalibration(id: String): Unit = {
+    manager ! ManualSpanCalibration(id)
+  }
+
+  def writeTargetDO(id: String, bit: Int, on: Boolean): Unit = {
+    manager ! WriteTargetDO(id, bit, on)
+  }
+
+  def toggleTargetDO(id: String, bit: Int, seconds: Int): Unit = {
+    manager ! ToggleTargetDO(id, bit, seconds)
+  }
+
+  def executeSeq(seqName: String, on: Boolean): Unit = {
+    manager ! ExecuteSeq(seqName, on)
+  }
+
+  def getLatestData: Future[Map[String, Record]] = {
+    import akka.pattern.ask
+    import akka.util.Timeout
+
+    import scala.concurrent.duration._
+    implicit val timeout = Timeout(Duration(3, SECONDS))
+
+    val f = manager ? GetLatestData
+    f.mapTo[Map[String, Record]]
+  }
+
+  def getLatestSignal: Future[Map[String, Boolean]] = {
+    import akka.pattern.ask
+    import akka.util.Timeout
+
+    import scala.concurrent.duration._
+    implicit val timeout = Timeout(Duration(3, SECONDS))
+
+    val f = manager ? GetLatestSignal
+    f.mapTo[Map[String, Boolean]]
+  }
+
+  def writeSignal(mtId: String, bit: Boolean): Unit = {
+    manager ! WriteSignal(mtId, bit)
+  }
+
+  def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean = false)
+                         (mtList: Seq[String], monitorTypeDB: MonitorTypeDB): Future[UpdateResult] = {
+    val ret =
+      for (recordMap <- recordOp.getMtRecordMapFuture(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current);
+           alarmRules <- alarmRuleDb.getRulesAsync) yield {
+        val mtMap = mutable.Map.empty[String, mutable.Map[String, ListBuffer[MtRecord]]]
+
+        for {
+          (mt, mtRecordList) <- recordMap
+          mtRecord <- mtRecordList
+        } {
+          val statusMap = mtMap.getOrElseUpdate(mt, mutable.Map.empty[String, ListBuffer[MtRecord]])
+          val tagInfo = MonitorStatus.getTagInfo(mtRecord.status)
+          val status = tagInfo.statusType match {
+            case StatusType.ManualValid =>
+              MonitorStatus.NormalStat
+            case _ =>
+              mtRecord.status
+          }
+
+          val lb = statusMap.getOrElseUpdate(status, ListBuffer.empty[MtRecord])
+
+          for (v <- mtRecord.value if !v.isNaN)
+            lb.append(mtRecord)
+        }
+
+        val mtDataList = calculateHourAvgMap(mtMap, alwaysValid, monitorTypeDB)
+        val recordList = RecordList.factory(current.minusHours(1), mtDataList.toSeq, monitor)
+        // Alarm check
+        val alarms = alarmRuleDb.checkAlarm(TableType.hour, recordList, alarmRules)(monitorDB, monitorTypeDb, alarmDb)
+        alarms.foreach(alarmDb.log)
+
+        val f = recordOp.upsertRecord(recordOp.HourCollection)(recordList)
+        if (forward) {
+          f onComplete {
+            case Success(_) =>
+              manager ! ForwardHour
+              for {cdxConfig <- sysConfigDB.getCdxConfig if monitor == Monitor.activeId
+                   cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes}
+                cdxUploader.upload(recordList = recordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
+
+            case Failure(exception) =>
+              Logger.error("failed", exception)
+          }
+        }
+
+        f
+      }
+    ret.flatMap(x => x)
+  }
+
+  def resetReaders(): Unit = {
+    manager ! ReaderReset
+  }
+}
+
 @Singleton
 class DataCollectManager @Inject()
-(config: Configuration, recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
+(config: Configuration,
+ recordOp: RecordDB,
+ monitorTypeOp: MonitorTypeDB,
+ monitorOp: MonitorDB,
  dataCollectManagerOp: DataCollectManagerOp,
- instrumentTypeOp: InstrumentTypeOp, alarmOp: AlarmDB, instrumentOp: InstrumentDB,
+ instrumentTypeOp: InstrumentTypeOp,
+ alarmOp: AlarmDB,
+ instrumentOp: InstrumentDB,
  calibrationDB: CalibrationDB,
- sysConfig: SysConfigDB, forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
+ sysConfig: SysConfigDB,
+ forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
+
+  import DataCollectManager._
+
   Logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
   DataCollectManager.updateEffectiveRatio(sysConfig)
 
@@ -465,8 +467,8 @@ class DataCollectManager @Inject()
     context.system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
   }
 
-  val autoStateConfigOpt: Option[Seq[AutoStateConfig]] = AutoState.getConfig(config)
-  val autoStateTimerOpt: Option[Cancellable] =
+  private val autoStateConfigOpt: Option[Seq[AutoStateConfig]] = AutoState.getConfig(config)
+  private val autoStateTimerOpt: Option[Cancellable] =
     if (autoStateConfigOpt.nonEmpty) {
       import scala.concurrent.duration._
       //Try to trigger at 30 sec
@@ -476,17 +478,17 @@ class DataCollectManager @Inject()
     } else
       None
 
-  val readerList: List[ActorRef] = startReaders()
-  val forwardManagerOpt: Option[ActorRef] =
+  private val readerList: List[ActorRef] = startReaders()
+  private val forwardManagerOpt: Option[ActorRef] =
     for (serverConfig <- ForwardManager.getConfig(config)) yield
       injectedChild(forwardManagerFactory(serverConfig.server, serverConfig.monitor), "forwardManager")
-  var isT700Calibrator = true
-  var calibratorOpt: Option[ActorRef] = None
-  var digitalOutputOpt: Option[ActorRef] = None
-  var onceTimer: Option[Cancellable] = None
+  private var isT700Calibrator = true
+  private var calibratorOpt: Option[ActorRef] = None
+  private var digitalOutputOpt: Option[ActorRef] = None
+  private var onceTimer: Option[Cancellable] = None
   var signalTypeHandlerMap = Map.empty[String, Map[ActorRef, Boolean => Unit]]
 
-  def startReaders(): List[ActorRef] = {
+  private def startReaders(): List[ActorRef] = {
     val readers: ListBuffer[ActorRef] = ListBuffer.empty[ActorRef]
 
     for (readerRef <- SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp))
@@ -512,7 +514,7 @@ class DataCollectManager @Inject()
     Logger.info("DataCollect manager started")
   }
 
-  def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord]) = {
+  private def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord]): Boolean = {
     var overThreshold = false
     for {
       hourMtData <- minMtAvgList

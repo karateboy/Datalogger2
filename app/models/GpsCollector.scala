@@ -84,8 +84,12 @@ class SerialDataReader(serialComm: SerialComm) extends AbstractDataReader {
 class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String, @Assisted protocolParam: ProtocolParam,
                                                            @Assisted gpsParam: GpsParam) extends Actor
   with ActorLogging with SentenceListener with ExceptionListener with PositionListener {
+
   Logger.info(s"$id $protocolParam")
   import GpsCollector._
+  import context.dispatcher
+  import DataCollectManager._
+
   val mtPOS_IN_THE_RANGE = monitorTypeDB.signalType(POS_IN_THE_RANGE, "位置在範圍內")
   monitorTypeDB.ensure(mtPOS_IN_THE_RANGE)
   monitorTypes.foreach(monitorTypeDB.ensure)

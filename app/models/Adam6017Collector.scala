@@ -8,7 +8,6 @@ import models.Protocol.ProtocolParam
 import play.api._
 
 import javax.inject._
-import scala.concurrent.ExecutionContext.Implicits.global
 
 object Adam6017Collector {
   val defaultSignalConfigs = Seq[SignalConfig](SignalConfig(None), SignalConfig(None))
@@ -42,7 +41,8 @@ class Adam6017Collector @Inject()
   Logger.info(s"$id Adam6017 start")
 
   import MoxaE1212Collector._
-
+  import DataCollectManager._
+  import context.dispatcher
 
   for {(cfg, idx) <- param.doChannels.getOrElse(defaultSignalConfigs).zipWithIndex
        monitorTypeId <- cfg.monitorType}

@@ -89,6 +89,7 @@ class ThetaCollector @Inject()
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: ThetaConfig) extends Actor {
 
   import ThetaCollector._
+  import DataCollectManager._
 
   val calibrationMap: Map[String, Double] = {
     val pairs = config.calibrations map { c => c.monitorType -> c.value }
@@ -157,7 +158,7 @@ class ThetaCollector @Inject()
             serial.os.write("#01\r\n".getBytes)
             val lines = serial.getLineWithTimeout(2)
             for (line <- lines) {
-              val target = line.dropWhile(_ == ">").drop(1)
+              val target = line.dropWhile(_ == '>').drop(1)
               val numArray = target.split(",")
               if (numArray.length == 24)
                 decode(numArray, state)

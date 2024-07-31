@@ -5,7 +5,6 @@ import models.ModelHelper._
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
 object TapiTxxCollector extends InjectedActorSupport {
@@ -30,6 +29,9 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
                                           alarmOp: AlarmDB, monitorTypeDB: MonitorTypeDB,
                                           calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                                          (instId: String, modelReg: ModelReg, tapiConfig: TapiConfig, host: String) extends Actor {
+  import DataCollectManager._
+  import context.dispatcher
+
   val InputKey = "Input"
 
   import TapiTxxCollector._
