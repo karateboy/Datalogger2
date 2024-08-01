@@ -143,6 +143,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/multi-calibration-query',
+      name: 'multi-calibration-query',
+      component: () => import('@/views/MultiCalibrationQuery.vue'),
+      meta: {
+        pageTitle: '多點校正查詢',
+        breadcrumb: [
+          {
+            text: '數據查詢',
+            active: true,
+          },
+          {
+            text: '多點校正查詢',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/alarm-query',
       name: 'alarm-query',
       component: () => import('@/views/AlarmQuery.vue'),

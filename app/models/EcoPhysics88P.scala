@@ -227,4 +227,11 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
 
     super.postStop()
   }
+
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {
+    if(zero)
+      setCalibrationReg(0, on)
+    else
+      setCalibrationReg(2, on)
+  }
 }

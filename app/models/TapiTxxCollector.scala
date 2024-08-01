@@ -2,6 +2,7 @@ package models
 
 import akka.actor._
 import models.ModelHelper._
+import models.MultiCalibrator.TriggerVault
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
 
@@ -155,7 +156,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
     inputRegStatusType ++ holdingRegStatusType ++ modeRegStatusType ++ warnRegStatusType
   }
 
-  def readReg(statusTypeList: List[InstrumentStatusType]) = {
+  def readReg(statusTypeList: List[InstrumentStatusType]): ModelRegValue = {
     import com.serotonin.modbus4j.BatchRead
     val batch = new BatchRead[Integer]
 
@@ -210,7 +211,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
 
   import scala.concurrent.{Future, blocking}
 
-  def receive: Actor.Receive = normalReceive
+  def receive: Actor.Receive = normalReceive()
 
   def readRegFuture(recordCalibration: Boolean): Future[Unit] =
     Future {
@@ -304,10 +305,14 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
 
     case ExecuteSeq(seq, on) =>
       executeSeq(seq, on)
+
+    case TriggerVault(zero, on) =>
+      Future.successful(triggerVault(zero, on))
   }
 
+  def triggerVault(zero: Boolean, on: Boolean): Unit
   // Only for T700
-  def executeSeq(seq: String, on: Boolean) {}
+  def executeSeq(seq: String, on: Boolean): Unit = {}
 
   def startCalibration(calibrationType: CalibrationType, monitorTypes: List[String]): Unit = {
     Logger.info(s"start calibrating ${monitorTypes.mkString(",")}")
@@ -335,7 +340,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
         timer.cancel()
 
       logInstrumentError(id, s"${self.path.name}: ${ex.getMessage}. ", ex)
-      resetToNormal
+      resetToNormal()
       instrumentOp.setState(id, endState)
       collectorState = endState
       context become normalReceive
@@ -359,7 +364,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
           timer.cancel()
         collectorState = targetState
         instrumentOp.setState(instId, targetState)
-        resetToNormal
+        resetToNormal()
         context become normalReceive
       }
       Logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
@@ -514,7 +519,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
         context.parent ! WriteDO(doBit, false)
     }
 
-    context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+    context.parent ! ExecuteSeq(T700_STANDBY_SEQ, on = true)
   }
 
   def triggerZeroCalibration(v: Boolean): Unit = {

@@ -3,6 +3,7 @@ package controllers
 import akka.actor.ActorRef
 import buildinfo.BuildInfo
 import com.github.nscala_time.time.Imports._
+import models.DataCollectManager.{StartMultiCalibration, StopMultiCalibration}
 import models.ForwardManager.{ForwardHourRecord, ForwardMinRecord}
 import models.ModelHelper.{errorHandler, handleJsonValidateError, handleJsonValidateErrorFuture}
 import models._
@@ -847,5 +848,27 @@ class HomeController @Inject()(
   def deleteCalibrationConfig(id: String): Action[AnyContent] = Security.Authenticated.async {
     for (ret <- calibrationConfigDB.deleteFuture(id)) yield
       Ok(Json.obj("ok" -> ret))
+  }
+
+  def executeCalibration(id:String): Action[AnyContent] = Security.Authenticated.async {
+    for(calibrationConfigs <- calibrationConfigDB.getListFuture) yield {
+      val configOpt = calibrationConfigs.find(_._id == id)
+      if(configOpt.isDefined){
+        manager ! StartMultiCalibration(configOpt.get)
+        Ok(Json.obj("ok" -> true))
+      }else
+        BadRequest("No such calibration config")
+    }
+  }
+
+  def cancelCalibration(id:String): Action[AnyContent] = Security.Authenticated.async {
+    for(calibrationConfigs <- calibrationConfigDB.getListFuture) yield {
+      val configOpt = calibrationConfigs.find(_._id == id)
+      if(configOpt.isDefined){
+        manager ! StopMultiCalibration(configOpt.get)
+        Ok(Json.obj("ok" -> true))
+      }else
+        BadRequest("No such calibration config")
+    }
   }
 }

@@ -100,4 +100,6 @@ class UpsCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monito
 
     super.postStop()
   }
+
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {}
 }

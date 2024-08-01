@@ -46,4 +46,6 @@ class T200CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     val data2 = List((dataInstrumentTypes(2), data0(0)._2 - data1(0)._2))
     data0 ++ data1 ++ data2
   }
+
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {}
 }

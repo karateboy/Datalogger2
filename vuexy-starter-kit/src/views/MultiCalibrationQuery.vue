@@ -83,6 +83,14 @@ interface CalibrationJSON {
   span_std?: number;
   // eslint-disable-next-line camelcase
   span_val?: number;
+  point3?: number;
+  point3_success?: boolean;
+  point4?: number;
+  point4_success?: boolean;
+  point5?: number;
+  point5_success?: boolean;
+  point6?: number;
+  point6_success?: boolean;
 }
 
 export default Vue.extend({
@@ -155,24 +163,6 @@ export default Vue.extend({
           },
         },
         {
-          key: 'zero_law',
-          label: '零點偏移法規值',
-          formatter: function (
-            v: number | null,
-            _key: string,
-            item: CalibrationJSON,
-          ) {
-            if (mtMap.has(item.monitorType)) {
-              let mtCase = mtMap.get(item.monitorType) as MonitorType;
-              if (mtCase.zd_law !== undefined) {
-                return mtCase.zd_law.toFixed(
-                  me.mtMap.get(item.monitorType).prec,
-                );
-              } else return '-';
-            } else return '-';
-          },
-        },
-        {
           key: 'span_val',
           label: '全幅讀值',
           sortable: true,
@@ -183,7 +173,11 @@ export default Vue.extend({
           ) {
             return { 'text-danger': !me.getSpanStatus(item) };
           },
-          formatter: function (v: number, key: string, item: CalibrationJSON) {
+          formatter: function (
+            v: number | null,
+            key: string,
+            item: CalibrationJSON,
+          ) {
             if (v !== null) {
               let value = v as number;
               return value.toFixed(me.mtMap.get(item.monitorType).prec);
@@ -193,63 +187,111 @@ export default Vue.extend({
           },
         },
         {
-          key: 'span_std',
-          label: '全幅標準值',
-          sortable: true,
-          formatter: function (v: number, key: string, item: CalibrationJSON) {
-            if (v !== null) {
-              let value = v as number;
-              return value.toFixed(me.mtMap.get(item.monitorType).prec);
-            } else {
-              return '-';
-            }
-          },
-        },
-        {
-          key: 'span_dev',
-          label: '偏移率(%)',
+          key: 'point3',
+          label: '校正點3',
           sortable: true,
           tdClass: function (
             v: number | null,
             _key: string,
             item: CalibrationJSON,
           ) {
-            return { 'text-danger': !me.getSpanStatus(item) };
+            return {
+              'text-success': item.point3_success === true,
+              'text-danger': item.point3_success === false,
+            };
           },
           formatter: function (
-            _v: number,
-            _key: string,
+            v: number | null,
+            key: string,
             item: CalibrationJSON,
           ) {
-            if (
-              item.span_std !== undefined &&
-              item.span_std !== 0 &&
-              item.span_val !== undefined
-            ) {
-              let v = Math.abs(
-                ((item.span_val - item.span_std) / item.span_std) * 100,
-              );
-              return v.toFixed(2);
+            if (v !== null) {
+              let value = v as number;
+              return value.toFixed(me.mtMap.get(item.monitorType).prec);
             } else {
               return '-';
             }
           },
         },
         {
-          key: 'span_dev_law',
-          label: '偏移率法規值(%)',
+          key: 'point4',
+          label: '校正點4',
           sortable: true,
-          formatter: function (
-            _v: number,
+          tdClass: function (
+            v: number | null,
             _key: string,
             item: CalibrationJSON,
           ) {
-            if (mtMap.has(item.monitorType)) {
-              let mtCase = mtMap.get(item.monitorType) as MonitorType;
-              if (mtCase.span_dev_law !== undefined) {
-                return mtCase.span_dev_law.toFixed(2);
-              } else return '-';
-            } else return '-';
+            return {
+              'text-success': item.point4_success === true,
+              'text-danger': item.point4_success === false,
+            };
+          },
+          formatter: function (
+            v: number | null,
+            key: string,
+            item: CalibrationJSON,
+          ) {
+            if (v !== null) {
+              let value = v as number;
+              return value.toFixed(me.mtMap.get(item.monitorType).prec);
+            } else {
+              return '-';
+            }
+          },
+        },
+        {
+          key: 'point5',
+          label: '校正點5',
+          sortable: true,
+          tdClass: function (
+            v: number | null,
+            _key: string,
+            item: CalibrationJSON,
+          ) {
+            return {
+              'text-success': item.point5_success === true,
+              'text-danger': item.point5_success === false,
+            };
+          },
+          formatter: function (
+            v: number | null,
+            key: string,
+            item: CalibrationJSON,
+          ) {
+            if (v !== null) {
+              let value = v as number;
+              return value.toFixed(me.mtMap.get(item.monitorType).prec);
+            } else {
+              return '-';
+            }
+          },
+        },
+        {
+          key: 'point6',
+          label: '校正點6',
+          sortable: true,
+          tdClass: function (
+            v: number | null,
+            _key: string,
+            item: CalibrationJSON,
+          ) {
+            return {
+              'text-success': item.point6_success === true,
+              'text-danger': item.point6_success === false,
+            };
+          },
+          formatter: function (
+            v: number | null,
+            key: string,
+            item: CalibrationJSON,
+          ) {
+            if (v !== null) {
+              let value = v as number;
+              return value.toFixed(me.mtMap.get(item.monitorType).prec);
+            } else {
+              return '-';
+            }
           },
         },
         {

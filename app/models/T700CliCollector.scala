@@ -84,4 +84,6 @@ class T700CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
     super.postStop()
   }
+
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {}
 }

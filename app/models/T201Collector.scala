@@ -1,8 +1,7 @@
 package models
 
-import models.Protocol.{ProtocolParam, tcp}
 import com.google.inject.assistedinject.Assisted
-import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
+import models.Protocol.{ProtocolParam, tcp}
 object T201Collector extends
   TapiTxx(ModelConfig("T201", List("TNX",
     MonitorType.NH3, MonitorType.NOX,
@@ -29,9 +28,6 @@ object T201Collector extends
   override def protocol: List[String] = List(tcp)
 }
 
-import akka.actor.ActorSystem
-
-
 import javax.inject._
 
 class T201Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
@@ -48,20 +44,6 @@ class T201Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
   val NO = MonitorType.NO
   val NO2 = MonitorType.NO2
   val NOX = MonitorType.NOX
-
-  def findIdx(regValue: ModelRegValue, addr: Int) = {
-    val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
-    if (dataReg.isEmpty)
-      throw new Exception("No data register!")
-
-    dataReg.get._2
-  }
-
-  var regIdxTNX: Option[Int] = None //46
-  var regIdxNH3: Option[Int] = None //50
-  var regIdxNOx: Option[Int] = None //54
-  var regIdxNO: Option[Int] = None //58
-  var regIdxNO2: Option[Int] = None //62
 
   override def reportData(regValue: ModelRegValue): Option[ReportData] =
     for {
@@ -114,7 +96,7 @@ class T201Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     }
   }
 
-  override def resetToNormal() = {
+  override def resetToNormal(): Unit = {
     try {
       super.resetToNormal()
 
@@ -126,5 +108,11 @@ class T201Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
       case ex: Exception =>
         ModelHelper.logException(ex)
     }
+  }
+
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {
+    val addr = if (zero) 20 else 21
+    val locator = BaseLocator.coilStatus(config.slaveID, addr)
+    masterOpt.get.setValue(locator, on)
   }
 } 

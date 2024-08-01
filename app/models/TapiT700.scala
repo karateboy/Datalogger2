@@ -93,4 +93,6 @@ class T700Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
   override def resetToNormal() {
     executeSeq(T700_STANDBY_SEQ, on = true)
   }
-} 
+
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {}
+}

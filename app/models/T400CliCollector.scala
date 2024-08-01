@@ -30,4 +30,6 @@ class T400CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
         (dataInstrumentTypes(0), value)
     })
   }
+
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {}
 }

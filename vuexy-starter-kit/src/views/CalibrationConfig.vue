@@ -1,12 +1,12 @@
 <template>
   <b-card>
     <b-table
-        :items="calibrationList"
-        :fields="fields"
-        select-mode="single"
-        selectable
-        responsive
-        @row-selected="onConfigSelected"
+      :items="calibrationList"
+      :fields="fields"
+      select-mode="single"
+      selectable
+      responsive
+      @row-selected="onConfigSelected"
     >
       <template #cell(selected)="{ rowSelected }">
         <template v-if="rowSelected">
@@ -22,46 +22,46 @@
         <b-tr>
           <b-td colspan="8">
             <b-button
-                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-                variant="primary"
-                class="mr-1"
-                @click="newCalibrationConfig"
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              variant="primary"
+              class="mr-1"
+              @click="newCalibrationConfig"
             >
               新增
             </b-button>
             <b-button
-                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-                variant="primary"
-                class="mr-1"
-                :disabled="selected.length === 0"
-                @click="updateConfig"
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              variant="primary"
+              class="mr-1"
+              :disabled="selected.length === 0"
+              @click="updateConfig"
             >
               變更
             </b-button>
             <b-button
-                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-                variant="danger"
-                class="mr-1"
-                :disabled="selected.length === 0"
-                @click="deleteConfig"
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              variant="danger"
+              class="mr-1"
+              :disabled="selected.length === 0"
+              @click="deleteConfig"
             >
               刪除
             </b-button>
             <b-button
-                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-                variant="primary"
-                class="mr-1"
-                :disabled="selected.length === 0"
-                @click="calibrateInstrument"
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              variant="primary"
+              class="mr-1"
+              :disabled="selected.length === 0"
+              @click="calibrateInstrument"
             >
               執行校正
             </b-button>
             <b-button
-                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-                variant="primary"
-                class="mr-1"
-                :disabled="selected.length === 0"
-                @click="resetInstrument"
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              variant="primary"
+              class="mr-1"
+              :disabled="selected.length === 0"
+              @click="resetInstrument"
             >
               中斷校正
             </b-button>
@@ -70,81 +70,105 @@
       </template>
     </b-table>
     <b-modal
-        id="calibrationConfigModal"
-        :title="modalTitle"
-        size="xl"
-        modal-class="modal-primary"
-        no-close-on-backdrop
-        cancel-title="取消"
-        ok-title="確定"
-        @ok="onSubmit"
+      id="calibrationConfigModal"
+      :title="modalTitle"
+      size="xl"
+      modal-class="modal-primary"
+      no-close-on-backdrop
+      cancel-title="取消"
+      ok-title="確定"
+      @ok="onSubmit"
     >
       <b-form @submit.prevent>
         <b-row>
           <b-col cols="12">
-            <b-form-group label="多點校正名稱" label-for="calibration-id" label-cols-md="3">
-              <b-form-input
-                  id="calibration-id"
-                  v-model="activeConfig._id"
-                  placeholder="校正名稱"/>
-            </b-form-group>
-          </b-col>
-          <b-col cols="12">
             <b-form-group
-                label="設備ID"
-                label-for="instrument-id"
-                label-cols-md="3"
+              label="多點校正名稱"
+              label-for="calibration-id"
+              label-cols-md="3"
             >
-              <v-select
-                  id="instrument-id"
-                  v-model="activeConfig.instrumentIds"
-                  label="_id"
-                  :reduce="inst => inst._id"
-                  :options="instList"
-                  :close-on-select="false"
-                  multiple
+              <b-form-input
+                id="calibration-id"
+                v-model="activeConfig._id"
+                placeholder="校正名稱"
               />
             </b-form-group>
           </b-col>
           <b-col cols="12">
             <b-form-group
-                label="校正時間"
-                label-for="calibration-time"
-                label-cols-md="3"
+              label="設備ID"
+              label-for="instrument-id"
+              label-cols-md="3"
             >
-              <b-form-timepicker id="calibration-time" v-model="activeConfig.calibrationTime"></b-form-timepicker>
+              <v-select
+                id="instrument-id"
+                v-model="activeConfig.instrumentIds"
+                label="_id"
+                :reduce="inst => inst._id"
+                :options="instList"
+                :close-on-select="false"
+                multiple
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="12">
+            <b-form-group
+              label="校正時間"
+              label-for="calibration-time"
+              label-cols-md="3"
+            >
+              <b-form-timepicker
+                id="calibration-time"
+                v-model="activeConfig.calibrationTime"
+              ></b-form-timepicker>
             </b-form-group>
           </b-col>
           <b-col>
             <b-table
-                :items="activeConfig.pointConfigs"
-                :fields="pointCalibrationFields"
-                responsive
+              :items="activeConfig.pointConfigs"
+              :fields="pointCalibrationFields"
+              responsive
             >
               <template #cell(enable)="row">
-                <b-form-checkbox v-model="row.item.enable"/>
+                <b-form-checkbox v-model="row.item.enable" />
               </template>
               <template #cell(raiseTime)="row">
-                <b-form-input type="number" v-model.number="row.item.raiseTime"/>
+                <b-form-input
+                  v-model.number="row.item.raiseTime"
+                  type="number"
+                />
               </template>
               <template #cell(holdTime)="row">
-                <b-form-input type="number" v-model.number="row.item.holdTime"/>
+                <b-form-input
+                  v-model.number="row.item.holdTime"
+                  type="number"
+                />
               </template>
               <template #cell(calibrateSeq)="row">
-                <b-form-input v-model="row.item.calibrateSeq"/>
+                <b-form-input v-model="row.item.calibrateSeq" />
               </template>
               <template #cell(calibrateDO)="row">
-                <b-form-input type="number" v-model="row.item.calibrateDO"/>
+                <b-form-input v-model="row.item.calibrateDO" type="number" />
               </template>
               <template #cell(skipInternalVault)="row">
-                <b-form-checkbox v-model="row.item.skipInternalVault"/>
+                <b-form-checkbox v-model="row.item.skipInternalVault" />
               </template>
               <template #cell(fullSpanPercent)="row">
-                <b-form-input v-if="row.index !== 6" type="number" v-model.number="row.item.fullSpanPercent"/>
+                <b-form-input
+                  v-if="row.index !== 6"
+                  v-model.number="row.item.fullSpanPercent"
+                  type="number"
+                />
               </template>
               <template #cell(deviationAllowance)="row">
-                <span v-if="row.index ===0 || row.index ===1">依測項管理設定</span>
-                <b-form-input v-else-if="row.index !== 6" type="number" v-model.number="row.item.deviationAllowance"/>
+                <span v-if="row.index === 0 || row.index === 1"
+                  >依測項管理設定</span
+                >
+                <b-form-input
+                  v-else-if="row.index !== 6"
+                  v-model.number="row.item.deviationAllowance"
+                  type="number"
+                />
               </template>
             </b-table>
           </b-col>
@@ -183,11 +207,7 @@ export default Vue.extend({
         key: 'instrumentIds',
         label: '儀器ID',
         sortable: true,
-        formatter: (
-            value,
-            key,
-            item,
-        ) => {
+        formatter: (value, key, item) => {
           return item.instrumentIds.join(', ');
         },
       },
@@ -200,17 +220,12 @@ export default Vue.extend({
         key: 'monitorTypes',
         label: '測項',
         sortable: true,
-        formatter: (
-            value,
-            key,
-            item,
-        ) => {
+        formatter: (value, key, item) => {
           let monitorTypes = item.instrumentIds.map(instId => {
             let inst = this.instList.find(inst => inst._id === instId);
             if (inst) {
               return inst.monitorTypes;
-            } else
-              return '';
+            } else return '';
           });
           return monitorTypes.join(', ');
         },
@@ -269,7 +284,7 @@ export default Vue.extend({
       selected: [],
       activeConfig,
       instList,
-      pointCalibrationFields
+      pointCalibrationFields,
     };
   },
   computed: {
@@ -282,9 +297,9 @@ export default Vue.extend({
     },
     canToggleActivate() {
       return (
-          this.selected.length === 1 &&
-          (this.selected[0].state !== '啟用中' ||
-              this.selected[0].state === '停用中')
+        this.selected.length === 1 &&
+        (this.selected[0].state !== '啟用中' ||
+          this.selected[0].state === '停用中')
       );
     },
     toggleActivateName() {
@@ -301,7 +316,7 @@ export default Vue.extend({
         map.set(inst._id, inst.monitorTypes);
       });
       return map;
-    }
+    },
   },
   async mounted() {
     await this.getInstList();
@@ -319,81 +334,81 @@ export default Vue.extend({
       return [
         {
           enable: true,
-          name: "零點",
+          name: '零點',
           raiseTime: 0,
           holdTime: 0,
           calibrateSeq: undefined,
           calibrateDO: undefined,
           skipInternalVault: false,
           fullSpanPercent: 0,
-          deviationAllowance: 5
+          deviationAllowance: 5,
         },
         {
           enable: true,
-          name: "全幅",
+          name: '全幅',
           raiseTime: 0,
           holdTime: 0,
           calibrateSeq: undefined,
           calibrateDO: undefined,
           skipInternalVault: false,
           fullSpanPercent: 100,
-          deviationAllowance: 5
+          deviationAllowance: 5,
         },
         {
           enable: false,
-          name: "校正點3",
+          name: '校正點3',
           raiseTime: 0,
           holdTime: 0,
           calibrateSeq: undefined,
           calibrateDO: undefined,
           skipInternalVault: false,
           fullSpanPercent: 50,
-          deviationAllowance: 5
+          deviationAllowance: 5,
         },
         {
           enable: false,
-          name: "校正點4",
+          name: '校正點4',
           raiseTime: 0,
           holdTime: 0,
           calibrateSeq: undefined,
           calibrateDO: undefined,
           skipInternalVault: false,
           fullSpanPercent: 50,
-          deviationAllowance: 5
+          deviationAllowance: 5,
         },
         {
           enable: false,
-          name: "校正點5",
+          name: '校正點5',
           raiseTime: 0,
           holdTime: 0,
           calibrateSeq: undefined,
           calibrateDO: undefined,
           skipInternalVault: false,
           fullSpanPercent: 50,
-          deviationAllowance: 5
+          deviationAllowance: 5,
         },
         {
           enable: false,
-          name: "校正點6",
+          name: '校正點6',
           raiseTime: 0,
           holdTime: 0,
           calibrateSeq: undefined,
           calibrateDO: undefined,
           skipInternalVault: false,
           fullSpanPercent: 50,
-          deviationAllowance: 5
+          deviationAllowance: 5,
         },
         {
           enable: false,
-          name: "校正後Purge",
+          name: '校正後Purge',
           raiseTime: 0,
           holdTime: 0,
           calibrateSeq: undefined,
           calibrateDO: undefined,
           skipInternalVault: false,
           fullSpanPercent: 0,
-          deviationAllowance: 0
-        }
+          deviationAllowance: 0,
+        },
       ];
     },
     showResult(ok) {
@@ -420,15 +435,15 @@ export default Vue.extend({
     },
     async calibrateInstrument() {
       const res = await axios.put(
-          `/CalibrateInstrument/${this.selected[0]._id}`,
-          {},
+        `/ExecuteCalibration/${this.selected[0]._id}`,
+        {},
       );
       this.showResult(res.data.ok);
     },
     async resetInstrument() {
       const res = await axios.put(
-          `/ResetInstrument/${this.selected[0]._id}`,
-          {},
+        `/CancelCalibration/${this.selected[0]._id}`,
+        {},
       );
       this.showResult(res.data.ok);
     },
@@ -449,22 +464,22 @@ export default Vue.extend({
     },
     deleteConfig() {
       this.$bvModal
-          .msgBoxConfirm(`是否要刪除校正設定?${this.selected[0]._id}`, {
-            okTitle: '是',
-            cancelTitle: '否',
-            centered: true,
-          })
-          .then(ret => {
-            if (ret) {
-              this.delConfig(this.selected[0]._id);
-            }
-          })
-          .catch(err => {
-            throw Error(err);
-          });
+        .msgBoxConfirm(`是否要刪除校正設定?${this.selected[0]._id}`, {
+          okTitle: '是',
+          cancelTitle: '否',
+          centered: true,
+        })
+        .then(ret => {
+          if (ret) {
+            this.delConfig(this.selected[0]._id);
+          }
+        })
+        .catch(err => {
+          throw Error(err);
+        });
     },
     async getCalibrationConfigs() {
-      let res = await axios.get('/CalibrationConfig')
+      let res = await axios.get('/CalibrationConfig');
       this.calibrationList = res.data;
     },
     async upsertConfig() {

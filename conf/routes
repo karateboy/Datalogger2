@@ -165,3 +165,5 @@ POST          /UpsertData                                                       
 GET           /CalibrationConfig                                                                                 controllers.HomeController.getCalibrationConfig
 POST          /CalibrationConfig                                                                                 controllers.HomeController.upsertCalibrationConfig
 DELETE        /CalibrationConfig/:id                                                                             controllers.HomeController.deleteCalibrationConfig(id)
+PUT           /ExecuteCalibration/:id                                                                            controllers.HomeController.executeCalibration(id)
+PUT           /CancelCalibration/:id                                                                             controllers.HomeController.cancelCalibration(id)

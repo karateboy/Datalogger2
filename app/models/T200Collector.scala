@@ -101,9 +101,9 @@ class T200Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     }
   }
 
-  override def resetToNormal() = {
+  override def resetToNormal(): Unit = {
     try {
-      super.resetToNormal
+      super.resetToNormal()
 
       if (!config.skipInternalVault.contains(true)) {
         masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
@@ -113,5 +113,11 @@ class T200Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
       case ex: Exception =>
         ModelHelper.logException(ex)
     }
+  }
+
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {
+    val addr = if (zero) 20 else 21
+    val locator = BaseLocator.coilStatus(config.slaveID, addr)
+    masterOpt.get.setValue(locator, on)
   }
 } 

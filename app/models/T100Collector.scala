@@ -1,9 +1,8 @@
 package models
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.{tcp, tcpCli}
-import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 object T100Collector extends TapiTxx(ModelConfig("T100", List("SO2"))) {
-  lazy val modelReg = readModelSetting
+  lazy val modelReg: ModelReg = readModelSetting
 
   import Protocol.ProtocolParam
   import akka.actor._
@@ -38,8 +37,6 @@ object T100Collector extends TapiTxx(ModelConfig("T100", List("SO2"))) {
 
   override def protocol: List[String] = List(tcp, tcpCli)
 }
-
-import akka.actor.ActorSystem
 
 import javax.inject._
 
@@ -101,5 +98,11 @@ class T100Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
       case ex: Exception =>
         ModelHelper.logException(ex)
     }
+  }
+
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {
+    val addr = if (zero) 20 else 21
+    val locator = BaseLocator.coilStatus(config.slaveID, addr)
+    masterOpt.get.setValue(locator, on)
   }
 }

@@ -60,6 +60,10 @@ export default [
         route: 'calibration-query',
       },
       {
+        title: '多點校正查詢',
+        route: 'multi-calibration-query',
+      },
+      {
         title: '警報記錄查詢',
         route: 'alarm-query',
         action: 'read',

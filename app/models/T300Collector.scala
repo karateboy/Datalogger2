@@ -52,7 +52,7 @@ class T300Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
   extends TapiTxxCollector(instrumentOp, monitorStatusOp,
     alarmOp, monitorTypeOp,
     calibrationOp, instrumentStatusOp)(instId, modelReg, config, host){
-  val CO = ("CO")
+  val CO = MonitorType.CO
 
   import DataCollectManager._
 
@@ -103,7 +103,7 @@ class T300Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     }
   }
 
-  override def resetToNormal() = {
+  override def resetToNormal(): Unit = {
     try {
       super.resetToNormal()
 
@@ -115,5 +115,11 @@ class T300Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
       case ex: Exception =>
         ModelHelper.logException(ex)
     }
+  }
+
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {
+    val addr = if (zero) 20 else 21
+    val locator = BaseLocator.coilStatus(config.slaveID, addr)
+    masterOpt.get.setValue(locator, on)
   }
 } 

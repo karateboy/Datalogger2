@@ -2,6 +2,7 @@ package models
 
 import akka.actor._
 import models.ModelHelper._
+import models.MultiCalibrator.TriggerVault
 import models.Protocol.ProtocolParam
 import models.TapiTxx.T700_STANDBY_SEQ
 import play.api._
@@ -62,10 +63,10 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   import scala.concurrent.{Future, blocking}
 
-  def receive(): Receive = normalPhase
+  def receive(): Receive = normalPhase()
   import AbstractCollector._
 
-  def readRegHanlder(recordCalibration: Boolean): Unit = {
+  private def readRegHandler(recordCalibration: Boolean): Unit = {
     try {
       for (instrumentStatusTypes <- instrumentStatusTypesOpt) {
         import com.github.nscala_time.time.Imports._
@@ -108,7 +109,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     }
   }
 
-  def connectHost: Unit
+  def connectHost(): Unit
 
   def getDataRegList: Seq[DataReg]
 
@@ -117,7 +118,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
       Future {
         blocking {
           try {
-            connectHost
+            connectHost()
             connected = true
             if (instrumentStatusTypesOpt.isEmpty) {
               val statusTypeList = probeInstrumentStatusType.toList
@@ -154,7 +155,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
       }
 
     case ReadRegister =>
-      readRegHanlder(false)
+      readRegHandler(false)
 
     case SetState(_, state) =>
       if (state == MonitorStatus.ZeroCalibrationStat) {
@@ -179,7 +180,12 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
     case WriteSignal(mtId, bit) =>
       onWriteSignal(mtId, bit)
+
+    case TriggerVault(zero, on) =>
+      Future.successful(triggerVault(zero, on))
   }
+
+  def triggerVault(zero: Boolean, on: Boolean): Unit
 
   def executeSeq(str: String, bool: Boolean): Unit = {}
 
@@ -218,7 +224,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
         timer.cancel()
 
       logInstrumentError(id, s"${self.path.name}: ${ex.getMessage}. ", ex)
-      resetToNormal
+      resetToNormal()
       instrumentOp.setState(id, endState)
       collectorState = endState
       context become normalPhase
@@ -238,7 +244,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
       collectorState = MonitorStatus.NormalStat
       instrumentOp.setState(instId, MonitorStatus.NormalStat)
-      resetToNormal
+      resetToNormal()
       for (timer <- readRegTimer) {
         timer.cancel()
         readRegTimer = None
@@ -247,7 +253,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
       context become normalPhase
 
     case ReadRegister =>
-      readRegHanlder(recordCalibration)
+      readRegHandler(recordCalibration)
 
     case SetState(_, targetState) =>
       if (targetState == MonitorStatus.ZeroCalibrationStat) {
@@ -259,7 +265,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
         collectorState = targetState
         instrumentOp.setState(instId, targetState)
-        resetToNormal
+        resetToNormal()
         context become normalPhase
       } else {
         Logger.info(s"During calibration ignore $targetState change.")
@@ -418,9 +424,9 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   def getDelayAfterCalibrationStart: Int = 0
 
-  def onCalibrationEnd() = {}
+  def onCalibrationEnd(): Unit = {}
 
-  def resetToNormal() {
+  def resetToNormal(): Unit = {
     try {
       deviceConfig.calibrateZeoDO map {
         doBit =>

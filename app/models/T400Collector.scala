@@ -1,19 +1,18 @@
 package models
 
-import akka.actor.ActorSystem
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.{ProtocolParam, tcp, tcpCli}
 
 object T400Collector extends TapiTxx(ModelConfig("T400", List("O3"))) {
-  lazy val modelReg = readModelSetting
+  lazy val modelReg: ModelReg = readModelSetting
 
   import akka.actor._
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt: Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Factory])
     val f2 = f.asInstanceOf[Factory]
     val driverParam = validateParam(param)
-    if(protocol.protocol == Protocol.tcp)
+    if (protocol.protocol == Protocol.tcp)
       f2(id, modelReg, driverParam, protocol.host.get)
     else {
       assert(fOpt.get.isInstanceOf[CliFactory])
@@ -23,7 +22,7 @@ object T400Collector extends TapiTxx(ModelConfig("T400", List("O3"))) {
   }
 
   trait Factory {
-    def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, host:String): Actor
+    def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, host: String): Actor
   }
 
   trait CliFactory {
@@ -32,6 +31,7 @@ object T400Collector extends TapiTxx(ModelConfig("T400", List("O3"))) {
               @Assisted("config") config: DeviceConfig,
               @Assisted("protocolParam") protocol: ProtocolParam): Actor
   }
+
   override def id: String = "t400"
 
   override def description: String = "TAPI T400"
@@ -45,19 +45,17 @@ class T400Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
                               alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
                               calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                              (@Assisted("instId") instId: String, @Assisted modelReg: ModelReg,
-                              @Assisted config: TapiConfig, @Assisted host:String)
+                              @Assisted config: TapiConfig, @Assisted host: String)
   extends TapiTxxCollector(instrumentOp, monitorStatusOp,
     alarmOp, monitorTypeOp,
     calibrationOp, instrumentStatusOp)(instId, modelReg, config, host) {
-  import DataCollectManager._
-  val O3 = ("O3")
 
-  var regIdxO3: Option[Int] = None
+  import DataCollectManager._
 
   override def reportData(regValue: ModelRegValue): Option[ReportData] =
     for (idx <- findDataRegIdx(regValue)(18)) yield {
       val v = regValue.inputRegs(idx)
-      ReportData(List(MonitorTypeData(O3, v._2.toDouble, collectorState)))
+      ReportData(List(MonitorTypeData(MonitorType.O3, v._2.toDouble, collectorState)))
     }
 
   import com.serotonin.modbus4j.locator.BaseLocator
@@ -90,9 +88,9 @@ class T400Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     }
   }
 
-  override def resetToNormal() = {
+  override def resetToNormal(): Unit = {
     try {
-      super.resetToNormal
+      super.resetToNormal()
 
       if (!config.skipInternalVault.contains(true)) {
         masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
@@ -104,4 +102,9 @@ class T400Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     }
   }
 
-} 
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {
+    val addr = if (zero) 20 else 22
+    val locator = BaseLocator.coilStatus(config.slaveID, addr)
+    masterOpt.get.setValue(locator, on)
+  }
+}

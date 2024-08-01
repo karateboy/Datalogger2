@@ -2,7 +2,7 @@ package models.mongodb
 
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
-import models.{Alarm, AlarmDB, AlertEmailSender, LineNotify}
+import models.{Alarm, AlarmDB, AlertEmailSender, LineNotify, LoggerConfig}
 import org.bson.codecs.configuration.CodecRegistry
 import org.mongodb.scala._
 import play.api._
@@ -79,9 +79,10 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
       (count: Long) => {
         if (count == 0) {
           collection.insertOne(ar).toFuture()
-          if (ar.level >= Level.ERR)
+          if (ar.level >= Level.ERR && LoggerConfig.config.alertEmail)
             emailTargetOp.getList().foreach { emailTargets =>
               val emails = emailTargets.map(_._id)
+
               AlertEmailSender.sendAlertMail(mailerClient = mailerClient)("警報通知", emails, ar.desc)
             }
 
