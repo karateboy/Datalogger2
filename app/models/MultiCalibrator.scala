@@ -2,7 +2,6 @@ package models
 
 import akka.actor._
 import models.DataCollectManager._
-import play.api.Logger
 
 import java.time.Instant
 import java.util.Date
@@ -14,8 +13,8 @@ object MultiCalibrator {
   def start(calibrationConfig: CalibrationConfig,
             instrumentMap: Map[String, InstrumentParam],
             instrumentCollectorMap: Map[String, ActorRef])
-           (implicit system: ActorSystem, calibrationDB: CalibrationDB, monitorTypeDB: MonitorTypeDB): ActorRef = {
-    system.actorOf(Props(new MultiCalibrator(calibrationConfig,
+           (implicit context: ActorContext, calibrationDB: CalibrationDB, monitorTypeDB: MonitorTypeDB): ActorRef = {
+    context.actorOf(Props(new MultiCalibrator(calibrationConfig,
       instrumentMap,
       instrumentCollectorMap,
       monitorTypeDB,
@@ -43,11 +42,7 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
 
   import MultiCalibrator._
 
-  val me: Class[MultiCalibrator] = classOf[MultiCalibrator]
-  Logger.info(s"Start multi-calibrator ${calibrationConfig._id}")
-  Logger.info(s"${me.getName} Start multi-calibrator ${calibrationConfig._id}")
   log.info(s"Start multi-calibrator ${calibrationConfig._id}")
-  //val calibrationStart = Date.from(Instant.now)
   private val calibrationMonitorTypes: Seq[String] = calibrationConfig.instrumentIds.flatMap(instId => {
     val inst = instrumentMap(instId)
     val monitorTypes = inst.mtList
@@ -179,12 +174,13 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
     case ReportData(_dataList) =>
       if (recording) {
         var newMap = valueMap
-        _dataList.foreach { data => {
-          val monitorType = data.mt
-          val value = data.value
-          val seq = newMap.getOrElse(monitorType, Seq.empty[Double])
-          newMap += monitorType -> (seq :+ value)
-        }
+        _dataList.foreach {
+          data => {
+            val monitorType = data.mt
+            val value = data.value
+            val seq = newMap.getOrElse(monitorType, Seq.empty[Double])
+            newMap += monitorType -> (seq :+ value)
+          }
         }
         context.become(handler(point, newMap, recording = true, calibrationMap))
       }

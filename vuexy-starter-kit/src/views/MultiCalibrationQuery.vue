@@ -64,33 +64,34 @@ import Vue from 'vue';
 import DatePicker from 'vue2-datepicker';
 import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
-const Ripple = require('vue-ripple-directive');
 import moment from 'moment';
 import axios from 'axios';
 import { mapActions, mapGetters } from 'vuex';
 import { MonitorType } from './types';
+import highcharts from 'highcharts';
+
+const Ripple = require('vue-ripple-directive');
+
 const excel = require('../libs/excel');
 const _ = require('lodash');
-import highcharts from 'highcharts';
 
 interface CalibrationJSON {
   monitorType: string;
   startTime: number;
   endTime: number;
-  // eslint-disable-next-line camelcase
-  zero_val?: number;
-  // eslint-disable-next-line camelcase
-  span_std?: number;
-  // eslint-disable-next-line camelcase
-  span_val?: number;
-  point3?: number;
-  point3_success?: boolean;
-  point4?: number;
-  point4_success?: boolean;
-  point5?: number;
-  point5_success?: boolean;
-  point6?: number;
-  point6_success?: boolean;
+  zero_val: number | null;
+  span_std: number | null;
+  span_val: number | null;
+  zero_success: boolean | null;
+  span_success: boolean | null;
+  point3: number | null;
+  point3_success: boolean | null;
+  point4: number | null;
+  point4_success: boolean | null;
+  point5: number | null;
+  point5_success: boolean | null;
+  point6: number | null;
+  point6_success: boolean | null;
 }
 
 export default Vue.extend({
@@ -303,9 +304,9 @@ export default Vue.extend({
             item: CalibrationJSON,
           ) {
             if (
-              item.zero_val !== undefined &&
-              item.span_val !== undefined &&
-              item.span_std !== undefined
+              item.zero_val !== null &&
+              item.span_val !== null &&
+              item.span_std !== null
             ) {
               if (item.span_val - item.zero_val !== 0) {
                 let m = item.span_std / (item.span_val - item.zero_val);
@@ -325,9 +326,9 @@ export default Vue.extend({
             item: CalibrationJSON,
           ) {
             if (
-              item.zero_val !== undefined &&
-              item.span_val !== undefined &&
-              item.span_std !== undefined
+              item.zero_val !== null &&
+              item.span_val !== null &&
+              item.span_std !== null
             ) {
               if (item.span_val - item.zero_val !== 0) {
                 let b =
@@ -459,8 +460,7 @@ export default Vue.extend({
     getZeroStatus(item: CalibrationJSON): boolean {
       let mtMap = this.mtMap as Map<string, MonitorType>;
       let mtCase = mtMap.get(item.monitorType) as MonitorType;
-      if (mtCase.zd_law === undefined || item.zero_val === undefined)
-        return true;
+      if (mtCase.zd_law === null || item.zero_val === null) return true;
 
       return Math.abs(item.zero_val) < Math.abs(mtCase.zd_law);
     },
@@ -468,9 +468,9 @@ export default Vue.extend({
       let mtMap = this.mtMap as Map<string, MonitorType>;
       let mtCase = mtMap.get(item.monitorType) as MonitorType;
       if (
-        mtCase.span_dev_law !== undefined &&
-        item.span_val !== undefined &&
-        item.span_std !== undefined
+        mtCase.span_dev_law !== null &&
+        item.span_val !== null &&
+        item.span_std !== null
       ) {
         // eslint-disable-next-line camelcase
         let span_dev = Math.abs(
@@ -481,7 +481,12 @@ export default Vue.extend({
       } else return true;
     },
     getStatus(item: CalibrationJSON): boolean {
-      return this.getZeroStatus(item) && this.getSpanStatus(item);
+      return (item.zero_success === true &&
+          item.span_success === true &&
+          (item.point3_success === null || item.point3_success) &&
+          (item.point4_success === null || item.point4_success) &&
+          (item.point5_success === null || item.point5_success) &&
+          (item.point6_success === null || item.point6_success));
     },
     async downloadExcel() {
       const baseUrl =

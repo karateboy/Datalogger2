@@ -3,7 +3,7 @@ package controllers
 import akka.actor.ActorRef
 import buildinfo.BuildInfo
 import com.github.nscala_time.time.Imports._
-import models.DataCollectManager.{StartMultiCalibration, StopMultiCalibration}
+import models.DataCollectManager.{RemoveMultiCalibrationTimer, SetupMultiCalibrationTimer, StartMultiCalibration, StopMultiCalibration}
 import models.ForwardManager.{ForwardHourRecord, ForwardMinRecord}
 import models.ModelHelper.{errorHandler, handleJsonValidateError, handleJsonValidateErrorFuture}
 import models._
@@ -839,13 +839,17 @@ class HomeController @Inject()(
 
       ret.fold(
         error => handleJsonValidateErrorFuture(error),
-        param => {
-          for (_ <- calibrationConfigDB.upsertFuture(param)) yield
+        config => {
+          manager ! RemoveMultiCalibrationTimer(config._id)
+          for (_ <- calibrationConfigDB.upsertFuture(config)) yield {
+            manager ! SetupMultiCalibrationTimer(config)
             Ok(Json.obj("ok" -> true))
+          }
         })
   }
 
   def deleteCalibrationConfig(id: String): Action[AnyContent] = Security.Authenticated.async {
+    manager ! RemoveMultiCalibrationTimer(id)
     for (ret <- calibrationConfigDB.deleteFuture(id)) yield
       Ok(Json.obj("ok" -> ret))
   }
