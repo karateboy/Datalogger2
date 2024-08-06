@@ -29,7 +29,7 @@ object MonitorStatusFilter extends Enumeration {
         stat == MonitorStatus.NormalStat
 
       case MonitorStatusFilter.Calbration=>
-        MonitorStatus.isCalbration(stat)
+        MonitorStatus.isCalibration(stat)
         
       case MonitorStatusFilter.Maintance =>
         MonitorStatus.isMaintenance(stat)

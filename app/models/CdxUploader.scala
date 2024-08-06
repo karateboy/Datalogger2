@@ -77,7 +77,7 @@ class CdxUploader @Inject()(alarmDB: AlarmDB, environment: Environment){
         if(MonitorStatus.isValid(mtRecord.status)){
           valueElem
         }else{
-          if (MonitorStatus.isCalbration(mtRecord.status)){
+          if (MonitorStatus.isCalibration(mtRecord.status)){
             valueElem ++ <aqs:QualifierCode01>D50</aqs:QualifierCode01>
           }else{
             valueElem ++ <aqs:QualifierCode01>D51</aqs:QualifierCode01>

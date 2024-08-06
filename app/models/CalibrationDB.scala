@@ -47,6 +47,11 @@ case class Calibration(monitorType: String,
       passSpanStandard(mtCase)
   }
 
+  def multipointSuccess(): Boolean = {
+    val successList = List(zero_success, span_success, point3_success, point4_success, point5_success, point6_success)
+    successList.forall(_.getOrElse(true))
+  }
+
   private def passZeroStandard(vOpt: Option[Double], stdOpt: Option[Double]): Boolean = {
     val retOpt =
       for {

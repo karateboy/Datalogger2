@@ -2,6 +2,7 @@ package models
 
 import akka.actor._
 import models.DataCollectManager._
+import models.TapiTxx.T700_STANDBY_SEQ
 
 import java.time.Instant
 import java.util.Date
@@ -11,14 +12,19 @@ import scala.util.Random
 object MultiCalibrator {
 
   def start(calibrationConfig: CalibrationConfig,
-            instrumentMap: Map[String, InstrumentParam],
-            instrumentCollectorMap: Map[String, ActorRef])
-           (implicit context: ActorContext, calibrationDB: CalibrationDB, monitorTypeDB: MonitorTypeDB): ActorRef = {
+            instrumentMap: Map[String, InstrumentParam])
+           (implicit context: ActorContext, calibrationDB: CalibrationDB,
+            monitorTypeDB: MonitorTypeDB, alarmDB: AlarmDB): ActorRef = {
+    val instrumentCollectorMap = instrumentMap.map {
+      kv => kv._1 -> kv._2.actor
+    }
+
     context.actorOf(Props(new MultiCalibrator(calibrationConfig,
       instrumentMap,
       instrumentCollectorMap,
       monitorTypeDB,
-      calibrationDB)), name = s"Calibrator-${Random.nextInt}")
+      calibrationDB,
+      alarmDB)), name = s"Calibrator-${Random.nextInt}")
   }
 
   private case object PointCalibrationStart
@@ -38,7 +44,8 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
                       instrumentMap: Map[String, InstrumentParam],
                       instrumentCollectorMap: Map[String, ActorRef],
                       monitorTypeDB: MonitorTypeDB,
-                      calibrationDB: CalibrationDB) extends Actor with ActorLogging {
+                      calibrationDB: CalibrationDB,
+                      alarmDB: AlarmDB) extends Actor with ActorLogging {
 
   import MultiCalibrator._
 
@@ -72,10 +79,14 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
     for (seq <- pointConfig.calibrateSeq)
       context.parent ! ExecuteSeq(seq, value)
 
-    calibrationConfig.instrumentIds.foreach(instId => {
-      for (collector <- instrumentCollectorMap.get(instId))
-        collector ! TriggerVault(zero, value)
-    })
+    if(!pointConfig.skipInternalVault.contains(true)){
+      calibrationConfig.instrumentIds.foreach(instId => {
+        for (collector <- instrumentCollectorMap.get(instId)) {
+          log.info(s"TriggerVault for $collector $instId $zero $value")
+          collector ! TriggerVault(zero, value)
+        }
+      })
+    }
   }
 
   import context.dispatcher
@@ -142,7 +153,11 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
         val calibrations = calibrationMap.values.toSeq
         calibrations.foreach(calibration => {
           calibrationDB.insertFuture(calibration)
+          if(!calibration.multipointSuccess())
+            alarmDB.log(alarmDB.src(calibration.monitorType), alarmDB.Level.ERR,
+              s"${calibration.monitorType} multi-point calibration failed.")
         })
+        context.parent ! ExecuteSeq(T700_STANDBY_SEQ, on = true)
         context.parent ! MultiCalibrationDone(calibrationConfig)
       } else if (!calibrationConfig.pointConfigs(point).enable) {
         log.info(s"Skip point $point")
@@ -150,6 +165,24 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
         self ! PointCalibrationStart
       } else {
         log.info(s"Start calibrating point $point")
+        val pointState =
+          point match {
+            case 0 =>
+              MonitorStatus.ZeroCalibrationStat
+            case 1 =>
+              MonitorStatus.SpanCalibrationStat
+            case 2 =>
+              MonitorStatus.CalibrationPoint3
+            case 3 =>
+              MonitorStatus.CalibrationPoint4
+            case 4 =>
+              MonitorStatus.CalibrationPoint5
+            case 5 =>
+              MonitorStatus.CalibrationPoint6
+            case 6 =>
+              MonitorStatus.CalibrationResume
+          }
+        context.parent ! UpdateMultiCalibratorState(calibrationConfig, pointState)
         context.become(handler(point, Map.empty[String, Seq[Double]], recording = false, calibrationMap))
         self ! RaiseStart
       }
@@ -193,6 +226,7 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
           collector ! TriggerVault(zero = false, on = false)
         }
       })
+      context.parent ! ExecuteSeq(T700_STANDBY_SEQ, on = true)
       self ! PoisonPill
   }
 

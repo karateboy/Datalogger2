@@ -113,6 +113,7 @@ class PseudoDeviceCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
   }
 
   override def triggerVault(zero: Boolean, on: Boolean): Unit = {
+    log.info(s"Pseudo triggerVault zero=$zero on=$on")
     if(zero)
       setCalibrationReg(0, on)
     else

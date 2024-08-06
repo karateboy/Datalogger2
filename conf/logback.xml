@@ -43,6 +43,8 @@
   <logger name="com.gargoylesoftware.htmlunit.javascript" level="OFF" />
   <logger name="net.sf.marineapi.nmea.io" level="OFF" />
   <logger name="models.MultiCalibrator" level="INFO" />
+  <logger name="models.PseudoDeviceCollector" level="INFO" />
+
 
   <root level="WARN">
     <appender-ref ref="ASYNCFILE" />

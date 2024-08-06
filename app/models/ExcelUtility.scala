@@ -118,7 +118,7 @@ class ExcelUtility @Inject()
                 val statusCell = thisRow.createCell(2 * colIdx + 2)
                 val monitorStatus = monitorStatusOp.map(status)
                 statusCell.setCellValue(monitorStatus.desp)
-                if (MonitorStatus.isCalbration(status)) {
+                if (MonitorStatus.isCalibration(status)) {
                   cell.setCellStyle(calibrationStyle)
                   statusCell.setCellStyle(calibrationStyle)
                 } else if (tagInfo.statusType == StatusType.ManualValid ||
@@ -168,7 +168,7 @@ class ExcelUtility @Inject()
     MonitorStatus.getTagInfo(tag)
     if (isValid(tag))
       normalStyle
-    else if (isCalbration(tag))
+    else if (isCalibration(tag))
       abnormalStyles(0)
     else if (MonitorStatus.isMaintenance(tag))
       abnormalStyles(1)
