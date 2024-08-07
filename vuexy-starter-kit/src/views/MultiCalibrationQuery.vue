@@ -66,8 +66,7 @@ import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
 import moment from 'moment';
 import axios from 'axios';
-import { mapActions, mapGetters } from 'vuex';
-import { MonitorType } from './types';
+import {mapActions, mapGetters} from 'vuex';
 import highcharts from 'highcharts';
 
 const Ripple = require('vue-ripple-directive');
@@ -79,19 +78,19 @@ interface CalibrationJSON {
   monitorType: string;
   startTime: number;
   endTime: number;
-  zero_val: number | null;
-  span_std: number | null;
-  span_val: number | null;
-  zero_success: boolean | null;
-  span_success: boolean | null;
-  point3: number | null;
-  point3_success: boolean | null;
-  point4: number | null;
-  point4_success: boolean | null;
-  point5: number | null;
-  point5_success: boolean | null;
-  point6: number | null;
-  point6_success: boolean | null;
+  zero_val?: number;
+  span_std?: number;
+  span_val?: number;
+  zero_success?: boolean;
+  span_success?: boolean;
+  point3?: number;
+  point3_success?: boolean;
+  point4?: number;
+  point4_success?: boolean;
+  point5?: number | null;
+  point5_success?: boolean;
+  point6?: number;
+  point6_success?: boolean;
 }
 
 export default Vue.extend({
@@ -120,8 +119,7 @@ export default Vue.extend({
     ...mapGetters('monitorTypes', ['mtMap']),
     columns(): Array<any> {
       let me = this;
-      let mtMap = this.mtMap as Map<string, MonitorType>;
-      let ret = [
+      return [
         {
           key: 'monitorType',
           label: '測項',
@@ -144,16 +142,19 @@ export default Vue.extend({
           label: '零點讀值',
           sortable: true,
           tdClass: function (
-            v: number | null,
-            _key: string,
-            item: CalibrationJSON,
+              v: number | null,
+              _key: string,
+              item: CalibrationJSON,
           ) {
-            return { 'text-danger': !me.getZeroStatus(item) };
+            return {
+              'text-success': item.zero_success === true,
+              'text-danger': item.zero_success === false,
+            };
           },
           formatter: function (
-            v: number | null,
-            _key: string,
-            item: CalibrationJSON,
+              v: number | null,
+              _key: string,
+              item: CalibrationJSON,
           ) {
             if (v !== null) {
               let value = v as number;
@@ -168,16 +169,19 @@ export default Vue.extend({
           label: '全幅讀值',
           sortable: true,
           tdClass: function (
-            v: number | null,
-            _key: string,
-            item: CalibrationJSON,
+              v: number | null,
+              _key: string,
+              item: CalibrationJSON,
           ) {
-            return { 'text-danger': !me.getSpanStatus(item) };
+            return {
+              'text-success': item.span_success === true,
+              'text-danger': item.span_success === false,
+            };
           },
           formatter: function (
-            v: number | null,
-            key: string,
-            item: CalibrationJSON,
+              v: number | null,
+              key: string,
+              item: CalibrationJSON,
           ) {
             if (v !== null) {
               let value = v as number;
@@ -192,9 +196,9 @@ export default Vue.extend({
           label: '校正點3',
           sortable: true,
           tdClass: function (
-            v: number | null,
-            _key: string,
-            item: CalibrationJSON,
+              v: number | null,
+              _key: string,
+              item: CalibrationJSON,
           ) {
             return {
               'text-success': item.point3_success === true,
@@ -202,9 +206,9 @@ export default Vue.extend({
             };
           },
           formatter: function (
-            v: number | null,
-            key: string,
-            item: CalibrationJSON,
+              v: number | null,
+              key: string,
+              item: CalibrationJSON,
           ) {
             if (v !== null) {
               let value = v as number;
@@ -219,9 +223,9 @@ export default Vue.extend({
           label: '校正點4',
           sortable: true,
           tdClass: function (
-            v: number | null,
-            _key: string,
-            item: CalibrationJSON,
+              v: number | null,
+              _key: string,
+              item: CalibrationJSON,
           ) {
             return {
               'text-success': item.point4_success === true,
@@ -229,9 +233,9 @@ export default Vue.extend({
             };
           },
           formatter: function (
-            v: number | null,
-            key: string,
-            item: CalibrationJSON,
+              v: number | null,
+              key: string,
+              item: CalibrationJSON,
           ) {
             if (v !== null) {
               let value = v as number;
@@ -246,9 +250,9 @@ export default Vue.extend({
           label: '校正點5',
           sortable: true,
           tdClass: function (
-            v: number | null,
-            _key: string,
-            item: CalibrationJSON,
+              v: number | null,
+              _key: string,
+              item: CalibrationJSON,
           ) {
             return {
               'text-success': item.point5_success === true,
@@ -256,9 +260,9 @@ export default Vue.extend({
             };
           },
           formatter: function (
-            v: number | null,
-            key: string,
-            item: CalibrationJSON,
+              v: number | null,
+              key: string,
+              item: CalibrationJSON,
           ) {
             if (v !== null) {
               let value = v as number;
@@ -273,9 +277,9 @@ export default Vue.extend({
           label: '校正點6',
           sortable: true,
           tdClass: function (
-            v: number | null,
-            _key: string,
-            item: CalibrationJSON,
+              v: number | null,
+              _key: string,
+              item: CalibrationJSON,
           ) {
             return {
               'text-success': item.point6_success === true,
@@ -283,9 +287,9 @@ export default Vue.extend({
             };
           },
           formatter: function (
-            v: number | null,
-            key: string,
-            item: CalibrationJSON,
+              v: number | null,
+              key: string,
+              item: CalibrationJSON,
           ) {
             if (v !== null) {
               let value = v as number;
@@ -299,14 +303,14 @@ export default Vue.extend({
           key: 'm',
           label: 'M值',
           formatter: function (
-            _v: number,
-            _key: string,
-            item: CalibrationJSON,
+              _v: number,
+              _key: string,
+              item: CalibrationJSON,
           ) {
             if (
-              item.zero_val !== null &&
-              item.span_val !== null &&
-              item.span_std !== null
+                item.zero_val !== undefined &&
+                item.span_val !== undefined &&
+                item.span_std !== undefined
             ) {
               if (item.span_val - item.zero_val !== 0) {
                 let m = item.span_std / (item.span_val - item.zero_val);
@@ -321,19 +325,19 @@ export default Vue.extend({
           key: 'b',
           label: 'B值',
           formatter: function (
-            _v: number,
-            _key: string,
-            item: CalibrationJSON,
+              _v: number,
+              _key: string,
+              item: CalibrationJSON,
           ) {
             if (
-              item.zero_val !== null &&
-              item.span_val !== null &&
-              item.span_std !== null
+                item.zero_val !== undefined &&
+                item.span_val !== undefined &&
+                item.span_std !== undefined
             ) {
               if (item.span_val - item.zero_val !== 0) {
                 let b =
-                  (-item.zero_val * item.span_std) /
-                  (item.span_val - item.zero_val);
+                    (-item.zero_val * item.span_std) /
+                    (item.span_val - item.zero_val);
                 return b.toFixed(6);
               }
             }
@@ -345,9 +349,9 @@ export default Vue.extend({
           key: 'success',
           label: '校正狀態',
           tdClass: function (
-            v: number | null,
-            _key: string,
-            item: CalibrationJSON,
+              v: number | null,
+              _key: string,
+              item: CalibrationJSON,
           ) {
             return {
               'text-danger': !me.getStatus(item),
@@ -355,16 +359,15 @@ export default Vue.extend({
             };
           },
           formatter: function (
-            _v: number,
-            _key: string,
-            item: CalibrationJSON,
+              _v: number,
+              _key: string,
+              item: CalibrationJSON,
           ) {
             if (me.getStatus(item)) return '成功';
             else return '失敗';
           },
         },
       ];
-      return ret;
     },
   },
   mounted() {
@@ -457,36 +460,14 @@ export default Vue.extend({
         this.display = true;
       }
     },
-    getZeroStatus(item: CalibrationJSON): boolean {
-      let mtMap = this.mtMap as Map<string, MonitorType>;
-      let mtCase = mtMap.get(item.monitorType) as MonitorType;
-      if (mtCase.zd_law === null || item.zero_val === null) return true;
-
-      return Math.abs(item.zero_val) < Math.abs(mtCase.zd_law);
-    },
-    getSpanStatus(item: CalibrationJSON): boolean {
-      let mtMap = this.mtMap as Map<string, MonitorType>;
-      let mtCase = mtMap.get(item.monitorType) as MonitorType;
-      if (
-        mtCase.span_dev_law !== null &&
-        item.span_val !== null &&
-        item.span_std !== null
-      ) {
-        // eslint-disable-next-line camelcase
-        let span_dev = Math.abs(
-          ((item.span_val - item.span_std) / item.span_std) * 100,
-        );
-        // eslint-disable-next-line camelcase
-        return span_dev < mtCase.span_dev_law;
-      } else return true;
-    },
     getStatus(item: CalibrationJSON): boolean {
+      console.info(item);
       return (item.zero_success === true &&
           item.span_success === true &&
-          (item.point3_success === null || item.point3_success) &&
-          (item.point4_success === null || item.point4_success) &&
-          (item.point5_success === null || item.point5_success) &&
-          (item.point6_success === null || item.point6_success));
+          (item.point3_success === undefined || item.point3_success) &&
+          (item.point4_success === undefined || item.point4_success) &&
+          (item.point5_success === undefined || item.point5_success) &&
+          (item.point6_success === undefined || item.point6_success));
     },
     async downloadExcel() {
       const baseUrl =

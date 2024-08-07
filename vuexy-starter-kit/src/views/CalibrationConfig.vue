@@ -119,7 +119,10 @@
             >
               <b-form-timepicker
                 id="calibration-time"
+                reset-button
                 v-model="activeConfig.calibrationTime"
+                label-no-time-selected="未指定時間"
+                label-reset-button="清除"
               ></b-form-timepicker>
             </b-form-group>
           </b-col>
@@ -235,7 +238,7 @@ export default Vue.extend({
     let activeConfig = {
       _id: '',
       instrumentIds: [],
-      calibrationTime: '',
+      calibrationTime: null,
       pointConfigs: this.getDefaultPointConfigs(),
     };
 
@@ -326,7 +329,9 @@ export default Vue.extend({
   methods: {
     async onSubmit(evt) {
       this.$bvModal.hide('calibrationConfigModal');
-      console.info(this.activeConfig);
+      if(this.activeConfig.calibrationTime === '') {
+        this.activeConfig.calibrationTime = null;
+      }
       await this.upsertConfig();
       await this.getCalibrationConfigs();
     },

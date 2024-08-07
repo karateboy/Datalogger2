@@ -51,17 +51,17 @@ export interface MonitorType {
   std_law?: number;
   std_internal?: number;
   zd_internal?: number;
-  zd_law: number | null;
-  span: number | null;
+  zd_law?: number;
+  span?: number;
   span_dev_internal?: number;
-  span_dev_law: number | null;
+  span_dev_law?: number;
   measuringBy?: Array<string>;
   acoustic?: boolean;
   spectrum?: boolean;
   levels?: Array<number>;
   accumulated?: boolean;
-  fixedM: number | null;
-  fixedB: number | null;
+  fixedM?: number;
+  fixedB?: number;
   overLawSignalType?: string;
 }
 
