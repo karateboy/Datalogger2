@@ -68,6 +68,7 @@ import moment from 'moment';
 import axios from 'axios';
 import {mapActions, mapGetters} from 'vuex';
 import highcharts from 'highcharts';
+import {MonitorType} from "@/views/types";
 
 const Ripple = require('vue-ripple-directive');
 
@@ -460,14 +461,37 @@ export default Vue.extend({
         this.display = true;
       }
     },
+    getZeroStatus(item: CalibrationJSON): boolean {
+      let mtMap = this.mtMap as Map<string, MonitorType>;
+      let mtCase = mtMap.get(item.monitorType) as MonitorType;
+      if (mtCase.zd_law === undefined || item.zero_val === undefined)
+        return true;
+
+      return Math.abs(item.zero_val) < Math.abs(mtCase.zd_law);
+    },
+    getSpanStatus(item: CalibrationJSON): boolean {
+      let mtMap = this.mtMap as Map<string, MonitorType>;
+      let mtCase = mtMap.get(item.monitorType) as MonitorType;
+      if (
+          mtCase.span_dev_law !== undefined &&
+          item.span_val !== undefined &&
+          item.span_std !== undefined
+      ) {
+        // eslint-disable-next-line camelcase
+        let span_dev = Math.abs(
+            ((item.span_val - item.span_std) / item.span_std) * 100,
+        );
+        // eslint-disable-next-line camelcase
+        return span_dev < mtCase.span_dev_law;
+      } else return true;
+    },
     getStatus(item: CalibrationJSON): boolean {
-      console.info(item);
-      return (item.zero_success === true &&
-          item.span_success === true &&
+      return (item.zero_success || (item.zero_success === undefined && this.getZeroStatus(item))) &&
+          (item.span_success || (item.span_success === undefined && this.getSpanStatus(item))) &&
           (item.point3_success === undefined || item.point3_success) &&
           (item.point4_success === undefined || item.point4_success) &&
           (item.point5_success === undefined || item.point5_success) &&
-          (item.point6_success === undefined || item.point6_success));
+          (item.point6_success === undefined || item.point6_success);
     },
     async downloadExcel() {
       const baseUrl =
