@@ -14,7 +14,6 @@ import scala.concurrent.{Future, blocking}
 import scala.io.{Codec, Source}
 
 case class WeatherReaderConfig(enable: Boolean, dir: String, model: String)
-import scala.concurrent.ExecutionContext.Implicits.global
 
 object WeatherReader {
   val CR800_MODEL = "CR800"
@@ -50,6 +49,8 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
   Logger.info(s"WeatherReader start processing ${config.model}: ${config.dir}")
 
   import WeatherReader._
+  import DataCollectManager._
+  import context.dispatcher
 
   val CR800_MT_LIST = Seq(MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION, MonitorType.TEMP, MonitorType.HUMID,
     MonitorType.PRESS, MonitorType.SOLAR, "Photometric", MonitorType.RAIN, "Visible", "Battery")

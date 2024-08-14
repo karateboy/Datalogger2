@@ -17,7 +17,6 @@ import scala.concurrent.duration.{FiniteDuration, MINUTES, SECONDS}
 import scala.concurrent.{Future, blocking}
 
 case class SpectrumReaderConfig(enable: Boolean, dir: String, postfix: String)
-import scala.concurrent.ExecutionContext.Implicits.global
 
 object SpectrumReader {
   def start(configuration: Configuration, actorSystem: ActorSystem,
@@ -79,6 +78,8 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
   Logger.info(s"SpectrumReader start reading: ${config.dir}")
 
   import SpectrumReader._
+  import DataCollectManager._
+  import context.dispatcher
 
   @volatile var timer: Cancellable = context.system.scheduler.scheduleOnce(FiniteDuration(5, SECONDS), self, ParseReport)
 

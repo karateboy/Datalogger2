@@ -8,26 +8,24 @@ import models.MonitorType._
 import models.Protocol.{ProtocolParam, serial}
 import models.mongodb.AlarmOp
 import play.api._
-import play.api.libs.json.{JsError, Json}
+import play.api.libs.json.{JsError, Json, OWrites, Reads}
 import play.libs.Scala.None
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, SECONDS}
 import scala.concurrent.{Future, blocking}
 
-case class CalibrationConfig(monitorType: String, value: Double)
-
-case class ThetaConfig(calibrations: Seq[CalibrationConfig])
+case class ThetaCalibrationConfig(monitorType: String, value: Double)
+case class ThetaConfig(calibrations: Seq[ThetaCalibrationConfig])
 
 object ThetaCollector extends DriverOps {
-
   var count = 0
-  implicit val calibrationWrite = Json.writes[CalibrationConfig]
-  implicit val calibrationRead = Json.reads[CalibrationConfig]
-  implicit val configRead = Json.reads[ThetaConfig]
-  implicit val configWrite = Json.writes[ThetaConfig]
+  implicit val calibrationWrite: OWrites[ThetaCalibrationConfig] = Json.writes[ThetaCalibrationConfig]
+  implicit val calibrationRead: Reads[ThetaCalibrationConfig] = Json.reads[ThetaCalibrationConfig]
+  implicit val configRead: Reads[ThetaConfig] = Json.reads[ThetaConfig]
+  implicit val configWrite: OWrites[ThetaConfig] = Json.writes[ThetaConfig]
 
-  override def verifyParam(json: String) = {
+  override def verifyParam(json: String): String = {
     val ret = Json.parse(json).validate[ThetaConfig]
     ret.fold(
       error => {
@@ -91,6 +89,7 @@ class ThetaCollector @Inject()
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: ThetaConfig) extends Actor {
 
   import ThetaCollector._
+  import DataCollectManager._
 
   val calibrationMap: Map[String, Double] = {
     val pairs = config.calibrations map { c => c.monitorType -> c.value }
@@ -159,7 +158,7 @@ class ThetaCollector @Inject()
             serial.os.write("#01\r\n".getBytes)
             val lines = serial.getLineWithTimeout(2)
             for (line <- lines) {
-              val target = line.dropWhile(_ == ">").drop(1)
+              val target = line.dropWhile(_ == '>').drop(1)
               val numArray = target.split(",")
               if (numArray.length == 24)
                 decode(numArray, state)

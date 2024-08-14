@@ -1,8 +1,6 @@
 package models
-import akka.actor.{ActorContext, Props}
 import com.github.nscala_time.time.Imports._
 import com.typesafe.config.ConfigFactory
-import models.Protocol.ProtocolParam
 import play.api._
 import play.api.libs.json._
 
@@ -11,7 +9,7 @@ case class TapiConfig(slaveID: Int, calibrationTime: Option[LocalTime], monitorT
     calibrateZeoSeq:Option[String], calibrateSpanSeq:Option[String],
     calibratorPurgeSeq:Option[String], calibratorPurgeTime:Option[Int],
     calibrateZeoDO:Option[Int], calibrateSpanDO:Option[Int], skipInternalVault:Option[Boolean]){
-  def toDeviceConfig = DeviceConfig(slaveID = Some(slaveID),
+  def toDeviceConfig: DeviceConfig = DeviceConfig(slaveID = Some(slaveID),
     calibrationTime = calibrationTime, monitorTypes = monitorTypes,
     raiseTime = raiseTime, downTime = downTime, holdTime = holdTime,
     calibrateZeoSeq = calibrateZeoSeq, calibrateSpanSeq = calibrateSpanSeq,

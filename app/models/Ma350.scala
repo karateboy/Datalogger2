@@ -118,4 +118,6 @@ class Ma350Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
 
     super.postStop()
   }
+
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {}
 }

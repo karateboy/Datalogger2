@@ -89,13 +89,14 @@ object MqttCollector2 extends DriverOps {
 import javax.inject._
 
 class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
-                               recordOp: RecordDB, dataCollectManager: DataCollectManager,
+                               recordOp: RecordDB,
                                mqttSensorOp: MqttSensorDB, monitorTypeDB: MonitorTypeDB)
                               (@Assisted id: String,
                                @Assisted protocolParam: ProtocolParam,
                                @Assisted config: MqttConfig2) extends Actor with MqttCallback {
 
   import MqttCollector2._
+  import DataCollectManager._
 
   val payload =
     """{"id":"861108035994663",
@@ -124,7 +125,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
   }
   self ! CreateClient
 
-  def receive = handler(MonitorStatus.NormalStat)
+  def receive: Receive = handler(MonitorStatus.NormalStat)
 
   def handler(collectorState: String): Receive = {
     case CreateClient =>

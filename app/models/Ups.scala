@@ -1,15 +1,16 @@
 package models
 
-import akka.actor.{Actor, ActorSystem}
+import akka.actor.Actor
+import com.github.nscala_time.time
+import com.github.nscala_time.time.Imports
+import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
 import models.UpsDrv.UPS_SHUTDOWN
-import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 import play.api.Logger
 
 import javax.inject.Inject
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Future, blocking}
+import scala.concurrent.Future
 
 object UpsDrv extends AbstractDrv(_id = "Ups", desp = "Ups 1 Series",
   protocols = List(Protocol.serial)) {
@@ -23,7 +24,7 @@ object UpsDrv extends AbstractDrv(_id = "Ups", desp = "Ups 1 Series",
 
   override def getMonitorTypes(param: String): List[String] = List.empty[String]
 
-  override def verifyParam(json: String) = json
+  override def verifyParam(json: String): String = json
 
   override def getDataRegList: List[DataReg] =
     predefinedIST.filter(p => dataAddress.contains(p.addr)).map {
@@ -31,7 +32,7 @@ object UpsDrv extends AbstractDrv(_id = "Ups", desp = "Ups 1 Series",
         DataReg(monitorType = ist.key, ist.addr, multiplier = 1)
     }
 
-  override def getCalibrationTime(param: String) = None
+  override def getCalibrationTime(param: String): Option[LocalTime] = None
 
   override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
     val f2 = f.asInstanceOf[UpsDrv.Factory]
@@ -56,6 +57,8 @@ class UpsCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monito
     alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
 
+  import DataCollectManager._
+
   monitorTypeOp.ensure(monitorTypeOp.signalType(UPS_SHUTDOWN, "中斷UPS電源"))
 
   context.parent ! AddSignalTypeHandler(UPS_SHUTDOWN, bit=>{
@@ -75,7 +78,7 @@ class UpsCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monito
     }
   }
 
-  override def probeInstrumentStatusType: Seq[InstrumentStatusType] = Ma350Drv.predefinedIST
+  override def probeInstrumentStatusType: Seq[InstrumentStatusType] = UpsDrv.predefinedIST
 
   override def readReg(statusTypeList: List[InstrumentStatusType], full:Boolean): Future[Option[ModelRegValue2]] =
     Future.successful(None)
@@ -97,4 +100,6 @@ class UpsCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monito
 
     super.postStop()
   }
+
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {}
 }

@@ -86,6 +86,7 @@ class Baseline9000Collector @Inject()
   import Baseline9000Collector._
   import ModelHelper._
   import TapiTxx._
+  import DataCollectManager._
 
   import scala.concurrent.duration._
   import scala.concurrent.{Future, blocking}

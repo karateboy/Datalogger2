@@ -130,4 +130,6 @@ class HydreonRainGaugeCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
   }
 
   override def setCalibrationReg(address: Int, on: Boolean): Unit = {}
+
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {}
 }

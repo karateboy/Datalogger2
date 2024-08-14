@@ -1,8 +1,5 @@
 package controllers
 
-import com.github
-import com.github.nscala_time
-import com.github.nscala_time.time
 import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import controllers.Highchart._
@@ -26,16 +23,16 @@ case class Stat(avg: Option[Double],
                 total: Int,
                 overCount: Int,
                 valid: Boolean) {
-  val effectPercent = {
+  val effectPercent: Option[Double] = {
     if (total > 0)
       Some(count.toDouble * 100 / total)
     else
       None
   }
 
-  val isEffective = valid
+  val isEffective: Boolean = valid
 
-  val overPercent = {
+  val overPercent: Option[Double] = {
     if (count > 0)
       Some(overCount.toDouble * 100 / total)
     else
@@ -57,12 +54,11 @@ case class UpdateRecordParam(time: Long, mt: String, status: String)
 class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorOp: MonitorDB,
                       instrumentStatusOp: InstrumentStatusDB, instrumentOp: InstrumentDB,
                       alarmOp: AlarmDB, calibrationOp: CalibrationDB,
-                      manualAuditLogOp: ManualAuditLogDB, excelUtility: ExcelUtility,
-                      configuration: Configuration) extends Controller {
+                      manualAuditLogOp: ManualAuditLogDB, excelUtility: ExcelUtility) extends Controller {
 
-  implicit val cdWrite = Json.writes[CellData]
-  implicit val rdWrite = Json.writes[RowData]
-  implicit val dtWrite = Json.writes[DataTab]
+  implicit val cdWrite: OWrites[CellData] = Json.writes[CellData]
+  implicit val rdWrite: OWrites[RowData] = Json.writes[RowData]
+  implicit val dtWrite: OWrites[DataTab] = Json.writes[DataTab]
 
   def getPeriodCount(start: DateTime, endTime: DateTime, p: Period) = {
     var count = 0
@@ -100,8 +96,8 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     def getPeriodStat(records: Seq[Record], mt: String, period_start: DateTime, minimumValidCount: Int): Stat = {
       val values = records.filter(rec => MonitorStatusFilter.isMatched(statusFilter, rec.status))
         .flatMap(x => x.value)
-      if (values.length == 0)
-        Stat(None, None, None, 0, 0, 0, false)
+      if (values.isEmpty)
+        Stat(None, None, None, 0, 0, 0, valid = false)
       else {
         val min = values.min
         val max = values.max
@@ -164,7 +160,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
   import models.ModelHelper._
 
   def scatterChart(monitorStr: String, monitorTypeStr: String, tabTypeStr: String, statusFilterStr: String,
-                   startNum: Long, endNum: Long) = Security.Authenticated.async {
+                   startNum: Long, endNum: Long): Action[AnyContent] = Security.Authenticated.async {
     implicit request =>
       val monitors = monitorStr.split(':')
       val monitorTypeStrArray = monitorTypeStr.split(':')
@@ -186,58 +182,57 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
   }
 
 
-  def historyTrendChart(monitorStr: String, monitorTypeStr: String, includeRaw:Boolean, reportUnitStr: String, statusFilterStr: String,
-                        startNum: Long, endNum: Long, outputTypeStr: String) = Security.Authenticated {
-    implicit request =>
-      val monitors = monitorStr.split(':')
-      val monitorTypeStrArray = monitorTypeStr.split(':')
-      val monitorTypes = monitorTypeStrArray
-      val reportUnit = ReportUnit.withName(reportUnitStr)
-      val statusFilter = MonitorStatusFilter.withName(statusFilterStr)
-      val (tabType, start, end) =
-        if (reportUnit.id <= ReportUnit.Hour.id) {
-          if (reportUnit == ReportUnit.Hour)
-            (TableType.hour, new DateTime(startNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0),
-              new DateTime(endNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0))
-          else if (reportUnit == ReportUnit.Sec)
-            (TableType.second, new DateTime(startNum).withMillisOfSecond(0), new DateTime(endNum).withMillisOfSecond(0))
-          else
-            (TableType.min, new DateTime(startNum).withSecondOfMinute(0).withMillisOfSecond(0),
-              new DateTime(endNum).withSecondOfMinute(0).withMillisOfSecond(0))
-        } else
-          (TableType.hour, new DateTime(startNum).withMillisOfDay(0), new DateTime(endNum).withMillisOfDay(0))
-
-
-      val outputType = OutputType.withName(outputTypeStr)
-      val chart = trendHelper(monitors, monitorTypes, includeRaw, tabType,
-        reportUnit, start, end, LoggerConfig.config.trendShowActual)(statusFilter)
-
-      if (outputType == OutputType.excel) {
-        import java.nio.file.Files
-        val actualMonitorTypes = if(includeRaw)
-          monitorTypes flatMap(mt=>Seq(mt, MonitorType.getRawType(mt)))
+  def historyTrendChart(monitorStr: String, monitorTypeStr: String, includeRaw: Boolean, reportUnitStr: String, statusFilterStr: String,
+                        startNum: Long, endNum: Long, outputTypeStr: String): Action[AnyContent] = Security.Authenticated {
+    val monitors = monitorStr.split(':')
+    val monitorTypeStrArray = monitorTypeStr.split(':')
+    val monitorTypes = monitorTypeStrArray
+    val reportUnit = ReportUnit.withName(reportUnitStr)
+    val statusFilter = MonitorStatusFilter.withName(statusFilterStr)
+    val (tabType, start, end) =
+      if (reportUnit.id <= ReportUnit.Hour.id) {
+        if (reportUnit == ReportUnit.Hour)
+          (TableType.hour, new DateTime(startNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0),
+            new DateTime(endNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0))
+        else if (reportUnit == ReportUnit.Sec)
+          (TableType.second, new DateTime(startNum).withMillisOfSecond(0), new DateTime(endNum).withMillisOfSecond(0))
         else
-          monitorTypes
+          (TableType.min, new DateTime(startNum).withSecondOfMinute(0).withMillisOfSecond(0),
+            new DateTime(endNum).withSecondOfMinute(0).withMillisOfSecond(0))
+      } else
+        (TableType.hour, new DateTime(startNum).withMillisOfDay(0), new DateTime(endNum).withMillisOfDay(0))
 
-        val excelFile = excelUtility.exportChartData(chart, actualMonitorTypes, true)
-        val downloadFileName =
-          if (chart.downloadFileName.isDefined)
-            chart.downloadFileName.get
-          else
-            chart.title("text")
 
-        Ok.sendFile(excelFile, fileName = _ =>
-          s"${downloadFileName}.xlsx",
-          onClose = () => {
-            Files.deleteIfExists(excelFile.toPath())
-          })
-      } else {
-        Results.Ok(Json.toJson(chart))
-      }
+    val outputType = OutputType.withName(outputTypeStr)
+    val chart = trendHelper(monitors, monitorTypes, includeRaw, tabType,
+      reportUnit, start, end, LoggerConfig.config.trendShowActual)(statusFilter)
+
+    if (outputType == OutputType.excel) {
+      import java.nio.file.Files
+      val actualMonitorTypes = if (includeRaw)
+        monitorTypes flatMap (mt => Seq(mt, MonitorType.getRawType(mt)))
+      else
+        monitorTypes
+
+      val excelFile = excelUtility.exportChartData(chart, actualMonitorTypes, true)
+      val downloadFileName =
+        if (chart.downloadFileName.isDefined)
+          chart.downloadFileName.get
+        else
+          chart.title("text")
+
+      Ok.sendFile(excelFile, fileName = _ =>
+        s"${downloadFileName}.xlsx",
+        onClose = () => {
+          Files.deleteIfExists(excelFile.toPath)
+        })
+    } else {
+      Results.Ok(Json.toJson(chart))
+    }
   }
 
-  def trendHelper(monitors: Seq[String], monitorTypes: Seq[String], includeRaw:Boolean, tabType: TableType.Value,
-                  reportUnit: ReportUnit.Value, start: DateTime, end: DateTime, showActual: Boolean)(statusFilter: MonitorStatusFilter.Value) = {
+  private def trendHelper(monitors: Seq[String], monitorTypes: Seq[String], includeRaw: Boolean, tabType: TableType.Value,
+                          reportUnit: ReportUnit.Value, start: DateTime, end: DateTime, showActual: Boolean)(statusFilter: MonitorStatusFilter.Value): HighchartData = {
     val period: Period =
       reportUnit match {
         case ReportUnit.Sec =>
@@ -309,7 +304,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
       }.map {
         _.get
       }
-      if (lines.length > 0)
+      if (lines.nonEmpty)
         Some(lines)
       else
         None
@@ -320,7 +315,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     }).groupBy(_._1)
     val yAxisGroupMap = yAxisGroup map {
       kv =>
-        val lines: Seq[AxisLine] = kv._2.map(_._2).flatten.flatten
+        val lines: Seq[AxisLine] = kv._2.flatMap(_._2).flatten
         if (lines.nonEmpty)
           kv._1 -> YAxis(None, AxisTitle(Some(Some(s"${kv._1}"))), Some(lines))
         else
@@ -341,8 +336,8 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
 
       val monitorReportMap = monitorReportPairs.toMap
 
-      val actualMonitorTypes = if(includeRaw)
-        monitorTypes flatMap(mt=>Seq(mt, MonitorType.getRawType(mt)))
+      val actualMonitorTypes = if (includeRaw)
+        monitorTypes flatMap (mt => Seq(mt, MonitorType.getRawType(mt)))
       else
         monitorTypes
 
@@ -368,18 +363,18 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
           t =>
             val time = t._1
             val valueOpt = for (x <- t._2) yield x._1
-            (time, valueOpt.getOrElse(None))
+            (time, valueOpt.flatten)
         }
         val timeStatus = timeData.map {
           t =>
             val statusOpt = for (x <- t._2) yield x._2
-            statusOpt.getOrElse(None)
+            statusOpt.flatten
         }
-        if(monitorTypeOp.map.contains(mt))
+        if (monitorTypeOp.map.contains(mt))
           seqData(name = s"${monitorOp.map(m).desc}_${monitorTypeOp.map(mt).desp}",
             data = timeValues, yAxis = yAxisUnitMap(monitorTypeOp.map(mt).unit),
             tooltip = Tooltip(monitorTypeOp.map(mt).prec), statusList = timeStatus)
-        else{
+        else {
           val realMt = MonitorType.getRealType(mt)
           seqData(name = s"${monitorOp.map(m).desc}_${monitorTypeOp.map(realMt).desp}原始值",
             data = timeValues, yAxis = yAxisUnitMap(monitorTypeOp.map(realMt).unit),
@@ -400,8 +395,8 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
 
     val chart =
       if (monitorTypes.length == 1) {
-        val mt = monitorTypes(0)
-        val mtCase = monitorTypeOp.map(monitorTypes(0))
+        val mt = monitorTypes.head
+        val mtCase = monitorTypeOp.map(monitorTypes.head)
 
         HighchartData(
           Map("type" -> "line"),
@@ -430,8 +425,8 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
                                  statusFilter: MonitorStatusFilter.Value = MonitorStatusFilter.ValidData)
                                 (start: DateTime, end: DateTime): Map[String, Map[DateTime, (Option[Double], Option[String])]] = {
     val mtRecordListMap = recordOp.getRecordMap(TableType.mapCollection(tabType))(monitor, mtList, start, end, includeRaw)
-    val actualMonitorTypes = if(includeRaw)
-      mtList flatMap { mt => Seq(mt, MonitorType.getRawType(mt))}
+    val actualMonitorTypes = if (includeRaw)
+      mtList flatMap { mt => Seq(mt, MonitorType.getRawType(mt)) }
     else
       mtList
 
@@ -559,7 +554,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
   }
 
   def historyData(monitorStr: String, monitorTypeStr: String, tabTypeStr: String, includeRaw: Boolean,
-                  startNum: Long, endNum: Long) = Security.Authenticated.async {
+                  startNum: Long, endNum: Long): Action[AnyContent] = Security.Authenticated.async {
     implicit request =>
       val monitors = monitorStr.split(":")
       val monitorTypes = monitorTypeStr.split(':')
@@ -680,17 +675,15 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
         Ok(Json.toJson(recordList))
   }
 
-  def calibrationReport(startNum: Long, endNum: Long) = Security.Authenticated {
-    import calibrationOp.jsonWrites
+  def calibrationReport(startNum: Long, endNum: Long): Action[AnyContent] = Security.Authenticated {
+    import calibrationOp.writes
     val (start, end) = (new DateTime(startNum), new DateTime(endNum))
     val report: Seq[Calibration] = calibrationOp.calibrationReport(start, end)
-    val jsonReport = report map {
-      _.toJSON
-    }
-    Ok(Json.toJson(jsonReport))
+    Ok(Json.toJson(report))
   }
 
   implicit val alarmWrite: OWrites[Alarm] = alarmOp.write
+
   def alarmReport(level: Int, startNum: Long, endNum: Long): Action[AnyContent] = Security.Authenticated.async {
     val (start, end) = (new DateTime(startNum), new DateTime(endNum))
     for (alarms <- alarmOp.getAlarmsFuture(level, start, end)) yield
@@ -814,34 +807,33 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
       }
   }
 
-  case class CalibrationQueryResult(calibrations: Seq[CalibrationJSON], zeroChart: HighchartData, spanChart: HighchartData)
+  case class CalibrationQueryResult(calibrations: Seq[Calibration], zeroChart: HighchartData, spanChart: HighchartData)
 
-  def calibrationRecordList(start: Long, end: Long, outputTypeStr: String) = Action.async {
-      val startTime = new DateTime(start)
-      val endTime = new DateTime(end)
-      val outputType = OutputType.withName(outputTypeStr)
-      val recordListF = calibrationOp.calibrationReportFuture(startTime, endTime)
-      implicit val w = Json.writes[Calibration]
-      for (records <- recordListF) yield {
-        outputType match {
-          case OutputType.html =>
-            implicit val write: OWrites[CalibrationJSON] = Json.writes[CalibrationJSON]
-            implicit val write2 = Json.writes[CalibrationQueryResult]
+  def calibrationRecordList(start: Long, end: Long, outputTypeStr: String): Action[AnyContent] = Action.async {
+    val startTime = new DateTime(start)
+    val endTime = new DateTime(end)
+    val outputType = OutputType.withName(outputTypeStr)
+    val recordListF = calibrationOp.calibrationReportFuture(startTime, endTime)
+    implicit val w = Json.writes[Calibration]
+    for (records <- recordListF) yield {
+      outputType match {
+        case OutputType.html =>
+          implicit val write2: OWrites[CalibrationQueryResult] = Json.writes[CalibrationQueryResult]
 
-            val result = CalibrationQueryResult(records.map(_.toJSON),
-              calibrationTrendChart(records, zero = true, startTime, endTime),
-              calibrationTrendChart(records, zero = false, startTime, endTime)
-            )
-            Ok(Json.toJson(result))
-          case OutputType.excel =>
-            val excelFile = excelUtility.calibrationReport(startTime, endTime, records)
-            Ok.sendFile(excelFile, fileName = _ =>
-              s"校正紀錄.xlsx",
-              onClose = () => {
-                Files.deleteIfExists(excelFile.toPath)
-              })
-        }
+          val result = CalibrationQueryResult(records,
+            calibrationTrendChart(records, zero = true, startTime, endTime),
+            calibrationTrendChart(records, zero = false, startTime, endTime)
+          )
+          Ok(Json.toJson(result))
+        case OutputType.excel =>
+          val excelFile = excelUtility.calibrationReport(startTime, endTime, records)
+          Ok.sendFile(excelFile, fileName = _ =>
+            s"校正紀錄.xlsx",
+            onClose = () => {
+              Files.deleteIfExists(excelFile.toPath)
+            })
       }
+    }
   }
 
   private def calibrationTrendChart(calibrationList: Seq[Calibration],
@@ -858,9 +850,9 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     } {
       val mtMap = calibrationMap.getOrElseUpdate(calibration.monitorType, mutable.Map.empty[Date, Option[Double]])
       if (zero)
-        mtMap += calibration.startTime.toDate -> calibration.zero_val
+        mtMap += calibration.startTime -> calibration.zero_val
       else
-        mtMap += calibration.startTime.toDate -> calibration.span_val
+        mtMap += calibration.startTime -> calibration.span_val
     }
 
     val calibrationName = if (zero)
@@ -880,7 +872,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
             (-zd, zd)
         } else {
           for (span <- mtCase.span; dev <- mtCase.span_dev_law) yield
-            (span * (1 - dev/100), span * (1 + dev/100))
+            (span * (1 - dev / 100), span * (1 + dev / 100))
         }
 
 
@@ -972,7 +964,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
     chart
   }
 
-  def windRoseReport(monitor: String, monitorType: String, tabTypeStr: String, nWay: Int, start: Long, end: Long) = Security.Authenticated.async {
+  def windRoseReport(monitor: String, monitorType: String, tabTypeStr: String, nWay: Int, start: Long, end: Long): Action[AnyContent] = Security.Authenticated.async {
     implicit request =>
       assert(nWay == 8 || nWay == 16 || nWay == 32)
       try {
@@ -998,7 +990,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
               (13 -> "西北西"), (14 -> "西北"), (15 -> "北北西"))
           val dirStrSeq =
             for {
-              dir <- 0 to nWay - 1
+              dir <- 0 until nWay
               dirKey = if (nWay == 8)
                 dir * 2
               else if (nWay == 32) {
@@ -1037,7 +1029,7 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
             level <- 0 to levels.length
           } yield {
             val data =
-              for (dir <- 0 to nWay - 1)
+              for (dir <- 0 until nWay)
                 yield (dir.toLong, Some(windMap(dir)(level)))
 
             seqData(concLevels(level), data)
@@ -1062,11 +1054,11 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
   }
 
   case class InstrumentReport(columnNames: Seq[String], rows: Seq[RowData])
+
   implicit val instrumentReportWrite: OWrites[InstrumentReport] = Json.writes[InstrumentReport]
 
-  def aqiTrendChart(monitorStr: String, isDailyAqi: Boolean, startNum: Long, endNum: Long,  outputTypeStr: String): Action[AnyContent] =
+  def aqiTrendChart(monitorStr: String, isDailyAqi: Boolean, startNum: Long, endNum: Long, outputTypeStr: String): Action[AnyContent] =
     Security.Authenticated.async {
-    implicit request =>
       val monitors = monitorStr.split(':')
       val start = new DateTime(startNum).withTimeAtStartOfDay()
       val end = new DateTime(endNum).withTimeAtStartOfDay() + 1.day
@@ -1074,13 +1066,13 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
 
       def getAqiMap(m: String): Future[Map[DateTime, AqiReport]] = {
         if (isDailyAqi) {
-            val aqiListFuture: List[Future[(DateTime, AqiReport)]] =
-              for (current <- getPeriods(start, end, 1.day)) yield {
-                for (v <- AQI.getMonitorDailyAQI(m, current)(recordOp)) yield
-                  (current, v)
-              }
-            for (ret <- Future.sequence(aqiListFuture)) yield
-              ret.toMap
+          val aqiListFuture: List[Future[(DateTime, AqiReport)]] =
+            for (current <- getPeriods(start, end, 1.day)) yield {
+              for (v <- AQI.getMonitorDailyAQI(m, current)(recordOp)) yield
+                (current, v)
+            }
+          for (ret <- Future.sequence(aqiListFuture)) yield
+            ret.toMap
         } else {
           AQI.getRealtimeAqiTrend(m, start, end)(recordOp)
         }
@@ -1093,11 +1085,11 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
 
       val monitorAqiPairFutures =
         for (m <- monitors.toList) yield {
-          for(map<-getAqiMap(m)) yield
+          for (map <- getAqiMap(m)) yield
             m -> map
         }
 
-      for(monitorAqiPair <- Future.sequence(monitorAqiPairFutures)) yield {
+      for (monitorAqiPair <- Future.sequence(monitorAqiPairFutures)) yield {
         val monitorAqiMap = monitorAqiPair.toMap
         val title = "AQI歷史趨勢圖"
         val timeSeq = timeSet.zipWithIndex
@@ -1139,5 +1131,5 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
         } else
           Ok(Json.toJson(chart))
       }
-  }
+    }
 }

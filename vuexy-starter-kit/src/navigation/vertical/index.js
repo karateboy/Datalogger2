@@ -60,6 +60,10 @@ export default [
         route: 'calibration-query',
       },
       {
+        title: '多點校正查詢',
+        route: 'multi-calibration-query',
+      },
+      {
         title: '警報記錄查詢',
         route: 'alarm-query',
         action: 'read',
@@ -104,6 +108,10 @@ export default [
       {
         title: '測項管理',
         route: 'monitor-type-config',
+      },
+      {
+        title: '多點校正管理',
+        route: 'calibration-config',
       },
       {
         title: '警報規則管理',

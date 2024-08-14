@@ -21,6 +21,7 @@ class CalibrationForwarder @Inject()
 (ws:WSClient, calibrationOp: CalibrationDB)
 (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
   import ForwardManager._
+  import calibrationOp._
 
   Logger.info(s"CalibrationForwarder started $server/$monitor")
 
@@ -55,16 +56,14 @@ class CalibrationForwarder @Inject()
   }
 
   def uploadCalibration(latestCalibration: Long) = {
-    import calibrationOp.jsonWrites
     val recordFuture = calibrationOp.calibrationReportFuture(new DateTime(latestCalibration + 1))
     for (records <- recordFuture) {
       if (records.nonEmpty) {
-        val recordJSON = records.map { _.toJSON }
         val url = s"http://$server/CalibrationRecord/$monitor"
-        val f = ws.url(url).put(Json.toJson(recordJSON))
+        val f = ws.url(url).put(Json.toJson(records))
         f onSuccess {
           case response =>
-            context become handler(Some(records.last.startTime.getMillis))
+            context become handler(Some(records.last.startTime.getTime))
         }
         f onFailure {
           case ex: Throwable =>

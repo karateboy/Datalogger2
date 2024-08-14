@@ -1,6 +1,6 @@
 package models.sql
 
-import models.{Alarm, AlarmDB, AlertEmailSender, LineNotify}
+import models.{Alarm, AlarmDB, AlertEmailSender, LineNotify, LoggerConfig}
 import play.api.libs.mailer.MailerClient
 import scalikejdbc._
 
@@ -82,6 +82,7 @@ class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mail
              """.execute().apply()
 
       if (ar.level >= Level.ERR) {
+        if (LoggerConfig.config.alertEmail)
         emailTargetOp.getList().foreach { emailTargets =>
           val emails = emailTargets.map(_._id)
           AlertEmailSender.sendAlertMail(mailerClient = mailerClient)("警報通知", emails, ar.desc)
