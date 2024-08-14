@@ -10,7 +10,8 @@ case class LoggerConfig(storeSecondData: Boolean,
                         db: String,
                         bypassLogin: Boolean,
                         fromEmail:String,
-                        pm25HourAvgUseLastRecord:Boolean)
+                        pm25HourAvgUseLastRecord:Boolean,
+                        alertEmail:Boolean)
 
 object LoggerConfig {
   var config: LoggerConfig = _
@@ -27,9 +28,11 @@ object LoggerConfig {
     val bypassLogin = configuration.getBoolean("logger.bypassLogin").getOrElse(false)
     val fromEmail = configuration.getString("logger.fromEmail").getOrElse("AirIoT <airiot@wecc.com.tw>")
     val pm25HourAvgUseLastRecord = configuration.getBoolean("logger.pm25HourAvgUseLastRecord").getOrElse(false)
+    val alertEmail = configuration.getBoolean("logger.alertEmail").getOrElse(false)
     LoggerConfig(storeSecondData, selfMonitor = selfMonitor, trendShowActual = trendShowActual,
       db = db, bypassLogin = bypassLogin, fromEmail = fromEmail,
-      pm25HourAvgUseLastRecord = pm25HourAvgUseLastRecord)
+      pm25HourAvgUseLastRecord = pm25HourAvgUseLastRecord,
+      alertEmail = alertEmail)
   }
 }
 

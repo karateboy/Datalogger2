@@ -7,7 +7,6 @@ import models.Protocol.ProtocolParam
 import play.api._
 
 import javax.inject._
-import scala.concurrent.ExecutionContext.Implicits.global
 
 object MoxaE1212Collector {
 
@@ -16,6 +15,8 @@ object MoxaE1212Collector {
   trait Factory {
     def apply(id: String, protocol: ProtocolParam, param: MoxaE1212Param): Actor
   }
+
+  case object ResetCounter
 
   case object ConnectHost
 
@@ -27,6 +28,8 @@ class MoxaE1212Collector @Inject()
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: MoxaE1212Param) extends Actor with ActorLogging {
 
   import MoxaE1212Collector._
+  import DataCollectManager._
+  import context.dispatcher
 
   val resetTimer: Cancellable = {
     import com.github.nscala_time.time.Imports._

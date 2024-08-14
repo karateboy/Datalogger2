@@ -155,12 +155,14 @@ object Adam4000Collector {
 }
 
 import javax.inject._
-import scala.concurrent.ExecutionContext.Implicits.global
 
 class Adam4000Collector @Inject()(alarmOp: AlarmDB)
                                  (@Assisted instId: String, @Assisted protocolParam: ProtocolParam, @Assisted moduleList: List[Adam4000Module]) extends Actor {
 
   import Adam4000Collector._
+  import DataCollectManager._
+  import context.dispatcher
+
 
   self ! OpenCom
 

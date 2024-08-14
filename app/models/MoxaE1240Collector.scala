@@ -29,6 +29,7 @@ class MoxaE1240Collector @Inject()
 (instrumentOp: InstrumentDB)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: MoxaE1240Param) extends Actor with ActorLogging {
   import MoxaE1240Collector._
+  import DataCollectManager._
 
   @volatile var cancelable: Cancellable = _
 

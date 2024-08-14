@@ -25,7 +25,7 @@ class Realtime @Inject()
 
       val result =
         for {
-          instrumentMap <- instrumentOp.getInstrumentMap()
+          instrumentMap <- instrumentOp.getInstrumentMapFuture()
           dataMap <- dataCollectManagerOp.getLatestData
         } yield {
           val list = {

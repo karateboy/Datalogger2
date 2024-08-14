@@ -7,7 +7,6 @@ import models.Protocol.ProtocolParam
 import play.api._
 
 import javax.inject._
-import scala.concurrent.ExecutionContext.Implicits.global
 
 case class Adam6066ChannelCfg(enable: Boolean, mt: Option[String], repairMode: Option[Boolean])
 
@@ -20,17 +19,20 @@ object Adam6066Collector {
     def apply(id: String, protocol: ProtocolParam, param: Adam6066Param): Actor
   }
 
-  case object ConnectHost
+  private case object ConnectHost
 
-  case object Collect
+  private case object Collect
 
+  private case object IsConnected
 }
 
 class Adam6066Collector @Inject()
 (instrumentOp: InstrumentDB)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: Adam6066Param) extends Actor with ActorLogging {
 
-  import MoxaE1212Collector._
+  import Adam6066Collector._
+  import DataCollectManager._
+  import context.dispatcher
 
   self ! ConnectHost
 
@@ -41,7 +43,7 @@ class Adam6066Collector @Inject()
 
   var cancelable: Cancellable = _
 
-  def receive = handler(MonitorStatus.NormalStat, None)
+  def receive: Receive = handler(MonitorStatus.NormalStat, None)
 
   def handler(collectorState: String, masterOpt: Option[ModbusMaster]): Receive = {
     case ConnectHost =>

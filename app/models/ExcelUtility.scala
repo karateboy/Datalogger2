@@ -118,7 +118,7 @@ class ExcelUtility @Inject()
                 val statusCell = thisRow.createCell(2 * colIdx + 2)
                 val monitorStatus = monitorStatusOp.map(status)
                 statusCell.setCellValue(monitorStatus.desp)
-                if (MonitorStatus.isCalbration(status)) {
+                if (MonitorStatus.isCalibration(status)) {
                   cell.setCellStyle(calibrationStyle)
                   statusCell.setCellStyle(calibrationStyle)
                 } else if (tagInfo.statusType == StatusType.ManualValid ||
@@ -168,7 +168,7 @@ class ExcelUtility @Inject()
     MonitorStatus.getTagInfo(tag)
     if (isValid(tag))
       normalStyle
-    else if (isCalbration(tag))
+    else if (isCalibration(tag))
       abnormalStyles(0)
     else if (MonitorStatus.isMaintenance(tag))
       abnormalStyles(1)
@@ -374,8 +374,8 @@ class ExcelUtility @Inject()
       val mt = calibration.monitorType
       val mtCase = monitorTypeOp.map(mt)
       row.createCell(0).setCellValue(monitorTypeOp.map(calibration.monitorType).desp)
-      row.createCell(1).setCellValue(calibration.startTime.toString("YYYY年MM月dd日 HH:mm"))
-      row.createCell(2).setCellValue(calibration.endTime.toString("YYYY年MM月dd日 HH:mm"))
+      row.createCell(1).setCellValue(new DateTime(calibration.startTime).toString("YYYY年MM月dd日 HH:mm"))
+      row.createCell(2).setCellValue(new DateTime(calibration.endTime).toString("YYYY年MM月dd日 HH:mm"))
       row.createCell(3).setCellValue(monitorTypeOp.format(mt, calibration.zero_val))
       row.createCell(4).setCellValue(monitorTypeOp.format(mt, mtCase.zd_law))
       row.createCell(5).setCellValue(monitorTypeOp.format(mt, calibration.span_val))

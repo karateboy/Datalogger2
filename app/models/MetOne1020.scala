@@ -94,9 +94,9 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
           Thread.sleep(1500)
           val replies = serial.getMessageByLfWithTimeout(timeout = 2)
           if (replies.nonEmpty) {
-            if(replies.size != 4)
+            if (replies.size != 4)
               throw new Exception(s"Unexpected return ${replies.size}")
-            else{
+            else {
               val value = replies(3).split(",")(1).trim.toDouble
               Some(ModelRegValue2(inputRegs = List((instrumentStatusKeyListOld(0), value)),
                 modeRegs = List.empty[(InstrumentStatusType, Boolean)],
@@ -118,7 +118,7 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
 
   override def readReg(statusTypeList: List[InstrumentStatusType], full: Boolean): Future[Option[ModelRegValue2]] = Future {
     blocking {
-      if(deviceConfig.slaveID.contains(1))
+      if (deviceConfig.slaveID.contains(1))
         newProtocol
       else
         oldProtocol()
@@ -167,6 +167,8 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
   override def getCalibrationReg: Option[CalibrationReg] = None
 
   override def setCalibrationReg(address: Int, on: Boolean): Unit = {}
+
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {}
 
   override def postStop(): Unit = {
     for (serial <- serialOpt)

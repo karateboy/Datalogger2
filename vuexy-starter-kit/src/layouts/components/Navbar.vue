@@ -101,14 +101,13 @@ export default {
   },
   data() {
     return {
-      version : "1.0.0",
+      version: '1.0.0',
     };
   },
   methods: {
     async getVersion() {
       let res = await axios.get('/version');
-      if(res.status === 200)
-        this.version = res.data.version;
+      if (res.status === 200) this.version = res.data.version;
     },
     logout() {
       axios.get('/logout').then(() => {

@@ -20,7 +20,7 @@ module.exports = {
     'linebreak-style': 'off',
     'comma-dangle': 'off',
     camelcase: [
-      'error',
+      'off',
       { properties: 'never', ignoreDestructuring: true, ignoreImports: true },
     ],
     'arrow-parens': ['error', 'as-needed'],

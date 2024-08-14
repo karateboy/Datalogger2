@@ -19,6 +19,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
                                alarmOp: AlarmDB, instrumentStatusOp: InstrumentStatusDB)
                               (@Assisted instId: String, @Assisted protocol: ProtocolParam, @Assisted modelReg: AkModelReg,
                                @Assisted deviceConfig: AkDeviceConfig) extends Actor {
+  import DataCollectManager._
   @volatile var timerOpt: Option[Cancellable] = None
 
   @volatile var (collectorState: String, instrumentStatusTypesOpt) = {
@@ -99,10 +100,10 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
   @volatile var connected = false
   @volatile var oldModelReg: Option[AkModelRegValue] = None
 
-  def receive = normalReceive
+  def receive: Receive = normalReceive
 
   import scala.concurrent.{Future, blocking}
-  def readRegFuture(recordCalibration: Boolean) =
+  def readRegFuture(recordCalibration: Boolean): Future[Unit] =
     Future {
       blocking {
         try {

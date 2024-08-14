@@ -2,8 +2,8 @@ package controllers
 
 import akka.actor.ActorRef
 import buildinfo.BuildInfo
-import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
+import models.DataCollectManager.{RemoveMultiCalibrationTimer, SetupMultiCalibrationTimer, StartMultiCalibration, StopMultiCalibration}
 import models.ForwardManager.{ForwardHourRecord, ForwardMinRecord}
 import models.ModelHelper.{errorHandler, handleJsonValidateError, handleJsonValidateErrorFuture}
 import models._
@@ -16,15 +16,17 @@ import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class HomeController @Inject()(environment: play.api.Environment,
-                               userOp: UserDB, instrumentOp: InstrumentDB, dataCollectManagerOp: DataCollectManagerOp,
-                               monitorTypeOp: MonitorTypeDB, query: Query, monitorOp: MonitorDB, groupOp: GroupDB,
-                               instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusDB,
-                               sensorOp: MqttSensorDB, WSClient: WSClient,
-                               emailTargetOp: EmailTargetDB,
-                               sysConfig: SysConfigDB, recordDB: RecordDB,
-                               lineNotify: LineNotify,
-                               @Named("dataCollectManager") manager: ActorRef) extends Controller {
+class HomeController @Inject()(
+                                userOp: UserDB, instrumentOp: InstrumentDB, dataCollectManagerOp: DataCollectManagerOp,
+                                monitorTypeOp: MonitorTypeDB, query: Query, monitorOp: MonitorDB, groupOp: GroupDB,
+                                instrumentTypeOp: InstrumentTypeOp, monitorStatusOp: MonitorStatusDB,
+                                sensorOp: MqttSensorDB, WSClient: WSClient,
+                                emailTargetOp: EmailTargetDB,
+                                sysConfig: SysConfigDB,
+                                recordDB: RecordDB,
+                                calibrationConfigDB: CalibrationConfigDB,
+                                lineNotify: LineNotify,
+                                @Named("dataCollectManager") manager: ActorRef) extends Controller {
 
   val title = "資料擷取器"
 
@@ -40,10 +42,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       val newUserParam = request.body.validate[User]
 
       newUserParam.fold(
-        error => {
-          logger.error(JsError.toJson(error).toString())
-          BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
-        },
+        error => handleJsonValidateError(error),
         param => {
           userOp.newUser(param)
           Ok(Json.obj("ok" -> true))
@@ -91,9 +90,8 @@ class HomeController @Inject()(environment: play.api.Environment,
   }
 
   def deleteGroup(id: String): Action[AnyContent] = Security.Authenticated {
-    implicit request =>
-      val ret = groupOp.deleteGroup(id)
-      Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
+    val ret = groupOp.deleteGroup(id)
+    Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
   }
 
   def updateGroup(id: String): Action[JsValue] = Security.Authenticated(BodyParsers.parse.json) {
@@ -115,8 +113,8 @@ class HomeController @Inject()(environment: play.api.Environment,
   }
 
   def getInstrumentTypes: Action[AnyContent] = Security.Authenticated {
-    implicit val w1 = Json.writes[ProtocolInfo]
-    implicit val write = Json.writes[InstrumentTypeInfo]
+    implicit val w1: OWrites[ProtocolInfo] = Json.writes[ProtocolInfo]
+    implicit val write: OWrites[InstrumentTypeInfo] = Json.writes[InstrumentTypeInfo]
     val iTypes =
       for (instType <- instrumentTypeOp.map.keys) yield {
         val t = instrumentTypeOp.map(instType)
@@ -124,7 +122,7 @@ class HomeController @Inject()(environment: play.api.Environment,
           t.protocol.map { p => ProtocolInfo(p, Protocol.map(p)) })
       }
     val sorted = iTypes.toList.sortWith((a, b) => a.desp < b.desp)
-    Ok(Json.toJson(sorted.toList))
+    Ok(Json.toJson(sorted))
   }
 
   def getInstrumentType(id: String): Action[AnyContent] = Security.Authenticated {
@@ -201,7 +199,7 @@ class HomeController @Inject()(environment: play.api.Environment,
           "停用"
       }
 
-      def getCalibrationTime: Option[Imports.LocalTime] = {
+      def getCalibrationTime: Option[LocalTime] = {
         val instTypeCase = instrumentTypeOp.map(inst.instType)
         instTypeCase.driver.getCalibrationTime(inst.param)
       }
@@ -388,6 +386,7 @@ class HomeController @Inject()(environment: play.api.Environment,
     Ok(Json.obj("ok" -> true))
   }
 
+  import DataCollectManager.WriteDO
   def writeDO(instruments: String): Action[JsValue] = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
       implicit val read: Reads[WriteDO] = Json.reads[WriteDO]
@@ -511,22 +510,18 @@ class HomeController @Inject()(environment: play.api.Environment,
   }
 
   def deleteMonitorType(id: String): Action[AnyContent] = Security.Authenticated {
-    implicit request =>
-      monitorTypeOp.deleteMonitorType(id)
-      Ok("")
+    monitorTypeOp.deleteMonitorType(id)
+    Ok("")
   }
 
   def signalTypeList: Action[AnyContent] = Security.Authenticated {
-    implicit request =>
-      val mtList = monitorTypeOp.signalMtvList map monitorTypeOp.map
-
-      Ok(Json.toJson(mtList))
+    val mtList = monitorTypeOp.signalMtvList map monitorTypeOp.map
+    Ok(Json.toJson(mtList))
   }
 
   def signalValues: Action[AnyContent] = Security.Authenticated.async {
-    implicit request =>
-      for (ret <- dataCollectManagerOp.getLatestSignal) yield
-        Ok(Json.toJson(ret))
+    for (ret <- dataCollectManagerOp.getLatestSignal) yield
+      Ok(Json.toJson(ret))
   }
 
   def setSignal(mtId: String, bit: Boolean): Action[AnyContent] = Security.Authenticated {
@@ -828,5 +823,56 @@ class HomeController @Inject()(environment: play.api.Environment,
 
   def version: Action[AnyContent] = Security.Authenticated {
     Ok(Json.obj("version" -> BuildInfo.version, "scalaVersion" -> BuildInfo.scalaVersion, "sbtVersion" -> BuildInfo.sbtVersion))
+  }
+
+  import calibrationConfigDB._
+  def getCalibrationConfig: Action[AnyContent] = Security.Authenticated.async {
+    val f = calibrationConfigDB.getListFuture
+    f onFailure errorHandler
+    for (ret <- f) yield
+      Ok(Json.toJson(ret))
+  }
+
+  def upsertCalibrationConfig: Action[JsValue] = Security.Authenticated.async(BodyParsers.parse.json) {
+    implicit request =>
+      val ret = request.body.validate[CalibrationConfig]
+
+      ret.fold(
+        error => handleJsonValidateErrorFuture(error),
+        config => {
+          manager ! RemoveMultiCalibrationTimer(config._id)
+          for (_ <- calibrationConfigDB.upsertFuture(config)) yield {
+            manager ! SetupMultiCalibrationTimer(config)
+            Ok(Json.obj("ok" -> true))
+          }
+        })
+  }
+
+  def deleteCalibrationConfig(id: String): Action[AnyContent] = Security.Authenticated.async {
+    manager ! RemoveMultiCalibrationTimer(id)
+    for (ret <- calibrationConfigDB.deleteFuture(id)) yield
+      Ok(Json.obj("ok" -> ret))
+  }
+
+  def executeCalibration(id:String): Action[AnyContent] = Security.Authenticated.async {
+    for(calibrationConfigs <- calibrationConfigDB.getListFuture) yield {
+      val configOpt = calibrationConfigs.find(_._id == id)
+      if(configOpt.isDefined){
+        manager ! StartMultiCalibration(configOpt.get)
+        Ok(Json.obj("ok" -> true))
+      }else
+        BadRequest("No such calibration config")
+    }
+  }
+
+  def cancelCalibration(id:String): Action[AnyContent] = Security.Authenticated.async {
+    for(calibrationConfigs <- calibrationConfigDB.getListFuture) yield {
+      val configOpt = calibrationConfigs.find(_._id == id)
+      if(configOpt.isDefined){
+        manager ! StopMultiCalibration(configOpt.get)
+        Ok(Json.obj("ok" -> true))
+      }else
+        BadRequest("No such calibration config")
+    }
   }
 }

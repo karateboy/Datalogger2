@@ -20,7 +20,7 @@ trait InstrumentDB {
 
   def getInstrumentList(): Seq[Instrument]
 
-  def getInstrumentMap(): Future[Map[String, Instrument]] = {
+  def getInstrumentMapFuture(): Future[Map[String, Instrument]] = {
     for (instruments <- getAllInstrumentFuture) yield
       instruments.map(inst => inst._id -> inst).toMap
   }
