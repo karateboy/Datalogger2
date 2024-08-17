@@ -79,7 +79,7 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
     for (seq <- pointConfig.calibrateSeq)
       context.parent ! ExecuteSeq(seq, value)
 
-    if(!pointConfig.skipInternalVault.contains(true)){
+    if (!pointConfig.skipInternalVault.contains(true)) {
       calibrationConfig.instrumentIds.foreach(instId => {
         for (collector <- instrumentCollectorMap.get(instId)) {
           log.info(s"TriggerVault for $collector $instId $zero $value")
@@ -109,12 +109,16 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
           fullSpan * spanPercent / 100
       }
 
-      def getPointSuccess: Option[Boolean] =
-        for (devLaw <- pointConfig.deviationAllowance; span <- getSpanStd) yield {
+      def pointChecker(devLawOpt: Option[Double] = pointConfig.deviationAllowance): Option[Boolean] =
+        for (devLaw <- devLawOpt; span <- getSpanStd) yield {
           val avg = avgOpt.getOrElse(Double.MaxValue)
           val dev = math.abs((avg - span) / span)
           dev * 100 < devLaw
         }
+
+      def getSpanSuccess: Option[Boolean] = pointChecker(mtCase.span_dev_law)
+
+      def getPointSuccess: Option[Boolean] = pointChecker()
 
       point match {
         case 0 =>
@@ -127,7 +131,8 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
           newMap += monitorType -> calibration.copy(endTime = endTime, zero_val = avgOpt, zero_success = zero_success)
 
         case 1 =>
-          newMap += monitorType -> calibration.copy(endTime = endTime, span_val = avgOpt, span_std = getSpanStd, span_success = getPointSuccess)
+          newMap += monitorType -> calibration.copy(endTime = endTime, span_val = avgOpt, span_std = getSpanStd, span_success = getSpanSuccess)
+
         case 2 =>
           newMap += monitorType -> calibration.copy(endTime = endTime, point3 = avgOpt, point3_std = getSpanStd, point3_success = getPointSuccess)
         case 3 =>
@@ -153,7 +158,7 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
         val calibrations = calibrationMap.values.toSeq
         calibrations.foreach(calibration => {
           calibrationDB.insertFuture(calibration)
-          if(!calibration.multipointSuccess())
+          if (!calibration.multipointSuccess())
             alarmDB.log(alarmDB.src(calibration.monitorType), alarmDB.Level.ERR,
               s"${calibration.monitorType} multi-point calibration failed.")
         })
