@@ -14,14 +14,14 @@ import scala.concurrent.Future
 class Realtime @Inject()
 (monitorTypeOp: MonitorTypeDB, dataCollectManagerOp: DataCollectManagerOp, instrumentOp: InstrumentDB,
  monitorStatusOp: MonitorStatusDB, recordDB: RecordDB, sysConfigDB: SysConfigDB) extends Controller {
-  val overTimeLimit = 6
+  private val overTimeLimit = 6
 
   case class MonitorTypeStatus(_id: String, desp: String, value: String, unit: String, instrument: String, status: String, classStr: Seq[String], order: Int)
 
-  def MonitorTypeStatusList() = Security.Authenticated.async {
+  def MonitorTypeStatusList(): Action[AnyContent] = Security.Authenticated.async {
     implicit request =>
 
-      implicit val mtsWrite = Json.writes[MonitorTypeStatus]
+      implicit val mtsWrite: OWrites[MonitorTypeStatus] = Json.writes[MonitorTypeStatus]
 
       val result =
         for {
@@ -43,7 +43,7 @@ class Realtime @Inject()
                 val ret =
                   for (measuringBy <- mCase.measuringBy) yield {
                     val instruments: List[Instrument] =
-                      measuringBy.map(instrumentMap.get(_)).flatten
+                      measuringBy.flatMap(instrumentMap.get)
 
                     if (instruments.exists(inst => !inst.active))
                       "停用"
@@ -60,7 +60,7 @@ class Realtime @Inject()
                 val status = if (duration.getStandardSeconds <= overTimeLimit)
                   monitorStatusOp.map(record.status).desp
                 else
-                  instrumentStatus
+                  instrumentStatus()
 
                 MonitorTypeStatus(_id = mCase._id, desp = mCase.desp, monitorTypeOp.format(mt, record.value),
                   mCase.unit, measuringByStr,
@@ -70,12 +70,12 @@ class Realtime @Inject()
                 if (instrumentStatus == "停用")
                   MonitorTypeStatus(_id = mCase._id, mCase.desp, monitorTypeOp.format(mt, None),
                     mCase.unit, measuringByStr,
-                    instrumentStatus,
+                    instrumentStatus(),
                     Seq("stop_status"), mCase.order)
                 else
                   MonitorTypeStatus(_id = mCase._id, mCase.desp, monitorTypeOp.format(mt, None),
                     mCase.unit, measuringByStr,
-                    instrumentStatus,
+                    instrumentStatus(),
                     Seq("disconnect_status"), mCase.order)
               }
             }
@@ -94,10 +94,10 @@ class Realtime @Inject()
       .withSecondOfMinute(0).withMillisOfSecond(0)
     for (ret <- AQI.getMonitorRealtimeAQI(Monitor.activeId, lastHour)(recordDB)) yield {
       val aqiExplainReport = AQI.getAqiExplain(ret)(monitorTypeOp)
-      implicit val w3 = Json.writes[AqiExplain]
+      implicit val w3: OWrites[AqiExplain] = Json.writes[AqiExplain]
       implicit val w2: OWrites[AqiSubExplain] = Json.writes[AqiSubExplain]
       implicit val w1: OWrites[AqiExplainReport] = Json.writes[AqiExplainReport]
-      implicit val w0 = Json.writes[RealtimeAQI]
+      implicit val w0: OWrites[RealtimeAQI] = Json.writes[RealtimeAQI]
       Ok(Json.toJson(RealtimeAQI(lastHour.toDate, aqiExplainReport)))
     }
   }
