@@ -14,7 +14,7 @@ import play.api.libs.concurrent.AkkaGuiceSupport
  */
 class Module(environment: Environment,
              configuration: Configuration) extends AbstractModule with AkkaGuiceSupport {
-  override def configure() = {
+  override def configure(): Unit = {
     LoggerConfig.init(configuration)
     val db = LoggerConfig.config.db
     if(db == "sql"){

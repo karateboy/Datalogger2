@@ -40,7 +40,7 @@ object DataCollectManager {
 
   case object GetLatestSignal
 
-  case class IsTargetConnected(instId: String)
+  private case class IsTargetConnected(instId: String)
 
   case class AddSignalTypeHandler(mtId: String, handler: Boolean => Unit)
 
@@ -369,7 +369,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     import akka.util.Timeout
 
     import scala.concurrent.duration._
-    implicit val timeout = Timeout(Duration(3, SECONDS))
+    implicit val timeout: Timeout = Timeout(Duration(3, SECONDS))
 
     val f = manager ? GetLatestData
     f.mapTo[Map[String, Record]]
@@ -496,7 +496,6 @@ class DataCollectManager @Inject()
   private var calibratorOpt: Option[ActorRef] = None
   private var digitalOutputOpt: Option[ActorRef] = None
   private var onceTimer: Option[Cancellable] = None
-  var signalTypeHandlerMap = Map.empty[String, Map[ActorRef, Boolean => Unit]]
 
   private def startReaders(): List[ActorRef] = {
     val readers: ListBuffer[ActorRef] = ListBuffer.empty[ActorRef]
@@ -570,7 +569,25 @@ class DataCollectManager @Inject()
   private def getCollectorMap(instrumentMap: Map[String, InstrumentParam]): Map[ActorRef, String] =
     instrumentMap.map(kv => kv._2.actor -> kv._1)
 
+  private def getCalibrationTimer(config: CalibrationConfig): Option[Cancellable] = {
+    for (localTimeStr <- config.calibrationTime) yield {
+      val localTime = java.time.LocalTime.parse(localTimeStr)
+      val now = java.time.LocalDateTime.now()
+      val calibrationTime = java.time.LocalDateTime.of(now.toLocalDate, localTime)
+      val duration =
+        if (now.isBefore(calibrationTime))
+          now.until(calibrationTime, java.time.temporal.ChronoUnit.MILLIS)
+        else
+          now.until(calibrationTime.plusDays(1), java.time.temporal.ChronoUnit.MILLIS)
+
+      context.system.scheduler.scheduleOnce(
+        FiniteDuration(duration, MILLISECONDS),
+        self, StartMultiCalibration(config))
+    }
+  }
+
   case class CalibratorState(calibrator: ActorRef, state: String)
+
   def handler(instrumentMap: Map[String, InstrumentParam],
               latestDataMap: Map[String, Map[String, Record]],
               mtDataList: List[(DateTime, String, List[MonitorTypeData])],
@@ -683,20 +700,7 @@ class DataCollectManager @Inject()
         }
       }
     case SetupMultiCalibrationTimer(config) =>
-      for (localTimeStr <- config.calibrationTime) {
-        val localTime = java.time.LocalTime.parse(localTimeStr)
-        val now = java.time.LocalDateTime.now()
-        val calibrationTime = java.time.LocalDateTime.of(now.toLocalDate, localTime)
-        val duration =
-          if (now.isBefore(calibrationTime))
-            now.until(calibrationTime, java.time.temporal.ChronoUnit.MILLIS)
-          else
-            now.until(calibrationTime.plusDays(1), java.time.temporal.ChronoUnit.MILLIS)
-
-        val calibrationTimer = context.system.scheduler.scheduleOnce(
-          FiniteDuration(duration, MILLISECONDS),
-          self, StartMultiCalibration(config))
-
+      for (calibrationTimer <- getCalibrationTimer(config)) {
         context become handler(instrumentMap,
           latestDataMap, mtDataList, restartList,
           signalTypeHandlerMap, signalDataMap,
@@ -722,10 +726,16 @@ class DataCollectManager @Inject()
         newCalibratorMap += instId -> CalibratorState(calibrator, MonitorStatus.ZeroCalibrationStat)
       }
 
+      val calibrationTimerOpt = getCalibrationTimer(calibrationConfig)
+
+      var newCalibratorTimerMap = calibratorTimerMap
+      for (timer <- calibrationTimerOpt)
+        newCalibratorTimerMap += calibrationConfig._id -> timer
+
       context become handler(instrumentMap,
         latestDataMap, mtDataList, restartList,
         signalTypeHandlerMap, signalDataMap,
-        calibrationListMap, newCalibratorMap, calibratorTimerMap)
+        calibrationListMap, newCalibratorMap, newCalibratorTimerMap)
 
     case UpdateMultiCalibratorState(calibrationConfig: CalibrationConfig, state: String) =>
       var newCalibratorMap = instrumentCalibratorMap
@@ -808,8 +818,7 @@ class DataCollectManager @Inject()
       def flushSecData(recordMap: Map[String, Map[String, ListBuffer[(DateTime, Double)]]]): Unit = {
 
         if (recordMap.nonEmpty) {
-          import scala.collection.mutable.Map
-          val secRecordMap = Map.empty[DateTime, ListBuffer[(String, (Double, String))]]
+          val secRecordMap = mutable.Map.empty[DateTime, ListBuffer[(String, (Double, String))]]
           for {
             mt_pair <- recordMap
             mt = mt_pair._1
@@ -858,7 +867,7 @@ class DataCollectManager @Inject()
           }
           val docs = secRecordMap map { r => {
             val mtDataSeq = r._2.map(pair => {
-              val (mt, (value, status)) = pair
+              val (mt, (_, _)) = pair
               val mtCase = monitorTypeOp.map(mt)
               monitorTypeOp.getMinMtRecordByRawValue(pair._1, Some(pair._2._1), pair._2._2)(mtCase.fixedM, mtCase.fixedB)
             })
@@ -1029,7 +1038,7 @@ class DataCollectManager @Inject()
       import akka.util.Timeout
 
       import scala.concurrent.duration._
-      implicit val timeout = Timeout(Duration(3, SECONDS))
+      implicit val timeout: Timeout = Timeout(Duration(3, SECONDS))
       instrumentMap.get(instId).map { param =>
         val f = param.actor ? IsTargetConnected(instId)
         for (ret <- f.mapTo[Boolean]) yield
