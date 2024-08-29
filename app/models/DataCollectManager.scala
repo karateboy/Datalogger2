@@ -277,7 +277,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
             for (users <- userOp.getUsersByGroupFuture(groupID)) {
               users.foreach {
                 user => {
-                  for (alertEmail <- user.alertEmail) {
+                  if (user.getEmailTargets.nonEmpty) {
                     Future {
                       blocking {
                         val subject = s"$groupName > $monitorName ${mtCase.desp}超過分鐘高值"
@@ -285,7 +285,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                         val mail = Email(
                           subject = subject,
                           from = "AirIot <airiot@wecc.com.tw>",
-                          to = alertEmail.split(","),
+                          to = user.getEmailTargets,
                           bodyHtml = Some(content)
                         )
                         try {
@@ -354,7 +354,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 
           for {users <- userOp.getUsersByGroupFuture(sensor.group)
                user <- users} {
-            if (user.alertEmail.nonEmpty) {
+            if (user.getEmailTargets.nonEmpty) {
               Future {
                 blocking {
                   val subject = s"$groupName > ${mtCase.desp}超過小時高值"
@@ -362,7 +362,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                   val mail = Email(
                     subject = subject,
                     from = "AirIot <airiot@wecc.com.tw>",
-                    to = Seq(user.alertEmail.get),
+                    to = user.getEmailTargets,
                     bodyHtml = Some(content)
                   )
                   try {
@@ -836,10 +836,10 @@ class DataCollectManager @Inject()
     case SendErrorReport =>
       Logger.info("send daily error report")
       //val groups = groupOp.map
-      for (emailUsers <- userOp.getAlertEmailUsers()) {
+      for (emailUsers <- userOp.getAlertEmailUsers) {
         val alertEmails = emailUsers.flatMap {
           user =>
-            for (email <- user.alertEmail; groupID <- user.group; myGroup <- groupOp.map.get(groupID)) yield
+            for (email <- user.getEmailTargets; groupID <- user.group; myGroup <- groupOp.map.get(groupID)) yield
               EmailTarget(email, myGroup.name, myGroup.monitors)
         }
         val f = errorReportOp.sendEmail(alertEmails)

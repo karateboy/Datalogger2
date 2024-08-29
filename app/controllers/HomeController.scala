@@ -5,13 +5,11 @@ import com.github.nscala_time.time.Imports._
 import models.ModelHelper.errorHandler
 import models._
 import play.api._
-import play.api.libs.Files
 import play.api.libs.json._
 import play.api.libs.mailer.{Email, MailerClient}
 import play.api.mvc._
 
 import java.nio
-import java.nio.file.Files
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, blocking}
@@ -76,14 +74,14 @@ class HomeController @Inject()(environment: play.api.Environment,
         })
   }
 
-  def getAllUsers = Security.Authenticated {
-    val users = userOp.getAllUsers()
-    implicit val userWrites = Json.writes[User]
+  def getAllUsers: Action[AnyContent] = Security.Authenticated {
+    val users = userOp.getAllUsers
+    implicit val userWrites: OWrites[User] = Json.writes[User]
 
     Ok(Json.toJson(users))
   }
 
-  def newGroup = Security.Authenticated(BodyParsers.parse.json) {
+  def newGroup: Action[JsValue] = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
       val newUserParam = request.body.validate[Group]
 
@@ -98,13 +96,13 @@ class HomeController @Inject()(environment: play.api.Environment,
         })
   }
 
-  def deleteGroup(id: String) = Security.Authenticated {
+  def deleteGroup(id: String): Action[AnyContent] = Security.Authenticated {
     implicit request =>
       val ret = groupOp.deleteGroup(id)
       Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
   }
 
-  def updateGroup(id: String) = Security.Authenticated(BodyParsers.parse.json) {
+  def updateGroup(id: String): Action[JsValue] = Security.Authenticated(BodyParsers.parse.json) {
     implicit request =>
       val userParam = request.body.validate[Group]
 
@@ -120,10 +118,10 @@ class HomeController @Inject()(environment: play.api.Environment,
   }
 
   def getMyGroup: Action[AnyContent] = Security.Authenticated {
-    implicit request=>
-    val userInfo = Security.getUserinfo(request).get
-    val group = groupOp.getGroupByID(userInfo.group).get
-    Ok(Json.toJson(group))
+    implicit request =>
+      val userInfo = Security.getUserinfo(request).get
+      val group = groupOp.getGroupByID(userInfo.group).get
+      Ok(Json.toJson(group))
   }
 
   def getAllGroups: Action[AnyContent] = Security.Authenticated {
@@ -259,14 +257,14 @@ class HomeController @Inject()(environment: play.api.Environment,
   }
 
   def getMyDoInstrumentList(): Action[AnyContent] = Security.Authenticated {
-    implicit request=>
+    implicit request =>
       val userInfo = Security.getUserinfo(request).get
       val group = groupOp.getGroupByID(userInfo.group).get
 
-    val ret = instrumentOp.getInstrumentList().filter(p => p.group.contains(group._id)
-      && InstrumentType.DoInstruments.contains(p.instType))
+      val ret = instrumentOp.getInstrumentList().filter(p => p.group.contains(group._id)
+        && InstrumentType.DoInstruments.contains(p.instType))
 
-    Ok(Json.toJson(ret))
+      Ok(Json.toJson(ret))
   }
 
   def getInstrument(id: String): Action[AnyContent] = Security.Authenticated {
@@ -706,59 +704,54 @@ class HomeController @Inject()(environment: play.api.Environment,
     val userOpt = userOp.getUserByEmail(id)
     for {
       user <- userOpt
-      groupID <- user.group
-      email <- user.alertEmail
     } yield {
       val subject = "測試信件"
       val msg = "測試信件"
-      if (user.alertEmail.nonEmpty) {
-        if (user.alertEmail.nonEmpty) {
-          Future {
-            blocking {
-              val content = s"${user.name} 您好:\n$msg"
-              for (alertEmail <- user.alertEmail) {
-                val mail = Email(
-                  subject = subject,
-                  from = "AirIot <airiot@wecc.com.tw>",
-                  to = alertEmail.split(","),
-                  bodyHtml = Some(content)
-                )
-                try {
-                  Thread.currentThread().setContextClassLoader(getClass.getClassLoader)
-                  mailerClient.send(mail)
-                } catch {
-                  case ex: Exception =>
-                    Logger.error("Failed to send email", ex)
-                }
+      if (user.getEmailTargets.nonEmpty) {
+        Future {
+          blocking {
+            val content = s"${user.name} 您好:\n$msg"
+            if (user.getEmailTargets.nonEmpty) {
+              val mail = Email(
+                subject = subject,
+                from = "AirIot <airiot@wecc.com.tw>",
+                to = user.getEmailTargets,
+                bodyHtml = Some(content)
+              )
+              try {
+                Thread.currentThread().setContextClassLoader(getClass.getClassLoader)
+                mailerClient.send(mail)
+              } catch {
+                case ex: Exception =>
+                  Logger.error("Failed to send email", ex)
               }
             }
           }
         }
-        for (smsPhone <- user.smsPhone) {
-          try {
-            every8d.sendSMS(subject, msg, smsPhone.split(",").toList) onFailure errorHandler
-          } catch {
-            case ex: Exception =>
-              Logger.error("Failed to send sms", ex)
-          }
+      }
+      for (smsPhone <- user.smsPhone) {
+        try {
+          every8d.sendSMS(subject, msg, smsPhone.split(",").toList) onFailure errorHandler
+        } catch {
+          case ex: Exception =>
+            Logger.error("Failed to send sms", ex)
         }
       }
-
     }
     Ok(Json.obj("ok" -> true))
   }
 
-  def testLINE(token:String): Action[AnyContent] = Security.Authenticated.async {
+  def testLINE(token: String): Action[AnyContent] = Security.Authenticated.async {
     Logger.info(s"testLINE $token")
     val f = lineNotify.notify(token, "測試訊息")
-    for(_ <-f) yield {
+    for (_ <- f) yield {
       Ok(Json.obj("ok" -> true))
     }
   }
 
   case class EditData(id: String, data: String)
 
-  for(lower<-sysConfig.get(sysConfig.CleanH2SOver150).map(_.asBoolean().getValue)){
+  for (lower <- sysConfig.get(sysConfig.CleanH2SOver150).map(_.asBoolean().getValue)) {
     /*
     Logger.info(s"Lower H2S over 150 $lower")
     if(!lower){
