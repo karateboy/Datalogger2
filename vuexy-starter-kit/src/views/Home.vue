@@ -5,7 +5,7 @@
       <b-card
           class="text-center"
           no-body>
-        <b-card-header header-class="header-bg-color pt-1 pl-1 pb-0">
+        <b-card-header :header-class="Object.assign(headerBG, {'pt-1':true, 'pl-1':true, 'pb-0':true})">
           <h4><strong>即時空氣品質監測</strong></h4>
           <b-form-group v-slot="{ ariaDescribedby }">
             <b-form-radio-group
@@ -64,38 +64,18 @@
         <b-col>
           <b-card no-body>
               <b-row no-gutters>
-                <b-col class="header-bg-color pt-1 pl-1 pb-0" lg="6"><h4><strong>即時空氣品質監測</strong></h4></b-col>
-                <b-col class="header-bg-color pt-1 pl-1 pb-0" lg="6"><h4><strong>灑水系統狀態</strong></h4></b-col>
+                <b-col class="pt-1 pl-1 pb-0" lg="6" :class="headerBG"><h4><strong>即時空氣品質監測</strong></h4></b-col>
+                <b-col class="pt-1 pl-1 pb-0" lg="6" :class="headerBG"><h4><strong>灑水系統狀態</strong></h4></b-col>
                 <b-col lg="6" class="border-right">
                   <b-table-simple borderless>
                     <b-tr>
                       <b-th colspan="3">即時最高濃度</b-th>
                     </b-tr>
-                    <b-tr>
-                      <b-th>PM10最高值</b-th>
-                      <b-th>{{ realtimeSummary.maxPM10 }}&nbsp; µg/m<sup>3</sup></b-th>
+                    <b-tr v-for="mtSummary in realtimeSummary.mtSummaries" :key="mtSummary.mt">
+                      <b-th>{{getMtName(mtSummary.mt)}}最高值</b-th>
+                      <b-th>{{ mtSummary.max }}&nbsp; {{getMtUnitName(mtSummary.mt)}}</b-th>
                       <b-td>
                       <span v-if="isValueNormal('PM10', realtimeSummary.maxPM10)">
-                      <b-img src="../assets/images/normal.png"
-                             width="25px"
-                             fluid/>
-                        &nbsp;
-                        <strong>正常</strong>
-                      </span>
-                        <span v-else>
-                        <b-img src="../assets/images/over_std.png"
-                               width="25px"
-                               fluid/>
-                        &nbsp;
-                        <strong>超標</strong>
-                      </span>
-                      </b-td>
-                    </b-tr>
-                    <b-tr>
-                      <b-th>PM2.5最高值</b-th>
-                      <b-th>{{ realtimeSummary.maxPM25 }}&nbsp; µg/m<sup>3</sup></b-th>
-                      <b-td>
-                      <span v-if="isValueNormal('PM25', realtimeSummary.maxPM25)">
                       <b-img src="../assets/images/normal.png"
                              width="25px"
                              fluid/>
@@ -160,12 +140,12 @@
       </b-row>
       <b-row>
         <b-col
-            v-for="mt in myMonitorTypes"
+            v-for="mt in userInfo.monitorTypeOfInterest"
             :key="mt"
         >
           <b-card no-body>
-            <b-card-header header-class="header-bg-color pt-1 pl-1 pb-0 text-center">
-              <h4 class="flex-fill"><strong>{{ mtMap.get(mt).desp }}趨勢圖</strong></h4>
+            <b-card-header :header-class="Object.assign(headerBG, {'pt-1':true, 'pl-1':true, 'pb-0':true, 'text-center':true})">
+              <h4 class="flex-fill"><strong>{{ getMtName(mt) }}趨勢圖</strong></h4>
             </b-card-header>
             <div :id="`history_${mt}`"></div>
           </b-card>
@@ -198,28 +178,38 @@
   background-color: #c3efd7 !important;
 }
 
+.header-bg-color-dark {
+  background-color: darkolivegreen !important;
+}
+
 .sensorFilter {
   background-color: white;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: bolder;
 }
 </style>
 <script>
 import moment from 'moment';
-import {mapActions, mapGetters, mapState} from 'vuex';
+import { mapActions, mapGetters, mapState } from 'vuex';
 import axios from 'axios';
-import highcharts from "highcharts";
+import highcharts from 'highcharts';
+import useAppConfig from '@core/app-config/useAppConfig';
+import { computed } from '@vue/composition-api';
 
 export default {
   data() {
     const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
     let group = undefined;
     let realtimeSummary = {
-      maxPM25: undefined,
-      maxPM10: undefined,
+      mtSummaries: [],
       connected: 0,
-      disconnected: 0
+      disconnected: 0,
     };
     return {
-      dataTypes: [{txt: '分鐘資料', id: 'min'}],
+      dataTypes: [{ txt: '分鐘資料', id: 'min' }],
       form: {
         monitors: [],
         dataType: 'min',
@@ -258,33 +248,43 @@ export default {
     ...mapState('user', ['userInfo']),
     ...mapGetters('monitorTypes', ['mtMap']),
     ...mapGetters('monitors', ['mMap']),
+    isDark() {
+      const { skin } = useAppConfig();
+      return skin.value === 'dark';
+    },
+    headerBG() {
+      return {
+        'header-bg-color': !this.isDark,
+        'header-bg-color-dark': this.isDark,
+      };
+    },
     myMonitorTypes() {
       const defaultMonitorTypes = ['PM10', 'PM25'];
-      if(this.monitorTypes === undefined) return defaultMonitorTypes;
+      if (this.monitorTypes === undefined) return defaultMonitorTypes;
       return defaultMonitorTypes.filter(mt => this.mtMap.get(mt) !== undefined);
     },
     myMonitorTypesOptions() {
       return this.myMonitorTypes.map(mt => {
-        return {value: mt, text: this.mtMap.get(mt).desp};
+        return { value: mt, text: this.mtMap.get(mt).desp };
       });
     },
     sprayStatus() {
-      if(!this.hasSpray) return '未安裝';
+      if (!this.hasSpray) return '未安裝';
       if (!this.spray_connected) return '未知';
       if (this.spray) return '否';
       else return '是';
     },
     sprayConnected() {
-      if(!this.hasSpray) return '未安裝';
+      if (!this.hasSpray) return '未安裝';
       if (this.spray_connected) return '正常';
       else return '斷線';
     },
     mapCenter() {
       let count = 0,
-          latMax = -1,
-          latMin = 1000,
-          lngMax = -1,
-          lngMin = 1000;
+        latMax = -1,
+        latMin = 1000,
+        lngMax = -1,
+        lngMin = 1000;
 
       for (const stat of this.realTimeStatus) {
         const monitor = this.mMap.get(stat._id.monitor);
@@ -298,11 +298,11 @@ export default {
         count++;
       }
 
-      if (count === 0) return {lat: 23.9534736767587, lng: 120.9682970796872};
+      if (count === 0) return { lat: 23.9534736767587, lng: 120.9682970796872 };
 
       let lat = (latMax + latMin) / 2;
       let lng = (lngMax + lngMin) / 2;
-      return {lat, lng};
+      return { lat, lng };
     },
     markers() {
       const ret = [];
@@ -316,7 +316,7 @@ export default {
           let mtCase = this.mtMap.get(mt);
           if (mtEntry.data.value) {
             valueStrList.push(
-                `${mtCase.desp}:${mtEntry.data.value.toFixed(mtCase.prec)}`,
+              `${mtCase.desp}:${mtEntry.data.value.toFixed(mtCase.prec)}`,
             );
             if (mt === this.mapMonitorType) v = mtEntry.data.value;
           }
@@ -324,7 +324,7 @@ export default {
         valueStr = valueStrList.join(', ');
 
         let fillColor;
-        if(this.mapMonitorType === 'PM25') {
+        if (this.mapMonitorType === 'PM25') {
           if (v < 15) fillColor = `#009865`;
           else if (v < 35) fillColor = `#FFFB26`;
           else if (v < 54) fillColor = `#FF9835`;
@@ -375,19 +375,19 @@ export default {
           ];
         });
 
-        const {markerIcon, valueStr, pm25desc} = getMtUrl(mtEntries);
+        const { markerIcon, valueStr, pm25desc } = getMtUrl(mtEntries);
 
         const monitor = this.mMap.get(stat._id.monitor);
         if (!monitor) continue;
         let label = pm25desc
-            ? `${monitor.desc}-${pm25desc}`
-            : `${monitor.desc}`;
+          ? `${monitor.desc}-${pm25desc}`
+          : `${monitor.desc}`;
 
         let lat = monitor.location[0];
         let lng = monitor.location[1];
         ret.push({
           title: valueStr,
-          position: {lat, lng},
+          position: { lat, lng },
           pm25,
           infoText: `<strong>${monitor.desc}</strong>`,
           label,
@@ -396,6 +396,7 @@ export default {
       }
 
       // auto fit the map
+      /*
       const ref = this.$refs.mapRef;
       if (ref) {
         ref.$mapPromise.then(map => {
@@ -411,6 +412,7 @@ export default {
           map.setZoom(this.getBoundsZoomLevel(bounds, mapDim));
         });
       }
+       */
       return ret;
     },
   },
@@ -476,7 +478,7 @@ export default {
       }
 
       await this.query();
-      for (const mt of this.myMonitorTypes) {
+      for (const mt of this.userInfo.monitorTypeOfInterest) {
         await this.drawTrendChart(mt);
       }
       await this.getRealtimeSummary();
@@ -506,19 +508,19 @@ export default {
       let now = new Date().getTime();
 
       const oneHourBefore = now - 60 * 60 * 1000;
-      const myMonitors = this.monitors.map(m => m._id).join(":");
+      const myMonitors = this.monitors.map(m => m._id).join(':');
       //const url = `/HistoryTrend/${myMonitors}/${mt}/all/Min/normal/${oneHourBefore}/${now}`;
       const url = `/HistoryTrend/${myMonitors}/${mt}/Min/normal/${oneHourBefore}/${now}`;
       const res = await axios.get(url);
       const ret = res.data;
 
       ret.chart = {
-        type: "spline",
-        zoomType: "x",
+        type: 'spline',
+        zoomType: 'x',
         panning: {
           enabled: true,
         },
-        panKey: "shift",
+        panKey: 'shift',
         alignTicks: false,
       };
 
@@ -528,16 +530,16 @@ export default {
       };
 
       let mtInfo = this.mtMap.get(mt);
-      ret.title.text = "";
-      ret.tooltip = {valueDecimals: 2};
-      ret.legend = {enabled: true};
+      ret.title.text = '';
+      ret.tooltip = { valueDecimals: 2 };
+      ret.legend = { enabled: true };
       ret.credits = {
         enabled: false,
-        href: "http://www.wecc.com.tw/",
+        href: 'http://www.wecc.com.tw/',
       };
 
-      ret.tooltip = {valueDecimals: 2};
-      ret.legend = {enabled: true};
+      ret.tooltip = { valueDecimals: 2 };
+      ret.legend = { enabled: true };
       ret.credits = {
         enabled: false,
         href: 'http://www.wecc.com.tw/',
@@ -628,7 +630,7 @@ export default {
       }, 1000);
     },
     getBoundsZoomLevel(bounds, mapDim) {
-      var WORLD_DIM = {height: 256, width: 256};
+      var WORLD_DIM = { height: 256, width: 256 };
       var ZOOM_MAX = 21;
 
       function latRad(lat) {
@@ -671,7 +673,17 @@ export default {
 
       console.info(`mt=${mt} value=${value}, std=${std}`);
       return false;
-    }
+    },
+    getMtName(mt) {
+      const mtCase = this.mtMap.get(mt);
+      if (mtCase === undefined) return '';
+      return this.mtMap.get(mt).desp;
+    },
+    getMtUnitName(mt) {
+      const mtCase = this.mtMap.get(mt);
+      if (mtCase === undefined) return '';
+      return this.mtMap.get(mt).unit;
+    },
   },
 };
 </script>

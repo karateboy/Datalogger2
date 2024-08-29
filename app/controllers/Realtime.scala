@@ -12,7 +12,7 @@ import scala.concurrent.Future
 
 class Realtime @Inject()
 (monitorTypeOp: MonitorTypeOp, dataCollectManagerOp: DataCollectManagerOp,
- monitorStatusOp: MonitorStatusOp, groupOp: GroupOp, recordOp: RecordOp) extends Controller {
+ monitorStatusOp: MonitorStatusOp, groupOp: GroupOp, recordOp: RecordOp, userOp: UserOp) extends Controller {
   val overTimeLimit = 6
 
   case class MonitorTypeStatus(_id: String, desp: String, value: String, unit: String, instrument: String, status: String, classStr: Seq[String], order: Int)
@@ -62,13 +62,16 @@ class Realtime @Inject()
       result
   }
 
-  case class RealtimeSummary(maxPM25: Option[Double], maxPM10: Option[Double], connected: Int, disconnected: Int)
+  case class MtSummary(mt: String, max: Option[Double], normal:Boolean)
+  case class RealtimeSummary(mtSummaries: Seq[MtSummary], connected: Int, disconnected: Int)
 
-  def realtimeSummary() = Security.Authenticated.async {
+  def realtimeSummary(): Action[AnyContent] = Security.Authenticated.async {
     implicit request =>
       val userInfo = request.user
       val groupID = userInfo.group
       val group = groupOp.map(groupID)
+      val user = userOp.getUserByEmail(userInfo.id).get
+      val groupMtMap = waitReadyResult(monitorTypeOp.getGroupMapAsync(groupID))
       val monitors = group.monitors
       val tabType = TableType.min
       val oneHourAgo = DateTime.now.minusHours(1).toDate
@@ -87,21 +90,28 @@ class Realtime @Inject()
             recordList.mtMap.get(mt).map(_.value)
         }
 
-        val pm25Values = getMtRecordValues("PM25")
-        val pm25Max = if (pm25Values.isEmpty)
-          None
-        else
-          Some(pm25Values.max)
+        val mtSummaries =
+          for(mt <- user.monitorTypeOfInterest) yield {
+            val mtValues = getMtRecordValues(mt)
+            val mtMax = if (mtValues.isEmpty)
+              None
+            else
+              Some(mtValues.max)
 
-        val pm10Values = getMtRecordValues("PM10")
-        val pm10Max = if (pm10Values.isEmpty)
-          None
-        else
-          Some(pm10Values.max)
+            val isNormal =
+              if(mtMax.isEmpty)
+                false
+              else{
+                val (overInternal, overLaw) = monitorTypeOp.overStd(mt, mtMax.get, groupMtMap)
+                !overInternal && !overLaw
+              }
+            MtSummary(mt, mtMax, isNormal)
+          }
 
         val connected = monitorLatestRecordLists.count(r => r.mtDataList.nonEmpty)
+        implicit val write0: OWrites[MtSummary] = Json.writes[MtSummary]
         implicit val write: OWrites[RealtimeSummary] = Json.writes[RealtimeSummary]
-        Ok(Json.toJson(RealtimeSummary(pm25Max, pm10Max, connected, monitors.length - connected)))
+        Ok(Json.toJson(RealtimeSummary(mtSummaries, connected, monitors.length - connected)))
       }
   }
 

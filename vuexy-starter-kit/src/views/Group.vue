@@ -272,7 +272,6 @@ export default Vue.extend({
     },
     sanityCheck() {
       this.group.monitors = this.group.monitors.filter(m => this.mMap.get(m));
-
     },
     upsert() {
       this.sanityCheck();
