@@ -2,12 +2,13 @@ package models
 
 import akka.actor.{Actor, ActorRef, _}
 import akka.util.ByteString
-import com.github.nscala_time.time.Imports.LocalTime
+import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.{ProtocolParam, tcp}
 import play.api._
 import play.api.libs.json.{JsError, Json}
 import akka.io._
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 case class Horiba370Config(calibrationTime: Option[LocalTime],
@@ -134,13 +135,14 @@ class Horiba370Collector @Inject()
 
   import Horiba370Collector._
   import TapiTxx._
+  import DataCollectManager._
 
   import scala.concurrent.duration._
   import scala.concurrent.{Future, blocking}
 
   Logger.info(s"Horiba370Collector created $id:${protocol} ${config}")
-  val timer = context.system.scheduler.schedule(Duration(1, SECONDS), Duration(2, SECONDS), self, ReadData)
-  val statisTimer = context.system.scheduler.schedule(Duration(30, SECONDS), Duration(1, MINUTES), self, CheckStatus)
+  val timer: Cancellable = context.system.scheduler.schedule(Duration(1, SECONDS), Duration(2, SECONDS), self, ReadData)
+  private val statisTimer = context.system.scheduler.schedule(Duration(30, SECONDS), Duration(1, MINUTES), self, CheckStatus)
   val mtCH4 = "CH4"
   val mtNMHC = "NMHC"
   val mtTHC = "THC"
@@ -160,7 +162,7 @@ class Horiba370Collector @Inject()
     }
   }
 
-  @volatile var nextLoggingStatusTime = getNextLoggingStatusTime
+  @volatile var nextLoggingStatusTime: DateTime = getNextLoggingStatusTime
   @volatile var statusMap = Map.empty[String, Double]
   @volatile var raiseStartTimerOpt: Option[Cancellable] = None
   @volatile var calibrateTimerOpt: Option[Cancellable] = None
@@ -182,9 +184,9 @@ class Horiba370Collector @Inject()
   }
 
   // override postRestart so we don't call preStart and schedule a new message
-  override def postRestart(reason: Throwable) = {}
+  override def postRestart(reason: Throwable): Unit = {}
 
-  def processResponse(data: ByteString)(implicit calibrateRecordStart: Boolean) = {
+  private def processResponse(data: ByteString)(implicit calibrateRecordStart: Boolean): Unit = {
     def getResponse = {
       assert(data(0) == 0x1)
       assert(data(data.length - 1) == 0x3)
@@ -567,16 +569,16 @@ class Horiba370Collector @Inject()
               mt <- monitorTypes
               zeroValue = zeroMap(mt)
               avg = mtAvgMap(mt)
-            } yield Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, zeroValue, monitorTypeOp.map(mt).span, avg)
+            } yield Calibration(mt, startTime.toDate, com.github.nscala_time.time.Imports.DateTime.now.toDate, zeroValue, monitorTypeOp.map(mt).span, avg)
           } else {
             for {
               mt <- monitorTypes
               avg = mtAvgMap(mt)
             } yield {
               if (calibrationType.zero) {
-                Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, avg, None, None)
+                Calibration(mt, startTime.toDate, com.github.nscala_time.time.Imports.DateTime.now.toDate, avg, None, None)
               } else {
-                Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, None, monitorTypeOp.map(mt).span, avg)
+                Calibration(mt, startTime.toDate, com.github.nscala_time.time.Imports.DateTime.now.toDate, None, monitorTypeOp.map(mt).span, avg)
               }
             }
           }
@@ -624,7 +626,5 @@ class Horiba370Collector @Inject()
 
   case object CalibrateEnd
 
-  object CommCmd extends Enumeration {
-    val ValueAcquisition = Value
-  }
+
 }

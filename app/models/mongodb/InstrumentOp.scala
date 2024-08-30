@@ -46,7 +46,7 @@ class InstrumentOp @Inject()(mongodb: MongoDB) extends InstrumentDB {
     waitReadyResult(f)
   }
 
-  override def getInstrumentMap(): Future[Map[String, Instrument]] = {
+  override def getInstrumentMapFuture(): Future[Map[String, Instrument]] = {
     val f = collection.find().toFuture()
     f onFailure errorHandler
     for (instruments <- f) yield

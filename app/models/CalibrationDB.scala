@@ -3,31 +3,43 @@ package models
 import com.github.nscala_time.time.Imports._
 import models.Calibration.CalibrationListMap
 import models.ModelHelper._
-import play.api.libs.json.Json
+import play.api.libs.json.{Json, OWrites, Reads}
 
+import java.util.Date
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-case class CalibrationJSON(monitorType: String, startTime: Long, endTime: Long, zero_val: Option[Double],
-                           span_std: Option[Double], span_val: Option[Double])
 
-case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTime, zero_val: Option[Double],
-                       span_std: Option[Double], span_val: Option[Double]) {
-  def zero_dev: Option[Double] = zero_val.map(Math.abs)
+case class Calibration(monitorType: String,
+                       startTime: Date,
+                       endTime: Date,
+                       zero_val: Option[Double],
+                       span_std: Option[Double],
+                       span_val: Option[Double],
+                       zero_success: Option[Boolean] = None,
+                       span_success: Option[Boolean] = None,
+                       point3: Option[Double] = None,
+                       point3_std: Option[Double] = None,
+                       point3_success: Option[Boolean] = None,
+                       point4: Option[Double] = None,
+                       point4_std: Option[Double] = None,
+                       point4_success: Option[Boolean] = None,
+                       point5: Option[Double] = None,
+                       point5_std: Option[Double] = None,
+                       point5_success: Option[Boolean] = None,
+                       point6: Option[Double] = None,
+                       point6_std: Option[Double] = None,
+                       point6_success: Option[Boolean] = None) {
 
-  def span_dev_ratioOpt: Option[Double] = for (s_dev <- span_devOpt; std <- span_std)
-    yield s_dev / std * 100
+  private def span_dev_ratioOpt: Option[Double] =
+    for (s_dev <- span_devOpt; std <- span_std)
+      yield s_dev / std * 100
 
   def span_devOpt: Option[Double] =
     for (span <- span_val; std <- span_std)
       yield Math.abs(span - std)
-
-  def toJSON = {
-    CalibrationJSON(monitorType, startTime.getMillis, endTime.getMillis, zero_val,
-      span_std, span_val)
-  }
 
   def success(implicit monitorTypeOp: MonitorTypeDB): Boolean = {
     val mtCase = monitorTypeOp.map(monitorType)
@@ -35,7 +47,12 @@ case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTi
       passSpanStandard(mtCase)
   }
 
-  def passZeroStandard(vOpt: Option[Double], stdOpt: Option[Double]): Boolean = {
+  def multipointSuccess(): Boolean = {
+    val successList = List(zero_success, span_success, point3_success, point4_success, point5_success, point6_success)
+    successList.forall(_.getOrElse(true))
+  }
+
+  private def passZeroStandard(vOpt: Option[Double], stdOpt: Option[Double]): Boolean = {
     val retOpt =
       for {
         v <- vOpt
@@ -48,7 +65,7 @@ case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTi
     retOpt.getOrElse(true)
   }
 
-  def passSpanStandard(mtCase: MonitorType): Boolean = {
+  private def passSpanStandard(mtCase: MonitorType): Boolean = {
     val retOpt =
       for (span_dev_ratio <- span_dev_ratioOpt; span_dev_law <- mtCase.span_dev_law) yield
         span_dev_ratio < span_dev_law
@@ -64,13 +81,13 @@ case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTi
          } yield
       (value - zeroVal) * spanStd / (spanValue - zeroVal)
 
-  val M: Option[Double] =
+  private val M: Option[Double] =
     for {zeroVal <- zero_val
          spanVal <- span_val
          spanStd <- span_std if spanVal != zeroVal} yield
       spanStd / (spanVal - zeroVal)
 
-  val B: Option[Double] =
+  private val B: Option[Double] =
     for {
       zeroVal <- zero_val
       spanVal <- span_val
@@ -78,21 +95,24 @@ case class Calibration(monitorType: String, startTime: DateTime, endTime: DateTi
       (-zeroVal * spanStd) / (spanVal - zeroVal)
 
 }
+
 object Calibration {
   type CalibrationListMap = Map[String, List[(DateTime, Calibration)]]
   val emptyCalibrationListMap = Map.empty[String, List[(DateTime, Calibration)]]
-  def findTargetCalibrationMB(calibrationListMap: CalibrationListMap, mt:String, target:DateTime): Option[(Option[Double], Option[Double])] = {
-    calibrationListMap.get(mt).flatMap(calibrationList=>{
+
+  def findTargetCalibrationMB(calibrationListMap: CalibrationListMap, mt: String, target: DateTime): Option[(Option[Double], Option[Double])] = {
+    calibrationListMap.get(mt).flatMap(calibrationList => {
       val candidate = calibrationList.takeWhile(p => p._1 < target).map(_._2)
       candidate.lastOption
-    }).map(calibration=>(calibration.M, calibration.B))
+    }).map(calibration => (calibration.M, calibration.B))
   }
+
 }
+
 trait CalibrationDB {
 
-  implicit val reads = Json.reads[Calibration]
-  implicit val writes = Json.writes[Calibration]
-  implicit val jsonWrites = Json.writes[CalibrationJSON]
+  implicit val reads: Reads[Calibration] = Json.reads[Calibration]
+  implicit val writes: OWrites[Calibration] = Json.writes[Calibration]
 
   def calibrationReport(start: DateTime, end: DateTime): Seq[Calibration]
 
@@ -114,7 +134,7 @@ trait CalibrationDB {
         val resultMap = mutable.Map.empty[String, ListBuffer[(DateTime, Calibration)]]
         for (item <- calibrationList.filter { c => c.success } if item.monitorType != MonitorType.NO2) {
           val lb = resultMap.getOrElseUpdate(item.monitorType, ListBuffer.empty[(DateTime, Calibration)])
-          lb.append((item.endTime, item))
+          lb.append((new DateTime(item.endTime), item))
         }
         resultMap.map(kv => kv._1 -> kv._2.toList).toMap
       }

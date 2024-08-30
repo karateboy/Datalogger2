@@ -14,6 +14,7 @@ GET           /dist/*file                                                       
 GET           /logout                                                                                            controllers.Login.logout
 POST          /login                                                                                             controllers.Login.authenticate
 GET           /login                                                                                             controllers.Login.isLogin
+GET           /version                                                                                           controllers.HomeController.version
 
 POST          /User                                                                                              controllers.HomeController.newUser
 GET           /User                                                                                              controllers.HomeController.getAllUsers
@@ -74,9 +75,9 @@ PUT           /Sensor/:id                                                       
 DELETE        /Sensor/:id                                                                                        controllers.HomeController.deleteSensor(id)
 
 #Data Management
-
 GET           /Recalculate/:monitors/:start/:end                                                                 controllers.HomeController.recalculateHour(monitors, start:Long, end:Long)
 GET           /Upload/:start/:end                                                                                controllers.HomeController.uploadData(start:Long, end:Long)
+GET           /QueryData/:monitor/:monitorType/:tabType/:start/:end                                              controllers.DataLogger.queryData(monitor, monitorType, tabType, start: Long, end: Long)
 
 #Realtime
 GET           /MonitorTypeStatusList                                                                             controllers.Realtime.MonitorTypeStatusList()
@@ -127,6 +128,10 @@ GET           /SystemConfig/EffectiveRatio                                      
 POST          /SystemConfig/EffectiveRatio                                                                       controllers.HomeController.saveEffectiveRatio
 GET           /SystemConfig/AqiMonitorTypes                                                                      controllers.Realtime.getAqiMonitorTypeMapping
 POST          /SystemConfig/AqiMonitorTypes                                                                      controllers.Realtime.postAqiMonitorTypeMapping
+POST          /SystemConfig/LineToken                                                                            controllers.HomeController.saveLineToken
+GET           /SystemConfig/LineToken                                                                            controllers.HomeController.getLineToken
+GET           /SystemConfig/LineToken/Verify/:token                                                              controllers.HomeController.verifyLineToken(token)
+POST          /SystemConfig/SplitTable                                                                           controllers.HomeController.splitTable
 
 #Rules
 GET           /SpikeRules                                                                                        controllers.RuleController.getSpikeRules
@@ -155,3 +160,10 @@ DELETE        /AlarmRule/:id                                                    
 
 GET           /UpsertData/template                                                                               controllers.DataLogger.getUpsertTemplate
 POST          /UpsertData                                                                                        controllers.DataLogger.upsertData
+
+#Calibration Config
+GET           /CalibrationConfig                                                                                 controllers.HomeController.getCalibrationConfig
+POST          /CalibrationConfig                                                                                 controllers.HomeController.upsertCalibrationConfig
+DELETE        /CalibrationConfig/:id                                                                             controllers.HomeController.deleteCalibrationConfig(id)
+PUT           /ExecuteCalibration/:id                                                                            controllers.HomeController.executeCalibration(id)
+PUT           /CancelCalibration/:id                                                                             controllers.HomeController.cancelCalibration(id)

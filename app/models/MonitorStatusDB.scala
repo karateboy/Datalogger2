@@ -1,5 +1,8 @@
 package models
 
+import com.google.inject.ImplementedBy
+import models.MonitorStatus.{BelowNormalStat, CalibrationDeviation, CalibrationPoint3, CalibrationPoint4, CalibrationPoint5, CalibrationPoint6, CalibrationResume, ExceedRangeStat, InvalidDataStat, MaintainStat, NormalStat, OverNormalStat, SpanCalibrationStat, ZeroCalibrationStat, getTagInfo}
+import play.api.libs.json.Json
 import models.MonitorStatus._
 import play.api.libs.json.{Json, OWrites, Reads}
 
@@ -15,6 +18,10 @@ trait MonitorStatusDB {
     MonitorStatus(SpanCalibrationStat, "全幅偏移校正"),
     MonitorStatus(CalibrationDeviation, "校正偏移"),
     MonitorStatus(CalibrationResume, "校正恢復"),
+    MonitorStatus(CalibrationPoint3, "校正點3校正"),
+    MonitorStatus(CalibrationPoint4, "校正點4校正"),
+    MonitorStatus(CalibrationPoint5, "校正點5校正"),
+    MonitorStatus(CalibrationPoint6, "校正點6校正"),
     MonitorStatus(CalibratedStat, "空白"),
     MonitorStatus(CalibrationSampleStat, "標準品"),
     MonitorStatus(InvalidDataStat, "無效數據"),

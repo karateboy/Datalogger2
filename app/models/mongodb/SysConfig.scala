@@ -33,7 +33,8 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     CDX_MONITOR_TYPES -> Document(valueKey -> Json.toJson(CdxUploader.defaultMonitorTypes).toString()),
     ACTIVE_MONITOR_ID -> Document(valueKey -> Monitor.activeId),
     AQI_MONITOR_TYPES -> Document(valueKey ->AQI.defaultMappingTypes),
-    EPA_LAST_RECORD_TIME -> Document(valueKey -> Date.from(Instant.parse("2022-01-01T00:00:00.000Z")))
+    EPA_LAST_RECORD_TIME -> Document(valueKey -> Date.from(Instant.parse("2022-01-01T00:00:00.000Z"))),
+    LINE_TOKEN -> Document(valueKey -> "")
   )
 
   override def getSpectrumLastParseTime: Future[Instant] = getInstant(SpectrumLastParseTime)()
@@ -149,6 +150,10 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     .map(v => Date.from(Instant.ofEpochMilli(v.asDateTime().getValue)))
 
   override def setEpaLastRecordTime(v: Date): Future[UpdateResult] = set(EPA_LAST_RECORD_TIME, BsonDateTime(v))
+
+  override def getLineToken: Future[String] = get(LINE_TOKEN).map(_.asString().getValue)
+
+  override def setLineToken(token: String): Future[UpdateResult] = set(LINE_TOKEN, BsonString(token))
 
   override def getVocMonitorTypes: Future[Seq[String]] = get(VOC_MONITOR_TYPES).map(_.asArray().toSeq.map(_.asString().getValue))
 

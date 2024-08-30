@@ -1,40 +1,81 @@
 <template>
   <div>
-    <b-card title="有效資料擷取率">
-      <b-form @submit.prevent>
-        <b-row>
-          <b-col>
-            <b-form-group
-              label="資料擷取率:"
-              label-for="effectiveRatio"
-              label-size="lg"
-              label-class="font-weight-bold pt-0"
-              label-cols-md="3"
-            >
-              <b-form-input
-                id="effectiveRatio"
-                v-model.number="form.effectiveRatio"
-              />
-            </b-form-group>
-          </b-col>
-        </b-row>
-        <br />
-        <b-row>
-          <b-col offset-md="3">
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              type="submit"
-              variant="primary"
-              class="mr-1"
-              :disabled="!canSaveEffectiveRatio"
-              @click="setEffectiveRatio"
-            >
-              儲存
-            </b-button>
-          </b-col>
-        </b-row>
-      </b-form>
-    </b-card>
+    <b-row>
+      <b-col>
+        <b-card title="有效資料擷取率">
+          <b-form @submit.prevent>
+            <b-row>
+              <b-col>
+                <b-form-group
+                  label="資料擷取率:"
+                  label-for="effectiveRatio"
+                  label-size="lg"
+                  label-class="font-weight-bold pt-0"
+                  label-cols-md="3"
+                >
+                  <b-form-input
+                    id="effectiveRatio"
+                    v-model.number="form.effectiveRatio"
+                  />
+                </b-form-group>
+              </b-col>
+            </b-row>
+            <br />
+            <b-row>
+              <b-col offset-md="3">
+                <b-button
+                  v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                  type="submit"
+                  variant="primary"
+                  class="mr-1"
+                  :disabled="!canSaveEffectiveRatio"
+                  @click="setEffectiveRatio"
+                >
+                  儲存
+                </b-button>
+              </b-col>
+            </b-row>
+          </b-form>
+        </b-card>
+      </b-col>
+      <b-col>
+        <b-card title="資料表分割">
+          <b-form @submit.prevent>
+            <b-row>
+              <b-col>
+                <b-form-group
+                  label="分割年度:"
+                  label-for="splitYear"
+                  label-size="lg"
+                  label-class="font-weight-bold pt-0"
+                  label-cols-md="3"
+                >
+                  <b-form-input
+                    id="splitYear"
+                    v-model.number="form.splitYear"
+                  />
+                </b-form-group>
+              </b-col>
+            </b-row>
+            <br />
+            <b-row>
+              <b-col offset-md="3">
+                <b-button
+                  v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                  type="submit"
+                  variant="primary"
+                  class="mr-1"
+                  @click="splitTable"
+                >
+                  分割
+                </b-button>
+              </b-col>
+            </b-row>
+          </b-form>
+        </b-card>
+      </b-col>
+    </b-row>
+
     <b-card v-if="aqiMonitorTypes.length !== 0" title="AQI測項">
       <b-form @submit.prevent>
         <b-row>
@@ -214,17 +255,53 @@
             variant="gradient-danger"
             class="mr-2"
             @click="deleteEmail(row.index)"
-            >刪除</b-button
-          >
+            >刪除
+          </b-button>
           <b-button
             variant="gradient-info"
             class="mr-2"
             :disabled="!validateEmail(row.index)"
             @click="testEmail(row.index)"
-            >測試</b-button
-          >
+            >測試
+          </b-button>
         </template>
       </b-table>
+      <br />
+      <b-table-simple bordered>
+        <b-thead>
+          <b-tr>
+            <b-th> Line通報Token </b-th>
+            <b-th> 操作 </b-th>
+          </b-tr>
+        </b-thead>
+        <b-tbody>
+          <b-tr>
+            <b-td>
+              <b-form-input id="lineToken" v-model="lineToken" />
+            </b-td>
+            <b-td>
+              <b-button
+                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                type="submit"
+                variant="primary"
+                class="mr-1"
+                @click="saveLineToken"
+              >
+                儲存
+              </b-button>
+              <b-button
+                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                type="submit"
+                variant="primary"
+                class="mr-1"
+                @click="testLineToken"
+              >
+                測試
+              </b-button>
+            </b-td>
+          </b-tr>
+        </b-tbody>
+      </b-table-simple>
     </b-card>
   </div>
 </template>
@@ -233,10 +310,12 @@
 </style>
 <script lang="ts">
 import Vue from 'vue';
-const Ripple = require('vue-ripple-directive');
 import axios from 'axios';
 import { isNumber } from 'highcharts';
-import { mapState, mapGetters, mapActions } from 'vuex';
+import { mapActions, mapGetters, mapMutations, mapState } from 'vuex';
+import moment from 'moment';
+
+const Ripple = require('vue-ripple-directive');
 
 interface EmailTarget {
   _id: string;
@@ -264,15 +343,18 @@ export default Vue.extend({
       },
     ];
 
+    let splitYear = moment().year() - 2;
     return {
       form: {
         effectiveRatio: 0.75,
+        splitYear,
       },
       selected: [],
       emails,
       fields,
       aqiMonitorTypes,
       disconnectCheckTime: '',
+      lineToken: '',
     };
   },
   computed: {
@@ -290,13 +372,15 @@ export default Vue.extend({
     },
   },
   async mounted() {
-    this.getEffectiveRatio();
-    this.getAlertEmailTarget();
+    await this.getEffectiveRatio();
+    await this.getAlertEmailTarget();
+    await this.getLineToken();
     await this.fetchMonitorTypes();
     await this.getAqiMapping();
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
+    ...mapMutations(['setLoading']),
     async getEffectiveRatio() {
       const res = await axios.get('/SystemConfig/EffectiveRatio');
       this.form.effectiveRatio = res.data;
@@ -382,9 +466,59 @@ export default Vue.extend({
     async testAllEmail() {
       try {
         const res = await axios.get('/TestAllAlertEmail');
-        if (res.status === 200) this.$bvModal.msgBoxOk('成功');
+        if (res.status === 200) await this.$bvModal.msgBoxOk('成功');
       } catch (err) {
         throw new Error('failed to test email!');
+      }
+    },
+    async getLineToken() {
+      try {
+        const res = await axios.get('/SystemConfig/LineToken');
+        this.lineToken = res.data;
+      } catch (err) {
+        throw new Error('failed to get Line Token!');
+      }
+    },
+    async saveLineToken() {
+      try {
+        const res = await axios.post('/SystemConfig/LineToken', {
+          id: '',
+          value: this.lineToken,
+        });
+        if (res.status === 200) {
+          await this.$bvModal.msgBoxOk('成功');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    async testLineToken() {
+      try {
+        const res = await axios.get(
+          `/SystemConfig/LineToken/Verify/${this.lineToken}`,
+        );
+        if (res.status === 200) {
+          await this.$bvModal.msgBoxOk('成功');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    async splitTable() {
+      try {
+        this.setLoading({ loading: true });
+        const res = await axios.post('/SystemConfig/SplitTable', {
+          id: '',
+          value: this.form.splitYear.toString(),
+        });
+        if (res.status === 200) {
+          this.$bvModal.msgBoxOk('成功');
+        }
+      } catch (err) {
+        this.$bvModal.msgBoxOk(`失敗:${err}`);
+        console.error(err);
+      } finally {
+        this.setLoading({ loading: false });
       }
     },
   },

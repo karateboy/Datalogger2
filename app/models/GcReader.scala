@@ -1,6 +1,7 @@
 package models
 
 import akka.actor._
+import models.DataCollectManager.ReaderReset
 import models.ModelHelper.waitReadyResult
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.filefilter.DirectoryFileFilter

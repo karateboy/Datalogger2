@@ -187,4 +187,11 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
 
     super.postStop()
   }
+
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {
+    if(zero)
+      setCalibrationReg(0, on)
+    else
+      setCalibrationReg(1, on)
+  }
 }

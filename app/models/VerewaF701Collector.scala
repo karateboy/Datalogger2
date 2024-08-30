@@ -94,6 +94,7 @@ class VerewaF701Collector @Inject()
 (alarmOp: AlarmDB, monitorStatusOp: MonitorStatusDB, instrumentOp: InstrumentDB, system: ActorSystem)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: F701_20Config) extends Actor {
   import VerewaF701Collector._
+  import DataCollectManager._
   import scala.concurrent.duration._
   @volatile var cancelable = system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort)
   @volatile var serialOpt: Option[SerialComm] = None

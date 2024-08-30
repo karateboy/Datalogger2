@@ -33,8 +33,12 @@ object MonitorStatus {
   val ZeroCalibrationStat = "020"
   val SpanCalibrationStat = "021"
   val CalibrationDeviation = "022"
+  val CalibrationPoint3 = "023"
+  val CalibrationPoint4 = "024"
+  val CalibrationPoint5 = "025"
   val CalibrationResume = "026"
-  val CalibratedStat = "027"
+  val CalibrationPoint6 = "027"
+  val CalibratedStat = "029"
   val CalibrationSampleStat = "028"
   val InvalidDataStat = "030"
   val MaintainStat = "031"
@@ -66,7 +70,7 @@ object MonitorStatus {
         case StatusType.Internal =>
           if (isValid(tag))
             ""
-          else if (isCalbration(tag))
+          else if (isCalibration(tag))
             "calibration_status"
           else if (isMaintenance(tag))
             "maintain_status"
@@ -119,22 +123,23 @@ object MonitorStatus {
     }
   }
 
-  def isCalbration(s: String) = {
-    val CALBRATION_STATS = List(ZeroCalibrationStat, SpanCalibrationStat,
-      CalibrationDeviation,CalibrationResume).map(getTagInfo)
+  def isCalibration(s: String): Boolean = {
+    val CALIBRATION_STATS = List(ZeroCalibrationStat, SpanCalibrationStat,
+      CalibrationDeviation,CalibrationResume,
+      CalibrationPoint3, CalibrationPoint4, CalibrationPoint5, CalibrationPoint6).map(getTagInfo)
 
-    CALBRATION_STATS.contains(getTagInfo(s))
+    CALIBRATION_STATS.contains(getTagInfo(s))
   }
 
-  def isMaintenance(s: String) = {
+  def isMaintenance(s: String): Boolean = {
     getTagInfo(MaintainStat) == getTagInfo(s)
   }
 
-  def isManual(s:String) = {
+  def isManual(s:String): Boolean = {
     getTagInfo(s).statusType == StatusType.ManualInvalid || getTagInfo(s).statusType == StatusType.ManualInvalid
   }
-  def isError(s: String) = {
-    !(isValid(s) || isCalbration(s) || isMaintenance(s))
+  def isError(s: String): Boolean = {
+    !(isValid(s) || isCalibration(s) || isMaintenance(s))
   }
 }
 

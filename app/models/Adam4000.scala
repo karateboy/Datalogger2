@@ -155,19 +155,16 @@ object Adam4000Collector {
 }
 
 import javax.inject._
-import scala.concurrent.ExecutionContext.Implicits.global
 
 class Adam4000Collector @Inject()(alarmOp: AlarmDB)
                                  (@Assisted instId: String, @Assisted protocolParam: ProtocolParam, @Assisted moduleList: List[Adam4000Module]) extends Actor {
 
   import Adam4000Collector._
+  import DataCollectManager._
+  import context.dispatcher
+
 
   self ! OpenCom
-
-  val resetCounterTimer = if (moduleList.find(_.module == ADAM4080).isDefined) {
-    Some(1)
-  } else
-    None
 
   @volatile var comm: SerialComm = _
   @volatile var timerOpt: Option[Cancellable] = None
@@ -179,12 +176,12 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
         comm = SerialComm.open(protocolParam.comPort.get, protocolParam.speed.getOrElse(9600))
         addSignalTypeHandler()
         timerOpt = Some(context.system.scheduler.scheduleOnce(FiniteDuration(3, SECONDS), self, ReadInput))
-        for(module4080 <-moduleList.find(module=>module.module == ADAM4080)){
+        for (module4080 <- moduleList.find(module => module.module == ADAM4080)) {
           import scala.concurrent.duration._
-          //Try to trigger at 30 sec
-          val nextHour = DateTime.now().plusHours(1).withSecondOfMinute(0).withMinuteOfHour(0).withMillis(0)
+          val oneHourLater = DateTime.now().plusHours(1)
+          val nextHour = oneHourLater.withMinuteOfHour(0).withSecondOfMinute(0)
           val elapsedSeconds = new org.joda.time.Duration(DateTime.now, nextHour).getStandardSeconds
-          context.system.scheduler.schedule(FiniteDuration(elapsedSeconds, SECONDS), FiniteDuration(1, HOURS), self, ResetCounter)
+          resetTimerOpt = Some(context.system.scheduler.schedule(FiniteDuration(elapsedSeconds, SECONDS), FiniteDuration(1, HOURS), self, ResetCounter))
         }
       } catch {
         case ex: Exception =>
@@ -220,26 +217,24 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
 
             for (module <- moduleList if module.module == ADAM4080) {
               val adam4080cfg = module.get4080Cfg
-              for((ch, n) <- adam4080cfg.channelList.zipWithIndex if ch.enable) {
-                val readCmd = s"$$${module.address}$n\r"
+              for ((ch, n) <- adam4080cfg.channelList.zipWithIndex if ch.enable) {
+                val readCmd = s"#${module.address}$n\r"
                 os.write(readCmd.getBytes)
                 val strList = comm.getLineWithTimeout(2)
-                decode4080(strList(0), ch)
+                decode4080(strList.head, ch)
               }
             }
           } catch errorHandler
-          finally {
-            timerOpt = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, ReadInput))
-          }
         }
-      } onFailure errorHandler
-
+      }
+      timerOpt = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, ReadInput))
     case ResetCounter =>
+      Logger.info("Reset counter")
       Future {
         blocking {
           for (module <- moduleList if module.module == ADAM4080) {
             val adam4080cfg = module.get4080Cfg
-            for((ch, n) <- adam4080cfg.channelList.zipWithIndex if ch.enable) {
+            for ((ch, n) <- adam4080cfg.channelList.zipWithIndex if ch.enable) {
               val readCmd = s"$$${module.address}6$n\r"
               comm.os.write(readCmd.getBytes)
               comm.getLineWithTimeout(2)
@@ -260,7 +255,7 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
       comm.getLineWithTimeout(2)
   }
 
-  def decode4017(str: String)(aiChannelCfgs: Seq[AiChannelCfg]): Unit = {
+  private def decode4017(str: String)(aiChannelCfgs: Seq[AiChannelCfg]): Unit = {
     val ch = str.substring(1).split("(?=[+-])", 8)
     if (ch.length != 8)
       throw new Exception("unexpected format:" + str)
@@ -292,7 +287,7 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
     context.parent ! ReportData(dataList.toList)
   }
 
-  def decode4069(str: String, signalConfigList: Seq[SignalConfig]): Unit = {
+  private def decode4069(str: String, signalConfigList: Seq[SignalConfig]): Unit = {
     val valueStr = str.substring(1).take(2)
     val value = Integer.valueOf(valueStr, 16)
     val dataList: Seq[SignalData] =
@@ -304,19 +299,23 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
     context.parent ! ReportSignalData(dataList)
   }
 
-  def decode4080(str: String, cfg:CounterConfig): Unit = {
-    try{
-      for(mt<-cfg.monitorType){
-        val value: Double = Integer.decode("0x"+str.trim).toDouble * cfg.multiplier.getOrElse(1.0)
+  private def decode4080(str: String, cfg: CounterConfig): Unit = {
+    try {
+
+      for (mt <- cfg.monitorType) {
+        val value: Double = Integer.decode("0x" + str.substring(1).trim).toDouble * cfg.multiplier.getOrElse(1.0)
         val status = if (cfg.repairMode.getOrElse(false))
           MonitorStatus.MaintainStat
         else
           MonitorStatus.NormalStat
-          context.parent !  List(MonitorTypeData(mt, value, status))
+
+        val mtd = MonitorTypeData(mt, value, status)
+        Logger.debug(s"$instId: 4080 $mt $value $status")
+        context.parent ! ReportData(List(mtd))
       }
-    }catch{
-      case ex:Throwable=>
-        Logger.error(s"$instId: 4080 unable to decode $str",ex)
+    } catch {
+      case ex: Throwable =>
+        Logger.error(s"$instId: 4080 unable to decode $str", ex)
     }
   }
 
@@ -338,7 +337,7 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
     for (timer <- timerOpt)
       timer.cancel()
 
-    for(resetTimer<- resetTimerOpt)
+    for (resetTimer <- resetTimerOpt)
       resetTimer.cancel()
 
     if (comm != null)

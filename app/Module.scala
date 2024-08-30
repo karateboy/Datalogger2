@@ -14,12 +14,11 @@ import play.api.libs.concurrent.AkkaGuiceSupport
  */
 class Module(environment: Environment,
              configuration: Configuration) extends AbstractModule with AkkaGuiceSupport {
-  override def configure() = {
+  override def configure(): Unit = {
     LoggerConfig.init(configuration)
     val db = LoggerConfig.config.db
     if(db == "sql"){
       import models.sql._
-      //scalikejdbc.config.DBs.setupAll()
       bind(classOf[AlarmDB]).to(classOf[AlarmOp])
       bind(classOf[CalibrationDB]).to(classOf[CalibrationOp])
       bind(classOf[ConstantRuleDB]).to(classOf[ConstantRuleOp])
@@ -38,6 +37,7 @@ class Module(environment: Environment,
       bind(classOf[UserDB]).to(classOf[UserOp])
       bind(classOf[VariationRuleDB]).to(classOf[VariationRuleOp])
       bind(classOf[AlarmRuleDb]).to(classOf[AlarmRuleOp])
+      bind(classOf[CalibrationConfigDB]).to(classOf[CalibrationConfigOp])
     }else{
       import models.mongodb._
       bind(classOf[AlarmDB]).to(classOf[AlarmOp])
@@ -58,6 +58,7 @@ class Module(environment: Environment,
       bind(classOf[UserDB]).to(classOf[UserOp])
       bind(classOf[VariationRuleDB]).to(classOf[VariationRuleOp])
       bind(classOf[AlarmRuleDb]).to(classOf[AlarmRuleOp])
+      bind(classOf[CalibrationConfigDB]).to(classOf[CalibrationConfigOp])
     }
 
     bindActor[DataCollectManager]("dataCollectManager")
@@ -91,6 +92,7 @@ class Module(environment: Environment,
     bindActorFactory[Tca08Collector, Tca08Drv.Factory]
     bindActorFactory[PicarroG2401Collector, PicarroG2401.Factory]
     bindActorFactory[PicarroG2131iCollector, PicarroG2131i.Factory]
+    bindActorFactory[PicarroG2307Collector, PicarroG2307.Factory]
     bindActorFactory[Ma350Collector, Ma350Drv.Factory]
     bindActorFactory[MetOne1020Collector, MetOne1020.Factory]
   	bindActorFactory[AkDrvCollector, AkDrv.Factory]
@@ -98,6 +100,7 @@ class Module(environment: Environment,
     bindActorFactory[EcoPhysics88PCollector, EcoPhysics88P.Factory]
     bindActorFactory[HydreonRainGaugeCollector, HydreonRainGauge.Factory]
     bindActorFactory[UpsCollector, UpsDrv.Factory]
+    bindActorFactory[PseudoDeviceCollector, PseudoDevice.Factory]
     bindActorFactory[ForwardManager, ForwardManager.Factory]
     bindActorFactory[HourRecordForwarder, HourRecordForwarder.Factory]
     bindActorFactory[MinRecordForwarder, MinRecordForwarder.Factory]
@@ -105,42 +108,6 @@ class Module(environment: Environment,
     bindActorFactory[AlarmForwarder, AlarmForwarder.Factory]
     bindActorFactory[InstrumentStatusForwarder, InstrumentStatusForwarder.Factory]
     bindActorFactory[InstrumentStatusTypeForwarder, InstrumentStatusTypeForwarder.Factory]
-
-    //bind(classOf[ForwardManager])
-    // Use the system clock as the default implementation of Clock
-    //bind(classOf[Clock]).toInstance(Clock.systemDefaultZone)
-    // Ask Guice to create an instance of ApplicationTimer when the
-    // application starts.
-    //bind(classOf[ApplicationTimer]).asEagerSingleton()
-    // Set AtomicCounter as the implementation for Counter.
-    //bind(classOf[Counter]).to(classOf[AtomicCounter])
-    //bind(classOf[MonitorTypeDB]).asEagerSingleton()
-    //bind(classOf[OmronPlc]).asEagerSingleton()
-    /*
-    def init(){
-    val f = database.listCollectionNames().toFuture()
-    val colFuture = f.map { colNames =>
-      SysConfig.init(colNames)
-      //MonitorType =>
-      val mtFuture = MonitorType.init(colNames)
-      ModelHelper.waitReadyResult(mtFuture)
-      Instrument.init(colNames)
-      Record.init(colNames)
-      User.init(colNames)
-      Calibration.init(colNames)
-      MonitorStatus.init(colNames)
-      Alarm.init(colNames)
-      InstrumentStatus.init(colNames)
-      ManualAuditLog.init(colNames)
-    }
-    //Program need to wait before init complete
-    import scala.concurrent.Await
-    import scala.concurrent.duration._
-    import scala.language.postfixOps
-
-    Await.result(colFuture, 30 seconds)
-  }
-     */
   }
 
 }

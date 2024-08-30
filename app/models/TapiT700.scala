@@ -53,6 +53,7 @@ class T700Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     alarmOp, monitorTypeOp,
     calibrationOp, instrumentStatusOp)(instId, modelReg, config, host){
 
+  import DataCollectManager._
   import TapiTxx._
   import com.github.nscala_time.time.Imports._
 
@@ -61,12 +62,12 @@ class T700Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
   var lastSeqTime = DateTime.now
 
   import context.dispatcher
-  context.system.scheduler.scheduleOnce(FiniteDuration(30, SECONDS), self, ExecuteSeq(T700_STANDBY_SEQ, true))
+  context.system.scheduler.scheduleOnce(FiniteDuration(30, SECONDS), self, ExecuteSeq(T700_STANDBY_SEQ, on = true))
 
-  override def reportData(regValue: ModelRegValue) = None
+  override def reportData(regValue: ModelRegValue): Option[ReportData] = None
 
   import com.serotonin.modbus4j.locator.BaseLocator
-  override def executeSeq(seqName: String, on: Boolean) {
+  override def executeSeq(seqName: String, on: Boolean): Unit = {
     Logger.info(s"T700 execute $seqName sequence.")
     val seq = Integer.parseInt(seqName)
     if ((seq == lastSeqNo && lastSeqOp == on) && (DateTime.now() < lastSeqTime + 5.second)) {
@@ -85,11 +86,13 @@ class T700Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     }
   }
 
-  override def triggerZeroCalibration(v: Boolean) {}
+  override def triggerZeroCalibration(v: Boolean): Unit = {}
 
-  override def triggerSpanCalibration(v: Boolean) {}
+  override def triggerSpanCalibration(v: Boolean): Unit = {}
 
-  override def resetToNormal {
-    executeSeq(T700_STANDBY_SEQ, true)
+  override def resetToNormal() {
+    executeSeq(T700_STANDBY_SEQ, on = true)
   }
-} 
+
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {}
+}

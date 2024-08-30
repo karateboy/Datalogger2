@@ -100,6 +100,7 @@ object Sabio4010Collector {
 
 class Sabio4010Collector @Inject()(instrumentOp: InstrumentDB, instrumentStatusOp: InstrumentStatusDB)
                                   (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: Sabio4010Config) extends Actor {
+  import DataCollectManager._
   val statusTimerOpt: Option[Cancellable] = None
   //val statusTimerOpt: Option[Cancellable] = Some(system.scheduler.schedule(Duration(5, MINUTES), Duration(10, MINUTES),
   //  self, CollectStatus))

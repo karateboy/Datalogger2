@@ -236,7 +236,10 @@ export default Vue.extend({
       },
     ];
     const monitorTypes = Array<CdxMonitorTypes>();
-    const range = [moment().subtract(1, 'days').valueOf(), moment().valueOf()];
+    const range = [
+      moment().subtract(1, 'days').minute(0).second(0).millisecond(0).valueOf(),
+      moment().minute(0).second(0).millisecond(0).valueOf(),
+    ];
 
     let cdxConfig: CdxConfig = {
       enable: false,

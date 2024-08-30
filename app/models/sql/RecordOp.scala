@@ -28,7 +28,7 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
   override def upsertRecord(colName: String)(doc: RecordList): Future[UpdateResult] = Future {
     implicit val session: DBSession = AutoSession
     val tab: SQLSyntax = getTab(colName)
-    val fields = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"[${record.mtName}],[${record.mtName}_s]").mkString(","))
+    val fields = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"[${record.mtName}],[${record.mtName}_raw],[${record.mtName}_s]").mkString(","))
 
     def toStr(v: Option[Double]) = {
       if (v.isDefined)
@@ -37,28 +37,33 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
         "NULL"
     }
 
+    val values = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"${toStr(record.value)}, ${toStr(record.rawValue)}, '${record.status}'").mkString(","))
+
     val ret =
       if (doc.mtDataList.isEmpty) {
         sql"""
-           INSERT INTO $tab
-           ([monitor], [time])
-           VALUES
-           (${doc._id.monitor}, ${doc._id.time})
+           MERGE INTO $tab AS target
+                USING (SELECT ${doc._id.monitor} AS monitor, ${doc._id.time} AS time) AS source
+                ON (target.monitor = source.monitor AND target.time = source.time)
+                WHEN NOT MATCHED THEN
+                  INSERT
+                  ([monitor], [time])
+                  VALUES
+                  (${doc._id.monitor}, ${doc._id.time});
            """.update().apply()
       } else {
-        val values = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"${toStr(record.value)}, '${record.status}'").mkString(","))
         val setCause = SQLSyntax.createUnsafely(doc.mtDataList.map(record => s"[${record.mtName}] = ${toStr(record.value)}, [${record.mtName}_s] = '${record.status}'").mkString(","))
         sql"""
-         UPDATE $tab
-         SET $setCause
-         WHERE [monitor] = ${doc._id.monitor} AND [time] = ${doc._id.time}
-         IF(@@ROWCOUNT = 0)
-         BEGIN
-            INSERT INTO $tab
-            ([monitor], [time], $fields)
-            VALUES
-            (${doc._id.monitor}, ${doc._id.time}, $values)
-         END
+         MERGE INTO $tab AS target
+                USING (SELECT ${doc._id.monitor} AS monitor, ${doc._id.time} AS time) AS source
+                ON (target.monitor = source.monitor AND target.time = source.time)
+                WHEN MATCHED THEN
+                    UPDATE SET $setCause
+                WHEN NOT MATCHED THEN
+                  INSERT
+                  ([monitor], [time], $fields)
+                  VALUES
+                  (${doc._id.monitor}, ${doc._id.time}, $values);
          """.update().apply()
       }
 
@@ -287,5 +292,25 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
           )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
       ) ON [PRIMARY]
       """.execute().apply()
+  }
+
+  override def moveRecordToYearTable(colName: String)(year: Int): Future[Boolean] = {
+    val tab = getTab(colName)
+    val yearTabName = s"${colName}_$year"
+    if (sqlServer.getTables().contains(yearTabName))
+      Future.successful(false)
+    else
+      Future {
+        val yearTab = getTab(yearTabName)
+        implicit val session: DBSession = AutoSession
+        sql"""
+        Select * into $yearTab
+        FROM $tab WHERE YEAR([time]) <= $year;
+
+        Delete From $tab
+        Where Year([time]) <= $year;
+         """.execute().apply()
+        true
+      }
   }
 }

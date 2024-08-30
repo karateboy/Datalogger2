@@ -1,6 +1,6 @@
 package models.sql
 
-import models.{Alarm, AlarmDB, AlertEmailSender}
+import models.{Alarm, AlarmDB, AlertEmailSender, LineNotify, LoggerConfig}
 import play.api.libs.mailer.MailerClient
 import scalikejdbc._
 
@@ -11,7 +11,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mailerClient: MailerClient) extends AlarmDB {
+class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mailerClient: MailerClient,
+                        lineNotify: LineNotify, sysConfig: SysConfig) extends AlarmDB {
   private val tabName = "alarms"
 
   override def getAlarmsFuture(src: String, level: Int,
@@ -52,7 +53,7 @@ class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mail
   init()
 
   private def mapper(rs: WrappedResultSet) =
-    Alarm(rs.date("time"),
+    Alarm(rs.timestamp("time"),
       rs.string("src"),
       rs.int("level"),
       rs.string("desc"))
@@ -81,9 +82,14 @@ class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mail
              """.execute().apply()
 
       if (ar.level >= Level.ERR) {
+        if (LoggerConfig.config.alertEmail)
         emailTargetOp.getList().foreach { emailTargets =>
           val emails = emailTargets.map(_._id)
           AlertEmailSender.sendAlertMail(mailerClient = mailerClient)("警報通知", emails, ar.desc)
+        }
+
+        for(token <- sysConfig.getLineToken if token.nonEmpty) {
+          lineNotify.notify(token, ar.desc)
         }
       }
     }

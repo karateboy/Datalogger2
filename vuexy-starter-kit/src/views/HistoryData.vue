@@ -161,8 +161,8 @@ export default Vue.extend({
 
   data() {
     const range = [
-      moment().subtract(1, 'days').startOf('day').valueOf(),
-      moment().add(1, 'days').startOf('day').valueOf(),
+      moment().subtract(1, 'days').minute(0).second(0).millisecond(0).valueOf(),
+      moment().add(1, 'hour').minute(0).second(0).millisecond(0).valueOf(),
     ];
     return {
       dataTypes: [

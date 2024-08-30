@@ -179,8 +179,11 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
 
   override def getCalibrationReg: Option[CalibrationReg] = Some(CalibrationReg(0, 2))
 
+  private var calibrationCounter: Int = 0
+
   override def onCalibrationStart(): Unit = {
-    for (serial <- serialOpt) {
+    for (serial <- serialOpt if calibrationCounter == 0) {
+      calibrationCounter = 1
       Logger.info(s"$instId Switch to Remote mode")
       serial.port.writeBytes(makeCmd("HR1"))
       Thread.sleep(500)
@@ -191,7 +194,8 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
   }
 
   override def onCalibrationEnd(): Unit = {
-    for (serial <- serialOpt) {
+    for (serial <- serialOpt if calibrationCounter == 1) {
+      calibrationCounter = 0
       Logger.info(s"$instId Switch to Local mode")
       serial.port.writeBytes(makeCmd("HR0"))
       Thread.sleep(500)
@@ -222,5 +226,18 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
       serial.port.closePort()
 
     super.postStop()
+  }
+
+  override def triggerVault(zero: Boolean, on: Boolean): Unit = {
+    if(on)
+      onCalibrationStart()
+    else
+      onCalibrationEnd()
+
+
+    if(zero)
+      setCalibrationReg(0, on)
+    else
+      setCalibrationReg(2, on)
   }
 }
