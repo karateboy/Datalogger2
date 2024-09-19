@@ -51,9 +51,11 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
 
   log.info(s"Start multi-calibrator ${calibrationConfig._id}")
   private val calibrationMonitorTypes: Seq[String] = calibrationConfig.instrumentIds.flatMap(instId => {
-    val inst = instrumentMap(instId)
-    val monitorTypes = inst.mtList
-    monitorTypes
+    val monitorTypes =
+      for (instrument <- instrumentMap.get(instId)) yield
+        instrument.mtList
+
+    monitorTypes.getOrElse(Seq.empty)
   }).distinct
 
   private def getDefaultCalibrationMap: Map[String, Calibration] = {

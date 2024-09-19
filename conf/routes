@@ -114,6 +114,7 @@ GET           /HourRecord/:start/:end                                           
 GET           /MinRecord/:start/:end                                                                             controllers.Query.minRecordList(start:Long, end:Long)
 GET           /CalibrationRecord/:start/:end                                                                     controllers.Query.calibrationRecordList(start:Long, end:Long, outputTypeStr="html")
 GET           /Excel/CalibrationRecord/:start/:end                                                               controllers.Query.calibrationRecordList(start:Long, end:Long, outputTypeStr="excel")
+GET           /Excel/MultiCalibration/:start/:end                                                               controllers.Query.calibrationRecordList(start:Long, end:Long, outputTypeStr="excel2")
 
 GET           /ProbeDuoMonitorTypes                                                                              controllers.HomeController.probeDuoMonitorTypes(host)
 POST          /ConfigDuoMonitorTypes/:host                                                                       controllers.HomeController.configureDuoMonitorTypes(host)
