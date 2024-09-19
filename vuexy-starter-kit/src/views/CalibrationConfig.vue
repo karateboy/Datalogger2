@@ -91,6 +91,7 @@
                 id="calibration-id"
                 v-model="activeConfig._id"
                 placeholder="校正名稱"
+                :readonly="!isNew"
               />
             </b-form-group>
           </b-col>

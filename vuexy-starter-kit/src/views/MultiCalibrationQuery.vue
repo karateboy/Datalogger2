@@ -497,7 +497,7 @@ export default Vue.extend({
       const baseUrl =
         process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
 
-      const url = `${baseUrl}Excel/CalibrationRecord/${this.form.range[0]}/${this.form.range[1]}`;
+      const url = `${baseUrl}Excel/MultiCalibration/${this.form.range[0]}/${this.form.range[1]}`;
 
       window.open(url);
     },

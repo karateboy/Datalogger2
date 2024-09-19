@@ -832,6 +832,13 @@ class Query @Inject()(recordOp: RecordDB, monitorTypeOp: MonitorTypeDB, monitorO
             onClose = () => {
               Files.deleteIfExists(excelFile.toPath)
             })
+        case OutputType.excel2 =>
+          val excelFile = excelUtility.multiCalibrationReport(startTime, endTime, records)
+          Ok.sendFile(excelFile, fileName = _ =>
+            s"多點校正紀錄.xlsx",
+            onClose = () => {
+              Files.deleteIfExists(excelFile.toPath)
+            })
       }
     }
   }
