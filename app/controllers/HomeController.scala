@@ -628,7 +628,7 @@ class HomeController @Inject()(environment: play.api.Environment,
       val groupID = userInfo.group
       for (groupDoInstruments <- instrumentOp.getGroupDoInstrumentList(groupID)) {
         groupDoInstruments.foreach(inst =>
-          dataCollectManagerOp.sprayAction(inst._id, 5))
+          dataCollectManagerOp.sprayAction(inst._id, 5, 5, 5))
       }
       Ok("ok")
   }

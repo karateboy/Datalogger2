@@ -41,6 +41,7 @@
             @change="markDirty(row.item)"
           />
         </template>
+
         <template #cell(thresholdConfig)="row">
           <b-form-input
             v-model.number="row.item.thresholdConfig.elapseTime"
@@ -48,13 +49,21 @@
             @change="markDirty(row.item)"
           />
         </template>
-        <!-- <template #cell(zd_internal)="row">
+        <template #cell(alarmPauseTime)="row">
           <b-form-input
-            v-model.number="row.item.zd_internal"
+            v-model.number="row.item.alarmPauseTime"
             size="sm"
             @change="markDirty(row.item)"
           />
-        </template> -->
+        </template>
+        <template #cell(alarmWarnTime)="row">
+          <b-form-input
+            v-model.number="row.item.alarmWarnTime"
+            size="sm"
+            @change="markDirty(row.item)"
+          />
+        </template>
+
         <template #cell(zd_law)="row">
           <b-form-input
             v-model.number="row.item.zd_law"
@@ -70,13 +79,6 @@
             @change="markDirty(row.item)"
           />
         </template>
-        <!-- <template #cell(span_dev_internal)="row">
-          <b-form-input
-            v-model.number="row.item.span_dev_internal"
-            size="sm"
-            @change="markDirty(row.item)"
-          />
-        </template> -->
         <template #cell(span_dev_law)="row">
           <b-form-input
             v-model.number="row.item.span_dev_law"
@@ -167,17 +169,16 @@ export default Vue.extend({
         sortable: true,
       },
       {
-        key: 'zd_law',
-        label: '零點偏移法規',
+        key:'alarmPauseTime',
+        label: '噴水暫停時間',
+        sortable: true,
       },
       {
-        key: 'span',
-        label: '全幅值',
-      },
-      {
-        key: 'span_dev_law',
-        label: '全幅值偏移法規',
-      },
+        key:'alarmWarnTime',
+        label: '噴水警告時間',
+        sortable: true,
+      }
+
     ];
     const monitorTypes = Array<EditMonitorType>();
 

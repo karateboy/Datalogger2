@@ -11,7 +11,7 @@ import play.api.libs.mailer.{Email, MailerClient}
 import javax.inject._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.SECONDS
+import scala.concurrent.duration.{FiniteDuration, SECONDS}
 import scala.concurrent.{Future, blocking}
 import scala.language.postfixOps
 import scala.util.Success
@@ -49,7 +49,9 @@ case class ToggleTargetDO(instId: String, bit: Int, seconds: Int)
 
 case class WriteDO(bit: Int, on: Boolean)
 
-case class SprayAction(instId: String, seconds: Int)
+case class SprayAction(instId: String, warn: Int, pause: Int, spray: Int)
+
+case class SprayActionEnd(instId: String)
 
 case class ToggleMonitorTypeDO(instId: String, mtID: String, seconds: Int)
 
@@ -126,8 +128,8 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! WriteTargetDO(id, bit, on)
   }
 
-  def sprayAction(id: String, seconds: Int): Unit = {
-    manager ! SprayAction(id, seconds)
+  def sprayAction(id: String, warn: Int, pause: Int, spray: Int): Unit = {
+    manager ! SprayAction(id, warn, pause, spray)
   }
 
   def toggleMonitorTypeDO(id: String, mt: String, seconds: Int): Unit = {
@@ -310,7 +312,8 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
               groupDoInstruments.foreach(
                 inst =>
                   for (thresholdConfig <- mtCase.thresholdConfig) {
-                    manager ! SprayAction(inst._id, thresholdConfig.elapseTime)
+                    manager ! SprayAction(inst._id, mtCase.alarmWarnTime.getOrElse(30), mtCase.alarmPauseTime.getOrElse(30),
+                      thresholdConfig.elapseTime)
                   }
               )
             }
@@ -468,14 +471,16 @@ class DataCollectManager @Inject()
   }
 
   def receive = handler(Map.empty[String, InstrumentParam], Map.empty[ActorRef, String],
-    Map.empty[String, Map[String, Record]], List.empty[(DateTime, String, List[MonitorTypeData])], List.empty[String])
+    Map.empty[String, Map[String, Record]], List.empty[(DateTime, String, List[MonitorTypeData])], List.empty[String]
+    , Map.empty[String, SprayAction])
 
   def handler(
                instrumentMap: Map[String, InstrumentParam],
                collectorInstrumentMap: Map[ActorRef, String],
                latestDataMap: Map[String, Map[String, Record]],
                mtDataList: List[(DateTime, String, List[MonitorTypeData])],
-               restartList: Seq[String]): Receive = {
+               restartList: Seq[String],
+               sprayInstrumentMap: Map[String, SprayAction]): Receive = {
     case CleanOldData =>
       recordOp.cleanupOldData(recordOp.MinCollection)()
 
@@ -502,7 +507,7 @@ class DataCollectManager @Inject()
       context become handler(
         instrumentMap + (inst._id -> instrumentParam),
         collectorInstrumentMap + (collector -> inst._id),
-        latestDataMap, mtDataList, restartList)
+        latestDataMap, mtDataList, restartList, sprayInstrumentMap)
 
     case StopInstrument(id: String) =>
       val paramOpt = instrumentMap.get(id)
@@ -514,8 +519,8 @@ class DataCollectManager @Inject()
         param.actor ! PoisonPill
 
         if (!restartList.contains(id))
-          context become handler(instrumentMap - (id), collectorInstrumentMap - param.actor,
-            latestDataMap -- param.mtList, mtDataList, restartList)
+          context become handler(instrumentMap - id, collectorInstrumentMap - param.actor,
+            latestDataMap -- param.mtList, mtDataList, restartList, sprayInstrumentMap)
         else {
           val removed = restartList.filter(_ != id)
           val f = instrumentOp.getInstrumentFuture(id)
@@ -524,13 +529,14 @@ class DataCollectManager @Inject()
               self ! StartInstrument(value)
           })
           handler(instrumentMap - (id), collectorInstrumentMap - param.actor,
-            latestDataMap -- param.mtList, mtDataList, removed)
+            latestDataMap -- param.mtList, mtDataList, removed, sprayInstrumentMap)
         }
       }
 
     case RestartInstrument(id) =>
       self ! StopInstrument(id)
-      context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, mtDataList, restartList :+ (id))
+      context become handler(instrumentMap, collectorInstrumentMap, latestDataMap,
+        mtDataList, restartList :+ id, sprayInstrumentMap)
 
     case RestartMyself =>
       val id = collectorInstrumentMap(sender)
@@ -555,7 +561,7 @@ class DataCollectManager @Inject()
             }
 
           context become handler(instrumentMap, collectorInstrumentMap,
-            latestDataMap ++ pairs, (DateTime.now, instId, dataList) :: mtDataList, restartList)
+            latestDataMap ++ pairs, (DateTime.now, instId, dataList) :: mtDataList, restartList, sprayInstrumentMap)
       }
 
     case CalculateData => {
@@ -686,7 +692,7 @@ class DataCollectManager @Inject()
 
         dataCollectManagerOp.checkMinDataAlarm(Monitor.selfMonitor.desc, minuteMtAvgList)
 
-        context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData, restartList)
+        context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, currentData, restartList, sprayInstrumentMap)
         val f = recordOp.upsertRecord(RecordList(currentMinutes.minusMinutes(1), minuteMtAvgList.toList, Monitor.SELF_ID))(recordOp.MinCollection)
 
         f
@@ -771,15 +777,15 @@ class DataCollectManager @Inject()
           sender ! ret
       }
     case msg: ExecuteSeq =>
-        Logger.error(s"Unexpected message! Calibrator is not online! Ignore execute (${msg.seq} - ${msg.on}).")
+      Logger.error(s"Unexpected message! Calibrator is not online! Ignore execute (${msg.seq} - ${msg.on}).")
 
 
     case msg: WriteDO =>
-        Logger.warn(s"Unexpected message! DO is not online! Ignore output (${msg.bit} - ${msg.on}).")
+      Logger.warn(s"Unexpected message! DO is not online! Ignore output (${msg.bit} - ${msg.on}).")
 
 
     case EvtOperationOverThreshold =>
-        Logger.warn(s"Unexpected message! DO is not online! Ignore EvtOperationOverThreshold.")
+      Logger.warn(s"Unexpected message! DO is not online! Ignore EvtOperationOverThreshold.")
 
 
     case CheckSensorStstus =>
@@ -874,20 +880,39 @@ class DataCollectManager @Inject()
         }
       }
 
-      context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, mtDataList, restartList)
+      context become handler(instrumentMap, collectorInstrumentMap,
+        latestDataMap, mtDataList, restartList, sprayInstrumentMap)
 
       sender ! latestMap
 
-    case SprayAction(instId: String, seconds: Int) =>
-      // |SPRAY_WARN|--------|SPRAY|--------|SPRAY|-------
-      // |  0       |  1     |  2  |  3     |  4  |  5
-      self ! ToggleMonitorTypeDO(instId, MonitorType.SPRAY_WARN, seconds)
+    case SprayAction(instId, warn, pause, spray) =>
+      if (sprayInstrumentMap.contains(instId)) {
+        Logger.warn(s"SprayAction($instId, $warn, $pause, $spray) is already in progress!")
+      } else {
+        // |SPRAY_WARN|PAUSE|SPRAY|PAUSE|SPRAY|-------
+        // |  0       |  1  |  2  |  3  |  4  |
+        self ! ToggleMonitorTypeDO(instId, MonitorType.SPRAY_WARN, warn)
 
-      context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds * 2, SECONDS),
-        self, ToggleMonitorTypeDO(instId, MonitorType.SPRAY, seconds))
+        context.system.scheduler.scheduleOnce(FiniteDuration(warn + pause, SECONDS),
+          self, ToggleMonitorTypeDO(instId, MonitorType.SPRAY, spray))
 
-      context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds * 4, SECONDS),
-        self, ToggleMonitorTypeDO(instId, MonitorType.SPRAY, seconds))
+        context.system.scheduler.scheduleOnce(FiniteDuration(warn + pause + spray + pause, SECONDS),
+          self, ToggleMonitorTypeDO(instId, MonitorType.SPRAY, spray))
+
+        context.system.scheduler.scheduleOnce(FiniteDuration(warn + pause + spray + pause + spray, SECONDS),
+          self, SprayActionEnd(instId))
+
+        context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, mtDataList, restartList,
+          sprayInstrumentMap + (instId -> SprayAction(instId, warn, pause, spray)))
+      }
+
+    case SprayActionEnd(instId) =>
+      if (sprayInstrumentMap.contains(instId)) {
+        context become handler(instrumentMap, collectorInstrumentMap, latestDataMap, mtDataList, restartList,
+          sprayInstrumentMap - instId)
+      } else {
+        Logger.warn(s"SprayActionEnd($instId) is not in progress!")
+      }
   }
 
   override def postStop(): Unit = {

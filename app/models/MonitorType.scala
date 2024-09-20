@@ -12,16 +12,24 @@ import play.api.libs.json._
 
 case class ThresholdConfig(elapseTime: Int)
 
-case class MonitorType(var _id: String, desp: String, unit: String,
-                       prec: Int, order: Int,
+case class MonitorType(var _id: String,
+                       desp: String,
+                       unit: String,
+                       prec: Int,
+                       order: Int,
                        signalType: Boolean = false,
                        std_law: Option[Double] = None,
                        std_internal: Option[Double] = None,
-                       zd_internal: Option[Double] = None, zd_law: Option[Double] = None,
-                       span: Option[Double] = None, span_dev_internal: Option[Double] = None, span_dev_law: Option[Double] = None,
+                       zd_internal: Option[Double] = None,
+                       zd_law: Option[Double] = None,
+                       span: Option[Double] = None,
+                       span_dev_internal: Option[Double] = None,
+                       span_dev_law: Option[Double] = None,
                        var measuringBy: Option[List[String]] = None,
                        thresholdConfig: Option[ThresholdConfig] = None,
-                       var group: Option[String] = None) {
+                       var group: Option[String] = None,
+                       alarmPauseTime: Option[Int] = None,
+                       alarmWarnTime: Option[Int] = None) {
   def defaultUpdate: Bson = {
     Updates.combine(
       Updates.setOnInsert("_id", _id),

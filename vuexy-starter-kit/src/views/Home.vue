@@ -59,15 +59,17 @@
         </div>
       </b-card>
     </b-col>
-    <b-col lg="6" md="12">
+    <b-col>
       <b-row>
         <b-col>
           <b-card no-body>
               <b-row no-gutters>
-                <b-col class="pt-1 pl-1 pb-0" lg="6" :class="headerBG"><h4><strong>即時空氣品質監測</strong></h4></b-col>
-                <b-col class="pt-1 pl-1 pb-0" lg="6" :class="headerBG"><h4><strong>灑水系統狀態</strong></h4></b-col>
-                <b-col lg="6" class="border-right">
-                  <b-table-simple borderless>
+                <b-col class="pt-1 pl-1 pb-0" :class="headerBG"><h4><strong>即時空氣品質監測</strong></h4></b-col>
+                <b-col class="pt-1 pl-1 pb-0" :class="headerBG"><h4><strong>灑水系統狀態</strong></h4></b-col>
+              </b-row>
+              <b-row no-gutters>
+                <b-col class="border-right">
+                  <b-table-simple>
                     <b-tr>
                       <b-th colspan="3">即時最高濃度</b-th>
                     </b-tr>
@@ -78,15 +80,18 @@
                       <span v-if="isValueNormal('PM10', realtimeSummary.maxPM10)">
                       <b-img src="../assets/images/normal.png"
                              width="25px"
+                             class="mb-50"
                              fluid/>
-                        &nbsp;
-                        <strong>正常</strong>
+                        <br/>
+                        <strong class="mt-1">正常</strong>
                       </span>
                         <span v-else>
                         <b-img src="../assets/images/over_std.png"
                                width="25px"
+                               class="mb-50"
                                fluid/>
-                        &nbsp;
+                          <br/>
+                        <br/>
                         <strong>超標</strong>
                       </span>
                       </b-td>
@@ -100,8 +105,10 @@
                     </b-tr>
                   </b-table-simple>
                 </b-col>
-                <b-col lg="6" class="d-flex flex-row flex-fill">
-                    <b-col v-if="hasSpray" class="d-flex flex-column justify-content-center">
+                <b-col>
+                  <b-table-simple borderless>
+                    <b-tr>
+                      <b-td>
                         <b-button
                             class="m-2"
                             size="sm"
@@ -110,29 +117,36 @@
                             @click="testSpray"
                         >啟動
                         </b-button>
+                      </b-td>
+                      <b-td rowspan="2" class="align-middle">
+                        <b-img fluid
+                               width="75"
+                               src="../assets/images/sprinkler.svg"
+                               class="rounded-0 align-middle"
+                        />
+                      </b-td>
+                      <b-td class="align-middle">
+                        <h4 v-if="timer" class="text-info">剩餘時間:{{ countdown }}</h4>
+                        <h4 :class="{ 'text-danger': !spray}"><strong>啟動:<span style="color:lime;">{{ sprayStatus }}</span></strong></h4>
+                      </b-td>
+                    </b-tr>
+                    <b-tr>
+                      <b-td>
                         <b-button
                             class="m-2"
                             size="sm"
                             variant="danger"
                             :disabled="timer === 0"
                             @click="testSpray">停止</b-button>
-
-                    </b-col>
-                    <b-col class="d-flex flex-column justify-content-around">
-                      <b-img fluid
-                             width="50"
-                             src="../assets/images/sprinkler.svg"
-                             class="rounded-0 align-middle"
-                      />
-                    </b-col>
-                    <b-col class="d-flex flex-column justify-content-around">
-                      <h4 v-if="timer" class="text-info">剩餘時間:{{ countdown }}</h4>
-                      <h4 :class="{ 'text-danger': !spray}"><strong>啟動:{{ sprayStatus }}</strong></h4>
-                      <h4 :class="{ 'text-danger': !spray_connected}"><strong>連線:{{
-                          sprayConnected
-                        }}</strong>
-                      </h4>
-                    </b-col>
+                      </b-td>
+                      <b-td class="align-middle">
+                        <h4 :class="{ 'text-danger': !spray_connected}"><strong>連線:<span style="color:lime;">{{
+                            sprayConnected
+                          }}</span></strong>
+                        </h4>
+                      </b-td>
+                    </b-tr>
+                  </b-table-simple>
                 </b-col>
               </b-row>
           </b-card>
