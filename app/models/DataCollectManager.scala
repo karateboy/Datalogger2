@@ -573,9 +573,9 @@ class DataCollectManager @Inject()
     for (localTimeStr <- config.calibrationTime) yield {
       val localTime = java.time.LocalTime.parse(localTimeStr)
       val now = java.time.LocalDateTime.now()
-      val calibrationTime = java.time.LocalDateTime.of(now.toLocalDate, localTime)
+      val calibrationTime = java.time.LocalDateTime.of(java.time.LocalDate.now(), localTime)
       val duration =
-        if (now.isBefore(calibrationTime))
+        if (now.isBefore(calibrationTime) && now.until(calibrationTime, java.time.temporal.ChronoUnit.MINUTES) >= 1)
           now.until(calibrationTime, java.time.temporal.ChronoUnit.MILLIS)
         else
           now.until(calibrationTime.plusDays(1), java.time.temporal.ChronoUnit.MILLIS)
@@ -731,10 +731,8 @@ class DataCollectManager @Inject()
         timer.cancel()
       }
 
-      val calibrationTimerOpt = getCalibrationTimer(calibrationConfig)
-
       var newCalibratorTimerMap = calibratorTimerMap
-      for (timer <- calibrationTimerOpt)
+      for (timer <- getCalibrationTimer(calibrationConfig))
         newCalibratorTimerMap += calibrationConfig._id -> timer
 
       context become handler(instrumentMap,
