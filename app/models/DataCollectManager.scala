@@ -726,6 +726,11 @@ class DataCollectManager @Inject()
         newCalibratorMap += instId -> CalibratorState(calibrator, MonitorStatus.ZeroCalibrationStat)
       }
 
+      // Always cancel the timer first
+      for (timer <- calibratorTimerMap.get(calibrationConfig._id)) {
+        timer.cancel()
+      }
+
       val calibrationTimerOpt = getCalibrationTimer(calibrationConfig)
 
       var newCalibratorTimerMap = calibratorTimerMap
