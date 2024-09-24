@@ -8,6 +8,7 @@ import verticalMenu from './vertical-menu';
 import monitorTypes from './monitorTypes';
 import { monitors } from './monitors';
 import user from './user';
+import { tables } from './tables';
 import { RootState } from './types';
 
 Vue.use(Vuex);
@@ -35,6 +36,7 @@ const store: StoreOptions<RootState> = {
     monitorTypes,
     monitors,
     user,
+    tables,
   },
   strict: process.env.DEV,
 };

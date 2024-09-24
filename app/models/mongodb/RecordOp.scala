@@ -14,7 +14,7 @@ import scala.concurrent.Future
 import scala.util.Success
 
 @Singleton
-class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibrationOp: CalibrationOp) extends RecordDB {
+class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
 
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
@@ -210,6 +210,20 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
         col.deleteMany(Filters.lte("_id.time", splitDate.toDate)).toFuture()
       }
       true
+    }
+  }
+
+  override def getHourCollectionList(): Future[Seq[String]] = {
+    val f = mongodb.database.listCollectionNames().toFuture()
+    for (colNames <- f) yield {
+      colNames.filter(_.startsWith(HourCollection))
+    }
+  }
+
+  override def getMinCollectionList(): Future[Seq[String]] = {
+    val f = mongodb.database.listCollectionNames().toFuture()
+    for (colNames <- f) yield {
+      colNames.filter(_.startsWith(MinCollection))
     }
   }
 }

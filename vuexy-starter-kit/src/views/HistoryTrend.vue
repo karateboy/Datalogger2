@@ -38,6 +38,21 @@
           </b-col>
           <b-col cols="12">
             <b-form-group
+                label="資料種類"
+                label-for="dataType"
+                label-cols-md="3"
+            >
+              <v-select
+                  id="dataType"
+                  v-model="form.dataType"
+                  label="txt"
+                  :reduce="dt => dt.id"
+                  :options="dataTypes"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="12">
+            <b-form-group
               label="時間單位"
               label-for="reportUnit"
               label-cols-md="3"
@@ -167,8 +182,8 @@ export default Vue.extend({
       statusFilters: [
         { id: 'all', txt: '全部' },
         { id: 'normal', txt: '正常量測值' },
-        { id: 'calbration', txt: '校正' },
-        { id: 'maintance', txt: '維修' },
+        { id: 'calibration', txt: '校正' },
+        { id: 'maintenance', txt: '維修' },
         { id: 'invalid', txt: '無效數據' },
         { id: 'valid', txt: '有效數據' },
       ],
@@ -215,6 +230,7 @@ export default Vue.extend({
       form: {
         monitors: Array<string>(),
         monitorTypes: Array<string>(),
+        dataType: 'hour',
         reportUnit: 'Hour',
         statusFilter: 'all',
         chartType: 'line',
@@ -227,6 +243,7 @@ export default Vue.extend({
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['activatedMonitorTypes']),
     ...mapState('monitors', ['monitors']),
+    ...mapGetters('tables',['dataTypes']),
   },
   watch: {},
   async mounted() {
@@ -237,6 +254,7 @@ export default Vue.extend({
 
     await this.fetchMonitorTypes();
     await this.fetchMonitors();
+    await this.fetchTables();
 
     if (this.activatedMonitorTypes.length !== 0)
       this.form.monitorTypes.push(this.activatedMonitorTypes[0]._id);
@@ -248,6 +266,7 @@ export default Vue.extend({
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapActions('monitors', ['fetchMonitors']),
+    ...mapActions('tables', ['fetchTables']),
     ...mapMutations(['setLoading']),
     async query() {
       this.setLoading({ loading: true });
@@ -255,7 +274,7 @@ export default Vue.extend({
       const monitors = this.form.monitors.join(':');
       const url = `/HistoryTrend/${monitors}/${this.form.monitorTypes.join(
         ':',
-      )}/${this.form.includeRaw}/${this.form.reportUnit}/${
+      )}/${this.form.includeRaw}/${this.form.dataType}/${this.form.reportUnit}/${
         this.form.statusFilter
       }/${this.form.range[0]}/${this.form.range[1]}`;
       const res = await axios.get(url);
@@ -324,7 +343,7 @@ export default Vue.extend({
       const monitors = this.form.monitors.join(':');
       const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
         ':',
-      )}/${this.form.includeRaw}/${this.form.reportUnit}/${
+      )}/${this.form.includeRaw}/${this.form.dataType}/${this.form.reportUnit}/${
         this.form.statusFilter
       }/${this.form.range[0]}/${this.form.range[1]}`;
 

@@ -319,7 +319,8 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                                      monitorTypeDb: MonitorTypeDB,
                                      sysConfigDB: SysConfigDB,
                                      alarmRuleDb: AlarmRuleDb,
-                                     cdxUploader: CdxUploader)() {
+                                     cdxUploader: CdxUploader,
+                                     tableType: TableType)() {
 
   import DataCollectManager._
 
@@ -419,7 +420,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         val mtDataList = calculateHourAvgMap(mtMap, alwaysValid, monitorTypeDB)
         val recordList = RecordList.factory(current.minusHours(1), mtDataList.toSeq, monitor)
         // Alarm check
-        val alarms = alarmRuleDb.checkAlarm(TableType.hour, recordList, alarmRules)(monitorDB, monitorTypeDb, alarmDb)
+        val alarms = alarmRuleDb.checkAlarm(tableType.hour, recordList, alarmRules)(monitorDB, monitorTypeDb, alarmDb)
         alarms.foreach(alarmDb.log)
 
         val f = recordOp.upsertRecord(recordOp.HourCollection)(recordList)

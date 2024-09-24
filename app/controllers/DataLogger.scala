@@ -12,7 +12,10 @@ import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb, recordDB: RecordDB, excelUtility: ExcelUtility) extends Controller {
+class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb,
+                           recordDB: RecordDB,
+                           excelUtility: ExcelUtility,
+                           tableType: TableType) extends Controller {
 
 
   def getAlarmRules: Action[AnyContent] = Security.Authenticated.async {
@@ -85,9 +88,9 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb, recordDB: RecordDB, excelUt
   def queryData(monitorStr:String, monitorTypeStr:String, tabTypeStr: String, startNum: Long, endNum: Long): Action[AnyContent] = Action.async {
     val monitors = monitorStr.split(':')
     val monitorTypes = monitorTypeStr.split(':')
-    val tabType = TableType.withName(tabTypeStr)
+    val tabType = tableType.withName(tabTypeStr)
     val (start, end) =
-      if (tabType == TableType.hour) {
+      if (tabType == tableType.hour) {
         val original_start = new DateTime(startNum)
         val original_end = new DateTime(endNum)
         (original_start.withMinuteOfHour(0), original_end.withMinuteOfHour(0))
@@ -95,7 +98,7 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb, recordDB: RecordDB, excelUt
         (new DateTime(startNum), new DateTime(endNum))
       }
 
-    val resultFuture: Future[Seq[RecordList]] = recordDB.getRecordListFuture(TableType.mapCollection(tabType))(start, end, monitors)
+    val resultFuture: Future[Seq[RecordList]] = recordDB.getRecordListFuture(tableType.mapCollection(tabType))(start, end, monitors)
     implicit val recordListIDwrite: OWrites[RecordListID] = Json.writes[RecordListID]
     implicit val mtDataWrite: OWrites[MtRecord] = Json.writes[MtRecord]
     implicit val recordListWrite: OWrites[RecordList] = Json.writes[RecordList]

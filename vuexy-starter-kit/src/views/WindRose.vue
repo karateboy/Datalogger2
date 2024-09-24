@@ -31,6 +31,21 @@
             <small class="text-danger">{{ errorMsg }}</small>
           </b-col>
           <b-col cols="12">
+            <b-form-group
+                label="資料種類"
+                label-for="dataType"
+                label-cols-md="3"
+            >
+              <v-select
+                  id="dataType"
+                  v-model="form.dataType"
+                  label="txt"
+                  :reduce="dt => dt.id"
+                  :options="dataTypes"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="12">
             <b-form-group label="方位" label-for="nWay" label-cols-md="3">
               <v-select
                 id="nWay"
@@ -126,6 +141,7 @@ export default Vue.extend({
       form: {
         monitor,
         monitorType,
+        dataType: 'hour',
         nWay: 8,
         range,
       },
@@ -136,6 +152,7 @@ export default Vue.extend({
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapState('monitors', ['monitors']),
+    ...mapGetters('tables',['dataTypes']),
     ...mapGetters('monitorTypes', ['mtMap', 'activatedMonitorTypes']),
     canQuery(): boolean {
       if (this.form.monitorType == undefined) return false;
@@ -156,6 +173,7 @@ export default Vue.extend({
 
     await this.fetchMonitorTypes();
     await this.fetchMonitors();
+    await this.fetchTables();
 
     if (this.activatedMonitorTypes.length !== 0) {
       this.form.monitorType = this.activatedMonitorTypes[0]._id;
@@ -168,13 +186,14 @@ export default Vue.extend({
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapActions('monitors', ['fetchMonitors']),
+    ...mapActions('tables', ['fetchTables']),
     ...mapMutations(['setLoading']),
     async query() {
       this.setLoading({ loading: true });
       this.display = true;
 
       try {
-        const url = `/WindRose/${this.form.monitor}/${this.form.monitorType}/hour/${this.form.nWay}/${this.form.range[0]}/${this.form.range[1]}`;
+        const url = `/WindRose/${this.form.monitor}/${this.form.monitorType}/${this.form.dataType}/${this.form.nWay}/${this.form.range[0]}/${this.form.range[1]}`;
         const res = await axios.get(url);
         const ret = res.data;
         ret.pane = {

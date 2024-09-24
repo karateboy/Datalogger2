@@ -130,15 +130,11 @@ export default Vue.extend({
       name: '%eq R^2:%r2 標準差:%se',
     };
     return {
-      dataTypes: [
-        { txt: '小時資料', id: 'hour' },
-        { txt: '分鐘資料', id: 'min' },
-      ],
       statusFilters: [
         { id: 'all', txt: '全部' },
         { id: 'normal', txt: '正常量測值' },
-        { id: 'calbration', txt: '校正' },
-        { id: 'maintance', txt: '維修' },
+        { id: 'calibration', txt: '校正' },
+        { id: 'maintenance', txt: '維修' },
         { id: 'invalid', txt: '無效數據' },
         { id: 'valid', txt: '有效數據' },
         { id: 'validWithoutEngineExhaustion', txt: '有效數據(不含引擎排放)' },
@@ -167,6 +163,7 @@ export default Vue.extend({
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['activatedMonitorTypes', 'mtMap']),
     ...mapState('monitors', ['monitors']),
+    ...mapGetters('tables',['dataTypes']),
   },
   watch: {},
   async mounted() {
@@ -177,6 +174,7 @@ export default Vue.extend({
 
     await this.fetchMonitorTypes();
     await this.fetchMonitors();
+    await this.fetchTables();
 
     if (this.activatedMonitorTypes.length !== 0)
       this.form.monitorTypes.push(this.activatedMonitorTypes[0]._id);
@@ -188,6 +186,7 @@ export default Vue.extend({
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapActions('monitors', ['fetchMonitors']),
+    ...mapActions('tables', ['fetchTables']),
     ...mapMutations(['setLoading']),
     async query() {
       if (this.form.monitorTypes.length !== 2) {

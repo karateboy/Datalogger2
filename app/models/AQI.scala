@@ -444,8 +444,8 @@ object AQI {
     AqiReport(aqi, result)
   }
 
-  def getMonitorDailyAQI(monitor: String, thisDay: DateTime)(implicit recordDB: RecordDB): Future[AqiReport] = {
-    for (recordLists <- recordDB.getRecordListFuture(recordDB.HourCollection)(thisDay, thisDay.plusDays(1), Seq(monitor))) yield {
+  def getMonitorDailyAQI(monitor: String, thisDay: DateTime, myTableType: TableType#Value)(implicit recordDB: RecordDB, tableType: TableType): Future[AqiReport] = {
+    for (recordLists <- recordDB.getRecordListFuture(tableType.mapCollection(myTableType))(thisDay, thisDay.plusDays(1), Seq(monitor))) yield {
       val dayMap = mutable.Map.empty[String, ListBuffer[Option[MtRecord]]]
       for {recordList <- recordLists
            mtMap = recordList.mtMap
