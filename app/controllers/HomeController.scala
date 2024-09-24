@@ -26,7 +26,8 @@ class HomeController @Inject()(
                                 recordDB: RecordDB,
                                 calibrationConfigDB: CalibrationConfigDB,
                                 lineNotify: LineNotify,
-                                @Named("dataCollectManager") manager: ActorRef) extends Controller {
+                                @Named("dataCollectManager") manager: ActorRef,
+                                tableType: TableType) extends Controller {
 
   val title = "資料擷取器"
 
@@ -816,6 +817,7 @@ class HomeController @Inject()(
             _ <- f1
             _ <- f2
           } yield {
+            tableType.refresh()
             Ok(Json.obj("ok" -> true))
           }
         })
@@ -875,4 +877,6 @@ class HomeController @Inject()(
         BadRequest("No such calibration config")
     }
   }
+
+
 }

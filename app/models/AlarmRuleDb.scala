@@ -18,7 +18,7 @@ trait AlarmRuleDb {
 
   def deleteAsync(_id: String): Future[DeleteResult]
 
-  def checkAlarm(tableType: TableType.Value, recordList: RecordList, alarmRules: Seq[AlarmRule])
+  def checkAlarm(tableType: TableType#Value, recordList: RecordList, alarmRules: Seq[AlarmRule])
                 (monitorDB: MonitorDB, monitorTypeDB: MonitorTypeDB, alarmDB: AlarmDB): Seq[Alarm] = {
     val mtMap = recordList.mtMap
     val alarms =

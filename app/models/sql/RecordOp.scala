@@ -13,7 +13,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, monitorTypeOp: MonitorTypeOp) extends RecordDB {
+class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
   private var mtList = List.empty[String]
 
   init()
@@ -312,5 +312,14 @@ class RecordOp @Inject()(sqlServer: SqlServer, calibrationOp: CalibrationOp, mon
          """.execute().apply()
         true
       }
+  }
+
+  override def getHourCollectionList(): Future[Seq[String]] = Future {
+    sqlServer.getTables().filter(tab => tab.startsWith(HourCollection))
+
+  }
+
+  override def getMinCollectionList(): Future[Seq[String]] = Future {
+    sqlServer.getTables().filter(tab => tab.startsWith(MinCollection))
   }
 }

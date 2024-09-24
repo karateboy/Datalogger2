@@ -120,8 +120,8 @@
             >
               <b-form-timepicker
                 id="calibration-time"
-                reset-button
                 v-model="activeConfig.calibrationTime"
+                reset-button
                 label-no-time-selected="未指定時間"
                 label-reset-button="清除"
               ></b-form-timepicker>
@@ -152,7 +152,10 @@
                 <b-form-input v-model="row.item.calibrateSeq" />
               </template>
               <template #cell(calibrateDO)="row">
-                <b-form-input v-model.number="row.item.calibrateDO" type="number" />
+                <b-form-input
+                  v-model.number="row.item.calibrateDO"
+                  type="number"
+                />
               </template>
               <template #cell(skipInternalVault)="row">
                 <b-form-checkbox v-model="row.item.skipInternalVault" />
@@ -330,12 +333,12 @@ export default Vue.extend({
   methods: {
     async onSubmit(evt) {
       this.$bvModal.hide('calibrationConfigModal');
-      if(this.activeConfig.calibrationTime === '') {
+      if (this.activeConfig.calibrationTime === '') {
         this.activeConfig.calibrationTime = null;
       }
-      for(let pointConfig of this.activeConfig.pointConfigs) {
-        for(let attr in pointConfig) {
-          if(pointConfig[attr] === '') {
+      for (let pointConfig of this.activeConfig.pointConfigs) {
+        for (let attr in pointConfig) {
+          if (pointConfig[attr] === '') {
             pointConfig[attr] = undefined;
           }
         }
