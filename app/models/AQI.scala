@@ -21,23 +21,23 @@ case class AqiSubReport(value: Option[Double], aqi: Option[Double])
 case class AqiReport(aqi: Option[Double], sub_map: Map[AqiMonitorType, AqiSubReport])
 
 object AQI {
-  final case object O3_8hr extends AqiMonitorType
+  private final case object O3_8hr extends AqiMonitorType
 
   final case object O3 extends AqiMonitorType
 
-  final case object pm25 extends AqiMonitorType
+  private final case object pm25 extends AqiMonitorType
 
   final case object pm10 extends AqiMonitorType
 
-  final case object CO_8hr extends AqiMonitorType
+  private final case object CO_8hr extends AqiMonitorType
 
   final case object SO2 extends AqiMonitorType
 
-  final case object SO2_24hr extends AqiMonitorType
+  private final case object SO2_24hr extends AqiMonitorType
 
   final case object NO2 extends AqiMonitorType
 
-  val aqiMonitorType: Seq[AqiMonitorType] = Seq(O3_8hr, O3, pm25, pm10, CO_8hr, SO2, SO2_24hr, NO2)
+  private val aqiMonitorType: Seq[AqiMonitorType] = Seq(O3_8hr, O3, pm25, pm10, CO_8hr, SO2, SO2_24hr, NO2)
   val defaultMappingTypes: Seq[String] = Seq(MonitorType.O3, MonitorType.O3,
     MonitorType.PM25,
     MonitorType.PM10,
@@ -133,7 +133,7 @@ object AQI {
       "AQI6"
   }
 
-  def getRealtimeAQI(recordDB: RecordDB)(lastHour: DateTime) = {
+  def getRealtimeAQI(recordDB: RecordDB)(lastHour: DateTime): Unit = {
     /*
      val recordMap = recordDB.get
      val result =
@@ -444,8 +444,8 @@ object AQI {
     AqiReport(aqi, result)
   }
 
-  def getMonitorDailyAQI(monitor: String, thisDay: DateTime)(implicit recordDB: RecordDB): Future[AqiReport] = {
-    for (recordLists <- recordDB.getRecordListFuture(recordDB.HourCollection)(thisDay, thisDay.plusDays(1), Seq(monitor))) yield {
+  def getMonitorDailyAQI(monitor: String, thisDay: DateTime, myTableType: TableType#Value)(implicit recordDB: RecordDB, tableType: TableType): Future[AqiReport] = {
+    for (recordLists <- recordDB.getRecordListFuture(tableType.mapCollection(myTableType))(thisDay, thisDay.plusDays(1), Seq(monitor))) yield {
       val dayMap = mutable.Map.empty[String, ListBuffer[Option[MtRecord]]]
       for {recordList <- recordLists
            mtMap = recordList.mtMap

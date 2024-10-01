@@ -411,6 +411,82 @@ class ExcelUtility @Inject()
     finishExcel(reportFilePath, pkg, wb)
   }
 
+  def multiCalibrationReport(start: DateTime, end: DateTime, calibrationList: Seq[Calibration]): File = {
+    val (reportFilePath, pkg, wb) = prepareTemplate("multiCalibrationReport.xlsx")
+    val evaluator = wb.getCreationHelper().createFormulaEvaluator()
+
+    val sheet = wb.getSheetAt(0)
+    sheet.getRow(0).getCell(0).setCellValue(s"資料日期:${start.toString("YYYY/MM/dd")}~${end.toString("YYYY/MM/dd")}")
+
+    val normalStyle = sheet.getRow(1).getCell(9).getCellStyle
+    val successStyle = sheet.getRow(1).getCell(10).getCellStyle
+    val failedStyle = sheet.getRow(1).getCell(11).getCellStyle
+    for ((calibration, idx) <- calibrationList.zipWithIndex) {
+      val row = sheet.createRow(3 + idx)
+      val mt = calibration.monitorType
+      def setPointCell(cell: Cell, value: Option[Double], statusOpt:Option[Boolean]): Unit = {
+        cell.setCellValue(monitorTypeOp.format(mt, value))
+        statusOpt match {
+          case Some(true) =>
+            cell.setCellStyle(successStyle)
+          case Some(false) =>
+            cell.setCellStyle(failedStyle)
+          case None =>
+            cell.setCellStyle(normalStyle)
+        }
+      }
+
+      row.createCell(0).setCellValue(monitorTypeOp.map(calibration.monitorType).desp)
+      row.createCell(1).setCellValue(new DateTime(calibration.startTime).toString("YYYY年MM月dd日 HH:mm"))
+      row.createCell(2).setCellValue(new DateTime(calibration.endTime).toString("YYYY年MM月dd日 HH:mm"))
+      setPointCell(row.createCell(3), calibration.zero_val, calibration.zero_success)
+      setPointCell(row.createCell(4), calibration.span_val, calibration.span_success)
+      setPointCell(row.createCell(5), calibration.point3, calibration.point3_success)
+      setPointCell(row.createCell(6), calibration.point4, calibration.point4_success)
+      setPointCell(row.createCell(7), calibration.point5, calibration.point5_success)
+      setPointCell(row.createCell(8), calibration.point6, calibration.point6_success)
+
+      val mOpt =
+        for {span_val <- calibration.span_val; zero_val <- calibration.zero_val;
+             span_std <- calibration.span_std if span_val - zero_val != 0} yield
+          span_std / (span_val - zero_val)
+
+      val mStr = mOpt.map(s"%.6f".format(_)).getOrElse("-")
+      val mCell = row.createCell(9)
+      mCell.setCellValue(mStr)
+      mCell.setCellStyle(normalStyle)
+
+      val bOpt =
+        for {span_val <- calibration.span_val; zero_val <- calibration.zero_val;
+             span_std <- calibration.span_std if span_val - zero_val != 0} yield
+          (-zero_val * span_std) / (span_val - zero_val)
+
+      val bStr = bOpt.map(s"%.6f".format(_)).getOrElse("-")
+      val bCell = row.createCell(10)
+      bCell.setCellValue(bStr)
+      bCell.setCellStyle(normalStyle)
+
+      val statusCell = row.createCell(11)
+      if (calibration.zero_success.getOrElse(true)
+        && calibration.span_success.getOrElse(true)
+        && calibration.point3_success.getOrElse(true)
+        && calibration.point4_success.getOrElse(true)
+        && calibration.point5_success.getOrElse(true)
+        && calibration.point6_success.getOrElse(true)
+      ) {
+        statusCell.setCellValue("成功")
+        statusCell.setCellStyle(successStyle)
+      } else {
+        statusCell.setCellValue("失敗")
+        statusCell.setCellStyle(failedStyle)
+      }
+
+      for (i <- 0 to 2)
+        row.getCell(i).setCellStyle(normalStyle)
+    }
+    finishExcel(reportFilePath, pkg, wb)
+  }
+
   def getUpsertMinData(file: File): Seq[Map[String, Any]] = {
     val wb = new XSSFWorkbook(new FileInputStream(file))
     val sheet = wb.getSheetAt(0)

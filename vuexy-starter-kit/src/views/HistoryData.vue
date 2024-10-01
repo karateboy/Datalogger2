@@ -165,10 +165,6 @@ export default Vue.extend({
       moment().add(1, 'hour').minute(0).second(0).millisecond(0).valueOf(),
     ];
     return {
-      dataTypes: [
-        { txt: '小時資料', id: 'hour' },
-        { txt: '分鐘資料', id: 'min' },
-      ],
       form: {
         monitors: Array<any>(),
         monitorTypes: Array<any>(),
@@ -187,6 +183,7 @@ export default Vue.extend({
     ...mapState('monitors', ['monitors']),
     ...mapGetters('monitorTypes', ['mtMap', 'activatedMonitorTypes']),
     ...mapGetters('monitors', ['mMap']),
+    ...mapGetters('tables',['dataTypes']),
     resultTitle(): string {
       return `總共${this.rows.length}筆`;
     },
@@ -200,6 +197,7 @@ export default Vue.extend({
   async mounted() {
     await this.fetchMonitorTypes();
     await this.fetchMonitors();
+    await this.fetchTables();
 
     if (this.monitors.length !== 0) {
       this.form.monitors.push(this.monitors[0]._id);
@@ -211,6 +209,7 @@ export default Vue.extend({
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapActions('monitors', ['fetchMonitors']),
+    ...mapActions('tables', ['fetchTables']),
     ...mapMutations(['setLoading']),
     async query() {
       this.setLoading({ loading: true });
@@ -277,7 +276,7 @@ export default Vue.extend({
 
       const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
         ':',
-      )}/${this.form.includeRaw}/${reportUnit}/all/${this.form.range[0]}/${
+      )}/${this.form.includeRaw}/${this.form.dataType}/${reportUnit}/all/${this.form.range[0]}/${
         this.form.range[1]
       }`;
 

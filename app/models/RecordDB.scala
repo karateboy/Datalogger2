@@ -153,4 +153,8 @@ trait RecordDB {
 
   def moveRecordToYearTable(colName:String)(year:Int): Future[Boolean]
 
+
+  def getHourCollectionList(): Future[Seq[String]]
+
+  def getMinCollectionList(): Future[Seq[String]]
 }
