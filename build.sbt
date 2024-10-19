@@ -31,6 +31,9 @@ libraryDependencies += "org.apache.poi" % "poi-ooxml" % "5.0.0"
 // https://mvnrepository.com/artifact/com.typesafe.play/play-mailer
 libraryDependencies += "com.typesafe.play" %% "play-mailer" % "5.0.0"
 
+// https://mvnrepository.com/artifact/com.azure/azure-ai-openai
+libraryDependencies += "com.azure" % "azure-ai-openai" % "1.0.0-beta.11"
+
 routesGenerator := StaticRoutesGenerator
 
 mappings in Universal ++=
