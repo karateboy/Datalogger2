@@ -19,7 +19,7 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
 
-  lazy val codecRegistry = fromRegistries(fromProviders(classOf[Calibration]), DEFAULT_CODEC_REGISTRY)
+  private lazy val codecRegistry = fromRegistries(fromProviders(classOf[Calibration]), DEFAULT_CODEC_REGISTRY)
   lazy val colName = "calibration"
   lazy val collection: MongoCollection[Calibration] = mongodb.database.getCollection[Calibration](colName).withCodecRegistry(codecRegistry)
 
@@ -36,7 +36,7 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
     waitReadyResult(f)
   }
 
-  init
+  init()
 
   override def calibrationReportFuture(start: DateTime, end: DateTime): Future[Seq[Calibration]] = {
     import org.mongodb.scala.model.Filters._
@@ -59,7 +59,7 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
-    val f = collection.find(and(equal("monitorType", mt), gte("startTime", start.toDate()), lt("startTime", end.toDate()))).sort(ascending("startTime")).toFuture()
+    val f = collection.find(and(equal("monitorType", mt), gte("startTime", start.toDate), lt("startTime", end.toDate))).sort(ascending("startTime")).toFuture()
     f onFailure errorHandler
     waitReadyResult(f)
   }
