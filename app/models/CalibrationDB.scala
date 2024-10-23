@@ -141,4 +141,6 @@ trait CalibrationDB {
   }
 
   def insertFuture(cal: Calibration): Unit
+
+  def getLatestCalibration(mt: String): Future[Option[Calibration]]
 }

@@ -6,6 +6,7 @@ import models.TapiTxx.T700_STANDBY_SEQ
 
 import java.time.Instant
 import java.util.Date
+import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
 import scala.util.Random
 
@@ -150,6 +151,52 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
     newMap
   }
 
+  private def adjustNO2SpanStd(calibrations: Seq[Calibration]): Future[Seq[Calibration]] = {
+    for (calibrationOptNO_ <- calibrationDB.getLatestCalibration("NO_")) yield {
+      calibrations map {
+        cal =>
+          if (cal.monitorType != MonitorType.NO2)
+            cal
+          else {
+            // NO2 span is 100 - Point 3 of NO_
+            val adjustNO2 =
+              for {
+                no_ <- calibrationOptNO_
+                point3_no3 <- no_.point3
+                no2_full_span = 100 - point3_no3
+              } yield {
+                def getSpanStd(point: Int): Option[Double] = {
+                  for (spanPercent <- calibrationConfig.pointConfigs(point).fullSpanPercent
+                       if calibrationConfig.pointConfigs(point).enable) yield
+                    no2_full_span * spanPercent / 100
+                }
+
+                def pointChecker(point: Int)(value: Option[Double]): Option[Boolean] =
+                  for {
+                    devLaw <- calibrationConfig.pointConfigs(point).deviationAllowance if calibrationConfig.pointConfigs(point).enable
+                    span <- getSpanStd(point)
+                  } yield {
+                    val avg = value.getOrElse(Double.MaxValue)
+                    val dev = math.abs((avg - span) / span)
+                    dev * 100 < devLaw
+                  }
+
+                cal.copy(
+                  span_std = Some(no2_full_span),
+                  span_success = pointChecker(1)(cal.span_val),
+                  point3_std = getSpanStd(2), point3_success = pointChecker(2)(cal.point3),
+                  point4_std = getSpanStd(3), point4_success = pointChecker(3)(cal.point4),
+                  point5_std = getSpanStd(4), point5_success = pointChecker(4)(cal.point5),
+                  point6_std = getSpanStd(5), point6_success = pointChecker(5)(cal.point6))
+
+              }
+
+            adjustNO2.getOrElse(cal)
+          }
+      }
+    }
+  }
+
   def handler(point: Int,
               valueMap: Map[String, Seq[Double]],
               recording: Boolean,
@@ -157,13 +204,16 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
     case PointCalibrationStart =>
       if (point >= calibrationConfig.pointConfigs.length) {
         log.info("All point calibration is done.")
-        val calibrations = calibrationMap.values.toSeq
-        calibrations.foreach(calibration => {
-          calibrationDB.insertFuture(calibration)
-          if (!calibration.multipointSuccess())
-            alarmDB.log(alarmDB.src(calibration.monitorType), alarmDB.Level.ERR,
-              s"${calibration.monitorType} multi-point calibration failed.")
-        })
+
+        for (calibrations <- adjustNO2SpanStd(calibrationMap.values.toSeq)) {
+          calibrations.foreach(calibration => {
+            calibrationDB.insertFuture(calibration)
+            if (!calibration.multipointSuccess())
+              alarmDB.log(alarmDB.src(calibration.monitorType), alarmDB.Level.ERR,
+                s"${calibration.monitorType} multi-point calibration failed.")
+          })
+        }
+
         context.parent ! ExecuteSeq(T700_STANDBY_SEQ, on = true)
         context.parent ! MultiCalibrationDone(calibrationConfig)
       } else if (!calibrationConfig.pointConfigs(point).enable) {

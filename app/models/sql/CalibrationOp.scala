@@ -156,7 +156,7 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
       val columns = sqlServer.getColumnNames(tabName)
       val pointColumns = List("point3", "point4", "point5", "point6")
       // Add columns if not exist
-      if(!columns.contains("zero_success")){
+      if (!columns.contains("zero_success")) {
         sql"""
            ALTER TABLE [dbo].[calibration]
            ADD [zero_success] bit;
@@ -181,5 +181,15 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
         }
       }
     }
+  }
+
+  override def getLatestCalibration(mt: String): Future[Option[Calibration]] = Future {
+    implicit val session: DBSession = ReadOnlyAutoSession
+    sql"""
+         Select top 1 *
+         From calibration
+         Where monitorType = $mt
+         Order by startTime desc
+         """.map(mapper).single().apply()
   }
 }

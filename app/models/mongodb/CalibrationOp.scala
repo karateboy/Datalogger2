@@ -68,7 +68,7 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
     collection.insertOne(cal).toFuture()
   }
 
-  private def init() {
+  private def init(): Unit = {
     for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(colName)) {
         val f = mongodb.database.createCollection(colName).toFuture()
@@ -79,6 +79,17 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
             cf.onFailure(errorHandler)
         })
       }
+    }
+  }
+
+  override def getLatestCalibration(mt: String): Future[Option[Calibration]] = {
+    import org.mongodb.scala.model.Filters._
+    import org.mongodb.scala.model.Sorts._
+
+    val f = collection.find(equal("monitorType", mt)).sort(descending("startTime")).limit(1).toFuture()
+    f onFailure errorHandler
+    f.map { seq =>
+      seq.headOption
     }
   }
 }
