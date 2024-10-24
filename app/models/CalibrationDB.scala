@@ -132,7 +132,7 @@ trait CalibrationDB {
     for (calibrationList <- f)
       yield {
         val resultMap = mutable.Map.empty[String, ListBuffer[(DateTime, Calibration)]]
-        for (item <- calibrationList.filter { c => c.success } if item.monitorType != MonitorType.NO2) {
+        for (item <- calibrationList.filter { c => c.success } ) {
           val lb = resultMap.getOrElseUpdate(item.monitorType, ListBuffer.empty[(DateTime, Calibration)])
           lb.append((new DateTime(item.endTime), item))
         }
