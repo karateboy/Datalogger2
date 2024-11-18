@@ -72,6 +72,8 @@ class PicarroG2307Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = predefinedIST
 
+  override val readPeriod: Int = 1
+
   override def readReg(statusTypeList: List[InstrumentStatusType], full:Boolean): Future[Option[ModelRegValue2]] =
     Future {
       blocking {
@@ -114,11 +116,11 @@ class PicarroG2307Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
       }
     }
 
-  override def connectHost: Unit = {
+  override def connectHost(): Unit = {
     val socket = new Socket(protocolParam.host.get, 51020)
     socketOpt = Some(socket)
-    outOpt = Some(socket.getOutputStream())
-    inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream())))
+    outOpt = Some(socket.getOutputStream)
+    inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream)))
   }
 
   override def getDataRegList: Seq[DataReg] = predefinedIST.filter(p => dataAddress.contains(p.addr)).map {

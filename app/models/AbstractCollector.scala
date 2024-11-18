@@ -68,6 +68,8 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
 
   import scala.concurrent.{Future, blocking}
 
+  val readPeriod : Int = 3
+
   def receive(): Receive = normalPhase()
   import AbstractCollector._
 
@@ -90,7 +92,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
       connected = true
     } catch {
       case ex: Exception =>
-        log.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
+        log.error(s"$instId:$desc=>${ex.getMessage}", ex)
         if (connected)
           alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
 
@@ -98,7 +100,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
     } finally {
       import scala.concurrent.duration._
       readRegTimer = if (protocol.protocol == Protocol.tcp)
-        Some(context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
+        Some(context.system.scheduler.scheduleOnce(Duration(readPeriod, SECONDS), self, ReadRegister))
       else
         Some(context.system.scheduler.scheduleOnce(Duration(4, SECONDS), self, ReadRegister))
     }
