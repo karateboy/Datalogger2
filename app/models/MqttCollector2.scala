@@ -85,7 +85,8 @@ import javax.inject._
 class MqttCollector2 @Inject()(monitorOp: MonitorOp, alarmOp: AlarmOp,
                               recordOp: RecordOp, dataCollectManagerOp: DataCollectManagerOp,
                                mqttSensorOp: MqttSensorOp,
-                               lineNotify: LineNotify)
+                               groupOp: GroupOp,
+                               tainanAirDust: TainanAirDust)
                              (@Assisted id: String,
                               @Assisted protocolParam: ProtocolParam,
                               @Assisted config: MqttConfig2) extends Actor with MqttCallback {
@@ -278,6 +279,14 @@ class MqttCollector2 @Inject()(monitorOp: MonitorOp, alarmOp: AlarmOp,
           val f = recordOp.upsertRecord(recordList)(recordOp.MinCollection)
           f.onFailure(ModelHelper.errorHandler)
           dataCollectManagerOp.checkMinDataAlarm(sensor.monitor, recordList.mtDataList, Some(sensor.group))
+          for(group<-groupOp.getGroupByID(sensor.group)) {
+            for(controlNo <- group.controlNo) {
+              val data = TainanAirDustData(controlNo, sensor.id, message.lat, message.lon,
+                mtDataList.find(_.mtName == MonitorType.PM25).map(_.value),
+                mtDataList.find(_.mtName == MonitorType.PM10).map(_.value))
+              tainanAirDust.sendAirDustData(data)
+            }
+          }
         }
       })
   }

@@ -19,7 +19,8 @@ case class Ability(action:String, subject:String)
 case class Group(_id: String, name: String, monitors:Seq[String], monitorTypes: Seq[String],
                  admin:Boolean, abilities: Seq[Ability], parent:Option[String] = None,
                  lineToken:Option[String] = None,
-                 lineNotifyColdPeriod:Option[Int] = Some(30))
+                 lineNotifyColdPeriod:Option[Int] = Some(30),
+                 controlNo:Option[String] = None)
 
 import javax.inject._
 object Group {

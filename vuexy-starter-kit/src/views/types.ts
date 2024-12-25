@@ -21,6 +21,7 @@ export interface Group {
   parent: undefined | string;
   lineToken: undefined | string;
   lineNotifyColdPeriod: undefined | number;
+  controlNo: undefined | string;
 }
 
 export interface TextStrValue {
