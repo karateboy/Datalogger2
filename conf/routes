@@ -152,6 +152,7 @@ PUT           /CdxConfig                                                        
 GET           /CdxMonitorTypes                                                                     controllers.Cdx.getMonitorTypes
 PUT           /CdxMonitorTypes                                                                     controllers.Cdx.putMonitorTypes
 GET           /CdxUpload/:start/:end                                                               controllers.Cdx.CdxUploadData(start:Long, end:Long)
+GET           /NewTaipeiUpload/:start/:end                                                         controllers.Cdx.newTaipeiOpenDataUpload(start: Long, end: Long)
 
 #Reset Reader
 GET           /ResetReaders                                                                        controllers.HomeController.resetReaders()

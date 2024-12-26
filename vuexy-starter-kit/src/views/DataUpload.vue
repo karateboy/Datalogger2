@@ -75,6 +75,14 @@
               CDX上傳
             </b-button>
             <b-button
+                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                variant="primary"
+                class="mr-1"
+                @click="newTaipeiUpload"
+            >
+              新北OpenData上傳
+            </b-button>
+            <b-button
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
               variant="primary"
               class="mr-1"
@@ -232,6 +240,18 @@ export default Vue.extend({
           this.$bvModal.msgBoxOk('Cdx重傳資料中');
           this.displayCdx = true;
           this.getCdxUploadEvents();
+        }
+      } catch (err) {
+        throw new Error('failed to upload data');
+      }
+    },
+    async newTaipeiUpload() {
+      const url = `/NewTaipeiUpload/${this.form.range[0]}/${this.form.range[1]}`;
+      try {
+        this.form.cdxStartTime = new Date().getTime();
+        const res = await axios.get(url);
+        if (res.status === 200) {
+          this.$bvModal.msgBoxOk('新北OpenData上傳資料中');
         }
       } catch (err) {
         throw new Error('failed to upload data');

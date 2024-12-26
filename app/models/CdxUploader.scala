@@ -8,6 +8,7 @@ import java.nio.file.Path
 import java.util.Date
 import javax.inject.{Inject, Singleton}
 import javax.xml.ws.Holder
+import scala.xml.Elem
 
 object CdxUploader {
   case class ItemIdMap(epaId: Int, itemName: String)
@@ -52,7 +53,7 @@ class CdxUploader @Inject()(alarmDB: AlarmDB, environment: Environment){
   import CdxUploader._
   val serviceID = "AQX_S_00"
 
-  def mtRecprdToXML(siteCounty: String, siteID: String, date: Date, mtRecord: MtRecord) = {
+  private def mtRecordToXML(siteCounty: String, siteID: String, date: Date, mtRecord: MtRecord): Elem = {
     val map = itemIdMap(mtRecord.mtName)
     val dateTime = new DateTime(date)
     val dateStr = dateTime.toString("YYYY-MM-dd")
@@ -97,18 +98,18 @@ class CdxUploader @Inject()(alarmDB: AlarmDB, environment: Environment){
           cdxMtConfig match {
             case CdxMonitorType(_, _, Some(min), Some(max))=>
               for(v<-mtRecord.value if v>= min && v <= max) yield
-                mtRecprdToXML(cdxConfig.siteCounty, cdxConfig.siteID, recordList._id.time, mtRecord)
+                mtRecordToXML(cdxConfig.siteCounty, cdxConfig.siteID, recordList._id.time, mtRecord)
 
             case CdxMonitorType(_, _, None, Some(max))=>
               for(v<-mtRecord.value if v <= max) yield
-                mtRecprdToXML(cdxConfig.siteCounty, cdxConfig.siteID, recordList._id.time, mtRecord)
+                mtRecordToXML(cdxConfig.siteCounty, cdxConfig.siteID, recordList._id.time, mtRecord)
 
             case CdxMonitorType(_, _, Some(min), None)=>
               for(v<-mtRecord.value if v>= min) yield
-                mtRecprdToXML(cdxConfig.siteCounty, cdxConfig.siteID, recordList._id.time, mtRecord)
+                mtRecordToXML(cdxConfig.siteCounty, cdxConfig.siteID, recordList._id.time, mtRecord)
 
             case _=>
-              Some(mtRecprdToXML(cdxConfig.siteCounty, cdxConfig.siteID, recordList._id.time, mtRecord))
+              Some(mtRecordToXML(cdxConfig.siteCounty, cdxConfig.siteID, recordList._id.time, mtRecord))
           }
         } else
           None
