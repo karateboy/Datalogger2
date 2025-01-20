@@ -163,7 +163,7 @@ export default Vue.extend({
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['activatedMonitorTypes', 'mtMap']),
     ...mapState('monitors', ['monitors']),
-    ...mapGetters('tables',['dataTypes']),
+    ...mapGetters('tables', ['dataTypes']),
   },
   watch: {},
   async mounted() {

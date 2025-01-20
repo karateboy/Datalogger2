@@ -75,10 +75,10 @@
               CDX上傳
             </b-button>
             <b-button
-                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-                variant="primary"
-                class="mr-1"
-                @click="newTaipeiUpload"
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              variant="primary"
+              class="mr-1"
+              @click="newTaipeiUpload"
             >
               新北OpenData上傳
             </b-button>
