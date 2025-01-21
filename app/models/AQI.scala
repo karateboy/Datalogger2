@@ -118,7 +118,7 @@ object AQI {
     }
   }
 
-  def getAqiLevel(v: Double) = {
+  private def getAqiLevel(v: Double): String = {
     if (v <= 50)
       "AQI1"
     else if (v <= 100)
@@ -131,20 +131,6 @@ object AQI {
       "AQI5"
     else
       "AQI6"
-  }
-
-  def getRealtimeAQI(recordDB: RecordDB)(lastHour: DateTime): Unit = {
-    /*
-     val recordMap = recordDB.get
-     val result =
-       for {
-         m <- Monitor.mvList
-       } yield {
-         m -> getMonitorRealtimeAQI(m, lastHour)
-       }
-     Map(result: _*)
-
-     */
   }
 
   def getMonitorRealtimeAQI(monitor: String, thisHour: DateTime)(implicit recordDB: RecordDB): Future[AqiReport] = {
@@ -179,16 +165,14 @@ object AQI {
   }
 
   private def so2_24AQI(ov: Option[Double]): Option[Double] = {
-    if (ov.isEmpty || ov.get < 186)
+    if (ov.isEmpty || ov.get < 305)
       None
     else
       Some {
         val bd = BigDecimal(ov.get.toString)
         val v = bd.setScale(0, BigDecimal.RoundingMode.HALF_UP)
         val result =
-          if (v <= 304f) {
-            (v - 186f) * 49 / (304f - 186f) + 151
-          } else if (v <= 604f) {
+          if (v <= 604f) {
             (v - 305f) * 99 / (604f - 305f) + 201
           } else if (v <= 804f) {
             (v - 605f) * 99 / (804f - 605f) + 301
@@ -199,7 +183,7 @@ object AQI {
       }
   }
 
-  def o3_8AQI(ov: Option[Double]) = {
+  private def o3_8AQI(ov: Option[Double]): Option[Double] = {
     if (ov.isEmpty || ov.get > 200)
       None
     else
@@ -222,18 +206,18 @@ object AQI {
       }
   }
 
-  def o3AQI(ov: Option[Double]) = {
-    if (ov.isEmpty || ov.get < 125d)
+  private def o3AQI(ov: Option[Double]): Option[Double] = {
+    if (ov.isEmpty || ov.get < 101d)
       None
     else
       Some {
         val bd = BigDecimal(ov.get.toString)
         val v = bd.setScale(0, BigDecimal.RoundingMode.HALF_UP)
         val result =
-          if (v <= 164) {
-            (v - 125) * 49 / (164 - 125) + 101
+          if (v <= 134) {
+            (v - 101) * 49 / (134 - 101) + 101
           } else if (v <= 204) {
-            (v - 165) * 49 / (204 - 165) + 151
+            (v - 135) * 49 / (204 - 135) + 151
           } else if (v <= 404) {
             (v - 205) * 99 / (404 - 205) + 201
           } else if (v <= 504f) {
@@ -245,7 +229,7 @@ object AQI {
       }
   }
 
-  def pm25AQI(ov: Option[Double]) = {
+  private def pm25AQI(ov: Option[Double]): Option[Double] = {
     if (ov.isEmpty)
       None
     else
@@ -253,26 +237,26 @@ object AQI {
         val bd = BigDecimal(ov.get.toString)
         val v = bd.setScale(1, BigDecimal.RoundingMode.HALF_UP)
         val result =
-          if (v <= 15.4f) {
-            v / 15.4f * 50
-          } else if (v <= 35.4f) {
-            (v - 15.5f) * 49 / (35.4f - 15.5f) + 51
-          } else if (v <= 54.4f) {
-            (v - 35.5f) * 49 / (54.4f - 35.5f) + 101
-          } else if (v <= 150.4f) {
-            (v - 54.5f) * 49 / (150.4f - 54.5f) + 151
-          } else if (v <= 250.4f) {
-            (v - 150.5f) * 99 / (250.4f - 150.5f) + 201
-          } else if (v <= 350.4f) {
-            (v - 250.5f) * 99 / (350.4f - 250.5f) + 301
+          if (v <= 12.4f) {
+            v / 12.4f * 50
+          } else if (v <= 30.4f) {
+            (v - 12.5f) * 49 / (30.4f - 12.5f) + 51
+          } else if (v <= 50.4f) {
+            (v - 30.5f) * 49 / (50.4f - 30.5f) + 101
+          } else if (v <= 125.4f) {
+            (v - 50.5f) * 49 / (125.4f - 50.5f) + 151
+          } else if (v <= 225.4f) {
+            (v - 125.5f) * 99 / (225.4f - 125.5f) + 201
+          } else if (v <= 325.4f) {
+            (v - 225.5f) * 99 / (325.5f - 225.5f) + 301
           } else {
-            (v - 350.5f) / (500.4f - 350.5f) * 100 + 401
+            (v - 325.5f) / (500.4f - 325.5f) * 100 + 401
           }
         result.setScale(0, BigDecimal.RoundingMode.HALF_UP).doubleValue()
       }
   }
 
-  def pm10AQI(ov: Option[Double]) = {
+  private def pm10AQI(ov: Option[Double]): Option[Double] = {
     if (ov.isEmpty)
       None
     else
@@ -280,14 +264,14 @@ object AQI {
         val bd = BigDecimal(ov.get.toString)
         val v = bd.setScale(0, BigDecimal.RoundingMode.HALF_UP)
         val result =
-          if (v <= 50f) {
-            v / 50f * 50
-          } else if (v <= 100f) {
-            (v - 51f) * 49 / (100f - 51f) + 51
-          } else if (v <= 254f) {
-            (v - 126f) * 49 / (254f - 101f) + 101
+          if (v <= 30f) {
+            v / 30f * 50
+          } else if (v <= 75f) {
+            (v - 31f) * 49 / (75f - 31f) + 51
+          } else if (v <= 190f) {
+            (v - 76f) * 49 / (190f - 76f) + 101
           } else if (v <= 354f) {
-            (v - 255f) * 49 / (354f - 255f) + 151
+            (v - 191f) * 49 / (354f - 191f) + 151
           } else if (v <= 424f) {
             (v - 355f) * 99 / (424f - 355f) + 201
           } else if (v <= 504f) {
@@ -299,7 +283,7 @@ object AQI {
       }
   }
 
-  def co_8AQI(ov: Option[Double]) = {
+  private def co_8AQI(ov: Option[Double]): Option[Double] = {
     if (ov.isEmpty)
       None
     else
@@ -326,26 +310,28 @@ object AQI {
       }
   }
 
-  def so2AQI(ov: Option[Double]) = {
-    if (ov.isEmpty || ov.get >= 186)
+  private def so2AQI(ov: Option[Double]): Option[Double] = {
+    if (ov.isEmpty || ov.get >= 305)
       None
     else
       Some {
         val bd = BigDecimal(ov.get.toString)
         val v = bd.setScale(0, BigDecimal.RoundingMode.HALF_UP)
         val result =
-          if (v <= 20) {
-            v * 50 / 20
-          } else if (v <= 75f) {
-            (v - 21) * 49 / (75f - 21f) + 51
+          if (v <= 8) {
+            v * 50 / 8
+          } else if (v <= 65f) {
+            (v - 8) * 49 / (65f - 8f) + 51
+          } else if (v <= 160f) {
+            (v - 66f) * 49 / (160f - 66f) + 101
           } else {
-            (v - 76f) * 49 / (185f - 76f) + 101
+            (v - 161f) * 49 / (304f - 161f) + 151
           }
         result.setScale(0, BigDecimal.RoundingMode.HALF_UP).doubleValue()
       }
   }
 
-  def no2AQI(ov: Option[Double]) = {
+  private def no2AQI(ov: Option[Double]): Option[Double] = {
     if (ov.isEmpty)
       None
     else
@@ -353,10 +339,10 @@ object AQI {
         val bd = BigDecimal(ov.get.toString)
         val v = bd.setScale(0, BigDecimal.RoundingMode.HALF_UP)
         val result =
-          if (v <= 30f) {
-            v * 50 / 30f
+          if (v <= 21f) {
+            v * 50 / 21f
           } else if (v <= 100f) {
-            (v - 31f) * 49 / (100f - 31f) + 51
+            (v - 22f) * 49 / (100f - 22f) + 51
           } else if (v <= 360f) {
             (v - 101f) * 49 / (360f - 101f) + 101
           } else if (v <= 649f) {
@@ -389,14 +375,14 @@ object AQI {
         for {
           hr <- 24 to (24 + duration.getStandardDays.toInt * 24)
         } yield {
-          start + (hr - 24).hour -> getMonitorRealtimeAQIfromMap(hr, recordMap)
+          start + (hr - 24).hour -> getRealtimeAQI(hr, recordMap)
         }
       pairs.toMap
     }
   }
 
-  def getMonitorRealtimeAQIfromMap(thisHour: Int,
-                                   map: mutable.Map[String, ListBuffer[Option[MtRecord]]]): AqiReport = {
+  private def getRealtimeAQI(thisHour: Int,
+                             map: mutable.Map[String, ListBuffer[Option[MtRecord]]]): AqiReport = {
     def getValidValues(mt: String, start: Int, end: Int): ListBuffer[Double] = {
       val mtRecords = map(mt).slice(start, end)
       mtRecords.flatten.filter(mtRecord =>
@@ -455,11 +441,11 @@ object AQI {
         lb.append(mtMap.get(mt))
       }
 
-      getMonitorDailyAQIfromMap(0, dayMap)
+      getDailyAQI(0, dayMap)
     }
   }
 
-  private def getMonitorDailyAQIfromMap(dayStartHour: Int,
+  private def getDailyAQI(dayStartHour: Int,
                                         map: mutable.Map[String, ListBuffer[Option[MtRecord]]]): AqiReport = {
 
     def getValidValues(mt: String, start: Int, end: Int): List[Double] = {

@@ -114,174 +114,212 @@
           </tr>
           <tr>
             <th nowrap="">即時統計</th>
-            <td align="center">
+            <td class="text-center">
               最近連續<br />
               8小時移動<br />
               平均值
             </td>
-            <td align="center">
+            <td class="text-center">
               即時<br />
               濃度值
             </td>
-            <td align="center">
+            <td class="text-center">
               0.5 ×前12小時平均<br />+ <br />
               0.5 × 前4小時平均
             </td>
-            <td align="center">
+            <td class="text-center">
               0.5 ×前12小時平均<br />+ <br />
               0.5 × 前4小時平均
             </td>
-            <td align="center">
+            <td class="text-center">
               最近連續<br />
               8小時移動<br />
               平均值
             </td>
-            <td align="center">
+            <td class="text-center">
               即時<br />
               濃度值
             </td>
-            <td align="center">
+            <td class="text-center">
               即時<br />
               濃度值
             </td>
           </tr>
           <tr class="ALT">
             <th nowrap="">單位</th>
-            <td align="center">ppm</td>
-            <td align="center">ppm</td>
-            <td align="center">μg/m<sup>3</sup></td>
-            <td align="center">μg/m<sup>3</sup></td>
-            <td align="center">ppm</td>
-            <td align="center">ppb</td>
-            <td align="center">ppb</td>
+            <td class="text-center">ppm</td>
+            <td class="text-center">ppm</td>
+            <td class="text-center">μg/m<sup>3</sup></td>
+            <td class="text-center">μg/m<sup>3</sup></td>
+            <td class="text-center">ppm</td>
+            <td class="text-center">ppb</td>
+            <td class="text-center">ppb</td>
           </tr>
           <tr>
             <th nowrap="">AQI值</th>
             <th nowrap="" colspan="7">　</th>
           </tr>
           <tr class="ALT">
-            <td class="AQI1" nowrap="" align="center">0～50</td>
-            <td align="center" style="font-size: 10pt" nowrap="">
+            <td class="AQI1 text-center">0～50</td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
               0.000 - 0.054
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">-</td>
-            <td align="center" style="font-size: 10pt" nowrap="">0.0 - 15.4</td>
-            <td align="center" style="font-size: 10pt" nowrap="">0 - 54</td>
-            <td align="center" style="font-size: 10pt" nowrap="">0 - 4.4</td>
-            <td align="center" style="font-size: 10pt" nowrap="">0 - 35</td>
-            <td align="center" style="font-size: 10pt" nowrap="">0 - 53</td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">-</td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              0.0 - 12.4
+            </td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              0 - 30
+            </td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              0 - 4.4
+            </td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              0 - 8
+            </td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              0 - 21
+            </td>
           </tr>
           <tr>
-            <td class="AQI2" nowrap="" align="center">51～100</td>
-            <td align="center" style="font-size: 10pt" nowrap="">
+            <td class="AQI2 text-center">51～100</td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
               0.055 - 0.070
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">-</td>
-            <td align="center" style="font-size: 10pt" nowrap="">
-              15.5 - 35.4
+            <td class="text-center" style="font-size: 10pt" nowrap="">-</td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              12.5 - 30.4
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">55 - 125</td>
-            <td align="center" style="font-size: 10pt" nowrap="">4.5 - 9.4</td>
-            <td align="center" style="font-size: 10pt" nowrap="">36 - 75</td>
-            <td align="center" style="font-size: 10pt" nowrap="">54 - 100</td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              31 - 75
+            </td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              4.5 - 9.4
+            </td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              9 - 65
+            </td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              22 - 100
+            </td>
           </tr>
           <tr class="ALT">
-            <td class="AQI3" nowrap="" align="center">101～150</td>
-            <td align="center" style="font-size: 10pt" nowrap="">
+            <td class="AQI3 text-center">101～150</td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
               0.071 - 0.085
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">
-              0.125 - 0.164
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              0.101 - 0.134
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">
-              35.5 - 54.4
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              30.5 - 50.4
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">126 - 254</td>
-            <td align="center" style="font-size: 10pt" nowrap="">9.5 - 12.4</td>
-            <td align="center" style="font-size: 10pt" nowrap="">76 - 185</td>
-            <td align="center" style="font-size: 10pt" nowrap="">101 - 360</td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              76 - 190
+            </td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              9.5 - 12.4
+            </td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              66 - 160
+            </td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              101 - 360
+            </td>
           </tr>
           <tr>
-            <td class="AQI4" nowrap="" align="center">151～200</td>
-            <td align="center" style="font-size: 10pt" nowrap="">
+            <td class="AQI4 text-center">151～200</td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
               0.086 - 0.105
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">
-              0.165 - 0.204
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              0.135 - 0.204
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">
-              54.5 - 150.4
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              50.5 - 125.4
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">255 - 354</td>
-            <td align="center" style="font-size: 10pt" nowrap="">
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              191 - 354
+            </td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
               12.5 - 15.4
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">
-              186 - 304<sup><font color="#FF0000">(3)</font></sup>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              161 - 304<sup class="text-danger">(3)</sup>
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">361 - 649</td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              361 - 649
+            </td>
           </tr>
           <tr class="ALT">
-            <td class="AQI5" nowrap="" align="center">201～300</td>
-            <td align="center" style="font-size: 10pt" nowrap="">
+            <td class="AQI5 text-center">201～300</td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
               0.106 - 0.200
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">
+            <td class="text-center" style="font-size: 10pt" nowrap="">
               0.205 - 0.404
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">
-              150.5 - 250.4
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              125.5 - 225.4
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">355 - 424</td>
-            <td align="center" style="font-size: 10pt" nowrap="">
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              355 - 424
+            </td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
               15.5 - 30.4
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">
-              305 - 604<sup><font color="#FF0000">(3)</font></sup>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              305 - 604<sup class="text-danger">(3)</sup>
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">650 - 1249</td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              650 - 1249
+            </td>
           </tr>
           <tr>
-            <td class="AQI6" nowrap="" align="center">301～400</td>
-            <td align="center" style="font-size: 10pt" nowrap="">
-              <sup><font color="#FF0000">(2)</font></sup>
+            <td class="AQI6 text-center">301～400</td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              <sup class="text-danger">(2)</sup>
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">
+            <td class="text-center" style="font-size: 10pt" nowrap="">
               0.405 - 0.504
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">
-              250.5 - 350.4
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              225.5 - 325.4
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">425 - 504</td>
-            <td align="center" style="font-size: 10pt" nowrap="">
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              425 - 504
+            </td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
               30.5 - 40.4
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">
-              605 - 804<sup><font color="#FF0000">(3)</font></sup>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              605 - 804<sup class="text-danger">(3)</sup>
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">
+            <td class="text-center" style="font-size: 10pt" nowrap="">
               1250 - 1649
             </td>
           </tr>
           <tr class="ALT">
-            <td class="AQI6" nowrap="" align="center">401～500</td>
-            <td align="center" style="font-size: 10pt" nowrap="">
-              <sup><font color="#FF0000">(2)</font></sup>
+            <td class="AQI6 text-center">401～500</td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              <sup class="text-danger">(2)</sup>
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">
+            <td class="text-center" style="font-size: 10pt" nowrap="">
               0.505 - 0.604
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">
-              350.5 - 500.4
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              325.5 - 500.4
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">505 - 604</td>
-            <td align="center" style="font-size: 10pt" nowrap="">
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              505 - 604
+            </td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
               40.5 - 50.4
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">
-              805 -1004<sup><font color="#FF0000">(3)</font></sup>
+            <td class="text-center" style="font-size: 10pt" nowrap="">
+              805 -1004<sup class="text-danger">(3)</sup>
             </td>
-            <td align="center" style="font-size: 10pt" nowrap="">
+            <td class="text-center" style="font-size: 10pt" nowrap="">
               1650 - 2049
             </td>
           </tr>

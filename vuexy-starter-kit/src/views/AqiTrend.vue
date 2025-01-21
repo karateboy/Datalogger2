@@ -18,16 +18,16 @@
           </b-col>
           <b-col cols="12">
             <b-form-group
-                label="資料種類"
-                label-for="dataType"
-                label-cols-md="3"
+              label="資料種類"
+              label-for="dataType"
+              label-cols-md="3"
             >
               <v-select
-                  id="dataType"
-                  v-model="form.dataType"
-                  label="txt"
-                  :reduce="dt => dt.id"
-                  :options="hourDataTypes"
+                id="dataType"
+                v-model="form.dataType"
+                label="txt"
+                :reduce="dt => dt.id"
+                :options="hourDataTypes"
               />
             </b-form-group>
           </b-col>
@@ -188,7 +188,7 @@ export default Vue.extend({
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['activatedMonitorTypes']),
     ...mapState('monitors', ['monitors']),
-    ...mapGetters('tables',['hourDataTypes']),
+    ...mapGetters('tables', ['hourDataTypes']),
   },
   watch: {},
   async mounted() {

@@ -183,7 +183,7 @@ export default Vue.extend({
     ...mapState('monitors', ['monitors']),
     ...mapGetters('monitorTypes', ['mtMap', 'activatedMonitorTypes']),
     ...mapGetters('monitors', ['mMap']),
-    ...mapGetters('tables',['dataTypes']),
+    ...mapGetters('tables', ['dataTypes']),
     resultTitle(): string {
       return `總共${this.rows.length}筆`;
     },
@@ -276,9 +276,9 @@ export default Vue.extend({
 
       const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
         ':',
-      )}/${this.form.includeRaw}/${this.form.dataType}/${reportUnit}/all/${this.form.range[0]}/${
-        this.form.range[1]
-      }`;
+      )}/${this.form.includeRaw}/${this.form.dataType}/${reportUnit}/all/${
+        this.form.range[0]
+      }/${this.form.range[1]}`;
 
       window.open(url);
     },
