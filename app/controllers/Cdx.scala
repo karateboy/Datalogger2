@@ -2,7 +2,7 @@ package controllers
 
 import com.github.nscala_time.time.Imports.DateTime
 import models.ModelHelper.errorHandler
-import models.{CdxUploader, MonitorTypeDB, RecordDB, SysConfigDB}
+import models.{CdxUploader, MonitorTypeDB, NewTaipeiOpenData, RecordDB, SysConfigDB}
 import play.api.{Environment, Logger}
 import play.api.libs.json.{JsError, JsValue, Json}
 import play.api.mvc.{Action, AnyContent, BodyParsers, Controller}
@@ -12,7 +12,12 @@ import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class Cdx @Inject()(cdxUploader: CdxUploader, monitorTypeDB: MonitorTypeDB, sysConfigDB: SysConfigDB, recordDB: RecordDB, environment: Environment) extends Controller {
+class Cdx @Inject()(cdxUploader: CdxUploader,
+                    monitorTypeDB: MonitorTypeDB,
+                    sysConfigDB: SysConfigDB,
+                    recordDB: RecordDB,
+                    environment: Environment,
+                    newTaipeiOpenData: NewTaipeiOpenData) extends Controller {
 
   import CdxUploader._
 
@@ -73,6 +78,18 @@ class Cdx @Inject()(cdxUploader: CdxUploader, monitorTypeDB: MonitorTypeDB, sysC
         cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes
         } yield {
       records.filter(record=>record.mtDataList.nonEmpty).foreach(record=>cdxUploader.upload(record, cdxConfig, cdxMtConfigs))
+      Ok(Json.obj("ok"->true))
+    }
+  }
+
+  def newTaipeiOpenDataUpload(startNum:Long, endNum:Long): Action[AnyContent] = Security.Authenticated.async {
+    val start = new DateTime(startNum)
+    val end = new DateTime(endNum)
+    val recordFuture = recordDB.getRecordListFuture(recordDB.HourCollection)(start, end)
+    for{records<-recordFuture
+        cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes
+        } yield {
+      records.filter(record=>record.mtDataList.nonEmpty).foreach(record=>newTaipeiOpenData.upload(record, cdxMtConfigs))
       Ok(Json.obj("ok"->true))
     }
   }

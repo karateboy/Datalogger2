@@ -32,16 +32,16 @@
           </b-col>
           <b-col cols="12">
             <b-form-group
-                label="資料種類"
-                label-for="dataType"
-                label-cols-md="3"
+              label="資料種類"
+              label-for="dataType"
+              label-cols-md="3"
             >
               <v-select
-                  id="dataType"
-                  v-model="form.dataType"
-                  label="txt"
-                  :reduce="dt => dt.id"
-                  :options="dataTypes"
+                id="dataType"
+                v-model="form.dataType"
+                label="txt"
+                :reduce="dt => dt.id"
+                :options="dataTypes"
               />
             </b-form-group>
           </b-col>
@@ -152,7 +152,7 @@ export default Vue.extend({
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapState('monitors', ['monitors']),
-    ...mapGetters('tables',['dataTypes']),
+    ...mapGetters('tables', ['dataTypes']),
     ...mapGetters('monitorTypes', ['mtMap', 'activatedMonitorTypes']),
     canQuery(): boolean {
       if (this.form.monitorType == undefined) return false;

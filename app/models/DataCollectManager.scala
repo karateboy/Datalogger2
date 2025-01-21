@@ -320,6 +320,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                                      sysConfigDB: SysConfigDB,
                                      alarmRuleDb: AlarmRuleDb,
                                      cdxUploader: CdxUploader,
+                                     newTaipeiOpenData: NewTaipeiOpenData,
                                      tableType: TableType)() {
 
   import DataCollectManager._
@@ -429,8 +430,10 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
             case Success(_) =>
               manager ! ForwardHour
               for {cdxConfig <- sysConfigDB.getCdxConfig if monitor == Monitor.activeId
-                   cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes}
+                   cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes} {
                 cdxUploader.upload(recordList = recordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
+                newTaipeiOpenData.upload(recordList, cdxMtConfigs)
+              }
 
             case Failure(exception) =>
               Logger.error("failed", exception)

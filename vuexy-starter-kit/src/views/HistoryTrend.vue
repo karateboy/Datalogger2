@@ -38,16 +38,16 @@
           </b-col>
           <b-col cols="12">
             <b-form-group
-                label="資料種類"
-                label-for="dataType"
-                label-cols-md="3"
+              label="資料種類"
+              label-for="dataType"
+              label-cols-md="3"
             >
               <v-select
-                  id="dataType"
-                  v-model="form.dataType"
-                  label="txt"
-                  :reduce="dt => dt.id"
-                  :options="dataTypes"
+                id="dataType"
+                v-model="form.dataType"
+                label="txt"
+                :reduce="dt => dt.id"
+                :options="dataTypes"
               />
             </b-form-group>
           </b-col>
@@ -243,7 +243,7 @@ export default Vue.extend({
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['activatedMonitorTypes']),
     ...mapState('monitors', ['monitors']),
-    ...mapGetters('tables',['dataTypes']),
+    ...mapGetters('tables', ['dataTypes']),
   },
   watch: {},
   async mounted() {
@@ -274,9 +274,9 @@ export default Vue.extend({
       const monitors = this.form.monitors.join(':');
       const url = `/HistoryTrend/${monitors}/${this.form.monitorTypes.join(
         ':',
-      )}/${this.form.includeRaw}/${this.form.dataType}/${this.form.reportUnit}/${
-        this.form.statusFilter
-      }/${this.form.range[0]}/${this.form.range[1]}`;
+      )}/${this.form.includeRaw}/${this.form.dataType}/${
+        this.form.reportUnit
+      }/${this.form.statusFilter}/${this.form.range[0]}/${this.form.range[1]}`;
       const res = await axios.get(url);
       const ret = res.data;
 
@@ -343,9 +343,9 @@ export default Vue.extend({
       const monitors = this.form.monitors.join(':');
       const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
         ':',
-      )}/${this.form.includeRaw}/${this.form.dataType}/${this.form.reportUnit}/${
-        this.form.statusFilter
-      }/${this.form.range[0]}/${this.form.range[1]}`;
+      )}/${this.form.includeRaw}/${this.form.dataType}/${
+        this.form.reportUnit
+      }/${this.form.statusFilter}/${this.form.range[0]}/${this.form.range[1]}`;
 
       window.open(url);
     },
