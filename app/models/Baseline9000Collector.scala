@@ -4,9 +4,8 @@ import akka.actor.{Actor, Props, _}
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.{ProtocolParam, serial}
-import models.mongodb.CalibrationOp
 import play.api._
-import play.api.libs.json.{JsError, Json}
+import play.api.libs.json.{JsError, Json, OWrites, Reads}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -20,10 +19,11 @@ case class Baseline9000Config(calibrationTime: Option[LocalTime],
 object Baseline9000Collector extends DriverOps {
 
   var count = 0
-  implicit val cfgRead = Json.reads[Baseline9000Config]
-  implicit val cfgWrite = Json.writes[Baseline9000Config]
+  import ModelHelper._
+  implicit val cfgRead: Reads[Baseline9000Config] = Json.reads[Baseline9000Config]
+  implicit val cfgWrite: OWrites[Baseline9000Config] = Json.writes[Baseline9000Config]
 
-  override def verifyParam(json: String) = {
+  override def verifyParam(json: String): String = {
     val ret = Json.parse(json).validate[Baseline9000Config]
     ret.fold(
       error => {
@@ -39,12 +39,12 @@ object Baseline9000Collector extends DriverOps {
     List("CH4", "NMHC", "THC")
   }
 
-  override def getCalibrationTime(param: String) = {
+  override def getCalibrationTime(param: String): Option[LocalTime] = {
     val config = validateParam(param)
     config.calibrationTime
   }
 
-  def validateParam(json: String) = {
+  def validateParam(json: String): Baseline9000Config = {
     val ret = Json.parse(json).validate[Baseline9000Config]
     ret.fold(
       error => {
@@ -84,9 +84,9 @@ class Baseline9000Collector @Inject()
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: Baseline9000Config) extends Actor {
 
   import Baseline9000Collector._
+  import DataCollectManager._
   import ModelHelper._
   import TapiTxx._
-  import DataCollectManager._
 
   import scala.concurrent.duration._
   import scala.concurrent.{Future, blocking}
@@ -116,11 +116,11 @@ class Baseline9000Collector @Inject()
   }
 
   // override postRestart so we don't call preStart and schedule a new message
-  override def postRestart(reason: Throwable) = {}
+  override def postRestart(reason: Throwable): Unit = {}
 
-  def receive = openComPort
+  def receive: Receive = openComPort
 
-  def openComPort: Receive = {
+  private def openComPort: Receive = {
     case OpenComPort =>
       Future {
         blocking {
@@ -139,7 +139,7 @@ class Baseline9000Collector @Inject()
       } onFailure serialErrorHandler
   }
 
-  def serialErrorHandler: PartialFunction[Throwable, Unit] = {
+  private def serialErrorHandler: PartialFunction[Throwable, Unit] = {
     case ex: Exception =>
       logInstrumentError(id, s"${self.path.name}: ${ex.getMessage}. Close com port.", ex)
       for (serial <- serialCommOpt) {
@@ -150,7 +150,7 @@ class Baseline9000Collector @Inject()
       timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort))
   }
 
-  def readData = {
+  private def readData(): Unit = {
     Future {
       blocking {
         for (serial <- serialCommOpt) {
@@ -176,9 +176,9 @@ class Baseline9000Collector @Inject()
     } onFailure serialErrorHandler
   }
 
-  def comPortOpened: Receive = {
+  private def comPortOpened: Receive = {
     case ReadData =>
-      readData
+      readData()
 
     case SetState(id, state) =>
       Future {
@@ -228,9 +228,9 @@ class Baseline9000Collector @Inject()
           Logger.info(s"${calibrationType} RasieStart: $mt")
           val cmd =
             if (calibrationType.zero) {
-              config.calibrateZeoSeq map {
+              config.calibrateZeoSeq foreach {
                 seqNo =>
-                  context.parent ! ExecuteSeq(seqNo, true)
+                  context.parent ! ExecuteSeq(seqNo, on = true)
               }
 
               if (mt == mtCH4)
@@ -238,9 +238,9 @@ class Baseline9000Collector @Inject()
               else
                 ActivateNonMethaneZeroByte
             } else {
-              config.calibrateSpanSeq map {
+              config.calibrateSpanSeq foreach {
                 seqNo =>
-                  context.parent ! ExecuteSeq(seqNo, true)
+                  context.parent ! ExecuteSeq(seqNo, on = true)
               }
 
               if (mt == mtCH4)
@@ -275,14 +275,14 @@ class Baseline9000Collector @Inject()
       calibrateRecordStart = false
 
       if (calibrationType.zero) {
-        config.calibrateZeoSeq map {
+        config.calibrateZeoSeq foreach {
           seqNo =>
-            context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+            context.parent ! ExecuteSeq(T700_STANDBY_SEQ, on = true)
         }
       } else {
-        config.calibrateSpanSeq map {
+        config.calibrateSpanSeq foreach {
           seqNo =>
-            context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+            context.parent ! ExecuteSeq(T700_STANDBY_SEQ, on = true)
         }
       }
 
@@ -307,7 +307,7 @@ class Baseline9000Collector @Inject()
       val values = calibrationDataList.map {
         _.value
       }
-      val avg = if (values.length == 0)
+      val avg = if (values.isEmpty)
         None
       else
         Some(values.sum / values.length)
@@ -373,7 +373,7 @@ class Baseline9000Collector @Inject()
             calibrateTimerOpt map {
               timer => timer.cancel()
             }
-            context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+            context.parent ! ExecuteSeq(T700_STANDBY_SEQ, on = true)
             context become comPortOpened
           } else {
             Logger.info(s"Ignore setState $state during calibration")
@@ -382,7 +382,7 @@ class Baseline9000Collector @Inject()
       } onFailure serialErrorHandler
   }
 
-  override def postStop() = {
+  override def postStop(): Unit = {
     for (timer <- timerOpt) {
       timer.cancel()
     }

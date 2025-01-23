@@ -2,11 +2,11 @@ package models
 import akka.actor.Actor
 import com.github.nscala_time.time.Imports.DateTime
 import com.google.inject.assistedinject.Assisted
-import models.mongodb.InstrumentStatusOp
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
 
+import java.util.Date
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -21,8 +21,8 @@ class InstrumentStatusForwarder @Inject()(ws:WSClient, instrumentStatusOp: Instr
   import ForwardManager._
   Logger.info(s"InstrumentStatusForwarder started $server/$monitor")
 
-  def receive = handler(None)
-  def checkLatest = {
+  def receive: Receive = handler(None)
+  def checkLatest(): Unit = {
     val url = s"http://$server/InstrumentStatusRange/$monitor"
     val f = ws.url(url).get().map {
       response =>
@@ -33,8 +33,8 @@ class InstrumentStatusForwarder @Inject()(ws:WSClient, instrumentStatusOp: Instr
           },
           latest => {
             Logger.info(s"server latest instrument status: ${new DateTime(latest.time).toString}")
-            context become handler(Some(latest.time))
-            uploadRecord(latest.time)
+            context become handler(Some(new Date(latest.time)))
+            uploadRecord(new Date(latest.time))
           })
     }
     f onFailure {
@@ -43,17 +43,15 @@ class InstrumentStatusForwarder @Inject()(ws:WSClient, instrumentStatusOp: Instr
     }
   }
 
-  def uploadRecord(latestRecordTime: Long) = {
-    val recordFuture = instrumentStatusOp.queryFuture(new DateTime(latestRecordTime + 1), DateTime.now)
+  def uploadRecord(latestRecordTime: Date): Unit = {
+    val recordFuture = instrumentStatusOp.queryFuture(new DateTime(latestRecordTime.getTime + 1), DateTime.now)
     for (records <- recordFuture) {
-      import instrumentStatusOp.jsonWrite
-      if (!records.isEmpty) {
-        val recordJSON = records.map { _.toJSON }
+      if (records.nonEmpty) {
         val url = s"http://$server/InstrumentStatusRecord/$monitor"
-        val f = ws.url(url).put(Json.toJson(recordJSON))
+        val f = ws.url(url).put(Json.toJson(records))
         f onSuccess {
           case response =>
-            context become handler(Some(records.last.time.getMillis))
+            context become handler(Some(records.last.time))
         }
         f onFailure {
           case ex: Throwable =>
@@ -65,10 +63,10 @@ class InstrumentStatusForwarder @Inject()(ws:WSClient, instrumentStatusOp: Instr
   }
   
   
-  def handler(latestRecordTimeOpt: Option[Long]): Receive = {
+  def handler(latestRecordTimeOpt: Option[Date]): Receive = {
     case ForwardInstrumentStatus =>
       if (latestRecordTimeOpt.isEmpty)
-        checkLatest
+        checkLatest()
       else
         uploadRecord(latestRecordTimeOpt.get)
   }

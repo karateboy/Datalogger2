@@ -1,5 +1,5 @@
 name := """DataLogger2"""
-val mainVersion = "1.5.10"
+val mainVersion = "1.6.10"
 val distVersion = ""
 version := s"$mainVersion$distVersion"
 
@@ -15,12 +15,17 @@ libraryDependencies ++= Seq(
   "net.sf.marineapi" % "marineapi" % "0.11.0"
 )
 
+libraryDependencies += guice
+
+// https://mvnrepository.com/artifact/com.typesafe.play/play-json
+libraryDependencies += "com.typesafe.play" %% "play-json" % "2.6.14"
+
+
 // https://mvnrepository.com/artifact/org.mongodb.scala/mongo-scala-driver
 libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "4.2.0"
 
 // https://mvnrepository.com/artifact/com.github.nscala-time/nscala-time
-libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "2.32.0"
-
+libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "2.34.0"
 
 // https://mvnrepository.com/artifact/org.eclipse.paho/org.eclipse.paho.client.mqttv3
 libraryDependencies += "org.eclipse.paho" % "org.eclipse.paho.client.mqttv3" % "1.2.5"
@@ -39,14 +44,12 @@ libraryDependencies += "com.microsoft.sqlserver" % "mssql-jdbc_auth" % "9.4.1.x8
 libraryDependencies += "io.github.java-native" % "jssc" % "2.9.4"
 
 // https://mvnrepository.com/artifact/org.scalikejdbc/scalikejdbc
-libraryDependencies += "org.scalikejdbc" %% "scalikejdbc" % "2.5.2"
+libraryDependencies += "org.scalikejdbc" %% "scalikejdbc" % "3.4.2"
 // https://mvnrepository.com/artifact/org.scalikejdbc/scalikejdbc-config
-libraryDependencies += "org.scalikejdbc" %% "scalikejdbc-config" % "2.5.2"
-// https://mvnrepository.com/artifact/org.scalikejdbc/scalikejdbc-play-initializer
-libraryDependencies += "org.scalikejdbc" %% "scalikejdbc-play-initializer" % "2.5.3"
+libraryDependencies += "org.scalikejdbc" %% "scalikejdbc-config" % "3.4.2"
 
 // https://mvnrepository.com/artifact/com.typesafe.play/play-mailer
-libraryDependencies += "com.typesafe.play" %% "play-mailer" % "5.0.0"
+libraryDependencies += "com.typesafe.play" %% "play-mailer" % "6.0.1"
 
 routesGenerator := StaticRoutesGenerator
 

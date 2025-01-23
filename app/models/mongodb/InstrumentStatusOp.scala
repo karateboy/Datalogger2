@@ -2,6 +2,7 @@ package models.mongodb
 
 import com.github.nscala_time.time.Imports._
 import models.InstrumentStatusDB
+import models.InstrumentStatusDB.{InstrumentStatus, Status}
 import models.ModelHelper.{errorHandler, waitReadyResult}
 import play.api.libs.json._
 
@@ -15,7 +16,7 @@ class InstrumentStatusOp @Inject()(mongodb: MongoDB) extends InstrumentStatusDB 
   lazy private val collectionName = "instrumentStatus"
   lazy private val collection = mongodb.database.getCollection(collectionName)
 
-  private def init() {
+  private def init(): Unit = {
     import org.mongodb.scala.model.Indexes._
     for(colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(collectionName)) {
@@ -28,12 +29,13 @@ class InstrumentStatusOp @Inject()(mongodb: MongoDB) extends InstrumentStatusDB 
       }
     }
   }
-  init
+
+  init()
 
   private def toDocument(is: InstrumentStatus) = {
     import org.mongodb.scala.bson._
     val jsonStr = Json.toJson(is).toString()
-    Document(jsonStr) ++ Document("time" -> is.time.toDate)
+    Document(jsonStr) ++ Document("time" -> is.time)
   }
 
   private def toInstrumentStatus(doc: Document) = {
@@ -44,14 +46,14 @@ class InstrumentStatusOp @Inject()(mongodb: MongoDB) extends InstrumentStatusDB 
     val it = statusList.iterator()
     import scala.collection.mutable.ListBuffer
     val lb = ListBuffer.empty[Status]
-    while (it.hasNext()) {
+    while (it.hasNext) {
       val statusDoc = it.next().asDocument()
       val key = statusDoc.get("key").asString().getValue
       val value = statusDoc.get("value").asNumber().doubleValue()
       lb.append(Status(key, value))
     }
 
-    InstrumentStatus(time, instID, lb.toList)
+    InstrumentStatus(time.toDate, instID, lb.toList)
   }
 
   override def log(is: InstrumentStatus): Unit = {
@@ -71,7 +73,7 @@ class InstrumentStatusOp @Inject()(mongodb: MongoDB) extends InstrumentStatusDB 
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
-    val recordFuture = collection.find(and(gte("time", start.toDate()), lt("time", end.toDate()))).sort(ascending("time")).toFuture()
+    val recordFuture = collection.find(and(gte("time", start.toDate), lt("time", end.toDate))).sort(ascending("time")).toFuture()
     for (f <- recordFuture)
       yield f.map { toInstrumentStatus }
   }

@@ -16,9 +16,8 @@ class ManualAuditLogOp @Inject()(mongodb: MongoDB) extends ManualAuditLogDB {
   lazy private val collection = mongodb.database.getCollection(collectionName)
   import org.mongodb.scala.model.Filters._
   override def upsertLog(log: ManualAuditLog):Future[UpdateResult] = {
-    import org.mongodb.scala.bson.BsonDateTime
     import org.mongodb.scala.model.ReplaceOptions
-    val f = collection.replaceOne(and(equal("dataTime", log.dataTime: BsonDateTime), equal("mt", log.mt)),
+    val f = collection.replaceOne(and(equal("dataTime", log.dataTime), equal("mt", log.mt)),
       toDocument(log), ReplaceOptions().upsert(true)).toFuture()
 
     f.onFailure(errorHandler)
@@ -27,15 +26,15 @@ class ManualAuditLogOp @Inject()(mongodb: MongoDB) extends ManualAuditLogDB {
 
   private def toDocument(al: ManualAuditLog) = {
     import org.mongodb.scala.bson._
-    Document("dataTime" -> (al.dataTime: BsonDateTime), "mt" -> al.mt,
-      "modifiedTime" -> (al.modifiedTime: BsonDateTime), "operator" -> al.operator, "changedStatus" -> al.changedStatus, "reason" -> al.reason)
+    Document("dataTime" -> al.dataTime, "mt" -> al.mt,
+      "modifiedTime" -> al.modifiedTime, "operator" -> al.operator, "changedStatus" -> al.changedStatus, "reason" -> al.reason)
   }
 
-  init
+  init()
 
   import org.mongodb.scala.model.Filters._
 
-  override def queryLog2(startTime: DateTime, endTime: DateTime): Future[Seq[ManualAuditLog2]] = {
+  override def queryLog2(startTime: DateTime, endTime: DateTime): Future[Seq[ManualAuditLog]] = {
     import org.mongodb.scala.bson.BsonDateTime
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
@@ -56,10 +55,10 @@ class ManualAuditLogOp @Inject()(mongodb: MongoDB) extends ManualAuditLogDB {
     val changedStatus = doc.get("changedStatus").get.asString().getValue
     val reason = doc.get("reason").get.asString().getValue
 
-    ManualAuditLog2(dataTime = dataTime.getMillis, mt = mt, modifiedTime = modifiedTime.getMillis, operator = operator, changedStatus = changedStatus, reason = reason)
+    ManualAuditLog(dataTime = dataTime.toDate, mt = mt, modifiedTime = modifiedTime.toDate, operator = operator, changedStatus = changedStatus, reason = reason)
   }
 
-  private def init() {
+  private def init(): Unit = {
     import org.mongodb.scala.model.Indexes._
     for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(collectionName)) {

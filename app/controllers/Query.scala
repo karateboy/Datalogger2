@@ -60,7 +60,9 @@ class Query @Inject()(recordOp: RecordDB,
                       calibrationOp: CalibrationDB,
                       manualAuditLogOp: ManualAuditLogDB,
                       excelUtility: ExcelUtility,
-                      tableType: TableType) extends Controller {
+                      tableType: TableType,
+                      security: Security,
+                      cc: ControllerComponents) extends AbstractController(cc) {
 
   implicit val cdWrite: OWrites[CellData] = Json.writes[CellData]
   implicit val rdWrite: OWrites[RowData] = Json.writes[RowData]
@@ -166,7 +168,7 @@ class Query @Inject()(recordOp: RecordDB,
   import models.ModelHelper._
 
   def scatterChart(monitorStr: String, monitorTypeStr: String, tabTypeStr: String, statusFilterStr: String,
-                   startNum: Long, endNum: Long): Action[AnyContent] = Security.Authenticated.async {
+                   startNum: Long, endNum: Long): Action[AnyContent] = security.Authenticated.async {
     implicit request =>
       val monitors = monitorStr.split(':')
       val monitorTypeStrArray = monitorTypeStr.split(':')
@@ -189,7 +191,7 @@ class Query @Inject()(recordOp: RecordDB,
 
 
   def historyTrendChart(monitorStr: String, monitorTypeStr: String, includeRaw: Boolean, tab:String, reportUnitStr: String, statusFilterStr: String,
-                        startNum: Long, endNum: Long, outputTypeStr: String): Action[AnyContent] = Security.Authenticated {
+                        startNum: Long, endNum: Long, outputTypeStr: String): Action[AnyContent] = security.Authenticated {
     val monitors = monitorStr.split(':')
     val monitorTypeStrArray = monitorTypeStr.split(':')
     val monitorTypes = monitorTypeStrArray
@@ -560,7 +562,7 @@ class Query @Inject()(recordOp: RecordDB,
   }
 
   def historyData(monitorStr: String, monitorTypeStr: String, tabTypeStr: String, includeRaw: Boolean,
-                  startNum: Long, endNum: Long): Action[AnyContent] = Security.Authenticated.async {
+                  startNum: Long, endNum: Long): Action[AnyContent] = security.Authenticated.async {
     implicit request =>
       val monitors = monitorStr.split(":")
       val monitorTypes = monitorTypeStr.split(':')
@@ -638,7 +640,7 @@ class Query @Inject()(recordOp: RecordDB,
   }
 
   def historyReport(monitorTypeStr: String, tabTypeStr: String,
-                    startNum: Long, endNum: Long) = Security.Authenticated.async {
+                    startNum: Long, endNum: Long) = security.Authenticated.async {
     implicit request =>
 
       val monitorTypes = monitorTypeStr.split(':')
@@ -681,7 +683,7 @@ class Query @Inject()(recordOp: RecordDB,
         Ok(Json.toJson(recordList))
   }
 
-  def calibrationReport(startNum: Long, endNum: Long): Action[AnyContent] = Security.Authenticated {
+  def calibrationReport(startNum: Long, endNum: Long): Action[AnyContent] = security.Authenticated {
     import calibrationOp.writes
     val (start, end) = (new DateTime(startNum), new DateTime(endNum))
     val report: Seq[Calibration] = calibrationOp.calibrationReport(start, end)
@@ -690,19 +692,19 @@ class Query @Inject()(recordOp: RecordDB,
 
   implicit val alarmWrite: OWrites[Alarm] = alarmOp.write
 
-  def alarmReport(level: Int, startNum: Long, endNum: Long): Action[AnyContent] = Security.Authenticated.async {
+  def alarmReport(level: Int, startNum: Long, endNum: Long): Action[AnyContent] = security.Authenticated.async {
     val (start, end) = (new DateTime(startNum), new DateTime(endNum))
     for (alarms <- alarmOp.getAlarmsFuture(level, start, end)) yield
       Ok(Json.toJson(alarms))
   }
 
-  def getAlarms(src: String, level: Int, startNum: Long, endNum: Long): Action[AnyContent] = Security.Authenticated.async {
+  def getAlarms(src: String, level: Int, startNum: Long, endNum: Long): Action[AnyContent] = security.Authenticated.async {
     val (start, end) = (new DateTime(startNum), new DateTime(endNum))
     for (report <- alarmOp.getAlarmsFuture(src, level, start, end)) yield
       Ok(Json.toJson(report))
   }
 
-  def instrumentStatusReport(id: String, startNum: Long, endNum: Long): Action[AnyContent] = Security.Authenticated {
+  def instrumentStatusReport(id: String, startNum: Long, endNum: Long): Action[AnyContent] = security.Authenticated {
     val (start, end) = (new DateTime(startNum).withMillisOfDay(0),
       new DateTime(endNum).withMillisOfDay(0))
 
@@ -736,22 +738,22 @@ class Query @Inject()(recordOp: RecordDB,
         else
           CellData("-", Seq.empty[String])
       }
-      RowData(report._1.getMillis, cellData)
+      RowData(report._1.getTime, cellData)
     }
 
     Ok(Json.toJson(InstrumentReport(columnNames, rows)))
   }
 
-  def recordList(mtStr: String, startLong: Long, endLong: Long): Action[AnyContent] = Security.Authenticated {
+  /*def recordList(mtStr: String, startLong: Long, endLong: Long): Action[AnyContent] = security.Authenticated {
     val monitorType = mtStr
     implicit val w = Json.writes[Record]
     val (start, end) = (new DateTime(startLong), new DateTime(endLong))
 
     val recordMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, List(monitorType), start, end)
     Ok(Json.toJson(recordMap(monitorType)))
-  }
+  }*/
 
-  def updateRecord(tabTypeStr: String) = Security.Authenticated(BodyParsers.parse.json) {
+  def updateRecord(tabTypeStr: String): Action[JsValue] = security.Authenticated(parse.json) {
     implicit request =>
       val user = request.user
       implicit val read = Json.reads[UpdateRecordParam]
@@ -774,10 +776,10 @@ class Query @Inject()(recordOp: RecordDB,
       Ok(Json.obj("ok" -> true))
   }
 
-  def manualAuditHistoryReport(start: Long, end: Long) = Security.Authenticated.async {
+  def manualAuditHistoryReport(start: Long, end: Long) = security.Authenticated.async {
     val startTime = new DateTime(start)
     val endTime = new DateTime(end)
-    implicit val w = Json.writes[ManualAuditLog2]
+    import manualAuditLogOp._
     val logFuture = manualAuditLogOp.queryLog2(startTime, endTime)
     val resultF =
       for {
@@ -977,7 +979,7 @@ class Query @Inject()(recordOp: RecordDB,
     chart
   }
 
-  def windRoseReport(monitor: String, monitorType: String, tabTypeStr: String, nWay: Int, start: Long, end: Long): Action[AnyContent] = Security.Authenticated.async {
+  def windRoseReport(monitor: String, monitorType: String, tabTypeStr: String, nWay: Int, start: Long, end: Long): Action[AnyContent] = security.Authenticated.async {
     implicit request =>
       assert(nWay == 8 || nWay == 16 || nWay == 32)
       try {
@@ -1071,7 +1073,7 @@ class Query @Inject()(recordOp: RecordDB,
   implicit val instrumentReportWrite: OWrites[InstrumentReport] = Json.writes[InstrumentReport]
 
   def aqiTrendChart(monitorStr: String, isDailyAqi: Boolean, tab:String, startNum: Long, endNum: Long, outputTypeStr: String): Action[AnyContent] =
-    Security.Authenticated.async {
+    security.Authenticated.async {
       val monitors = monitorStr.split(':')
       val start = new DateTime(startNum).withTimeAtStartOfDay()
       val end = new DateTime(endNum).withTimeAtStartOfDay() + 1.day
@@ -1146,7 +1148,7 @@ class Query @Inject()(recordOp: RecordDB,
       }
     }
 
-  def getTables: Action[AnyContent] = Security.Authenticated {
+  def getTables: Action[AnyContent] = security.Authenticated {
     implicit request =>
       Ok(Json.toJson(tableType.tableList))
   }

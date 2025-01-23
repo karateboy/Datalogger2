@@ -7,7 +7,7 @@ import com.google.inject.assistedinject.Assisted
 import com.typesafe.config.ConfigFactory
 import models.Protocol.ProtocolParam
 import play.api.Logger
-import play.api.libs.json.{JsError, Json}
+import play.api.libs.json.{JsError, Json, OWrites, Reads}
 
 import java.io.File
 
@@ -21,8 +21,9 @@ case class AkDeviceConfig(stationNo: String, channelNum:String, calibrationTime:
                         calibrateZeoDO: Option[Int], calibrateSpanDO: Option[Int], skipInternalVault: Option[Boolean])
 
 class AkDrv(_id:String, desp:String, protocols:List[String], tcpModelReg: AkModelReg) extends DriverOps {
-  implicit val cfgReads = Json.reads[AkDeviceConfig]
-  implicit val cfgWrites = Json.writes[AkDeviceConfig]
+  import ModelHelper._
+  implicit val cfgReads: Reads[AkDeviceConfig] = Json.reads[AkDeviceConfig]
+  implicit val cfgWrites: OWrites[AkDeviceConfig] = Json.writes[AkDeviceConfig]
 
   override def verifyParam(json: String) = {
     val ret = Json.parse(json).validate[AkDeviceConfig]

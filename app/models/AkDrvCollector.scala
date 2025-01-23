@@ -5,7 +5,6 @@ import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
 import models.AkDrv.{OpenCom, ReadRegister}
 import models.Protocol.ProtocolParam
-import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 import play.api._
 
 import javax.inject._
@@ -25,7 +24,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
   @volatile var (collectorState: String, instrumentStatusTypesOpt) = {
     val instList = instrumentOp.getInstrument(instId)
     if (instList.nonEmpty) {
-      val inst: Instrument = instList(0)
+      val inst: Instrument = instList.head
       (inst.state, inst.statusType)
     } else
       (MonitorStatus.NormalStat, None)
@@ -100,7 +99,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
   @volatile var connected = false
   @volatile var oldModelReg: Option[AkModelRegValue] = None
 
-  def receive: Receive = normalReceive
+  def receive: Receive = normalReceive()
 
   import scala.concurrent.{Future, blocking}
   def readRegFuture(recordCalibration: Boolean): Future[Unit] =
@@ -188,7 +187,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
     case ExecuteSeq(seq, on) =>
   }
 
-  @volatile var nextLoggingStatusTime = {
+  @volatile var nextLoggingStatusTime: DateTime = {
     def getNextTime(period: Int) = {
       val now = DateTime.now()
       val residual = (now.getMinuteOfHour + period) % period
@@ -201,9 +200,9 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
     nextTime
   }
 
-  def needStatus: Boolean = DateTime.now() >= nextLoggingStatusTime
+  private def needStatus: Boolean = DateTime.now() >= nextLoggingStatusTime
 
-  def regValueReporter(regValue: AkModelRegValue)(recordCalibration: Boolean) = {
+  def regValueReporter(regValue: AkModelRegValue)(recordCalibration: Boolean): Unit = {
     for (report <- reportData(regValue)) {
       context.parent ! report
       if (recordCalibration)
@@ -257,14 +256,14 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
     oldModelReg = Some(regValue)
   }
 
-  def logInstrumentStatus(regValue: AkModelRegValue) = {
+  def logInstrumentStatus(regValue: AkModelRegValue): Unit = {
     val isList = regValue.inputRegs.map {
       kv =>
         val k = kv._1
         val v = kv._2
-        instrumentStatusOp.Status(k.key, v)
+        InstrumentStatusDB.Status(k.key, v)
     }
-    val instStatus = instrumentStatusOp.InstrumentStatus(DateTime.now(), instId, isList).excludeNaN
+    val instStatus = InstrumentStatusDB.InstrumentStatus(DateTime.now().toDate, instId, isList).excludeNaN
     instrumentStatusOp.log(instStatus)
   }
 

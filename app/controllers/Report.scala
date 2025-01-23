@@ -8,14 +8,17 @@ import play.api.mvc._
 
 import java.nio.file.Files
 import javax.inject._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object PeriodReport extends Enumeration {
-  val DailyReport = Value("daily")
-  val MonthlyReport = Value("monthly")
-  val YearlyReport = Value("yearly")
+  val DailyReport: Value = Value("daily")
+  val MonthlyReport: Value = Value("monthly")
+  val YearlyReport: Value = Value("yearly")
 
-  def map = Map(DailyReport -> "日報", MonthlyReport -> "月報",
-    YearlyReport -> "年報")
+  def map: Map[Value, String] =
+    Map(DailyReport -> "日報",
+      MonthlyReport -> "月報",
+      YearlyReport -> "年報")
 
 }
 
@@ -26,13 +29,18 @@ case class HourEntry(time: Long, cells: CellData)
 case class DisplayReport(columnNames: Seq[String], rows: Seq[RowData], statRows: Seq[StatRow])
 
 @Singleton
-class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: Query, excelUtility: ExcelUtility) extends Controller {
+class Report @Inject()(monitorTypeOp: MonitorTypeDB,
+                       recordOp: RecordDB,
+                       query: Query,
+                       excelUtility: ExcelUtility,
+                       security: Security,
+                       cc: ControllerComponents) extends AbstractController(cc) {
   implicit val w3 = Json.writes[CellData]
   implicit val w2 = Json.writes[StatRow]
   implicit val w1 = Json.writes[RowData]
   implicit val w = Json.writes[DisplayReport]
 
-  def getMonitorReport(reportTypeStr: String, startNum: Long, outputTypeStr: String) = Security.Authenticated {
+  def getMonitorReport(reportTypeStr: String, startNum: Long, outputTypeStr: String): Action[AnyContent] = security.Authenticated {
     implicit request =>
       val reportType = PeriodReport.withName(reportTypeStr)
       val outputType = OutputType.withName(outputTypeStr)
@@ -104,7 +112,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
             Ok.sendFile(excelFile, fileName = _ =>
               s"${title}.xlsx",
               onClose = () => {
-                Files.deleteIfExists(excelFile.toPath())
+                Files.deleteIfExists(excelFile.toPath)
               })
           }
 
@@ -172,7 +180,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
             Ok.sendFile(excelFile, fileName = _ =>
               s"${title}.xlsx",
               onClose = () => {
-                Files.deleteIfExists(excelFile.toPath())
+                Files.deleteIfExists(excelFile.toPath)
               })
           }
 
@@ -223,16 +231,16 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
       val overCount = values.map {
         _.overCount
       }.sum
-      val max = if(values.nonEmpty)
+      val max = if (values.nonEmpty)
         values.map {
-        _.avg
-      }.max
+          _.avg
+        }.max
       else
         None
-      val min = if(values.nonEmpty)
+      val min = if (values.nonEmpty)
         values.map {
-        _.avg
-      }.min
+          _.avg
+        }.min
       else
         None
       val avg =
@@ -255,7 +263,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
 
           def windAvg1(): Option[Double] = {
             val windRecord = windSpeed.zip(windDir).filter(w => w._1.avg.isDefined && w._2.avg.isDefined)
-            if (windRecord.length == 0)
+            if (windRecord.isEmpty)
               None
             else {
               val wind_sin = windRecord.map {
@@ -281,7 +289,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
     }
   }
 
-  def monthlyHourReport(monitorTypeStr: String, startDate: Long, outputTypeStr: String) = Security.Authenticated {
+  def monthlyHourReport(monitorTypeStr: String, startDate: Long, outputTypeStr: String) = security.Authenticated {
     val mt = monitorTypeStr
     val start = new DateTime(startDate).withMillisOfDay(0).withDayOfMonth(1)
     val outputType = OutputType.withName(outputTypeStr)
@@ -292,8 +300,8 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
     def getHourPeriodStat(records: Seq[Record], hourList: List[DateTime]) = {
       val values = records.filter(rec => MonitorStatusFilter.isMatched(MonitorStatusFilter.ValidData, rec.status))
         .flatMap { r => r.value }
-      if (values.length == 0)
-        Stat(None, None, None, 0, 0, 0, false)
+      if (values.isEmpty)
+        Stat(None, None, None, 0, 0, 0, valid = false)
       else {
         val min = values.min
         val max = values.max
@@ -411,7 +419,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, query: 
       Ok.sendFile(excelFile, fileName = _ =>
         s"$title.xlsx",
         onClose = () => {
-          Files.deleteIfExists(excelFile.toPath())
+          Files.deleteIfExists(excelFile.toPath)
         })
     }
   }

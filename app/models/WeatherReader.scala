@@ -24,10 +24,10 @@ object WeatherReader {
             sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
             recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp): Option[ActorRef] = {
     def getConfig: Option[WeatherReaderConfig] = {
-      for {config <- configuration.getConfig("weatherReader")
-           enable <- config.getBoolean("enable")
-           dir <- config.getString("dir")
-           modelOpt = config.getString("model")
+      for {config <- configuration.getOptional[Configuration]("weatherReader")
+           enable <- config.getOptional[Boolean]("enable")
+           dir <- config.getOptional[String]("dir")
+           modelOpt = config.getOptional[String]("model")
            }
       yield
         WeatherReaderConfig(enable, dir, modelOpt.getOrElse(CR800_MODEL))

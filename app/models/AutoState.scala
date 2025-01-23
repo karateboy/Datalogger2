@@ -5,14 +5,14 @@ import play.api.Configuration
 case class AutoStateConfig(instID:String, state:String, period: String, time:String)
 object AutoState {
   def getConfig(configuration: Configuration): Option[Seq[AutoStateConfig]] = {
-    for (autoStateConfigList <- configuration.getConfigSeq("autoState")) yield {
+    for (autoStateConfigList <- configuration.getOptional[Seq[Configuration]]("autoState")) yield {
       try{
         autoStateConfigList.map {
           config =>
-            val instID = config.getString("instID").get
-            val state = config.getString("state").get
-            val period = config.getString("period").get
-            val time = config.getString("time").get
+            val instID = config.get[String]("instID")
+            val state = config.get[String]("state")
+            val period = config.get[String]("period")
+            val time = config.get[String]("time")
             AutoStateConfig(instID, state, period, time)
         }
       }catch {
@@ -21,5 +21,4 @@ object AutoState {
       }
     }
   }
-
 }

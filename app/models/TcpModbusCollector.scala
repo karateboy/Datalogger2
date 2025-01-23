@@ -26,10 +26,10 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
                                    @Assisted("protocol") protocol: ProtocolParam) extends Actor with ActorLogging {
   val InputKey = "Input"
 
+  import DataCollectManager._
   import TapiTxxCollector._
   import com.serotonin.modbus4j._
   import com.serotonin.modbus4j.ip.IpParameters
-  import DataCollectManager._
 
   val HoldingKey = "Holding"
   val ModeKey = "Mode"
@@ -697,9 +697,9 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
       kv =>
         val k = kv._1
         val v = kv._2
-        instrumentStatusOp.Status(k.key, v)
+        InstrumentStatusDB.Status(k.key, v)
     }
-    val instStatus = instrumentStatusOp.InstrumentStatus(DateTime.now(), instId, isList).excludeNaN
+    val instStatus = InstrumentStatusDB.InstrumentStatus(DateTime.now(), instId, isList).excludeNaN
     instrumentStatusOp.log(instStatus)
   }
 

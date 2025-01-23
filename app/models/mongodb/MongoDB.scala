@@ -8,12 +8,12 @@ import javax.inject._
 class MongoDB @Inject() (config: Configuration){
   import org.mongodb.scala._
 
-  private val url = config.getString("my.mongodb.url")
-  private val dbName = config.getString("my.mongodb.db")
+  private val url = config.get[String]("my.mongodb.url")
+  private val dbName = config.get[String]("my.mongodb.db")
   
-  val mongoClient: MongoClient = MongoClient(url.get)
-  val database: MongoDatabase = mongoClient.getDatabase(dbName.get)
-  val below44 = config.getBoolean("my.mongodb.below44").getOrElse(false)
+  private val mongoClient: MongoClient = MongoClient(url)
+  val database: MongoDatabase = mongoClient.getDatabase(dbName)
+  val below44: Boolean = config.getOptional[Boolean]("my.mongodb.below44").getOrElse(false)
   Logger.info("mongodb ready")
   def cleanup={
     mongoClient.close()

@@ -6,7 +6,6 @@ import models.ForwardManager.ForwardHourRecord
 import play.api._
 
 import java.io.File
-import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.mutable
 import scala.concurrent.duration.{FiniteDuration, MINUTES}
 import scala.concurrent.{Future, blocking}
@@ -23,17 +22,17 @@ object VocReader {
             recordOp: RecordDB, dataCollectManager: ActorRef): Option[ActorRef] = {
     def getConfig: Option[VocReaderConfig] = {
       def getMonitorConfig(config: Configuration) = {
-        val id = config.getString("id").get
-        val name = config.getString("name").get
-        val lat = config.getDouble("lat").get
-        val lng = config.getDouble("lng").get
-        val path = config.getString("path").get
+        val id = config.get[String]("id")
+        val name = config.get[String]("name")
+        val lat = config.get[Double]("lat")
+        val lng = config.get[Double]("lng")
+        val path = config.get[String]("path")
         VocMonitorConfig(id, name, lat, lng, path)
       }
 
-      for {config <- configuration.getConfig("vocReader")
-           enable <- config.getBoolean("enable") if enable
-           monitorConfigs <- config.getConfigSeq("monitors")
+      for {config <- configuration.getOptional[Configuration]("vocReader")
+           enable <- config.getOptional[Boolean]("enable") if enable
+           monitorConfigs <- config.getOptional[Seq[Configuration]]("monitors")
            monitors = monitorConfigs.map(getMonitorConfig)
            }
       yield
@@ -80,8 +79,8 @@ class VocReader(config: VocReaderConfig,
   Logger.info("VocReader start")
 
   import DataCollectManager._
-  import VocReader._
   import ReaderHelper._
+  import VocReader._
   import context.dispatcher
 
   def receive: Receive = handler(mutable.Map.empty[String, mutable.Set[String]], None)

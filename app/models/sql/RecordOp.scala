@@ -162,7 +162,7 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
   private def getTab(tabName: String) = SQLSyntax.createUnsafely(s"[dbo].[$tabName]")
 
   private def mapper(rs: WrappedResultSet): RecordList = {
-    val id = RecordListID(rs.jodaDateTime("time").toDate, rs.string("monitor"))
+    val id = RecordListID(rs.timestamp("time"), rs.string("monitor"))
     val mtDataOptList =
       for (mt <- mtList) yield {
         for (status <- rs.stringOpt(s"${mt}_s")) yield

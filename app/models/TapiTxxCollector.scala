@@ -635,9 +635,9 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
       kv =>
         val k = kv._1
         val v = kv._2
-        instrumentStatusOp.Status(k.key, v)
+        InstrumentStatusDB.Status(k.key, v)
     }
-    val instStatus = instrumentStatusOp.InstrumentStatus(DateTime.now(), instId, isList).excludeNaN
+    val instStatus = InstrumentStatusDB.InstrumentStatus(DateTime.now(), instId, isList).excludeNaN
     instrumentStatusOp.log(instStatus)
   }
 

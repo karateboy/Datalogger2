@@ -4,8 +4,6 @@ import akka.actor._
 import com.github.nscala_time.time.Imports.{DateTime, Period}
 import com.github.tototoshi.csv.CSVReader
 import models.ModelHelper.{errorHandler, getPeriods}
-import models.SpectrumReader.getLastModified
-import models.mongodb.RecordOp
 import play.api._
 
 import java.io.File
@@ -23,10 +21,10 @@ object SpectrumReader {
             sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
             recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp): Option[ActorRef] = {
     def getConfig: Option[SpectrumReaderConfig] = {
-      for {config <- configuration.getConfig("spectrumReader")
-           enable <- config.getBoolean("enable")
-           dir <- config.getString("dir")
-           postfix <- config.getString("postfix")
+      for {config <- configuration.getOptional[Configuration]("spectrumReader")
+           enable <- config.getOptional[Boolean]("enable")
+           dir <- config.getOptional[String]("dir")
+           postfix <- config.getOptional[String]("postfix")
            }
       yield
         SpectrumReaderConfig(enable, dir, postfix)
@@ -37,10 +35,10 @@ object SpectrumReader {
   }
 
   def props(config: SpectrumReaderConfig, sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) =
-    Props(classOf[SpectrumReader], config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
+            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp): Props =
+    Props(new SpectrumReader(config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp))
 
-  def getLastModified(f: File): FileTime = {
+  private def getLastModified(f: File): FileTime = {
     import java.nio.file._
     import java.nio.file.attribute.DosFileAttributes
 
@@ -77,8 +75,8 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
                      monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) extends Actor {
   Logger.info(s"SpectrumReader start reading: ${config.dir}")
 
-  import SpectrumReader._
   import DataCollectManager._
+  import SpectrumReader._
   import context.dispatcher
 
   @volatile var timer: Cancellable = context.system.scheduler.scheduleOnce(FiniteDuration(5, SECONDS), self, ParseReport)

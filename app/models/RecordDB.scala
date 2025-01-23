@@ -14,12 +14,10 @@ import scala.concurrent.Future
 
 trait RecordDB {
 
-  implicit val recordWrite: OWrites[Record] = Json.writes[Record]
   implicit val mtRecordWrite: OWrites[MtRecord] = Json.writes[MtRecord]
   implicit val idWrite: OWrites[RecordListID] = Json.writes[RecordListID]
   implicit val recordListWrite: OWrites[RecordList] = Json.writes[RecordList]
 
-  implicit val recordRead: Reads[Record] = Json.reads[Record]
   implicit val mtRecordRead: Reads[MtRecord] = Json.reads[MtRecord]
   implicit val idRead: Reads[RecordListID] = Json.reads[RecordListID]
   implicit val recordListRead: Reads[RecordList] = Json.reads[RecordList]

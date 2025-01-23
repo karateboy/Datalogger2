@@ -29,9 +29,9 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
                                  deviceConfig: DeviceConfig,
                                  protocol: ProtocolParam) extends Actor with ActorLogging {
 
-  import TapiTxxCollector._
-  import DataCollectManager._
   import AbstractCollector._
+  import DataCollectManager._
+  import TapiTxxCollector._
   import context.dispatcher
 
   self ! ConnectHost
@@ -583,9 +583,9 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
       kv =>
         val k = kv._1
         val v = kv._2
-        instrumentStatusOp.Status(k.key, v)
+        InstrumentStatusDB.Status(k.key, v)
     }
-    val instStatus = instrumentStatusOp.InstrumentStatus(DateTime.now(), instId, isList).excludeNaN
+    val instStatus = InstrumentStatusDB.InstrumentStatus(DateTime.now(), instId, isList).excludeNaN
     instrumentStatusOp.log(instStatus)
   }
 

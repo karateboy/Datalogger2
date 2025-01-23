@@ -1,14 +1,15 @@
 package controllers
 
-import models.{Group, LoggerConfig}
+import models.Group
 import play.api.mvc.Security._
 import play.api.mvc._
 
-class AuthenticatedRequest[A](val userinfo: String, request: Request[A]) extends WrappedRequest[A](request)
+import javax.inject.Inject
+import scala.concurrent._
 
 case class UserInfo(id: String, name: String, group: String, isAdmin: Boolean)
 
-object Security {
+class Security @Inject()(cc: ControllerComponents, implicit val ec: ExecutionContext) extends AbstractController(cc) {
   val idKey = "ID"
   val nameKey = "Name"
   val adminKey = "Admin"
@@ -16,10 +17,6 @@ object Security {
 
 
   def getUserinfo(request: RequestHeader): Option[UserInfo] = {
-    val defaultUser = UserInfo("sales@wecc.com.tw", "Aragorn", Group.PLATFORM_ADMIN, isAdmin = true)
-    if(LoggerConfig.config.bypassLogin)
-      return Some(defaultUser)
-
     val userInfo =
       for {
         id <- request.session.get(idKey)
@@ -29,11 +26,8 @@ object Security {
       } yield
         UserInfo(id, name, group, admin.toBoolean)
 
-    userInfo
+    Some(userInfo.getOrElse(UserInfo("sales@wecc.com.tw", "Aragorn", Group.PLATFORM_ADMIN, isAdmin = true)))
   }
-
-  private def onUnauthorized(request: RequestHeader): Results.Status = Results.Unauthorized
-
 
   //def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A]) => Future[Result]) = {
   //  AuthenticatedBuilder(getUserinfo _, onUnauthorized)
@@ -45,15 +39,18 @@ object Security {
   //  }
   // }
 
-  def setUserinfo[A](request: Request[A], userInfo: UserInfo): Session = {
-    request.session +
-      (idKey -> userInfo.id) +
-      (adminKey -> userInfo.isAdmin.toString) +
-      (nameKey -> userInfo.name) +
-      (groupKey -> userInfo.group)
+  def setUserinfo[A](request: Request[A], userInfo: UserInfo): (String, String) = {
+      request.session +
+      idKey -> userInfo.id +
+      adminKey -> userInfo.isAdmin.toString +
+      nameKey -> userInfo.name +
+      groupKey -> userInfo.group
   }
 
-  def getUserInfo[A]()(implicit request: Request[A]): Option[UserInfo] = getUserinfo(request)
+  def getUserInfo[A]()(implicit request: Request[A]): Option[UserInfo] = {
+    getUserinfo(request)
+  }
 
-  def Authenticated = new AuthenticatedBuilder(getUserinfo, onUnauthorized)
+  def Authenticated: AuthenticatedBuilder[UserInfo]
+  = new AuthenticatedBuilder(userinfo = getUserinfo, defaultParser = parse.defaultBodyParser)
 }

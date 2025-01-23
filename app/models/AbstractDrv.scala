@@ -10,8 +10,7 @@ object AbstractDrv {
 }
 
 abstract class AbstractDrv(_id: String, desp: String, protocols: List[String]) extends DriverOps {
-  implicit val cfgReads = Json.reads[DeviceConfig]
-  implicit val cfgWrites = Json.writes[DeviceConfig]
+  import DeviceConfig._
 
   def getDataRegList: List[DataReg]
 

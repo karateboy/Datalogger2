@@ -25,7 +25,10 @@ case class DeviceConfig(slaveID: Option[Int], calibrationTime: Option[LocalTime]
                         calibrateSpanDO: Option[Int]= None,
                         skipInternalVault: Option[Boolean]= None)
 object DeviceConfig{
-  val default = DeviceConfig(Some(1))
+  val default: DeviceConfig = DeviceConfig(Some(1))
+  import ModelHelper._
+  implicit val cfgReads: Reads[DeviceConfig] = Json.reads[DeviceConfig]
+  implicit val cfgWrites: OWrites[DeviceConfig] = Json.writes[DeviceConfig]
 }
 
 case class DataReg(monitorType: String, address: Int, multiplier: Float)
@@ -246,9 +249,7 @@ object TcpModbusDrv2 {
 }
 
 class TcpModbusDrv2(_id: String, desp: String, protocols: List[String], tcpModelReg: TcpModelReg) extends DriverOps {
-  implicit val cfgReads = Json.reads[DeviceConfig]
-  implicit val cfgWrites = Json.writes[DeviceConfig]
-
+  import DeviceConfig._
   override def verifyParam(json: String) = {
     val ret = Json.parse(json).validate[DeviceConfig]
     ret.fold(

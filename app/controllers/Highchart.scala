@@ -1,14 +1,11 @@
 package controllers
-import play.api._
-import play.api.mvc._
-import play.api.Logger
-import models._
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
-import play.api.libs.json._
+import models._
+import play.api._
 import play.api.libs.functional.syntax._
-import models.ModelHelper._
-import play.api.Play.current
+import play.api.libs.json._
+import play.api.mvc._
 
 object Highchart {
   case class XAxis(categories: Option[Seq[String]], gridLineWidth: Option[Int]=None, tickInterval:Option[Int]=None)
@@ -78,8 +75,8 @@ object Highchart {
                           yAxis: ScatterAxis,
                           series: Seq[ScatterSeries],
                           downloadFileName: Option[String]=None)
-  implicit val titleWrite = Json.writes[Title]
-  implicit val scatterAxisWrite = Json.writes[ScatterAxis]
-  implicit val scatterSeriesWrite = Json.writes[ScatterSeries]
-  implicit val scatterChartWrite = Json.writes[ScatterChart]
+  implicit val titleWrite: OWrites[Title] = Json.writes[Title]
+  implicit val scatterAxisWrite: OWrites[ScatterAxis] = Json.writes[ScatterAxis]
+  implicit val scatterSeriesWrite: OWrites[ScatterSeries] = Json.writes[ScatterSeries]
+  implicit val scatterChartWrite: OWrites[ScatterChart] = Json.writes[ScatterChart]
 }

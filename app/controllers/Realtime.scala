@@ -12,13 +12,26 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class Realtime @Inject()
-(monitorTypeOp: MonitorTypeDB, dataCollectManagerOp: DataCollectManagerOp, instrumentOp: InstrumentDB,
- monitorStatusOp: MonitorStatusDB, recordDB: RecordDB, sysConfigDB: SysConfigDB) extends Controller {
+(monitorTypeOp: MonitorTypeDB,
+ dataCollectManagerOp: DataCollectManagerOp,
+ instrumentOp: InstrumentDB,
+ monitorStatusOp: MonitorStatusDB,
+ recordDB: RecordDB,
+ sysConfigDB: SysConfigDB,
+ security: Security,
+ cc: ControllerComponents) extends AbstractController(cc) {
   private val overTimeLimit = 6
 
-  case class MonitorTypeStatus(_id: String, desp: String, value: String, unit: String, instrument: String, status: String, classStr: Seq[String], order: Int)
+  case class MonitorTypeStatus(_id: String,
+                               desp: String,
+                               value: String,
+                               unit: String,
+                               instrument: String,
+                               status: String,
+                               classStr: Seq[String],
+                               order: Int)
 
-  def MonitorTypeStatusList(): Action[AnyContent] = Security.Authenticated.async {
+  def MonitorTypeStatusList(): Action[AnyContent] = security.Authenticated.async {
     implicit request =>
 
       implicit val mtsWrite: OWrites[MonitorTypeStatus] = Json.writes[MonitorTypeStatus]
@@ -89,7 +102,7 @@ class Realtime @Inject()
 
   case class RealtimeAQI(date: Date, aqi: AqiExplainReport)
 
-  def getRealtimeAQI: Action[AnyContent] = Security.Authenticated.async {
+  def getRealtimeAQI: Action[AnyContent] = security.Authenticated.async {
     val lastHour = DateTime.now().minusHours(1).withMinuteOfHour(0)
       .withSecondOfMinute(0).withMillisOfSecond(0)
     for (ret <- AQI.getMonitorRealtimeAQI(Monitor.activeId, lastHour)(recordDB)) yield {
@@ -102,13 +115,13 @@ class Realtime @Inject()
     }
   }
 
-  def getAqiMonitorTypeMapping(): Action[AnyContent] = Security.Authenticated.async(
+  def getAqiMonitorTypeMapping: Action[AnyContent] = security.Authenticated.async(
     for (monitorTypes <- sysConfigDB.getAqiMonitorTypes) yield {
       Ok(Json.toJson(monitorTypes))
     }
   )
 
-  def postAqiMonitorTypeMapping() = Security.Authenticated.async(BodyParsers.parse.json) {
+  def postAqiMonitorTypeMapping(): Action[JsValue] = security.Authenticated.async(parse.json) {
     implicit request =>
       val ret = request.body.validate[Seq[String]]
       ret.fold(err => {

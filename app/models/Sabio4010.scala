@@ -1,15 +1,14 @@
 package models
 
-import akka.actor.{Actor, ActorSystem, Cancellable}
+import akka.actor.{Actor, Cancellable}
 import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports.DateTime
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
 import models.Sabio4010Collector._
 import models.ThetaCollector.OpenComPort
-import models.mongodb.InstrumentStatusOp
 import play.api.Logger
-import play.api.libs.json.{JsError, Json}
+import play.api.libs.json.{JsError, Json, Reads}
 
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -19,7 +18,7 @@ import scala.concurrent.{Future, blocking}
 case class Sabio4010Config(address: String)
 
 object Sabio4010 extends DriverOps {
-  implicit val reads = Json.reads[Sabio4010Config]
+  implicit val reads: Reads[Sabio4010Config] = Json.reads[Sabio4010Config]
 
   override def id: String = "sabio4010"
 
@@ -60,7 +59,7 @@ object Sabio4010Collector {
   val Lamp = "Lamp"
   val Perm = "Perm"
   val Gas = "Gas"
-  val InstrumentStatusTypeList = List(
+  val InstrumentStatusTypeList: List[InstrumentStatusType] = List(
     InstrumentStatusType(Dilution + 1, 1, "稀釋MFC設定點(SCCM)", "SCCM"),
     InstrumentStatusType(Dilution + 2, 2, "已測量的MFC流速", "SCCM"),
     InstrumentStatusType(Dilution + 3, 3, "臭氧MFC設定點", "kPa"),
@@ -101,7 +100,7 @@ object Sabio4010Collector {
 class Sabio4010Collector @Inject()(instrumentOp: InstrumentDB, instrumentStatusOp: InstrumentStatusDB)
                                   (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: Sabio4010Config) extends Actor {
   import DataCollectManager._
-  val statusTimerOpt: Option[Cancellable] = None
+  private val statusTimerOpt: Option[Cancellable] = None
   //val statusTimerOpt: Option[Cancellable] = Some(system.scheduler.schedule(Duration(5, MINUTES), Duration(10, MINUTES),
   //  self, CollectStatus))
   @volatile var cancelable: Cancellable = _
@@ -181,10 +180,10 @@ class Sabio4010Collector @Inject()(instrumentOp: InstrumentDB, instrumentStatusO
 
     case CollectStatus =>
       import instrumentStatusOp._
-      var statusList = Seq.empty[Status]
+      var statusList = Seq.empty[InstrumentStatusDB.Status]
       Logger.info("Collect Sabio status")
 
-      def getStatus(subType: String, statusType: String, limit: Int): Unit = {
+      def extractStatus(subType: String, statusType: String, limit: Int): Unit = {
         comm.os.write(getCmdString("GS", subType).getBytes)
 
         var lines = comm.getMessageByCrWithTimeout(timeout = 3)
@@ -193,25 +192,25 @@ class Sabio4010Collector @Inject()(instrumentOp: InstrumentDB, instrumentStatusO
         else
           lines = lines.drop(1)
 
-        val tokens = lines(0).split(",")
+        val tokens = lines.head.split(",")
         val dilutionStatuses =
           for ((token, idx) <- tokens.zipWithIndex if idx < limit) yield
-            Status(s"$statusType${idx + 1}", token.toDouble)
+            InstrumentStatusDB.Status(s"$statusType${idx + 1}", token.toDouble)
         statusList = statusList ++ dilutionStatuses
       }
 
       try {
-        getStatus("D", Dilution, 8)
+        extractStatus("D", Dilution, 8)
         Logger.info(s"Collect D status ${statusList.size}")
-        getStatus("O", Ozone, 7)
+        extractStatus("O", Ozone, 7)
         Logger.info(s"Collect O status ${statusList.size}")
-        getStatus("P", Lamp, 10)
+        extractStatus("P", Lamp, 10)
         Logger.info(s"Collect P status ${statusList.size}")
-        getStatus("V", Perm, 4)
+        extractStatus("V", Perm, 4)
         Logger.info(s"Collect V status ${statusList.size}")
-        getStatus("G", Gas, 1)
+        extractStatus("G", Gas, 1)
         Logger.info(s"Collect G status ${statusList.size}")
-        val is = instrumentStatusOp.InstrumentStatus(DateTime.now(), id, statusList.toList)
+        val is = InstrumentStatusDB.InstrumentStatus(DateTime.now().toDate, id, statusList.toList)
         instrumentStatusOp.log(is)
       } catch {
         case ex: Exception =>
@@ -220,7 +219,7 @@ class Sabio4010Collector @Inject()(instrumentOp: InstrumentDB, instrumentStatusO
 
   }
 
-  def getCmdString(cmd: String, param: String): String = {
+  private def getCmdString(cmd: String, param: String): String = {
     val cmdStr =
       if (param.isEmpty)
         s"@$cmd,${config.address}"
@@ -231,7 +230,7 @@ class Sabio4010Collector @Inject()(instrumentOp: InstrumentDB, instrumentStatusO
     s"${cmdStr}\r"
   }
 
-  override def postStop() {
+  override def postStop(): Unit = {
     super.postStop()
     statusTimerOpt map {
       _.cancel()

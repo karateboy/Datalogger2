@@ -22,11 +22,11 @@ class NewTaipeiOpenData @Inject()(WSClient: WSClient,
 
 
   def getConfig: Option[NewTaipeiOpenDataConfig] =
-    for {config <- configuration.getConfig("newTaipeiOpenData")
-         enable <- config.getBoolean("enable")
-         pid <- config.getString("pid")
-         api <- config.getString("api")
-         url <- config.getString("url")
+    for {config <- configuration.getOptional[Configuration]("newTaipeiOpenData")
+         enable <- config.getOptional[Boolean]("enable")
+         pid <- config.getOptional[String]("pid")
+         api <- config.getOptional[String]("api")
+         url <- config.getOptional[String]("url")
          } yield
       NewTaipeiOpenDataConfig(enable, pid, api, url)
 
@@ -65,7 +65,7 @@ class NewTaipeiOpenData @Inject()(WSClient: WSClient,
         implicit val w2: OWrites[PayLoad] = Json.writes[PayLoad]
         val postUrl = s"${config.url}api/v1/open.dataset.content.update"
         val f = WSClient.url(postUrl)
-          .withHeaders("Content-Type" -> "application/json", "Authorization" -> config.api)
+          .addHttpHeaders("Content-Type" -> "application/json", "Authorization" -> config.api)
           .post(Json.toJson(payload))
         f.onComplete {
           case Success(response) =>

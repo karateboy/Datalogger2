@@ -107,7 +107,7 @@ GET           /ActiveMonitor                                                    
 PUT           /ActiveMonitor/:id                                                                   controllers.HomeController.setActiveMonitorID(id)
 
 
-GET           /Record/:monitorType/:start/:end                                                     controllers.Query.recordList(monitorType, start:Long, end:Long)
+#GET           /Record/:monitorType/:start/:end                                                    controllers.Query.recordList(monitorType, start:Long, end:Long)
 PUT           /Record/:tabType                                                                     controllers.Query.updateRecord(tabType)
 
 GET           /HourRecord/:start/:end                                                              controllers.Query.hourRecordList(start:Long, end:Long)

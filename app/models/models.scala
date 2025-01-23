@@ -3,7 +3,6 @@ package models
 import com.github.nscala_time.time.Imports._
 import controllers.Assets.BadRequest
 import play.api._
-import play.api.data.validation.ValidationError
 import play.api.libs.json._
 import play.api.mvc.Result
 
@@ -25,20 +24,20 @@ object ModelHelper {
 
   import org.mongodb.scala.bson.BsonDateTime
 
-  implicit def toDateTime(time: BsonDateTime) = new DateTime(time.getValue)
+  implicit def toDateTime(time: BsonDateTime): DateTime = new DateTime(time.getValue)
 
-  implicit def toBsonDateTime(jdtime: DateTime) = new BsonDateTime(jdtime.getMillis)
+  implicit def toBsonDateTime(jdtime: DateTime): BsonDateTime = new BsonDateTime(jdtime.getMillis)
 
   def main(args: Array[String]) {
     val timestamp = DateTime.parse("2015-04-01")
     println(timestamp.toString())
   }
 
-  def logException(ex: Throwable) = {
+  def logException(ex: Throwable): Unit = {
     Logger.error(ex.getMessage, ex)
   }
 
-  def logInstrumentError(id: String, msg: String, ex: Throwable) = {
+  def logInstrumentError(id: String, msg: String, ex: Throwable): Unit = {
     Logger.error(msg, ex)
     //log(instStr(id), Level.ERR, msg)
   }
@@ -60,12 +59,12 @@ object ModelHelper {
       throw ex
   }
 
-  def handleJsonValidateError(error: Seq[(JsPath, Seq[ValidationError])]): Result = {
+  def handleJsonValidateError(error: Seq[(JsPath, Seq[JsonValidationError])]): Result = {
     Logger.error(JsError.toJson(error).toString(), new Exception("Json validate error"))
     BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
   }
 
-  def handleJsonValidateErrorFuture(error: Seq[(JsPath, Seq[ValidationError])]): Future[Result] = {
+  def handleJsonValidateErrorFuture(error: Seq[(JsPath, Seq[JsonValidationError])]): Future[Result] = {
     Future.successful(handleJsonValidateError(error))
   }
 
@@ -140,7 +139,7 @@ object ModelHelper {
 
   import scala.concurrent._
 
-  def waitReadyResult[T](f: Future[T]) = {
+  def waitReadyResult[T](f: Future[T]): T = {
     import scala.concurrent.duration._
     import scala.util._
 
@@ -154,18 +153,29 @@ object ModelHelper {
         throw ex
     }
   }
+
+  implicit val localTimeReads: Reads[LocalTime] = new Reads[LocalTime] {
+    override def reads(json: JsValue): JsResult[LocalTime] = {
+      val str = json.as[String]
+      val time = LocalTime.parse(str)
+      JsSuccess(time)
+    }
+  }
+
+  implicit val localTimeWrites: Writes[LocalTime] = new Writes[LocalTime] {
+    override def writes(o: LocalTime): JsValue = JsString(o.toString())
+  }
 }
 
 object EnumUtils {
   def enumReads[E <: Enumeration](enum: E): Reads[E#Value] = new Reads[E#Value] {
     def reads(json: JsValue): JsResult[E#Value] = json match {
-      case JsString(s) => {
+      case JsString(s) =>
         try {
           JsSuccess(enum.withName(s))
         } catch {
           case _: NoSuchElementException => JsError(s"Enumeration expected of type: '${enum.getClass}', but it does not appear to contain the value: '$s'")
         }
-      }
       case _ => JsError("String value expected")
     }
   }

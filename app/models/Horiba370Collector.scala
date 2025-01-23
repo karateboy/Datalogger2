@@ -6,7 +6,7 @@ import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.{ProtocolParam, tcp}
 import play.api._
-import play.api.libs.json.{JsError, Json}
+import play.api.libs.json.{JsError, Json, OWrites, Reads}
 import akka.io._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -22,7 +22,7 @@ object Horiba370Collector extends DriverOps {
   val Press = "Press"
   val Flow = "Flow"
   val Temp = "Temp"
-  val InstrumentStatusTypeList = List(
+  val InstrumentStatusTypeList: List[InstrumentStatusType] = List(
     InstrumentStatusType(FlameStatus, 10, "Flame Status", "0:Extinguishing/1:Ignition sequence/2:Ignition"),
     InstrumentStatusType(Press + 0, 37, "Presssure 0", "kPa"),
     InstrumentStatusType(Press + 1, 37, "Presssure 1", "kPa"),
@@ -48,10 +48,11 @@ object Horiba370Collector extends DriverOps {
     InstrumentStatusType(Temp + 8, 39, "Temperature 8", "C"),
     InstrumentStatusType(Temp + 9, 39, "Temperature 9", "C"))
 
-  implicit val cfgRead = Json.reads[Horiba370Config]
-  implicit val cfgWrite = Json.writes[Horiba370Config]
+  import ModelHelper._
+  implicit val cfgRead: Reads[Horiba370Config] = Json.reads[Horiba370Config]
+  implicit val cfgWrite: OWrites[Horiba370Config] = Json.writes[Horiba370Config]
 
-  def getNextLoggingStatusTime = {
+  private def getNextLoggingStatusTime = {
     import com.github.nscala_time.time.Imports._
     def getNextTime(period: Int) = {
       val now = DateTime.now()
@@ -69,7 +70,7 @@ object Horiba370Collector extends DriverOps {
     nextTime
   }
 
-  override def verifyParam(json: String) = {
+  override def verifyParam(json: String): String = {
     val ret = Json.parse(json).validate[Horiba370Config]
     ret.fold(
       error => {
@@ -89,12 +90,12 @@ object Horiba370Collector extends DriverOps {
   import Protocol.ProtocolParam
   import akka.actor._
 
-  override def getCalibrationTime(param: String) = {
+  override def getCalibrationTime(param: String): Option[LocalTime] = {
     val config = validateParam(param)
     config.calibrationTime
   }
 
-  def validateParam(json: String) = {
+  def validateParam(json: String): Horiba370Config = {
     val ret = Json.parse(json).validate[Horiba370Config]
     ret.fold(
       error => {
@@ -167,13 +168,13 @@ class Horiba370Collector @Inject()
   @volatile var raiseStartTimerOpt: Option[Cancellable] = None
   @volatile var calibrateTimerOpt: Option[Cancellable] = None
 
-  def logStatus() = {
+  def logStatus(): Unit = {
     import com.github.nscala_time.time.Imports._
     //Log Instrument state
     if (DateTime.now() > nextLoggingStatusTime) {
       try {
-        val statusList = statusMap map { kv => instrumentStatusOp.Status(kv._1, kv._2) }
-        val is = instrumentStatusOp.InstrumentStatus(DateTime.now(), id, statusList.toList)
+        val statusList = statusMap map { kv => InstrumentStatusDB.Status(kv._1, kv._2) }
+        val is = InstrumentStatusDB.InstrumentStatus(DateTime.now().toDate, id, statusList.toList)
         instrumentStatusOp.log(is)
       } catch {
         case _: Throwable =>
