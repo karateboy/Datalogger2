@@ -15,7 +15,7 @@ import scala.util.Success
 
 @Singleton
 class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
-
+  val logger: Logger = Logger(this.getClass)
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
@@ -42,7 +42,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
       UpdateOptions().upsert(true)).toFuture()
 
     f.onFailure({
-      case ex: Exception => Logger.error(ex.getMessage, ex)
+      case ex: Exception => logger.error(ex.getMessage, ex)
     })
     f
   }
@@ -57,7 +57,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
       and(equal("_id", RecordListID(new Date(dt), monitor)),
         equal("mtDataList.mtName", mt)), set("mtDataList.$.status", status)).toFuture()
     f.onFailure({
-      case ex: Exception => Logger.error(ex.getMessage, ex)
+      case ex: Exception => logger.error(ex.getMessage, ex)
     })
     f
   }

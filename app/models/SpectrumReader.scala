@@ -17,6 +17,7 @@ import scala.concurrent.{Future, blocking}
 case class SpectrumReaderConfig(enable: Boolean, dir: String, postfix: String)
 
 object SpectrumReader {
+  val logger: Logger = Logger(this.getClass)
   def start(configuration: Configuration, actorSystem: ActorSystem,
             sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
             recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp): Option[ActorRef] = {
@@ -48,13 +49,13 @@ object SpectrumReader {
 
   def listDirs(files_path: String, lastParseTime: Instant): List[File] = {
     val path = new java.io.File(files_path)
-    if (path.exists() && path.isDirectory()) {
+    if (path.exists() && path.isDirectory) {
       val allFileAndDirs = new java.io.File(files_path).listFiles().toList.filter(f => {
         f != null
       })
 
-      val dirs = allFileAndDirs.filter(p => p.isDirectory())
-      val files = allFileAndDirs.filter(p => !p.isDirectory() && p.getName.endsWith("csv")
+      val dirs = allFileAndDirs.filter(p => p.isDirectory)
+      val files = allFileAndDirs.filter(p => !p.isDirectory && p.getName.endsWith("csv")
         && getLastModified(p).toInstant.isAfter(lastParseTime))
       if (dirs.isEmpty)
         files
@@ -63,7 +64,7 @@ object SpectrumReader {
         files ++ deepDir
       }
     } else {
-      Logger.warn(s"invalid input path ${files_path}")
+      logger.warn(s"invalid input path ${files_path}")
       List.empty[File]
     }
   }
@@ -73,7 +74,8 @@ object SpectrumReader {
 
 class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
                      monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) extends Actor {
-  Logger.info(s"SpectrumReader start reading: ${config.dir}")
+  val logger: Logger = Logger(this.getClass)
+  logger.info(s"SpectrumReader start reading: ${config.dir}")
 
   import DataCollectManager._
   import SpectrumReader._
@@ -89,12 +91,12 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
             processInputPath()
           }catch{
             case ex:Throwable =>
-              Logger.error("fail to process spectrum folder", ex)
+              logger.error("fail to process spectrum folder", ex)
           }
         }
       }
     case ReaderReset =>
-      Logger.info("SpectrumReader reset")
+      logger.info("SpectrumReader reset")
       timer.cancel()
       timer = context.system.scheduler.scheduleOnce(FiniteDuration(5, SECONDS), self, ParseReport)
   }
@@ -152,7 +154,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
           Some((dt, value))
         } catch {
           case ex: Throwable =>
-            Logger.warn("failed to parse spectrum file", ex)
+            logger.warn("failed to parse spectrum file", ex)
             None
         }
     val minAvg: Map[LocalDateTime, Double] = values.flatten.toList.groupBy(t => t._1.withSecond(0).withNano(0))

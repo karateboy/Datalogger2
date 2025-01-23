@@ -1,18 +1,16 @@
 package models
-import play.api._
 import akka.actor._
-import play.api.Play.current
-import play.api.libs.concurrent.Akka
-import Protocol.{ProtocolParam, serial}
+import com.google.inject.assistedinject.Assisted
+import models.ModelHelper._
+import models.Protocol.{ProtocolParam, serial}
+import play.api._
+import play.api.libs.json.{JsError, Json}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import ModelHelper._
-import com.google.inject.assistedinject.Assisted
-import models.mongodb.AlarmOp
-import play.api.libs.json.{JsError, Json}
 
 case class F701_20Config(monitorType: String)
 object VerewaF701Collector extends DriverOps{
+  val logger: Logger = Logger(getClass)
   case object OpenComPort
   case object ReadData
 
@@ -22,7 +20,7 @@ object VerewaF701Collector extends DriverOps{
     val actorName = s"F701_${mt}_${count}"
     count += 1
     val collector = context.actorOf(Props(classOf[VerewaF701Collector], id, protocolParam, mt), name = actorName)
-    Logger.info(s"$actorName is created.")
+    logger.info(s"$actorName is created.")
 
     collector
   }
@@ -35,7 +33,7 @@ object VerewaF701Collector extends DriverOps{
     val ret = Json.parse(json).validate[F701_20Config]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => {
@@ -65,7 +63,7 @@ object VerewaF701Collector extends DriverOps{
     val ret = Json.parse(json).validate[F701_20Config]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => param)
@@ -93,14 +91,14 @@ import javax.inject._
 class VerewaF701Collector @Inject()
 (alarmOp: AlarmDB, monitorStatusOp: MonitorStatusDB, instrumentOp: InstrumentDB, system: ActorSystem)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: F701_20Config) extends Actor {
-  import VerewaF701Collector._
   import DataCollectManager._
+  import VerewaF701Collector._
+
   import scala.concurrent.duration._
   @volatile var cancelable = system.scheduler.scheduleOnce(Duration(1, SECONDS), self, OpenComPort)
   @volatile var serialOpt: Option[SerialComm] = None
 
-  import scala.concurrent.Future
-  import scala.concurrent.blocking
+  import scala.concurrent.{Future, blocking}
 
   @volatile var collectorStatus = MonitorStatus.NormalStat
   @volatile var instrumentStatus: Byte = 0
@@ -196,8 +194,8 @@ class VerewaF701Collector @Inject()
         cancelable = system.scheduler.schedule(scala.concurrent.duration.Duration(3, SECONDS), Duration(3, SECONDS), self, ReadData)
       } catch {
         case ex: Exception =>
-          Logger.error(ex.getMessage, ex)
-          Logger.info("Reopen 1 min latter...")
+          logger.error(ex.getMessage, ex)
+          logger.info("Reopen 1 min latter...")
           cancelable = system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort)
       }
 
@@ -218,7 +216,7 @@ class VerewaF701Collector @Inject()
               } {
                 if (channel == 0) {
                   checkStatus(measure.status)
-                  //Logger.debug(s"$mt, $measure.value, $collectorStatus")
+                  //logger.debug(s"$mt, $measure.value, $collectorStatus")
                   context.parent ! ReportData(List(MonitorTypeData(config.monitorType, measure.value, collectorStatus)))
                 }
 
@@ -232,7 +230,7 @@ class VerewaF701Collector @Inject()
       } onFailure errorHandler
 
     case SetState(id, state) =>
-      Logger.info(s"SetState(${monitorStatusOp.map(state).desp})")
+      logger.info(s"SetState(${monitorStatusOp.map(state).desp})")
       collectorStatus = state
       instrumentOp.setState(id, state)
   }

@@ -20,6 +20,7 @@ class Realtime @Inject()
  sysConfigDB: SysConfigDB,
  security: Security,
  cc: ControllerComponents) extends AbstractController(cc) {
+  val logger: Logger = Logger(this.getClass)
   private val overTimeLimit = 6
 
   case class MonitorTypeStatus(_id: String,
@@ -125,7 +126,7 @@ class Realtime @Inject()
     implicit request =>
       val ret = request.body.validate[Seq[String]]
       ret.fold(err => {
-        Logger.error(JsError.toJson(err).toString())
+        logger.error(JsError.toJson(err).toString())
         Future {
           BadRequest(JsError.toJson(err).toString())
         }

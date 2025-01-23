@@ -19,6 +19,7 @@ import scala.language.implicitConversions
 class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTargetOp: EmailTargetOp,
                         lineNotify: LineNotify, sysConfig: SysConfig) extends AlarmDB {
 
+  val logger: Logger = Logger(getClass)
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
@@ -93,7 +94,7 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
           }
         }
       }, // onNext
-      (ex: Throwable) => Logger.error("Alarm failed:", ex), // onError
+      (ex: Throwable) => logger.error("Alarm failed:", ex), // onError
       () => {} // onComplete
     )
 

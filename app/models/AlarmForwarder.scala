@@ -3,7 +3,6 @@ package models
 import akka.actor.Actor
 import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
-import models.mongodb.AlarmOp
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
@@ -21,10 +20,10 @@ object AlarmForwarder {
 
 class AlarmForwarder @Inject()(alarmOp: AlarmDB, ws: WSClient)
   (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
-
+  val logger: Logger = Logger(this.getClass)
   import ForwardManager._
 
-  Logger.info(s"AlarmForwarder started $server/$monitor")
+  logger.info(s"AlarmForwarder started $server/$monitor")
 
   def receive = handler(None)
 
@@ -35,10 +34,10 @@ class AlarmForwarder @Inject()(alarmOp: AlarmDB, ws: WSClient)
         val result = response.json.validate[LatestRecordTime]
         result.fold(
           error => {
-            Logger.error(JsError.toJson(error).toString())
+            logger.error(JsError.toJson(error).toString())
           },
           latest => {
-            Logger.info(s"server latest alarm: ${new DateTime(latest.time).toString}")
+            logger.info(s"server latest alarm: ${new DateTime(latest.time).toString}")
             val serverLatest =
               if (latest.time == 0) {
                 DateTime.now() - 1.day

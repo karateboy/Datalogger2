@@ -19,7 +19,7 @@ class Cdx @Inject()(cdxUploader: CdxUploader,
                     newTaipeiOpenData: NewTaipeiOpenData,
                     security: Security,
                     cc: ControllerComponents) extends AbstractController(cc) {
-
+  val logger: Logger = Logger(this.getClass)
   import CdxUploader._
 
   def getConfig: Action[AnyContent] = security.Authenticated.async {
@@ -34,7 +34,7 @@ class Cdx @Inject()(cdxUploader: CdxUploader,
       val ret = request.body.validate[CdxConfig]
       ret.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           Future.successful(BadRequest(JsError.toJson(error).toString))
         },
         config => {
@@ -55,7 +55,7 @@ class Cdx @Inject()(cdxUploader: CdxUploader,
       val ret = request.body.validate[Seq[CdxMonitorType]]
       ret.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           Future.successful(BadRequest(JsError.toJson(error).toString))
         },
         monitorTypes => {

@@ -55,8 +55,6 @@ libraryDependencies += "com.typesafe.play" %% "play-mailer" % "6.0.1"
 
 libraryDependencies += "com.typesafe.play" %% "play-mailer-guice" % "6.0.1"
 
-routesGenerator := StaticRoutesGenerator
-
 mappings in Universal ++=
 (baseDirectory.value / "report_template" * "*" get) map
     (x => x -> ("report_template/" + x.getName))

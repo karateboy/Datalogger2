@@ -17,7 +17,7 @@ case class Baseline9000Config(calibrationTime: Option[LocalTime],
                               calibrateSpanSeq: Option[String])
 
 object Baseline9000Collector extends DriverOps {
-
+  val logger: Logger = Logger(this.getClass)
   var count = 0
   import ModelHelper._
   implicit val cfgRead: Reads[Baseline9000Config] = Json.reads[Baseline9000Config]
@@ -27,7 +27,7 @@ object Baseline9000Collector extends DriverOps {
     val ret = Json.parse(json).validate[Baseline9000Config]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => {
@@ -48,7 +48,7 @@ object Baseline9000Collector extends DriverOps {
     val ret = Json.parse(json).validate[Baseline9000Config]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => param)
@@ -82,7 +82,7 @@ class Baseline9000Collector @Inject()
 (instrumentOp: InstrumentDB, calibrationOp: CalibrationDB,
  monitorTypeOp: MonitorTypeDB)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: Baseline9000Config) extends Actor {
-
+  val logger: Logger = Logger(this.getClass)
   import Baseline9000Collector._
   import DataCollectManager._
   import ModelHelper._
@@ -126,7 +126,7 @@ class Baseline9000Collector @Inject()
         blocking {
           serialCommOpt = Some(SerialComm.open(protocolParam.comPort.get))
           context become comPortOpened
-          Logger.info(s"${self.path.name}: Open com port.")
+          logger.info(s"${self.path.name}: Open com port.")
           timerOpt = if (collectorState == MonitorStatus.NormalStat) {
             for (serial <- serialCommOpt) {
               serial.port.writeByte(StartShippingDataByte)
@@ -225,7 +225,7 @@ class Baseline9000Collector @Inject()
     case RaiseStart =>
       Future {
         blocking {
-          Logger.info(s"${calibrationType} RasieStart: $mt")
+          logger.info(s"${calibrationType} RasieStart: $mt")
           val cmd =
             if (calibrationType.zero) {
               config.calibrateZeoSeq foreach {
@@ -265,13 +265,13 @@ class Baseline9000Collector @Inject()
       }
 
     case HoldStart =>
-      Logger.debug(s"${calibrationType} HoldStart: $mt")
+      logger.debug(s"${calibrationType} HoldStart: $mt")
       calibrateRecordStart = true
       calibrateTimerOpt = for(holdTime<-config.holdTime) yield
         context.system.scheduler.scheduleOnce(Duration(holdTime, SECONDS), self, DownStart)
 
     case DownStart =>
-      Logger.debug(s"${calibrationType} DownStart: $mt")
+      logger.debug(s"${calibrationType} DownStart: $mt")
       calibrateRecordStart = false
 
       if (calibrationType.zero) {
@@ -313,13 +313,13 @@ class Baseline9000Collector @Inject()
         Some(values.sum / values.length)
 
       if (calibrationType.auto && calibrationType.zero) {
-        Logger.info(s"$mt zero calibration end. ($avg)")
+        logger.info(s"$mt zero calibration end. ($avg)")
         collectorState = MonitorStatus.SpanCalibrationStat
         instrumentOp.setState(id, collectorState)
         context become calibrationHandler(AutoSpan, mt, startTime, List.empty[MonitorTypeData], avg)
         self ! RaiseStart
       } else {
-        Logger.info(s"$mt calibration end.")
+        logger.info(s"$mt calibration end.")
         val cal =
           if (calibrationType.auto) {
             Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, zeroValue, monitorTypeOp.map(mt).span, avg)
@@ -376,7 +376,7 @@ class Baseline9000Collector @Inject()
             context.parent ! ExecuteSeq(T700_STANDBY_SEQ, on = true)
             context become comPortOpened
           } else {
-            Logger.info(s"Ignore setState $state during calibration")
+            logger.info(s"Ignore setState $state during calibration")
           }
         }
       } onFailure serialErrorHandler

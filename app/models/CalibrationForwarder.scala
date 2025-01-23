@@ -3,7 +3,6 @@ package models
 import akka.actor.Actor
 import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
-import models.mongodb.CalibrationOp
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
@@ -20,10 +19,11 @@ object CalibrationForwarder {
 class CalibrationForwarder @Inject()
 (ws:WSClient, calibrationOp: CalibrationDB)
 (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
+  val logger: Logger = Logger(this.getClass)
   import ForwardManager._
   import calibrationOp._
 
-  Logger.info(s"CalibrationForwarder started $server/$monitor")
+  logger.info(s"CalibrationForwarder started $server/$monitor")
 
   def receive = handler(None)
 
@@ -34,10 +34,10 @@ class CalibrationForwarder @Inject()
         val result = response.json.validate[LatestRecordTime]
         result.fold(
           error => {
-            Logger.error(JsError.toJson(error).toString())
+            logger.error(JsError.toJson(error).toString())
           },
           latest => {
-            Logger.info(s"server latest calibration: ${new DateTime(latest.time).toString}")
+            logger.info(s"server latest calibration: ${new DateTime(latest.time).toString}")
             val serverLatest =
               if (latest.time == 0) {
                 DateTime.now() - 1.day

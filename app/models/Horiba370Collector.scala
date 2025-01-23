@@ -18,6 +18,7 @@ case class Horiba370Config(calibrationTime: Option[LocalTime],
                            calibrateZeoDO: Option[Int], calibrateSpanDO: Option[Int], skipInternalVault: Option[Boolean])
 
 object Horiba370Collector extends DriverOps {
+  val logger: Logger = Logger(this.getClass)
   val FlameStatus = "FlameStatus"
   val Press = "Press"
   val Flow = "Flow"
@@ -66,7 +67,7 @@ object Horiba370Collector extends DriverOps {
     // suppose every 10 min
     val period = 30
     val nextTime = getNextTime(period)
-    //Logger.debug(s"$instId next logging time= $nextTime")
+    //logger.debug(s"$instId next logging time= $nextTime")
     nextTime
   }
 
@@ -74,7 +75,7 @@ object Horiba370Collector extends DriverOps {
     val ret = Json.parse(json).validate[Horiba370Config]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => {
@@ -99,7 +100,7 @@ object Horiba370Collector extends DriverOps {
     val ret = Json.parse(json).validate[Horiba370Config]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => param)
@@ -133,7 +134,7 @@ class Horiba370Collector @Inject()
 (instrumentOp: InstrumentDB, instrumentStatusOp: InstrumentStatusDB,
  calibrationOp: CalibrationDB, monitorTypeOp: MonitorTypeDB)
 (@Assisted id: String, @Assisted protocol: ProtocolParam, @Assisted config: Horiba370Config) extends Actor {
-
+  val logger: Logger = Logger(this.getClass)
   import Horiba370Collector._
   import TapiTxx._
   import DataCollectManager._
@@ -141,7 +142,7 @@ class Horiba370Collector @Inject()
   import scala.concurrent.duration._
   import scala.concurrent.{Future, blocking}
 
-  Logger.info(s"Horiba370Collector created $id:${protocol} ${config}")
+  logger.info(s"Horiba370Collector created $id:${protocol} ${config}")
   val timer: Cancellable = context.system.scheduler.schedule(Duration(1, SECONDS), Duration(2, SECONDS), self, ReadData)
   private val statisTimer = context.system.scheduler.schedule(Duration(30, SECONDS), Duration(1, MINUTES), self, CheckStatus)
   val mtCH4 = "CH4"
@@ -178,7 +179,7 @@ class Horiba370Collector @Inject()
         instrumentStatusOp.log(is)
       } catch {
         case _: Throwable =>
-          Logger.error("Log instrument status failed")
+          logger.error("Log instrument status failed")
       }
       nextLoggingStatusTime = getNextLoggingStatusTime
     }
@@ -216,16 +217,16 @@ class Horiba370Collector @Inject()
         context.parent ! ReportData(List(ch4, nmhc, thc))
 
       case "A024" =>
-        Logger.info("Response from line change (A024)")
-        Logger.info(prmStr)
+        logger.info("Response from line change (A024)")
+        logger.info(prmStr)
 
       case "A029" =>
-        Logger.info("Response from user zero (A029)")
-        Logger.info(prmStr)
+        logger.info("Response from user zero (A029)")
+        logger.info(prmStr)
 
       case "A030" =>
-        Logger.info("Response from user span (A030)")
-        Logger.info(prmStr)
+        logger.info("Response from user span (A030)")
+        logger.info(prmStr)
 
       case "R010" =>
         val result = prmStr.split(",")
@@ -244,16 +245,16 @@ class Horiba370Collector @Inject()
         }
 
       case "R038" =>
-      //Logger.info("R038")
-      //Logger.info(prmStr)
+      //logger.info("R038")
+      //logger.info(prmStr)
       //val ret = prmStr.split(",")
-      //Logger.info("#=" + ret.length)
+      //logger.info("#=" + ret.length)
     }
   }
 
   def receive = {
     case UdpConnected.Connected =>
-      Logger.info("UDP connected...")
+      logger.info("UDP connected...")
       context become connectionReady(sender())(false)
   }
 
@@ -391,7 +392,7 @@ class Horiba370Collector @Inject()
     }
 
     val purgeTime = config.calibratorPurgeTime.get
-    Logger.info(s"Purge calibrator. Delay start of calibration $purgeTime seconds")
+    logger.info(s"Purge calibrator. Delay start of calibration $purgeTime seconds")
     triggerCalibratorPurge(true)
     system.scheduler.scheduleOnce(Duration(purgeTime + 1, SECONDS), self, RaiseStart)
   }
@@ -484,7 +485,7 @@ class Horiba370Collector @Inject()
 
           instrumentOp.setState(id, collectorState)
 
-          Logger.info(s"${calibrationType} RaiseStart")
+          logger.info(s"${calibrationType} RaiseStart")
 
           if (calibrationType.zero) {
             for (seqNo <- config.calibrateZeoSeq)
@@ -512,14 +513,14 @@ class Horiba370Collector @Inject()
       }
 
     case HoldStart =>
-      Logger.debug(s"${calibrationType} HoldStart")
+      logger.debug(s"${calibrationType} HoldStart")
       context become calibrationHandler(connection, calibrationType, startTime, true,
         calibrationDataList, zeroMap)
       for (holdTime <- config.holdTime)
         calibrateTimerOpt = Some(system.scheduler.scheduleOnce(Duration(holdTime, SECONDS), self, DownStart))
 
     case DownStart =>
-      Logger.debug(s"${calibrationType} DownStart")
+      logger.debug(s"${calibrationType} DownStart")
       context become calibrationHandler(connection, calibrationType, startTime, false,
         calibrationDataList, zeroMap)
 
@@ -557,12 +558,12 @@ class Horiba370Collector @Inject()
       }
 
       if (calibrationType.auto && calibrationType.zero) {
-        Logger.info(s"zero calibration end.")
+        logger.info(s"zero calibration end.")
         context become calibrationHandler(connection, AutoSpan, startTime, false, List.empty[MonitorTypeData], mtAvgMap.toMap)
 
         setupSpanRaiseStartTimer(connection)
       } else {
-        Logger.info(s"calibration end.")
+        logger.info(s"calibration end.")
         val monitorTypes = mtAvgMap.keySet.toList
         val calibrationList =
           if (calibrationType.auto) {
@@ -608,7 +609,7 @@ class Horiba370Collector @Inject()
             context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
             context become connectionReady(connection)(false)
           } else {
-            Logger.info(s"Ignore setState $state during calibration")
+            logger.info(s"Ignore setState $state during calibration")
           }
         }
       }

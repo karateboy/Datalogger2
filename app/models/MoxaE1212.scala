@@ -1,8 +1,6 @@
 package models
 
 import akka.actor._
-import com.github.nscala_time.time
-import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports.LocalTime
 import models.Protocol.tcp
 import play.api._
@@ -18,6 +16,7 @@ case class MoxaE1212Param(addr: Int, chs: Seq[E1212ChannelCfg])
 class MoxaE1212 @Inject()
 (monitorTypeOp: MonitorTypeDB)
   extends DriverOps {
+  val logger: Logger = Logger(this.getClass)
 
   implicit val cfgReads: Reads[E1212ChannelCfg] = Json.reads[E1212ChannelCfg]
   implicit val reads: Reads[MoxaE1212Param] = Json.reads[MoxaE1212Param]
@@ -35,7 +34,7 @@ class MoxaE1212 @Inject()
     val ret = Json.parse(json).validate[MoxaE1212Param]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       params => {

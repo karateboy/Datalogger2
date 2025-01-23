@@ -641,7 +641,7 @@ class HomeController @Inject()(
       import Duo._
       val ret = request.body.validate[Seq[DuoMonitorType]]
       ret.fold(err => {
-        logger.error(JsError.toJson(err).toString())
+        this.logger.error(JsError.toJson(err).toString())
         Future {
           BadRequest(JsError.toJson(err).toString())
         }

@@ -15,6 +15,7 @@ case class LatestRecordTime(time: Long)
 case class ForwardManagerConfig(server: String, monitor: String)
 
 object ForwardManager {
+  val logger: Logger = Logger(this.getClass)
   implicit val latestRecordTimeRead: Reads[LatestRecordTime] = Json.reads[LatestRecordTime]
   var managerOpt: Option[ActorRef] = None
   var count = 0
@@ -29,7 +30,7 @@ object ForwardManager {
       }
     } catch {
       case ex: Exception =>
-        Logger.error("failed to get server config", ex)
+        logger.error("failed to get server config", ex)
         None
     }
   }
@@ -71,10 +72,10 @@ class ForwardManager @Inject()(hourRecordForwarderFactory: HourRecordForwarder.F
                                instrumentStatusForwarderFactory: InstrumentStatusForwarder.Factory,
                                instrumentStatusTypeForwarderFactory: InstrumentStatusTypeForwarder.Factory)
                               (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor with InjectedActorSupport {
-
+  val logger: Logger = Logger(this.getClass)
   import ForwardManager._
 
-  Logger.info(s"create forwarder to $server/$monitor")
+  logger.info(s"create forwarder to $server/$monitor")
 
   private val hourRecordForwarder = injectedChild(hourRecordForwarderFactory(server, monitor), "hourForwarder")
 
@@ -133,7 +134,7 @@ class ForwardManager @Inject()(hourRecordForwarderFactory: HourRecordForwarder.F
       minRecordForwarder ! fmr
 
     case ForwardCalibration =>
-      Logger.info("Forward Calibration")
+      logger.info("Forward Calibration")
       calibrationForwarder ! ForwardCalibration
 
     case ForwardAlarm =>
@@ -154,12 +155,12 @@ class ForwardManager @Inject()(hourRecordForwarderFactory: HourRecordForwarder.F
         val result = response.json.validate[Seq[InstrumentCommand]]
         result.fold(
           error => {
-            Logger.error(JsError.toJson(error).toString())
+            logger.error(JsError.toJson(error).toString())
           },
           cmdSeq => {
             if (!cmdSeq.isEmpty) {
-              Logger.info("receive cmd from server=>")
-              Logger.info(cmdSeq.toString())
+              logger.info("receive cmd from server=>")
+              logger.info(cmdSeq.toString())
               for (cmd <- cmdSeq) {
                 cmd.cmd match {
                   case InstrumentCommand.AutoCalibration.cmd =>

@@ -1,9 +1,8 @@
 package models
 import play.api._
 
-import scala.collection.immutable
-
 object HessenProtocol {
+  val logger: Logger = Logger(this.getClass)
   val STX: Byte = 0x02
   val ETX: Byte = 0x03
   val CR: Byte = 0x0D
@@ -30,11 +29,11 @@ object HessenProtocol {
 
   case class Measure(channel: Int, value: Double, status: Byte, error: Byte, serial: String, free: String)
   def decode(reply: String): IndexedSeq[Measure] = {
-    Logger.debug(s"HessenProtocol decode input=${reply}")
+    logger.debug(s"HessenProtocol decode input=${reply}")
     val params = reply.split(" ")
-    Logger.debug(s"params=${params.length}")
+    logger.debug(s"params=${params.length}")
     val nMeasure = params(0).substring(2).toInt
-    Logger.debug(s"nMeasure=${nMeasure}")
+    logger.debug(s"nMeasure=${nMeasure}")
     val ret =
     for {
       idx <- 0 to nMeasure-1 if (idx*6+1) < params.length
@@ -59,11 +58,11 @@ object HessenProtocol {
         val serialStr = params(1 + measureOffset + 4)
         val freeStr = params(1 + measureOffset + 5)
         val measure = Measure(channel, getValue(valueStr), status, error, serialStr, freeStr)
-        Logger.debug(measure.toString)
+        logger.debug(measure.toString)
         Some(measure)
       }catch {
         case ex:Throwable=>
-          Logger.debug("Invalid measure", ex)
+          logger.debug("Invalid measure", ex)
           None
       }
     }

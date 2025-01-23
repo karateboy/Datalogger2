@@ -4,7 +4,6 @@ import akka.actor.{Actor, ActorSystem}
 import com.github.nscala_time.time.Imports
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
-import models.mongodb.AlarmOp
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
@@ -16,6 +15,7 @@ case class DuoMonitorType(id: String, desc: String, configID: String, isSpectrum
 case class DuoConfig(fixed: Boolean, monitorTypes: Seq[DuoMonitorType])
 
 object Duo extends DriverOps {
+  val logger: Logger = Logger(this.getClass)
   implicit val readMt = Json.reads[DuoMonitorType]
   implicit val writeMt = Json.writes[DuoMonitorType]
   implicit val reads = Json.reads[DuoConfig]
@@ -79,7 +79,7 @@ object Duo extends DriverOps {
     val ret = Json.parse(param).validate[DuoConfig]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       config => {
@@ -92,7 +92,7 @@ object Duo extends DriverOps {
     val ret = Json.parse(param).validate[DuoConfig]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       config => {
@@ -145,9 +145,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class DuoCollector @Inject()
 (wsClient: WSClient, system: ActorSystem)
 (@Assisted instId: String, @Assisted protocolParam: ProtocolParam, @Assisted config: DuoConfig) extends Actor {
-
-  import Duo._
+  val logger: Logger = Logger(this.getClass)
   import DataCollectManager._
+  import Duo._
+
   import scala.concurrent.duration._
 
   val timer = if (config.fixed)
@@ -171,8 +172,8 @@ class DuoCollector @Inject()
           val valueNode = ret.xml \ tag
           val values = valueNode.text.split(";")
           if (values.length != mtList.length) {
-            Logger.warn(s"$tag length ${values.length} != config length ${mtList.length}")
-            Logger.info(values.toString)
+            logger.warn(s"$tag length ${values.length} != config length ${mtList.length}")
+            logger.info(values.toString)
             Seq.empty[MonitorTypeData]
           } else {
             val dataOptList =
@@ -196,8 +197,8 @@ class DuoCollector @Inject()
           val valueNode = ret.xml \ tag
           val values = valueNode.text.split(";")
           if (values.length != 36) {
-            Logger.warn(s"spectrum length != 36")
-            Logger.info(valueNode.text)
+            logger.warn(s"spectrum length != 36")
+            logger.info(valueNode.text)
             Seq.empty[MonitorTypeData]
           } else {
             val mtIdList =
@@ -262,7 +263,7 @@ class DuoCollector @Inject()
           val valueNode = ret.xml \\ tag
           val values = valueNode.text.split(";")
           if (values.length != 36) {
-            Logger.error(s"spectrum length != 36")
+            logger.error(s"spectrum length != 36")
             Seq.empty[MonitorTypeData]
           } else {
             val mtIdList =

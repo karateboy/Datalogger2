@@ -6,7 +6,6 @@ import com.google.inject.assistedinject.Assisted
 import models.ModelHelper._
 import models.MonitorType._
 import models.Protocol.{ProtocolParam, serial}
-import models.mongodb.AlarmOp
 import play.api._
 import play.api.libs.json.{JsError, Json, OWrites, Reads}
 import play.libs.Scala.None
@@ -19,6 +18,7 @@ case class ThetaCalibrationConfig(monitorType: String, value: Double)
 case class ThetaConfig(calibrations: Seq[ThetaCalibrationConfig])
 
 object ThetaCollector extends DriverOps {
+  val logger: Logger = Logger(getClass)
   var count = 0
   implicit val calibrationWrite: OWrites[ThetaCalibrationConfig] = Json.writes[ThetaCalibrationConfig]
   implicit val calibrationRead: Reads[ThetaCalibrationConfig] = Json.reads[ThetaCalibrationConfig]
@@ -29,7 +29,7 @@ object ThetaCollector extends DriverOps {
     val ret = Json.parse(json).validate[ThetaConfig]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => {
@@ -59,7 +59,7 @@ object ThetaCollector extends DriverOps {
     val ret = Json.parse(json).validate[ThetaConfig]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => param)
@@ -88,8 +88,8 @@ class ThetaCollector @Inject()
 (alarmOp: AlarmDB, instrumentOp: InstrumentDB)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: ThetaConfig) extends Actor {
 
-  import ThetaCollector._
   import DataCollectManager._
+  import ThetaCollector._
 
   val calibrationMap: Map[String, Double] = {
     val pairs = config.calibrations map { c => c.monitorType -> c.value }
@@ -113,7 +113,7 @@ class ThetaCollector @Inject()
             timer = context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, Collect)
           } catch {
             case ex: Exception =>
-              Logger.error(ex.getMessage, ex)
+              logger.error(ex.getMessage, ex)
               alarmOp.log(alarmOp.instrumentSrc(id), alarmOp.Level.ERR, s"Unable to open:${ex.getMessage}")
               import scala.concurrent.duration._
               context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
@@ -168,7 +168,7 @@ class ThetaCollector @Inject()
             timer = context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Throwable =>
-              Logger.error("Read serial failed", ex)
+              logger.error("Read serial failed", ex)
               serial.close
               context become init()
               self ! ConnectHost
@@ -177,7 +177,7 @@ class ThetaCollector @Inject()
       } onFailure errorHandler
 
     case SetState(id, state) =>
-      Logger.info(s"$self => $state")
+      logger.info(s"$self => $state")
       instrumentOp.setState(id, state)
       context become connected(state, serial)
   }

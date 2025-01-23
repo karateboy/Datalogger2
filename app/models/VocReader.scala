@@ -16,6 +16,7 @@ case class VocMonitorConfig(id: String, name: String, lat: Double, lng: Double, 
 case class VocReaderConfig(enable: Boolean, monitors: Seq[VocMonitorConfig])
 
 object VocReader {
+  val logger: Logger = Logger(getClass)
   var count = 0
 
   def start(configuration: Configuration, actorSystem: ActorSystem, monitorOp: MonitorDB, monitorTypeOp: MonitorTypeDB,
@@ -40,7 +41,7 @@ object VocReader {
     }
 
     for (config <- getConfig if config.enable) yield {
-      Logger.info(config.toString)
+      logger.info(config.toString)
       config.monitors.foreach(config => {
         val m = Monitor(_id = config.id, desc = config.name, lat = Some(config.lat), lng = Some(config.lng))
         monitorOp.upsertMonitor(m)
@@ -76,7 +77,8 @@ class VocReader(config: VocReaderConfig,
                 recordOp: RecordDB,
                 dataCollectManager: ActorRef)
   extends Actor with ActorLogging {
-  Logger.info("VocReader start")
+
+  log.info("VocReader start")
 
   import DataCollectManager._
   import ReaderHelper._
@@ -149,7 +151,7 @@ class VocReader(config: VocReaderConfig,
     for (f <- files) {
       if (f.getName.toLowerCase().endsWith("tx0")) {
         try {
-          Logger.info(s"parse ${f.getAbsolutePath}")
+          log.info(s"parse ${f.getAbsolutePath}")
           for (dateTime <- getFileDateTime(f.getName, year, month)) {
             parser(monitorConfig.id, f, dateTime)
             parsedFileList.add(f.getAbsolutePath)
@@ -157,7 +159,7 @@ class VocReader(config: VocReaderConfig,
           }
         } catch {
           case ex: Throwable =>
-            Logger.error("skip buggy file", ex)
+            log.error("skip buggy file", ex)
         }
       }
     }
@@ -197,11 +199,11 @@ class VocReader(config: VocReaderConfig,
         dataCollectManager ! ForwardHourRecord(dateTime, dateTime.plusHours(1))
 
       case Failure(exception) =>
-        Logger.error("failed", exception)
+        log.error("failed", exception)
     }
   }
 
   override def postStop(): Unit = {
-    Logger.info("VocReader stopped")
+    log.info("VocReader stopped")
   }
 }

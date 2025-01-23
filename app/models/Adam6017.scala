@@ -11,7 +11,7 @@ case class Adam6017Param(chs: Seq[AiChannelCfg], doChannels: Option[Seq[SignalCo
 
 @Singleton
 class Adam6017 @Inject()(monitorTypeOp: MonitorTypeDB) extends DriverOps {
-
+  val logger: Logger = Logger(this.getClass)
   implicit val signalConfigRead = Json.reads[SignalConfig]
   implicit val cfgReads = Json.reads[AiChannelCfg]
   implicit val reads = Json.reads[Adam6017Param]
@@ -33,7 +33,7 @@ class Adam6017 @Inject()(monitorTypeOp: MonitorTypeDB) extends DriverOps {
     val ret = Json.parse(json).validate[Adam6017Param]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       params => {

@@ -19,7 +19,8 @@ object InstrumentStatusForwarder{
 class InstrumentStatusForwarder @Inject()(ws:WSClient, instrumentStatusOp: InstrumentStatusDB)
                                          (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
   import ForwardManager._
-  Logger.info(s"InstrumentStatusForwarder started $server/$monitor")
+  val logger: Logger = Logger(this.getClass)
+  logger.info(s"InstrumentStatusForwarder started $server/$monitor")
 
   def receive: Receive = handler(None)
   def checkLatest(): Unit = {
@@ -29,10 +30,10 @@ class InstrumentStatusForwarder @Inject()(ws:WSClient, instrumentStatusOp: Instr
         val result = response.json.validate[LatestRecordTime]
         result.fold(
           error => {
-            Logger.error(JsError.toJson(error).toString())
+            logger.error(JsError.toJson(error).toString())
           },
           latest => {
-            Logger.info(s"server latest instrument status: ${new DateTime(latest.time).toString}")
+            logger.info(s"server latest instrument status: ${new DateTime(latest.time).toString}")
             context become handler(Some(new Date(latest.time)))
             uploadRecord(new Date(latest.time))
           })

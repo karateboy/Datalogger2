@@ -11,7 +11,7 @@ import scala.math.Ordering.Implicits.infixOrderingOps
 case class AlarmRule(_id: String, monitorTypes: Seq[String], monitors: Seq[String], max: Option[Double], min:Option[Double],
                      alarmLevel:Int, tableTypes: Seq[String], enable: Boolean, startTime: Option[String], endTime:Option[String])
 trait AlarmRuleDb {
-
+  val logger: Logger = Logger(this.getClass)
   def getRulesAsync: Future[Seq[AlarmRule]]
 
   def upsertAsync(rule: AlarmRule): Future[UpdateResult]
@@ -32,7 +32,7 @@ trait AlarmRuleDb {
             Some(LocalTime.parse(str, DateTimeFormatter.ofPattern("H:m")))
           } catch {
             case ex: Throwable =>
-              Logger.error(s"parse $str failed", ex)
+              logger.error(s"parse $str failed", ex)
               None
           }
         }

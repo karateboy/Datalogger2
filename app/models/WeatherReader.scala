@@ -38,15 +38,16 @@ object WeatherReader {
   }
 
   def props(config: WeatherReaderConfig, sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) =
-    Props(classOf[WeatherReader], config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp)
+            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp): Props =
+    Props(new WeatherReader(config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp))
 
   case object ParseReport
 }
 
 class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
                     monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp) extends Actor {
-  Logger.info(s"WeatherReader start processing ${config.model}: ${config.dir}")
+  val logger: Logger = Logger(getClass)
+  logger.info(s"WeatherReader start processing ${config.model}: ${config.dir}")
 
   import WeatherReader._
   import DataCollectManager._
@@ -81,14 +82,14 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
             fileParser(new File(config.dir))
           } catch {
             case ex: Throwable =>
-              Logger.error("fail to process weather file", ex)
+              logger.error("fail to process weather file", ex)
           } finally {
             timer = context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, ParseReport)
           }
         }
       }
     case ReaderReset =>
-      Logger.info("WeatherReader reset")
+      logger.info("WeatherReader reset")
       timer.cancel()
       timer = context.system.scheduler.scheduleOnce(FiniteDuration(5, SECONDS), self, ParseReport)
   }
@@ -98,7 +99,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
     for (mt <- mtList)
       monitorTypeOp.ensure(mt)
 
-    Logger.debug(s"parsing ${file.getAbsolutePath}")
+    logger.debug(s"parsing ${file.getAbsolutePath}")
     val skipLines = waitReadyResult(sysConfig.getWeatherSkipLine)
 
     var processedLine = 0
@@ -143,14 +144,14 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
             mtDataList = mtRecordOpts.flatten))
         } catch {
           case ex: Throwable =>
-            Logger.warn("skip unknown line", ex)
+            logger.warn("skip unknown line", ex)
         } finally {
           processedLine = processedLine + 1
         }
       }
 
       if (docList.nonEmpty) {
-        Logger.debug(s"update ${docList.head}")
+        logger.debug(s"update ${docList.head}")
         sysConfig.setWeatherSkipLine(skipLines + processedLine)
         recordOp.upsertManyRecords(recordOp.MinCollection)(docList)
 

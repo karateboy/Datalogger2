@@ -22,7 +22,7 @@ case class EventConfig(instId: String, bit: Int, seconds: Option[Int])
 case class MqttConfig(topic: String, monitor: String, eventConfig: EventConfig)
 
 object MqttCollector2 extends DriverOps {
-
+  val logger: Logger = Logger(this.getClass)
   val defaultGroup = "_"
 
   implicit val r1: Reads[EventConfig] = Json.reads[EventConfig]
@@ -38,7 +38,7 @@ object MqttCollector2 extends DriverOps {
     val ret = Json.parse(json).validate[MqttConfig2]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => {
@@ -59,7 +59,7 @@ object MqttCollector2 extends DriverOps {
     val ret = Json.parse(json).validate[MqttConfig2]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => param)
@@ -129,7 +129,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
 
   def handler(collectorState: String): Receive = {
     case CreateClient =>
-      Logger.info(s"Init Mqtt client ${protocolParam.host.get} ${config.toString}")
+      logger.info(s"Init Mqtt client ${protocolParam.host.get} ${config.toString}")
       val url = if (protocolParam.host.get.contains(":"))
         s"tcp://${protocolParam.host.get}"
       else
@@ -138,7 +138,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
       import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence
       import org.eclipse.paho.client.mqttv3.{MqttAsyncClient, MqttException}
       val tmpDir = Files.createTempDirectory(MqttAsyncClient.generateClientId()).toFile().getAbsolutePath();
-      Logger.info(s"$id uses $tmpDir as tempDir")
+      logger.info(s"$id uses $tmpDir as tempDir")
       val dataStore = new MqttDefaultFilePersistence(tmpDir)
       try {
         mqttClientOpt = Some(new MqttAsyncClient(url, MqttAsyncClient.generateClientId(), dataStore))
@@ -149,7 +149,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
         self ! ConnectBroker
       } catch {
         case e: MqttException =>
-          Logger.error("Unable to set up client: " + e.toString)
+          logger.error("Unable to set up client: " + e.toString)
           import scala.concurrent.duration._
           alarmOp.log(alarmOp.instrumentSrc(id), alarmOp.Level.ERR, s"無法連接:${e.getMessage}")
           context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, CreateClient)
@@ -165,11 +165,11 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
               try {
                 val conToken = client.connect(conOpt, null, null)
                 conToken.waitForCompletion()
-                Logger.info(s"MqttCollector $id: Connected")
+                logger.info(s"MqttCollector $id: Connected")
                 self ! SubscribeTopic
               } catch {
                 case ex: Exception =>
-                  Logger.error("connect broker failed.", ex)
+                  logger.error("connect broker failed.", ex)
                   context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectBroker)
               }
           }
@@ -184,10 +184,10 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
               try {
                 val subToken = client.subscribe(config.topic, 2, null, null)
                 subToken.waitForCompletion()
-                Logger.info(s"MqttCollector $id: Subscribed")
+                logger.info(s"MqttCollector $id: Subscribed")
               } catch {
                 case ex: Exception =>
-                  Logger.error("Subscribe failed", ex)
+                  logger.error("Subscribe failed", ex)
                   context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, SubscribeTopic)
               }
           }
@@ -200,18 +200,18 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
 
       val duration = new org.joda.time.Duration(lastDataArrival, DateTime.now())
       if (duration.getStandardMinutes > timeout) {
-        Logger.error(s"Mqtt ${id} no data timeout!")
+        logger.error(s"Mqtt ${id} no data timeout!")
         context.parent ! RestartMyself
       }
 
     case SetState(id, state) =>
-      Logger.warn(s"$id ignore $self => $state")
+      logger.warn(s"$id ignore $self => $state")
   }
 
   override def postStop(): Unit = {
     mqttClientOpt map {
       client =>
-        Logger.info("Disconnecting")
+        logger.info("Disconnecting")
         val discToken: IMqttToken = client.disconnect(null, null)
         discToken.waitForCompletion()
     }
@@ -226,7 +226,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
       messageHandler(topic, new String(message.getPayload))
     } catch {
       case ex: Exception =>
-        Logger.error("failed to handleMessage", ex)
+        logger.error("failed to handleMessage", ex)
     }
 
   }
@@ -239,7 +239,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
     )
     val ret = Json.parse(payload).validate[Message]
     ret.fold(err => {
-      Logger.error(JsError.toJson(err).toString())
+      logger.error(JsError.toJson(err).toString())
     },
       message => {
         val mtData: Seq[Option[MtRecord]] =

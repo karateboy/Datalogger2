@@ -6,6 +6,7 @@ import play.api._
 import play.api.libs.json._
 import play.api.mvc.Result
 
+import java.sql.Timestamp
 import scala.concurrent.Future
 import scala.language.implicitConversions
 
@@ -14,11 +15,12 @@ import scala.language.implicitConversions
  */
 
 object ModelHelper {
-  implicit def getSqlTimestamp(t: DateTime) = {
+  val logger: Logger = Logger(this.getClass)
+  implicit def getSqlTimestamp(t: DateTime): Timestamp = {
     new java.sql.Timestamp(t.getMillis)
   }
 
-  implicit def getDateTime(st: java.sql.Timestamp) = {
+  implicit def getDateTime(st: java.sql.Timestamp): DateTime = {
     new DateTime(st)
   }
 
@@ -34,33 +36,33 @@ object ModelHelper {
   }
 
   def logException(ex: Throwable): Unit = {
-    Logger.error(ex.getMessage, ex)
+    logger.error(ex.getMessage, ex)
   }
 
   def logInstrumentError(id: String, msg: String, ex: Throwable): Unit = {
-    Logger.error(msg, ex)
+    logger.error(msg, ex)
     //log(instStr(id), Level.ERR, msg)
   }
 
   def logInstrumentInfo(id: String, msg: String) = {
-    Logger.info(msg)
+    logger.info(msg)
     //log(instStr(id), Level.INFO, msg)
   }
 
   def errorHandler: PartialFunction[Throwable, Any] = {
     case ex: Throwable =>
-      Logger.error("Error=>", ex)
+      logger.error("Error=>", ex)
       throw ex
   }
 
   def errorHandler(prompt: String = "Error=>"): PartialFunction[Throwable, Any] = {
     case ex: Throwable =>
-      Logger.error(prompt, ex)
+      logger.error(prompt, ex)
       throw ex
   }
 
   def handleJsonValidateError(error: Seq[(JsPath, Seq[JsonValidationError])]): Result = {
-    Logger.error(JsError.toJson(error).toString(), new Exception("Json validate error"))
+    logger.error(JsError.toJson(error).toString(), new Exception("Json validate error"))
     BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
   }
 
@@ -78,7 +80,7 @@ object ModelHelper {
 
   private def getSinCosSum(speedList: Seq[Double], directionList: Seq[Double]): Option[(Double, Double)] = {
     if (speedList.length != directionList.length)
-      Logger.error(s"speed #=${speedList.length} dir #=${directionList.length}")
+      logger.error(s"speed #=${speedList.length} dir #=${directionList.length}")
 
     val speedDirections = speedList.zip(directionList)
     if (speedDirections.nonEmpty) {
@@ -99,7 +101,7 @@ object ModelHelper {
 
   def speedDirectionAvg(speedList: List[Double], directionList: List[Double]): Option[(Double, Double)] = {
     if (speedList.length != directionList.length)
-      Logger.error(s"speed #=${speedList.length} dir #=${directionList.length}")
+      logger.error(s"speed #=${speedList.length} dir #=${directionList.length}")
 
     val speedDirections = speedList.zip(directionList)
     if (speedDirections.nonEmpty) {
@@ -149,7 +151,7 @@ object ModelHelper {
       case Success(t) =>
         t
       case Failure(ex) =>
-        Logger.error(ex.getMessage, ex)
+        logger.error(ex.getMessage, ex)
         throw ex
     }
   }

@@ -18,7 +18,7 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb,
                            security: Security,
                            cc: ControllerComponents,
                            assets: Assets) extends AbstractController(cc) {
-
+  val logger: Logger = Logger(this.getClass)
 
   def getAlarmRules: Action[AnyContent] = security.Authenticated.async {
     implicit request =>
@@ -33,7 +33,7 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb,
       implicit val r1 = Json.reads[AlarmRule]
       val result = request.body.validate[AlarmRule]
       result.fold(err => {
-        Logger.error(JsError(err).toString)
+        logger.error(JsError(err).toString)
         Future.successful(BadRequest(Json.obj("ok" -> false, "msg" -> JsError(err).toString())))
       },
         rule => {

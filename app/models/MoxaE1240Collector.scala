@@ -3,15 +3,13 @@ import akka.actor._
 import com.google.inject.assistedinject.Assisted
 import models.ModelHelper._
 import models.Protocol.ProtocolParam
-import play.api.Play.current
 import play.api._
-import play.api.libs.concurrent.Akka
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 object MoxaE1240Collector {
-
+  val logger: Logger = Logger(this.getClass)
   case object ConnectHost
   case object Collect
 
@@ -28,8 +26,8 @@ import javax.inject._
 class MoxaE1240Collector @Inject()
 (instrumentOp: InstrumentDB)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: MoxaE1240Param) extends Actor with ActorLogging {
-  import MoxaE1240Collector._
   import DataCollectManager._
+  import MoxaE1240Collector._
 
   @volatile var cancelable: Cancellable = _
 
@@ -91,8 +89,8 @@ class MoxaE1240Collector @Inject()
             cancelable = context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Exception =>
-              Logger.error(ex.getMessage, ex)
-              Logger.info("Try again 1 min later...")
+              logger.error(ex.getMessage, ex)
+              logger.info("Try again 1 min later...")
               //Try again
               cancelable = context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
           }
@@ -125,7 +123,7 @@ class MoxaE1240Collector @Inject()
             cancelable = context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Throwable =>
-              Logger.error("Read reg failed", ex)
+              logger.error("Read reg failed", ex)
               masterOpt.get.destroy()
               context become handler(collectorState, None)
               self ! ConnectHost
@@ -134,7 +132,7 @@ class MoxaE1240Collector @Inject()
       } onFailure errorHandler
 
     case SetState(id, state) =>
-      Logger.info(s"$self => $state")
+      logger.info(s"$self => $state")
       instrumentOp.setState(id, state)
       context become handler(state, masterOpt)
   }

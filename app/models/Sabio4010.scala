@@ -18,6 +18,7 @@ import scala.concurrent.{Future, blocking}
 case class Sabio4010Config(address: String)
 
 object Sabio4010 extends DriverOps {
+  val logger: Logger = Logger(this.getClass)
   implicit val reads: Reads[Sabio4010Config] = Json.reads[Sabio4010Config]
 
   override def id: String = "sabio4010"
@@ -29,7 +30,7 @@ object Sabio4010 extends DriverOps {
   override def verifyParam(param: String): String = {
     val ret = Json.parse(param).validate[Sabio4010Config]
     ret.fold(err => {
-      Logger.error(JsError.toJson(err).toString())
+      logger.error(JsError.toJson(err).toString())
       throw new Exception(JsError.toJson(err).toString())
     },
       config => param)
@@ -100,6 +101,7 @@ object Sabio4010Collector {
 class Sabio4010Collector @Inject()(instrumentOp: InstrumentDB, instrumentStatusOp: InstrumentStatusDB)
                                   (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted config: Sabio4010Config) extends Actor {
   import DataCollectManager._
+  val logger: Logger = Logger(this.getClass)
   private val statusTimerOpt: Option[Cancellable] = None
   //val statusTimerOpt: Option[Cancellable] = Some(system.scheduler.schedule(Duration(5, MINUTES), Duration(10, MINUTES),
   //  self, CollectStatus))
@@ -129,8 +131,8 @@ class Sabio4010Collector @Inject()(instrumentOp: InstrumentDB, instrumentStatusO
         comm = SerialComm.open(protocolParam.comPort.get)
       } catch {
         case ex: Exception =>
-          Logger.error(ex.getMessage, ex)
-          Logger.info("Try again 1 min later...")
+          logger.error(ex.getMessage, ex)
+          logger.info("Try again 1 min later...")
           //Try again
           cancelable = context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenComPort)
       }
@@ -147,11 +149,11 @@ class Sabio4010Collector @Inject()(instrumentOp: InstrumentDB, instrumentStatusO
             val char = ret(0)
             if (char == 0x6) {
               if(on)
-                Logger.info(s"Execute $seq successfully.")
+                logger.info(s"Execute $seq successfully.")
               else
-                Logger.info(s"Execute STOP successfully.")
+                logger.info(s"Execute STOP successfully.")
             } else {
-              Logger.error(s"Execute $seq failed")
+              logger.error(s"Execute $seq failed")
             }
           }
 
@@ -173,7 +175,7 @@ class Sabio4010Collector @Inject()(instrumentOp: InstrumentDB, instrumentStatusO
             }
           } catch {
             case ex: Throwable =>
-              Logger.error(s"failed at ${seq}, ${on}", ex)
+              logger.error(s"failed at ${seq}, ${on}", ex)
           }
         }
       }
@@ -181,7 +183,7 @@ class Sabio4010Collector @Inject()(instrumentOp: InstrumentDB, instrumentStatusO
     case CollectStatus =>
       import instrumentStatusOp._
       var statusList = Seq.empty[InstrumentStatusDB.Status]
-      Logger.info("Collect Sabio status")
+      logger.info("Collect Sabio status")
 
       def extractStatus(subType: String, statusType: String, limit: Int): Unit = {
         comm.os.write(getCmdString("GS", subType).getBytes)
@@ -201,20 +203,20 @@ class Sabio4010Collector @Inject()(instrumentOp: InstrumentDB, instrumentStatusO
 
       try {
         extractStatus("D", Dilution, 8)
-        Logger.info(s"Collect D status ${statusList.size}")
+        logger.info(s"Collect D status ${statusList.size}")
         extractStatus("O", Ozone, 7)
-        Logger.info(s"Collect O status ${statusList.size}")
+        logger.info(s"Collect O status ${statusList.size}")
         extractStatus("P", Lamp, 10)
-        Logger.info(s"Collect P status ${statusList.size}")
+        logger.info(s"Collect P status ${statusList.size}")
         extractStatus("V", Perm, 4)
-        Logger.info(s"Collect V status ${statusList.size}")
+        logger.info(s"Collect V status ${statusList.size}")
         extractStatus("G", Gas, 1)
-        Logger.info(s"Collect G status ${statusList.size}")
+        logger.info(s"Collect G status ${statusList.size}")
         val is = InstrumentStatusDB.InstrumentStatus(DateTime.now().toDate, id, statusList.toList)
         instrumentStatusOp.log(is)
       } catch {
         case ex: Exception =>
-          Logger.error("failed to get status", ex)
+          logger.error("failed to get status", ex)
       }
 
   }

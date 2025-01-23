@@ -34,6 +34,7 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
 
   import TapiTxx._
 
+  val logger: Logger = Logger(this.getClass)
   def getModel: String = modelConfig.model
 
   def readModelSetting: ModelReg = {
@@ -103,7 +104,7 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
     val ret = Json.parse(json).validate[TapiConfig]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => {
@@ -132,7 +133,7 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
     val ret = Json.parse(json).validate[TapiConfig]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => param)

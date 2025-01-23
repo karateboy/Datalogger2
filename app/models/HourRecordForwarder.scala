@@ -16,7 +16,8 @@ object HourRecordForwarder {
 
 class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordDB)
                                    (@Assisted("server")server: String, @Assisted("monitor")monitor: String) extends Actor {
-  Logger.info(s"HourRecordForwarder created with server=$server monitor=$monitor")
+  val logger: Logger = Logger(this.getClass)
+  logger.info(s"HourRecordForwarder created with server=$server monitor=$monitor")
   import ForwardManager._
   self ! ForwardHour
   def receive = handler(None)
@@ -28,10 +29,10 @@ class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordDB)
         val result = response.json.validate[LatestRecordTime]
         result.fold(
           error => {
-            Logger.error(JsError.toJson(error).toString())
+            logger.error(JsError.toJson(error).toString())
           },
           latest => {
-            Logger.info(s"server latest hour: ${new DateTime(latest.time).toString}")
+            logger.info(s"server latest hour: ${new DateTime(latest.time).toString}")
             val serverLatest =
               if (latest.time == 0) {
                 DateTime.now() - 1.day
@@ -57,8 +58,8 @@ class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordDB)
     for (records <- recordFuture) {
       val nonEmptyRecords = records.filter(_.mtDataList.nonEmpty)
       if (nonEmptyRecords.nonEmpty) {
-        Logger.info(s"uploadRecord from ${new DateTime(latestRecordTime + 1)} => ${DateTime.now}")
-        Logger.info(s"total ${records.size} hour records")
+        logger.info(s"uploadRecord from ${new DateTime(latestRecordTime + 1)} => ${DateTime.now}")
+        logger.info(s"total ${records.size} hour records")
         val url = s"http://$server/HourRecord/$monitor"
         val f = ws.url(url).put(Json.toJson(nonEmptyRecords))
         f onSuccess {
@@ -69,7 +70,7 @@ class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordDB)
               // This shall stop when there is no more records...
               self ! ForwardHour
             } else {
-              Logger.error(s"${response.status}:${response.statusText}")
+              logger.error(s"${response.status}:${response.statusText}")
               context become handler(None)
               delayForward
             }
@@ -98,7 +99,7 @@ class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordDB)
 
   import com.github.nscala_time.time.Imports._
   def uploadRecord(start: DateTime, end: DateTime): Unit = {
-    Logger.info(s"upload hour ${start.toString()} => ${end.toString}")
+    logger.info(s"upload hour ${start.toString()} => ${end.toString}")
 
     val recordFuture = recordOp.getRecordListFuture(recordOp.HourCollection)(start, end)
 
@@ -110,9 +111,9 @@ class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordDB)
           f onSuccess {
             case response =>
               if (response.status == 200)
-                Logger.info("Success upload!")
+                logger.info("Success upload!")
               else
-                Logger.error(s"${response.status}:${response.statusText}")
+                logger.error(s"${response.status}:${response.statusText}")
           }
           f onFailure {
             case ex: Throwable =>
@@ -120,7 +121,7 @@ class HourRecordForwarder @Inject()(ws:WSClient, recordOp: RecordDB)
           }
         }
       } else
-        Logger.info(s"No hour record from $start => $end")
+        logger.info(s"No hour record from $start => $end")
     }
   }
   def handler(latestRecordTimeOpt: Option[Long]): Receive = {

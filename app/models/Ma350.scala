@@ -1,9 +1,8 @@
 package models
 
-import akka.actor.{Actor, ActorSystem}
+import akka.actor.Actor
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
-import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 import play.api.Logger
 
 import javax.inject.Inject
@@ -12,6 +11,7 @@ import scala.concurrent.{Future, blocking}
 
 object Ma350Drv extends AbstractDrv(_id = "MA350", desp = "microAeth MA350",
   protocols = List(Protocol.serial)) {
+  override val logger: Logger = Logger(this.getClass)
   // tape position,flow total,UV BCc,Blue BCc,Green BCc,Red BCc, IR BCc
   val predefinedIST = List(
     InstrumentStatusType(key = "UV BCc", addr = 1, desc = "UV BCc", ""),
@@ -63,7 +63,7 @@ class Ma350Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
   extends AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
     alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
-
+  val logger: Logger = Logger(this.getClass)
 
   @volatile var serialOpt: Option[SerialComm] = None
 
@@ -95,7 +95,7 @@ class Ma350Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
           ret.flatten
         }catch{
           case ex:Throwable=>
-            Logger.error("MA350 readReg error", ex)
+            logger.error("MA350 readReg error", ex)
             None
         }
       }

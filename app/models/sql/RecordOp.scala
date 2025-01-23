@@ -14,6 +14,7 @@ import scala.concurrent.Future
 
 @Singleton
 class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
+  val logger: Logger = Logger(this.getClass)
   private var mtList = List.empty[String]
 
   init()
@@ -216,7 +217,7 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
   override def ensureMonitorType(mt: String): Unit = {
     synchronized {
       if (!mtList.contains(mt)) {
-        Logger.info(s"alter record table by adding $mt")
+        logger.info(s"alter record table by adding $mt")
         val tabList =
           Seq(HourCollection, MinCollection, SecCollection)
         tabList.foreach(tab => {

@@ -63,6 +63,7 @@ class Query @Inject()(recordOp: RecordDB,
                       tableType: TableType,
                       security: Security,
                       cc: ControllerComponents) extends AbstractController(cc) {
+  val logger: Logger = Logger(this.getClass)
 
   implicit val cdWrite: OWrites[CellData] = Json.writes[CellData]
   implicit val rdWrite: OWrites[RowData] = Json.writes[RowData]
@@ -762,7 +763,7 @@ class Query @Inject()(recordOp: RecordDB,
       val tabType = tableType.withName(tabTypeStr)
       result.fold(
         err => {
-          Logger.error(JsError.toJson(err).toString())
+          logger.error(JsError.toJson(err).toString())
           BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(err).toString()))
         },
         maParam => {
@@ -1061,7 +1062,7 @@ class Query @Inject()(recordOp: RecordDB,
         }
       } catch {
         case ex: Throwable =>
-          Logger.error(ex.getMessage, ex)
+          logger.error(ex.getMessage, ex)
           Future {
             BadRequest("無資料")
           }

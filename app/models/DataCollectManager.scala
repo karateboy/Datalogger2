@@ -322,7 +322,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                                      cdxUploader: CdxUploader,
                                      newTaipeiOpenData: NewTaipeiOpenData,
                                      tableType: TableType)() {
-
+  val logger: Logger = Logger(this.getClass)
   import DataCollectManager._
 
   def startCollect(inst: Instrument): Unit = {
@@ -436,7 +436,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
               }
 
             case Failure(exception) =>
-              Logger.error("failed", exception)
+              logger.error("failed", exception)
           }
         }
 
@@ -467,7 +467,7 @@ class DataCollectManager @Inject()
 
   import DataCollectManager._
 
-  Logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
+  logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
   DataCollectManager.updateEffectiveRatio(sysConfig)
 
   for (aqiMonitorTypes <- sysConfig.getAqiMonitorTypes)
@@ -533,7 +533,7 @@ class DataCollectManager @Inject()
       }
     }
 
-    Logger.info("DataCollect manager started")
+    logger.info("DataCollect manager started")
   }
 
   private def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord]): Boolean = {
@@ -624,16 +624,16 @@ class DataCollectManager @Inject()
       for (autoStateConfigs <- autoStateConfigOpt)
         autoStateConfigs.foreach(config => {
           if (config.period == "Hour" && config.time.toInt == DateTime.now().getMinuteOfHour) {
-            Logger.info(s"AutoState=>$config")
+            logger.info(s"AutoState=>$config")
             self ! SetState(config.instID, config.state)
           }
         })
 
     case StartInstrument(inst) =>
       if (!instrumentTypeOp.map.contains(inst.instType))
-        Logger.error(s"${inst._id} of ${inst.instType} is unknown!")
+        logger.error(s"${inst._id} of ${inst.instType} is unknown!")
       else if (instrumentMap.contains(inst._id))
-        Logger.error(s"${inst._id} is already started!")
+        logger.error(s"${inst._id} is already started!")
       else {
         val instType = instrumentTypeOp.map(inst.instType)
         val collector = instrumentTypeOp.start(inst.instType, inst._id, inst.protocol, inst.param)
@@ -669,8 +669,8 @@ class DataCollectManager @Inject()
 
     case StopInstrument(id: String) =>
       for (param <- instrumentMap.get(id)) {
-        Logger.info(s"Stop collecting instrument $id ")
-        Logger.info(s"remove ${param.mtList}")
+        logger.info(s"Stop collecting instrument $id ")
+        logger.info(s"remove ${param.mtList}")
         for (timer <- param.calibrationTimerOpt)
           timer.cancel()
 
@@ -766,7 +766,7 @@ class DataCollectManager @Inject()
         calibrationListMap, instrumentCalibratorMap -- config.instrumentIds, calibratorTimerMap)
 
     case MultiCalibrationDone(config) =>
-      Logger.info(s"MultiCalibrationDone ${config._id}")
+      logger.info(s"MultiCalibrationDone ${config._id}")
       context become handler(instrumentMap,
         latestDataMap, mtDataList, restartList,
         signalTypeHandlerMap, signalDataMap,
@@ -781,7 +781,7 @@ class DataCollectManager @Inject()
 
     case RestartMyself =>
       for (id <- getCollectorMap(instrumentMap).get(sender)) {
-        Logger.info(s"restart $id")
+        logger.info(s"restart $id")
         self ! RestartInstrument(id)
       }
 
@@ -984,7 +984,7 @@ class DataCollectManager @Inject()
         signalTypeHandlerMap, signalDataMap, map, instrumentCalibratorMap, calibratorTimerMap)
 
     case SetState(instId, state) =>
-      Logger.info(s"SetState($instId, $state)")
+      logger.info(s"SetState($instId, $state)")
       instrumentMap.get(instId).map { param =>
         param.actor ! SetState(instId, state)
       }
@@ -1027,7 +1027,7 @@ class DataCollectManager @Inject()
       }
 
     case WriteTargetDO(instId, bit, on) =>
-      Logger.debug(s"WriteTargetDO($instId, $bit, $on)")
+      logger.debug(s"WriteTargetDO($instId, $bit, $on)")
       instrumentMap.get(instId).map { param =>
         param.actor ! WriteDO(bit, on)
       }
@@ -1035,7 +1035,7 @@ class DataCollectManager @Inject()
     case ToggleTargetDO(instId, bit: Int, seconds) =>
       //Cancel previous timer if any
       onceTimer map { t => t.cancel() }
-      Logger.debug(s"ToggleTargetDO($instId, $bit)")
+      logger.debug(s"ToggleTargetDO($instId, $bit)")
       self ! WriteTargetDO(instId, bit, on = true)
       onceTimer = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
         self, WriteTargetDO(instId, bit, on = false)))
@@ -1059,14 +1059,14 @@ class DataCollectManager @Inject()
         } else
           calibratorOpt.get ! msg
       } else {
-        Logger.warn(s"Calibrator is not online! Ignore execute (${msg.seqName} - ${msg.on}).")
+        logger.warn(s"Calibrator is not online! Ignore execute (${msg.seqName} - ${msg.on}).")
       }
 
     case msg: WriteDO =>
       if (digitalOutputOpt.isDefined)
         digitalOutputOpt.get ! msg
       else {
-        Logger.warn(s"DO is not online! Ignore output (${msg.bit} - ${msg.on}).")
+        logger.warn(s"DO is not online! Ignore output (${msg.bit} - ${msg.on}).")
       }
 
     case GetLatestSignal =>
@@ -1096,7 +1096,7 @@ class DataCollectManager @Inject()
         }
 
         if (monitorTypeOp.map(mt).measuringBy.isEmpty) {
-          Logger.warn(s"$mt has not measuring instrument!")
+          logger.warn(s"$mt has not measuring instrument!")
           None
         } else {
           val measuringList = monitorTypeOp.map(mt).measuringBy.get
@@ -1143,7 +1143,7 @@ class DataCollectManager @Inject()
           if (instParam.mtList.filter(mt => !monitorTypeOp.map(mt).signalType)
             .exists(mt => !minRecordMap.contains(mt) ||
               minRecordMap.contains(mt) && minRecordMap(mt).size < 45)) {
-            Logger.error(s"$instID has less than 45 minRecords. Restart $instID")
+            logger.error(s"$instID has less than 45 minRecords. Restart $instID")
             alarmOp.log(alarmOp.srcInstrumentID(instID), alarmOp.Level.ERR, s"$instID 每小時分鐘資料小於45筆. 重新啟動 $instID 設備")
             self ! RestartInstrument(instID)
           }

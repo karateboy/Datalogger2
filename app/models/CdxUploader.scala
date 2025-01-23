@@ -11,6 +11,7 @@ import javax.xml.ws.Holder
 import scala.xml.Elem
 
 object CdxUploader {
+  val logger: Logger = Logger(this.getClass)
   case class ItemIdMap(epaId: Int, itemName: String)
   case class CdxMonitorType(mt:String, name:String, min:Option[Double], max:Option[Double])
 
@@ -148,17 +149,17 @@ class CdxUploader @Inject()(alarmDB: AlarmDB, environment: Environment){
       try{
         CdxWebService.service.putFile(cdxConfig.user, cdxConfig.password, fileName, xmlStr.getBytes("UTF-8"), errMsgHolder, resultHolder, unknownHolder)
         if (resultHolder.value != 1) {
-          Logger.error(s"errMsg:${errMsgHolder.value}")
-          Logger.error(s"ret:${resultHolder.value.toString}")
-          Logger.error(s"unknown:${unknownHolder.value.toString}")
+          logger.error(s"errMsg:${errMsgHolder.value}")
+          logger.error(s"ret:${resultHolder.value.toString}")
+          logger.error(s"unknown:${unknownHolder.value.toString}")
           alarmDB.log(alarmDB.srcCDX(), alarmDB.Level.ERR, s"CDX上傳${dateTime.toString(fmt)}小時值失敗 錯誤訊息 ${errMsgHolder.value}")
         } else {
-          Logger.info(s"Success upload ${dateTime.date.toString}")
+          logger.info(s"Success upload ${dateTime.date.toString}")
           alarmDB.log(alarmDB.srcCDX(), alarmDB.Level.INFO, s"CDX 上傳${dateTime.toString(fmt)}小時值成功")
         }
       }catch{
         case ex:Throwable =>
-          Logger.error("CDX: 上傳錯誤", ex)
+          logger.error("CDX: 上傳錯誤", ex)
           alarmDB.log(alarmDB.srcCDX(), alarmDB.Level.ERR, s"CDX上傳${dateTime.toString(fmt)}小時值失敗 錯誤訊息 ${ex.getMessage}")
       }
     }else{

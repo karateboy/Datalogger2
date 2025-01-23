@@ -18,11 +18,11 @@ class T700CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
   extends AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
     alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
-
+  val logger: Logger = Logger(this.getClass)
   import context.dispatcher
 
   assert(protocolParam.protocol == Protocol.tcpCli)
-  Logger.info(s"$instId T700CliCollector start")
+  logger.info(s"$instId T700CliCollector start")
   import com.github.nscala_time.time.Imports._
   val dataInstrumentTypes = List.empty[InstrumentStatusType]
   var socketOpt: Option[Socket] = None
@@ -57,7 +57,7 @@ class T700CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   override def executeSeq(seq: String, on: Boolean): Unit = {
     if ((seq == lastSeqNo && lastSeqOp == on) && (DateTime.now() < lastSeqTime + 5.second)) {
-      Logger.info(s"T700 in cold period, ignore same seq operation")
+      logger.info(s"T700 in cold period, ignore same seq operation")
     } else {
       lastSeqTime = DateTime.now
       lastSeqOp = on

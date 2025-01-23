@@ -1,9 +1,7 @@
 package models.mongodb
 
 import models.ModelHelper.{errorHandler, waitReadyResult}
-import models.{AlarmConfig, Group, User, UserDB}
-import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
-import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
+import models.{AlarmConfig, User, UserDB}
 import org.mongodb.scala.model.Updates
 import play.api.Logger
 
@@ -12,17 +10,18 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 @Singleton
 class UserOp @Inject()(mongoDB: MongoDB) extends UserDB {
+  val logger: Logger = Logger(getClass)
 
-  import org.mongodb.scala._
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
+  import org.mongodb.scala._
   import org.mongodb.scala.bson.codecs.Macros._
 
   lazy private val ColName = "users"
   lazy private val codecRegistry = fromRegistries(fromProviders(classOf[User], classOf[AlarmConfig]), DEFAULT_CODEC_REGISTRY)
   lazy private val collection: MongoCollection[User] = mongoDB.database.withCodecRegistry(codecRegistry).getCollection(ColName)
 
-  private def init() {
+  private def init(): Unit = {
     for (colNames <- mongoDB.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(ColName)) {
         val f = mongoDB.database.createCollection(ColName).toFuture()
@@ -34,7 +33,7 @@ class UserOp @Inject()(mongoDB: MongoDB) extends UserDB {
     f.onSuccess({
       case count: Long =>
         if (count == 0) {
-          Logger.info("Create default user:" + defaultUser.toString())
+          logger.info("Create default user:" + defaultUser.toString)
           newUser(defaultUser)
         }
     })

@@ -18,6 +18,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
                                alarmOp: AlarmDB, instrumentStatusOp: InstrumentStatusDB)
                               (@Assisted instId: String, @Assisted protocol: ProtocolParam, @Assisted modelReg: AkModelReg,
                                @Assisted deviceConfig: AkDeviceConfig) extends Actor {
+  val logger: Logger = Logger(this.getClass)
   import DataCollectManager._
   @volatile var timerOpt: Option[Cancellable] = None
 
@@ -35,7 +36,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
   val WarnKey = "Warn"
 
   def probeInstrumentStatusType: Seq[InstrumentStatusType] = {
-    Logger.info("Probing supported ak registers...")
+    logger.info("Probing supported ak registers...")
     def probeReg(addr: Int, desc: String) = {
       try {
         val cmd = AkProtocol.AskRegCmd(deviceConfig.stationNo, deviceConfig.channelNum, addr).getCmd
@@ -44,8 +45,8 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
         true
       } catch {
         case ex: Throwable =>
-          Logger.error(ex.getMessage, ex)
-          Logger.info(s"$addr $desc is not supported.")
+          logger.error(ex.getMessage, ex)
+          logger.info(s"$addr $desc is not supported.")
           false
       }
     }
@@ -64,7 +65,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
         yield
           InstrumentStatusType(key = s"$WarnKey${r.addr}", addr = r.addr, desc = r.desc, unit = "")
 
-    Logger.info("Finish probing.")
+    logger.info("Finish probing.")
     inputRegStatusType ++  modeRegStatusType ++ warningRegStatusType
   }
 
@@ -121,7 +122,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
         } catch {
           case ex: Exception =>
             comm.clearBuffer = true;
-            Logger.error(ex.getMessage, ex)
+            logger.error(ex.getMessage, ex)
             if (connected) {
               alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
             }
@@ -157,7 +158,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
             timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(5, SECONDS), self, ReadRegister))
           } catch {
             case ex: Exception =>
-              Logger.error(ex.getMessage, ex)
+              logger.error(ex.getMessage, ex)
               alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
@@ -171,12 +172,12 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
 
     case SetState(id, state) =>
       if (state == MonitorStatus.ZeroCalibrationStat) {
-        Logger.error(s"Unexpected command: SetState($state)")
+        logger.error(s"Unexpected command: SetState($state)")
       } else {
         collectorState = state
         instrumentOp.setState(instId, collectorState)
       }
-      Logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
+      logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
 
     case AutoCalibration(instId) =>
 
@@ -248,7 +249,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
         logInstrumentStatus(regValue)
       } catch {
         case _: Throwable =>
-          Logger.error("Log instrument status failed")
+          logger.error("Log instrument status failed")
       }
       nextLoggingStatusTime = nextLoggingStatusTime + 6.minute
     }
@@ -270,7 +271,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
   def findDataRegIdx(regValue: AkModelRegValue)(addr: Int) = {
     val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
     if (dataReg.isEmpty) {
-      Logger.warn(s"$instId Cannot found Data register!")
+      logger.warn(s"$instId Cannot found Data register!")
       None
     } else
       Some(dataReg.get._2)

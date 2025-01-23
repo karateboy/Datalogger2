@@ -78,7 +78,7 @@ class InstrumentTypeOp @Inject()
  upsFactory: UpsDrv.Factory,
  pseudoDeviceFactory: PseudoDevice.Factory,
  monitorTypeOp: MonitorTypeDB) extends InjectedActorSupport {
-
+  val logger: Logger = Logger(this.getClass)
   import Protocol._
 
   implicit val prtocolWrite = Json.writes[ProtocolInfo]
@@ -137,7 +137,7 @@ class InstrumentTypeOp @Inject()
 
   def start(instType: String, id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext): ActorRef = {
     val actorName = s"${instType}_${count}"
-    Logger.info(s"$actorName is created.")
+    logger.info(s"$actorName is created.")
     count += 1
 
     val instrumentType = map(instType)

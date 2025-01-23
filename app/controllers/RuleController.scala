@@ -13,7 +13,7 @@ class RuleController @Inject()(spikeRuleOp: SpikeRuleDB,
                                variationRuleOp: VariationRuleDB,
                                security: Security,
                                cc: ControllerComponents) extends AbstractController(cc) {
-
+  val logger: Logger = Logger(this.getClass)
   def getSpikeRules(): Action[AnyContent] = security.Authenticated.async {
     for(ret <- spikeRuleOp.getRules()) yield
       Ok(Json.toJson(ret))
@@ -24,7 +24,7 @@ class RuleController @Inject()(spikeRuleOp: SpikeRuleDB,
       val ret = request.body.validate[SpikeRule]
       ret.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           Future{
             BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
           }
@@ -51,7 +51,7 @@ class RuleController @Inject()(spikeRuleOp: SpikeRuleDB,
       val ret = request.body.validate[ConstantRule]
       ret.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           Future{
             BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
           }
@@ -78,7 +78,7 @@ class RuleController @Inject()(spikeRuleOp: SpikeRuleDB,
       val ret = request.body.validate[VariationRule]
       ret.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           Future{
             BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
           }

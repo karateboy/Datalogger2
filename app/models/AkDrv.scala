@@ -22,6 +22,7 @@ case class AkDeviceConfig(stationNo: String, channelNum:String, calibrationTime:
 
 class AkDrv(_id:String, desp:String, protocols:List[String], tcpModelReg: AkModelReg) extends DriverOps {
   import ModelHelper._
+  val logger: Logger = Logger(this.getClass)
   implicit val cfgReads: Reads[AkDeviceConfig] = Json.reads[AkDeviceConfig]
   implicit val cfgWrites: OWrites[AkDeviceConfig] = Json.writes[AkDeviceConfig]
 
@@ -29,7 +30,7 @@ class AkDrv(_id:String, desp:String, protocols:List[String], tcpModelReg: AkMode
     val ret = Json.parse(json).validate[AkDeviceConfig]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => {
@@ -55,7 +56,7 @@ class AkDrv(_id:String, desp:String, protocols:List[String], tcpModelReg: AkMode
     val ret = Json.parse(json).validate[AkDeviceConfig]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => param)

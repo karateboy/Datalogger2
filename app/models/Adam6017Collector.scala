@@ -37,8 +37,8 @@ object Adam6017Collector {
 class Adam6017Collector @Inject()
 (instrumentOp: InstrumentDB)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: Adam6017Param) extends Actor with ActorLogging {
-
-  Logger.info(s"$id Adam6017 start")
+  val logger: Logger = Logger(this.getClass)
+  logger.info(s"$id Adam6017 start")
 
   import MoxaE1212Collector._
   import DataCollectManager._
@@ -114,8 +114,8 @@ class Adam6017Collector @Inject()
             cancelable = context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Exception =>
-              Logger.error(ex.getMessage, ex)
-              Logger.info("Try again 1 min later...")
+              logger.error(ex.getMessage, ex)
+              logger.info("Try again 1 min later...")
               //Try again
               import scala.concurrent.duration._
               cancelable = context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
@@ -154,7 +154,7 @@ class Adam6017Collector @Inject()
             cancelable = context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Throwable =>
-              Logger.error("Read reg failed", ex)
+              logger.error("Read reg failed", ex)
               masterOpt.get.destroy()
               context become handler(collectorState, None)
               self ! ConnectHost
@@ -163,12 +163,12 @@ class Adam6017Collector @Inject()
       } onFailure errorHandler
 
     case SetState(id, state) =>
-      Logger.info(s"$self => $state")
+      logger.info(s"$self => $state")
       instrumentOp.setState(id, state)
       context become handler(state, masterOpt)
 
     case WriteDO(bit, on) =>
-      Logger.info(s"Output DO $bit to $on")
+      logger.info(s"Output DO $bit to $on")
       try {
         import com.serotonin.modbus4j.locator.BaseLocator
         val locator = BaseLocator.coilStatus(1, 16 + bit)

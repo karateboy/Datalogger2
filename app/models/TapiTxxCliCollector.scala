@@ -18,12 +18,13 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
     alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
 
+  val logger: Logger = Logger(this.getClass)
   import context.dispatcher
 
   val model: String
 
   assert(protocolParam.protocol == Protocol.tcpCli)
-  Logger.info(s"$instId : ${this.getClass.toString} start")
+  logger.info(s"$instId : ${this.getClass.toString} start")
   @volatile var calibrating = false
 
   val dataInstrumentTypes: List[InstrumentStatusType]
@@ -33,7 +34,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
   @volatile private var inOpt: Option[BufferedReader] = None
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = {
-    Logger.info(s"Probe $model")
+    logger.info(s"Probe $model")
     var istList = dataInstrumentTypes
     var addr = dataInstrumentTypes.length
 
@@ -55,7 +56,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
         ret.flatten
       }
 
-    Logger.info(s"Finished Probe $model")
+    logger.info(s"Finished Probe $model")
     istList = istList ++ statusTypeList.getOrElse(List.empty[InstrumentStatusType])
     istList
   }
@@ -135,7 +136,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
       do {
         line = in.readLine()
         if (line == null) {
-          Logger.error(s"$instId readline null. close socket stream")
+          logger.error(s"$instId readline null. close socket stream")
           reset()
         }
         if (line != null && !line.isEmpty)
@@ -144,7 +145,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
     } catch {
       case _: SocketTimeoutException =>
         if (resp.isEmpty && !calibrating) {
-          Logger.error("no response after timeout!")
+          logger.error("no response after timeout!")
           reset()
         }
     }

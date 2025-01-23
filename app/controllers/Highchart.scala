@@ -8,6 +8,7 @@ import play.api.libs.json._
 import play.api.mvc._
 
 object Highchart {
+  val logger: Logger = Logger(this.getClass)
   case class XAxis(categories: Option[Seq[String]], gridLineWidth: Option[Int]=None, tickInterval:Option[Int]=None)
   case class AxisLineLabel(align: String, text: String)
   case class AxisLine(color: String, width: Int, value: Double, label: Option[AxisLineLabel])
@@ -48,7 +49,7 @@ object Highchart {
           JsArray(Seq(JsNumber(o._1), JsNull))
       }catch{
         case  ex: java.lang.NumberFormatException =>
-          Logger.error(s"(${o._1}, ${o._2} ")
+          logger.error(s"(${o._1}, ${o._2} ")
           throw ex
       }
     }

@@ -19,10 +19,10 @@ object InstrumentStatusTypeForwarder {
 
 class InstrumentStatusTypeForwarder @Inject()(instrumentOp: InstrumentDB, ws: WSClient)
   (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
-
+  val logger: Logger = Logger(this.getClass)
   import ForwardManager._
 
-  Logger.info(s"InstrumentStatusTypeForwarder started $server/$monitor")
+  logger.info(s"InstrumentStatusTypeForwarder started $server/$monitor")
 
   def receive = handler(None)
 
@@ -36,7 +36,7 @@ class InstrumentStatusTypeForwarder @Inject()(instrumentOp: InstrumentDB, ws: WS
               val result = response.json.validate[String]
               result.fold(
                 error => {
-                  Logger.error(JsError.toJson(error).toString())
+                  logger.error(JsError.toJson(error).toString())
                 },
                 ids => {
                   context become handler(Some(ids))
@@ -59,7 +59,7 @@ class InstrumentStatusTypeForwarder @Inject()(instrumentOp: InstrumentDB, ws: WS
               }.mkString("")
 
               if (myIds != instrumentStatusTypeIdOpt.get) {
-                Logger.info("statusTypeId is not equal. updating...")
+                logger.info("statusTypeId is not equal. updating...")
                 val istMaps = withStatusType.map { inst =>
                   InstrumentStatusTypeMap(inst._id, inst.statusType.get)
                 }
