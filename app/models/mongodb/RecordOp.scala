@@ -90,7 +90,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
 
     val col = getCollection(colName)
 
-    val f = col.find(and(in("_id.monitor", monitors: _*), gte("_id.time", startTime.toDate()), lt("_id.time", endTime.toDate())))
+    val f = col.find(and(in("_id.monitor", monitors: _*), gte("_id.time", startTime.toDate), lt("_id.time", endTime.toDate)))
       .sort(ascending("_id.time")).toFuture()
     f onFailure errorHandler
     f
@@ -103,7 +103,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
 
     val col = getCollection(colName)
     val f = col.find(and(equal("_id.monitor", monitor),
-        gte("_id.time", startTime.toDate()), lt("_id.time", endTime.toDate())))
+        gte("_id.time", startTime.toDate), lt("_id.time", endTime.toDate)))
       .limit(limit).sort(ascending("_id.time")).toFuture()
     f onFailure errorHandler
     f
@@ -118,7 +118,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
     import org.mongodb.scala.model.Sorts._
 
     val col = getCollection(colName)
-    val f = col.find(and(equal("_id.monitor", monitor), gte("_id.time", startTime.toDate()), lt("_id.time", endTime.toDate())))
+    val f = col.find(and(equal("_id.monitor", monitor), gte("_id.time", startTime.toDate), lt("_id.time", endTime.toDate)))
       .sort(ascending("_id.time")).toFuture()
     f onFailure errorHandler
 
@@ -157,7 +157,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
     f
   }
 
-  private def init() {
+  private def init(): Unit = {
     for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(HourCollection)) {
         val f = mongodb.database.createCollection(HourCollection).toFuture()
@@ -213,14 +213,14 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
     }
   }
 
-  override def getHourCollectionList(): Future[Seq[String]] = {
+  override def getHourCollectionList: Future[Seq[String]] = {
     val f = mongodb.database.listCollectionNames().toFuture()
     for (colNames <- f) yield {
       colNames.filter(_.startsWith(HourCollection))
     }
   }
 
-  override def getMinCollectionList(): Future[Seq[String]] = {
+  override def getMinCollectionList: Future[Seq[String]] = {
     val f = mongodb.database.listCollectionNames().toFuture()
     for (colNames <- f) yield {
       colNames.filter(_.startsWith(MinCollection))

@@ -80,16 +80,16 @@ trait RecordDB {
       var total = 0
       for (record <- windRecords if record.forall(r =>
         MonitorStatusFilter.isMatched(MonitorStatusFilter.ValidData, r.status) && r.value.isDefined)) {
-        val dir = Math.ceil((record(0).value.get - (step / 2)) / step).toInt % nDiv
+        val dir = Math.ceil((record.head.value.get - (step / 2)) / step).toInt % nDiv
         windMap(dir) += record(1).value.get
         total += 1
       }
 
-      def winSpeedPercent(winSpeedList: ListBuffer[Double]) = {
+      def winSpeedPercent(winSpeedList: ListBuffer[Double]): Array[Double] = {
         val count = new Array[Double](level.length + 1)
 
         def getIdx(v: Double): Int = {
-          for (i <- 0 to level.length - 1) {
+          for (i <- level.indices) {
             if (v < level(i))
               return i
           }
@@ -152,7 +152,7 @@ trait RecordDB {
   def moveRecordToYearTable(colName:String)(year:Int): Future[Boolean]
 
 
-  def getHourCollectionList(): Future[Seq[String]]
+  def getHourCollectionList: Future[Seq[String]]
 
-  def getMinCollectionList(): Future[Seq[String]]
+  def getMinCollectionList: Future[Seq[String]]
 }

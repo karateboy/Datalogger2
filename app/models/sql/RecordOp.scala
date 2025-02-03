@@ -315,12 +315,12 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
       }
   }
 
-  override def getHourCollectionList(): Future[Seq[String]] = Future {
+  override def getHourCollectionList: Future[Seq[String]] = Future {
     sqlServer.getTables().filter(tab => tab.startsWith(HourCollection))
 
   }
 
-  override def getMinCollectionList(): Future[Seq[String]] = Future {
+  override def getMinCollectionList: Future[Seq[String]] = Future {
     sqlServer.getTables().filter(tab => tab.startsWith(MinCollection))
   }
 }
