@@ -3,7 +3,7 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports.{DateTime, DateTimeFormat}
 import com.google.inject.assistedinject.Assisted
-import models.ModelHelper.waitReadyResult
+import models.ModelHelper.{errorHandler, waitReadyResult}
 import models.Protocol.{ProtocolParam, tcp}
 import org.eclipse.paho.client.mqttv3._
 import play.api._
@@ -11,7 +11,7 @@ import play.api.libs.json._
 
 import java.nio.file.Files
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{Duration, MINUTES}
+import scala.concurrent.duration.{Duration, FiniteDuration, MINUTES}
 import scala.concurrent.{Future, blocking}
 import scala.util.Success
 
@@ -117,7 +117,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
   @volatile var mqttClientOpt: Option[MqttAsyncClient] = None
   @volatile var lastDataArrival: DateTime = DateTime.now
 
-  val watchDog = context.system.scheduler.schedule(Duration(1, MINUTES),
+  val watchDog = context.system.scheduler.scheduleAtFixedRate(FiniteDuration(1, MINUTES),
     Duration(timeout, MINUTES), self, CheckTimeout)
 
   @volatile var sensorMap: Map[String, Sensor] = {
@@ -268,7 +268,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
         if (sensorMap.contains(message.id)) {
           val sensor = sensorMap(message.id)
           val f = recordOp.upsertRecord(recordOp.MinCollection)(RecordList.factory(time.toDate, mtDataList, sensor.monitor))
-          f.onFailure(ModelHelper.errorHandler)
+          f.failed.foreach(ModelHelper.errorHandler)
         } else {
           monitorDB.upsertMonitor(Monitor(message.id, message.id, Some(message.lat), Some(message.lon)))
           val sensor = Sensor(id = message.id, topic = topic, monitor = message.id, group = config.group)
@@ -278,7 +278,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
           })
 
           val f = recordOp.upsertRecord(recordOp.MinCollection)(RecordList.factory(time.toDate, mtDataList, sensor.monitor))
-          f.onFailure(ModelHelper.errorHandler)
+          f.failed.foreach(errorHandler)
         }
       })
   }

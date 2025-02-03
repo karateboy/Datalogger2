@@ -122,7 +122,7 @@ class Adam6017Collector @Inject()
           }
 
         }
-      } onFailure errorHandler
+      }.failed.foreach(errorHandler)
 
     case Collect =>
       Future {
@@ -160,7 +160,7 @@ class Adam6017Collector @Inject()
               self ! ConnectHost
           }
         }
-      } onFailure errorHandler
+      }.failed.foreach(errorHandler)
 
     case SetState(id, state) =>
       logger.info(s"$self => $state")

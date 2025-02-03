@@ -110,7 +110,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
               ("日報" + startDate.toString("YYYYMMdd"), excelUtility.exportDailyReport(startDate, dailyReport))
 
             Ok.sendFile(excelFile, fileName = _ =>
-              s"${title}.xlsx",
+              Some(s"$title.xlsx"),
               onClose = () => {
                 Files.deleteIfExists(excelFile.toPath)
               })
@@ -178,7 +178,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
                 excelUtility.exportDisplayReport(s"監測月報 ${start.toString("YYYY年MM月")}", monthlyReport))
 
             Ok.sendFile(excelFile, fileName = _ =>
-              s"${title}.xlsx",
+              Some(s"$title.xlsx"),
               onClose = () => {
                 Files.deleteIfExists(excelFile.toPath)
               })
@@ -196,32 +196,9 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
         //val nDays = monthlyReport.typeArray(0).dataList.length
         //("月報", "")
       }
-    /*
-      Ok("")
-                      val (title, excelFile) =
-                        reportType match {
-                          case PeriodReport.DailyReport =>
-                            val dailyReport = Record.getDailyReport(monitor, startTime)
-                            ("日報" + startTime.toString("YYYYMMdd"), ExcelUtility.createDailyReport(monitor, startTime, dailyReport))
-
-              }
-
-     */
-    //            case PeriodReport.MonthlyReport =>
-    //              val adjustStartDate = DateTime.parse(startTime.toString("YYYY-MM-1"))
-    //              val monthlyReport = getMonthlyReport(monitor, adjustStartDate)
-    //              val nDay = monthlyReport.typeArray(0).dataList.length
-    //              ("月報" + startTime.toString("YYYYMM"), ExcelUtility.createMonthlyReport(monitor, adjustStartDate, monthlyReport, nDay))
-    //
-    //          }
-    //
-    //                Ok.sendFile(excelFile, fileName = _ =>
-    //                  play.utils.UriEncoding.encodePathSegment(title + ".xlsx", "UTF-8"),
-    //                  onClose = () => { Files.deleteIfExists(excelFile.toPath()) })
-
   }
 
-  def getOverallStatMap(statMap: Map[String, Map[DateTime, Stat]], minimalValidCount: Int): Map[String, Stat] = {
+  private def getOverallStatMap(statMap: Map[String, Map[DateTime, Stat]], minimalValidCount: Int): Map[String, Stat] = {
     statMap.map { pair =>
       val mt = pair._1
       val dateMap = pair._2
@@ -289,7 +266,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
     }
   }
 
-  def monthlyHourReport(monitorTypeStr: String, startDate: Long, outputTypeStr: String) = security.Authenticated {
+  def monthlyHourReport(monitorTypeStr: String, startDate: Long, outputTypeStr: String): Action[AnyContent] = security.Authenticated {
     val mt = monitorTypeStr
     val start = new DateTime(startDate).withMillisOfDay(0).withDayOfMonth(1)
     val outputType = OutputType.withName(outputTypeStr)
@@ -417,7 +394,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
           excelUtility.exportDisplayReport(s"月份時報表 ${start.toString("YYYY年MM月")}", report))
 
       Ok.sendFile(excelFile, fileName = _ =>
-        s"$title.xlsx",
+        Some(s"$title.xlsx"),
         onClose = () => {
           Files.deleteIfExists(excelFile.toPath)
         })

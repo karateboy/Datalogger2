@@ -402,7 +402,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
           else
             triggerSpanCalibration(true)
         }
-      } onFailure calibrationErrorHandler(instId, timerOpt, endState)
+      }.failed.foreach(calibrationErrorHandler(instId, timerOpt, endState))
 
     case HoldStart =>
       val calibrationTimerOpt =
@@ -440,7 +440,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
           else
             triggerSpanCalibration(false)
         }
-      } onFailure calibrationErrorHandler(instId, timerOpt, endState)
+      }.failed.foreach(calibrationErrorHandler(instId, timerOpt, endState))
 
     case rd: ReportData =>
       if(recordCalibration)

@@ -23,7 +23,7 @@ class AlarmRuleOp @Inject()(mongodb: MongoDB) extends AlarmRuleDb{
     for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(colName)) {
         val f = mongodb.database.createCollection(colName).toFuture()
-        f.onFailure(errorHandler)
+        f.failed.foreach(errorHandler)
       }
     }
   }
@@ -31,7 +31,7 @@ class AlarmRuleOp @Inject()(mongodb: MongoDB) extends AlarmRuleDb{
   init()
   override def getRulesAsync: Future[Seq[AlarmRule]] = {
     val f = collection.find().toFuture()
-    f onFailure errorHandler()
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -39,7 +39,7 @@ class AlarmRuleOp @Inject()(mongodb: MongoDB) extends AlarmRuleDb{
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.ReplaceOptions
     val f = collection.replaceOne(equal("_id", rule._id), rule, ReplaceOptions().upsert(true)).toFuture()
-    f onFailure errorHandler()
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -47,7 +47,7 @@ class AlarmRuleOp @Inject()(mongodb: MongoDB) extends AlarmRuleDb{
   override def deleteAsync(_id: String): Future[DeleteResult] = {
     import org.mongodb.scala.model.Filters._
     val f = collection.deleteOne(equal("_id", _id)).toFuture()
-    f onFailure (errorHandler())
+    f.failed.foreach(errorHandler)
     f
   }
 }

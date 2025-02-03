@@ -306,7 +306,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
           else
             triggerSpanCalibration(true)
         }
-      } onFailure calibrationErrorHandler(instId, calibrationTimerOpt, endState)
+      }.failed.foreach(calibrationErrorHandler(instId, calibrationTimerOpt, endState))
 
     case HoldStart =>
       log.info(s"${self.path.name} => HoldStart")
@@ -345,7 +345,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
           else
             triggerSpanCalibration(false)
         }
-      } onFailure calibrationErrorHandler(instId, calibrationTimerOpt, endState)
+      }.failed.foreach(calibrationErrorHandler(instId, calibrationTimerOpt, endState))
 
     case rd: ReportData =>
       if (recordCalibration)

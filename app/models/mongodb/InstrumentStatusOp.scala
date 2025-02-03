@@ -21,11 +21,8 @@ class InstrumentStatusOp @Inject()(mongodb: MongoDB) extends InstrumentStatusDB 
     for(colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(collectionName)) {
         val f = mongodb.database.createCollection(collectionName).toFuture()
-        f.onFailure(errorHandler)
-        f.onSuccess({
-          case _ =>
-            collection.createIndex(ascending("time", "instID"))
-        })
+        f.failed.foreach(errorHandler)
+        f.foreach(_ => collection.createIndex(ascending("time", "instID")))
       }
     }
   }

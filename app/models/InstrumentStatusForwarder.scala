@@ -1,7 +1,9 @@
 package models
+
 import akka.actor.Actor
 import com.github.nscala_time.time.Imports.DateTime
 import com.google.inject.assistedinject.Assisted
+import models.ModelHelper.errorHandler
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
@@ -10,19 +12,22 @@ import java.util.Date
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-object InstrumentStatusForwarder{
+object InstrumentStatusForwarder {
   trait Factory {
     def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String): Actor
   }
 }
 
-class InstrumentStatusForwarder @Inject()(ws:WSClient, instrumentStatusOp: InstrumentStatusDB)
+class InstrumentStatusForwarder @Inject()(ws: WSClient, instrumentStatusOp: InstrumentStatusDB)
                                          (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
+
   import ForwardManager._
+
   val logger: Logger = Logger(this.getClass)
   logger.info(s"InstrumentStatusForwarder started $server/$monitor")
 
   def receive: Receive = handler(None)
+
   def checkLatest(): Unit = {
     val url = s"http://$server/InstrumentStatusRange/$monitor"
     val f = ws.url(url).get().map {
@@ -38,10 +43,7 @@ class InstrumentStatusForwarder @Inject()(ws:WSClient, instrumentStatusOp: Instr
             uploadRecord(new Date(latest.time))
           })
     }
-    f onFailure {
-      case ex: Throwable =>
-        ModelHelper.logException(ex)
-    }
+    f.failed.foreach(errorHandler)
   }
 
   def uploadRecord(latestRecordTime: Date): Unit = {
@@ -50,20 +52,16 @@ class InstrumentStatusForwarder @Inject()(ws:WSClient, instrumentStatusOp: Instr
       if (records.nonEmpty) {
         val url = s"http://$server/InstrumentStatusRecord/$monitor"
         val f = ws.url(url).put(Json.toJson(records))
-        f onSuccess {
-          case response =>
-            context become handler(Some(records.last.time))
-        }
-        f onFailure {
-          case ex: Throwable =>
-            context become handler(None)
-            ModelHelper.logException(ex)
-        }
+        f.foreach(_ => context become handler(Some(records.last.time)))
+        f.failed.foreach(ex => {
+          ModelHelper.logException(ex)
+          context become handler(None)
+        })
       }
     }
   }
-  
-  
+
+
   def handler(latestRecordTimeOpt: Option[Date]): Receive = {
     case ForwardInstrumentStatus =>
       if (latestRecordTimeOpt.isEmpty)

@@ -33,7 +33,7 @@ class MonitorOp @Inject()(mongodb: MongoDB, sysConfig: SysConfig) extends Monito
   for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
     if (!colNames.contains(colName)) {
       val f = mongodb.database.createCollection(colName).toFuture()
-      f.onFailure(errorHandler)
+      f.failed.foreach(errorHandler)
       for (_ <- f) {
         for (ret <- collection.countDocuments(Filters.exists("_id")).toFuture())
           if (ret == 0 && LoggerConfig.config.selfMonitor) {
@@ -54,14 +54,14 @@ class MonitorOp @Inject()(mongodb: MongoDB, sysConfig: SysConfig) extends Monito
 
   override def upsert(m: Monitor): Unit = {
     val f = collection.replaceOne(Filters.equal("_id", m._id), m, ReplaceOptions().upsert(true)).toFuture()
-    f.onFailure(errorHandler)
+    f.failed.foreach(errorHandler)
     map = map + (m._id -> m)
   }
 
   override def deleteMonitor(_id: String): Future[DeleteResult] = {
     map = map - _id
     val f = collection.deleteOne(Filters.equal("_id", _id)).toFuture()
-    f.onFailure(errorHandler)
+    f.failed.foreach(errorHandler)
     f
   }
 }

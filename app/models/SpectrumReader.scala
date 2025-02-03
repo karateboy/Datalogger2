@@ -126,7 +126,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
             dataCollectManagerOp.recalculateHourData(Monitor.activeId, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
         }
       }
-      f onFailure errorHandler
+      f.failed.foreach(errorHandler)
       f onComplete({
         case _ =>
           timer = context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, ParseReport)

@@ -38,7 +38,7 @@ class MoxaE1212Collector @Inject()
     val resetTime = DateTime.now().withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0) + 1.hour
     val duration = new Duration(DateTime.now(), resetTime)
     import scala.concurrent.duration._
-    context.system.scheduler.schedule(FiniteDuration(duration.getStandardSeconds, SECONDS),
+    context.system.scheduler.scheduleAtFixedRate(FiniteDuration(duration.getStandardSeconds, SECONDS),
       scala.concurrent.duration.Duration(1, HOURS), self, ResetCounter)
   }
   @volatile var cancelable: Cancellable = _
@@ -102,7 +102,7 @@ class MoxaE1212Collector @Inject()
           }
 
         }
-      } onFailure errorHandler
+      }.failed.foreach(errorHandler)
 
     case Collect =>
       Future {
@@ -161,7 +161,7 @@ class MoxaE1212Collector @Inject()
               self ! ConnectHost
           }
         }
-      } onFailure errorHandler
+      }.failed.foreach(errorHandler)
 
     case SetState(id, state) =>
       logger.info(s"$self => $state")

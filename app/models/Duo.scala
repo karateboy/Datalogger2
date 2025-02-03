@@ -152,9 +152,9 @@ class DuoCollector @Inject()
   import scala.concurrent.duration._
 
   val timer = if (config.fixed)
-    system.scheduler.schedule(Duration(1, SECONDS), Duration(1, SECONDS), self, ReadFixedData)
+    system.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS), FiniteDuration(1, SECONDS), self, ReadFixedData)
   else
-    system.scheduler.schedule(Duration(1, SECONDS), Duration(1, SECONDS), self, ReadData)
+    system.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS), FiniteDuration(1, SECONDS), self, ReadData)
 
   val host = protocolParam.host.get
 

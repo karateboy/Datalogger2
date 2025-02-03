@@ -143,8 +143,8 @@ class Horiba370Collector @Inject()
   import scala.concurrent.{Future, blocking}
 
   logger.info(s"Horiba370Collector created $id:${protocol} ${config}")
-  val timer: Cancellable = context.system.scheduler.schedule(Duration(1, SECONDS), Duration(2, SECONDS), self, ReadData)
-  private val statisTimer = context.system.scheduler.schedule(Duration(30, SECONDS), Duration(1, MINUTES), self, CheckStatus)
+  val timer: Cancellable = context.system.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS), Duration(2, SECONDS), self, ReadData)
+  private val statusTimer = context.system.scheduler.scheduleAtFixedRate(FiniteDuration(30, SECONDS), Duration(1, MINUTES), self, CheckStatus)
   val mtCH4 = "CH4"
   val mtNMHC = "NMHC"
   val mtTHC = "THC"
@@ -617,7 +617,7 @@ class Horiba370Collector @Inject()
 
   override def postStop() = {
     timer.cancel()
-    statisTimer.cancel()
+    statusTimer.cancel()
   }
 
   case object RaiseStart

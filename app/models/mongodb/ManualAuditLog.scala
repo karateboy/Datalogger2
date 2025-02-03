@@ -20,7 +20,7 @@ class ManualAuditLogOp @Inject()(mongodb: MongoDB) extends ManualAuditLogDB {
     val f = collection.replaceOne(and(equal("dataTime", log.dataTime), equal("mt", log.mt)),
       toDocument(log), ReplaceOptions().upsert(true)).toFuture()
 
-    f.onFailure(errorHandler)
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -63,11 +63,8 @@ class ManualAuditLogOp @Inject()(mongodb: MongoDB) extends ManualAuditLogDB {
     for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(collectionName)) {
         val f = mongodb.database.createCollection(collectionName).toFuture()
-        f.onFailure(errorHandler)
-        f.onSuccess({
-          case _ =>
-            collection.createIndex(ascending("dataTime", "mt"))
-        })
+        f.failed.foreach(errorHandler)
+        f.foreach(_=> collection.createIndex(ascending("dataTime", "mt")))
       }
     }
   }

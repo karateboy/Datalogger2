@@ -5,8 +5,8 @@ import models.{GroupDB, MqttSensorDB, Sensor}
 import org.mongodb.scala.result.{DeleteResult, UpdateResult}
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 @Singleton
 class MqttSensorOp @Inject()(mongodb: MongoDB, groupOp: GroupDB) extends MqttSensorDB {
 
@@ -27,20 +27,20 @@ class MqttSensorOp @Inject()(mongodb: MongoDB, groupOp: GroupDB) extends MqttSen
 
   override def getAllSensorList: Future[Seq[Sensor]] = {
     val f = collection.find(Filters.exists("_id")).toFuture()
-    f onFailure (errorHandler())
+    f.failed.foreach(errorHandler)
     f
   }
 
   override def upsert(sensor: Sensor): Future[UpdateResult] = {
     val f = collection.replaceOne(Filters.equal("id", sensor.id), sensor, ReplaceOptions().upsert(true)).toFuture()
-    f onFailure (errorHandler)
-    groupOp.addMonitor(sensor.group, sensor.monitor) onFailure (errorHandler())
+    f.failed.foreach(errorHandler)
+    groupOp.addMonitor(sensor.group, sensor.monitor).failed.foreach(errorHandler)
     f
   }
 
   override def delete(id: String): Future[DeleteResult] = {
     val f = collection.deleteOne(Filters.equal("id", id)).toFuture()
-    f onFailure (errorHandler)
+    f.failed.foreach(errorHandler)
     f
   }
 }

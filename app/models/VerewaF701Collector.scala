@@ -187,11 +187,11 @@ class VerewaF701Collector @Inject()
     }
   }
 
-  def receive = {
+  def receive: Receive = {
     case OpenComPort =>
       try {
         serialOpt = Some(SerialComm.open(protocolParam.comPort.get))
-        cancelable = system.scheduler.schedule(scala.concurrent.duration.Duration(3, SECONDS), Duration(3, SECONDS), self, ReadData)
+        cancelable = system.scheduler.scheduleAtFixedRate(FiniteDuration(3, SECONDS), Duration(3, SECONDS), self, ReadData)
       } catch {
         case ex: Exception =>
           logger.error(ex.getMessage, ex)
@@ -227,7 +227,7 @@ class VerewaF701Collector @Inject()
             }
           }
         }
-      } onFailure errorHandler
+      }.failed.foreach(errorHandler)
 
     case SetState(id, state) =>
       logger.info(s"SetState(${monitorStatusOp.map(state).desp})")

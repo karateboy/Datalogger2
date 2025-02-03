@@ -181,7 +181,7 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
           val oneHourLater = DateTime.now().plusHours(1)
           val nextHour = oneHourLater.withMinuteOfHour(0).withSecondOfMinute(0)
           val elapsedSeconds = new org.joda.time.Duration(DateTime.now, nextHour).getStandardSeconds
-          resetTimerOpt = Some(context.system.scheduler.schedule(FiniteDuration(elapsedSeconds, SECONDS), FiniteDuration(1, HOURS), self, ResetCounter))
+          resetTimerOpt = Some(context.system.scheduler.scheduleAtFixedRate(FiniteDuration(elapsedSeconds, SECONDS), FiniteDuration(1, HOURS), self, ResetCounter))
         }
       } catch {
         case ex: Exception =>
@@ -241,7 +241,7 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
             }
           }
         }
-      } onFailure errorHandler
+      }.failed.foreach(errorHandler)
 
     case WriteModuleDo(address, ch, on) =>
       val os = comm.os

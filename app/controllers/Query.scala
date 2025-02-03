@@ -232,7 +232,7 @@ class Query @Inject()(recordOp: RecordDB,
           chart.title("text")
 
       Ok.sendFile(excelFile, fileName = _ =>
-        s"${downloadFileName}.xlsx",
+        Some(s"$downloadFileName.xlsx"),
         onClose = () => {
           Files.deleteIfExists(excelFile.toPath)
         })
@@ -837,14 +837,14 @@ class Query @Inject()(recordOp: RecordDB,
         case OutputType.excel =>
           val excelFile = excelUtility.calibrationReport(startTime, endTime, records)
           Ok.sendFile(excelFile, fileName = _ =>
-            s"校正紀錄.xlsx",
+            Some("校正紀錄.xlsx"),
             onClose = () => {
               Files.deleteIfExists(excelFile.toPath)
             })
         case OutputType.excel2 =>
           val excelFile = excelUtility.multiCalibrationReport(startTime, endTime, records)
           Ok.sendFile(excelFile, fileName = _ =>
-            s"多點校正紀錄.xlsx",
+            Some("多點校正紀錄.xlsx"),
             onClose = () => {
               Files.deleteIfExists(excelFile.toPath)
             })
@@ -994,7 +994,7 @@ class Query @Inject()(recordOp: RecordDB,
             recordOp.MinCollection
         }
         val f = recordOp.getWindRose(colName)(monitor, monitorType, new DateTime(start), new DateTime(end), levels.toList, nWay)
-        f onFailure (errorHandler)
+        f.failed.foreach(errorHandler)
         for (windMap <- f) yield {
           assert(windMap.nonEmpty)
 
@@ -1140,7 +1140,7 @@ class Query @Inject()(recordOp: RecordDB,
         if (outputType == OutputType.excel) {
           val excelFile = excelUtility.exportChartData(chart, Array(0), showSec = false)
           Ok.sendFile(excelFile, fileName = _ =>
-            s"AQI查詢.xlsx",
+            Some("AQI查詢.xlsx"),
             onClose = () => {
               Files.deleteIfExists(excelFile.toPath)
             })

@@ -94,19 +94,19 @@ class ForwardManager @Inject()(hourRecordForwarderFactory: HourRecordForwarder.F
 
   val timer: Cancellable = {
     import context.dispatcher
-    context.system.scheduler.schedule(FiniteDuration(30, SECONDS), FiniteDuration(10, MINUTES), instrumentStatusForwarder, ForwardInstrumentStatus)
+    context.system.scheduler.scheduleAtFixedRate(FiniteDuration(30, SECONDS), FiniteDuration(10, MINUTES), instrumentStatusForwarder, ForwardInstrumentStatus)
   }
 
   private val timer2 = {
     import context.dispatcher
-    context.system.scheduler.schedule(FiniteDuration(30, SECONDS), FiniteDuration(5, MINUTES), calibrationForwarder, ForwardCalibration)
+    context.system.scheduler.scheduleAtFixedRate(FiniteDuration(30, SECONDS), FiniteDuration(5, MINUTES), calibrationForwarder, ForwardCalibration)
   }
 
   private val timer3 = {
     import context.dispatcher
 
     import scala.concurrent.duration._
-    context.system.scheduler.schedule(FiniteDuration(30, SECONDS), FiniteDuration(3, MINUTES), alarmForwarder, ForwardAlarm)
+    context.system.scheduler.scheduleAtFixedRate(FiniteDuration(30, SECONDS), FiniteDuration(3, MINUTES), alarmForwarder, ForwardAlarm)
   }
 
   /*
@@ -117,7 +117,7 @@ class ForwardManager @Inject()(hourRecordForwarderFactory: HourRecordForwarder.F
 
   private val timer5 = {
     import context.dispatcher
-    context.system.scheduler.schedule(FiniteDuration(30, SECONDS), FiniteDuration(10, MINUTES), statusTypeForwarder, UpdateInstrumentStatusType)
+    context.system.scheduler.scheduleAtFixedRate(FiniteDuration(30, SECONDS), FiniteDuration(10, MINUTES), statusTypeForwarder, UpdateInstrumentStatusType)
   }
 
   def receive: Receive = {

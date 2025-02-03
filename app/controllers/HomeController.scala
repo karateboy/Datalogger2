@@ -596,7 +596,7 @@ class HomeController @Inject()(
   def probeDuoMonitorTypes(host: String): Action[AnyContent] = security.Authenticated.async {
     val url = s"http://$host/pub/GetRealTimeValuesList.asp"
     val f = WSClient.url(s"http://$host/pub/GetRealTimeValuesList.asp").get()
-    f onFailure (errorHandler)
+    f.failed.foreach(errorHandler)
 
     for (ret <- f) yield {
       val values = ret.xml \ "Values"
@@ -658,7 +658,7 @@ class HomeController @Inject()(
           }).drop(1)
           val url = s"http://$host/pub/ConfigureRealTimeValues.asp?$paramStr"
           val f = WSClient.url(url).get()
-          f onFailure (errorHandler)
+          f.failed.foreach(errorHandler)
           for (_: WSResponse <- f) yield {
             monitorTypes.foreach(t =>
               if (t.isSpectrum) {
@@ -716,7 +716,7 @@ class HomeController @Inject()(
   def getAlertEmailTargets: Action[AnyContent] = security.Authenticated.async({
     import EmailTarget._
     val f = emailTargetOp.getList()
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     for (ret <- f) yield
       Ok(Json.toJson((ret)))
   })
@@ -742,7 +742,7 @@ class HomeController @Inject()(
 
   def getEffectiveRatio: Action[AnyContent] = security.Authenticated.async({
     val f = sysConfig.getEffectiveRatio
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     for (ret <- f) yield
       Ok(Json.toJson(ret))
   })
@@ -787,14 +787,14 @@ class HomeController @Inject()(
 
   def getLineToken: Action[AnyContent] = security.Authenticated.async {
     val f = sysConfig.getLineToken
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     for (ret <- f) yield
       Ok(Json.toJson(ret))
   }
 
   def verifyLineToken(token: String): Action[AnyContent] = security.Authenticated.async {
     val f = lineNotify.notify(token, "測試訊息")
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     for (ret <- f) yield
       Ok(Json.obj("ok" -> ret))
   }
@@ -832,7 +832,7 @@ class HomeController @Inject()(
   import calibrationConfigDB._
   def getCalibrationConfig: Action[AnyContent] = security.Authenticated.async {
     val f = calibrationConfigDB.getListFuture
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     for (ret <- f) yield
       Ok(Json.toJson(ret))
   }

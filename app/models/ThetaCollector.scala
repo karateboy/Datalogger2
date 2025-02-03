@@ -174,7 +174,7 @@ class ThetaCollector @Inject()
               self ! ConnectHost
           }
         }
-      } onFailure errorHandler
+      }.failed.foreach(errorHandler)
 
     case SetState(id, state) =>
       logger.info(s"$self => $state")

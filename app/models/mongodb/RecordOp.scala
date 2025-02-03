@@ -26,7 +26,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
   override def insertManyRecord(colName: String)(docs: Seq[RecordList]): Future[InsertManyResult] = {
     val col = getCollection(colName)
     val f = col.insertMany(docs).toFuture()
-    f onFailure errorHandler(s"insertManyRecord $colName")
+    f.failed.foreach(errorHandler(s"insertManyRecord $colName"))
     f
   }
 
@@ -41,9 +41,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
     val f = col.updateOne(Filters.equal("_id", RecordListID(doc._id.time, doc._id.monitor)), updates,
       UpdateOptions().upsert(true)).toFuture()
 
-    f.onFailure({
-      case ex: Exception => logger.error(ex.getMessage, ex)
-    })
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -56,9 +54,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
     val f = col.updateOne(
       and(equal("_id", RecordListID(new Date(dt), monitor)),
         equal("mtDataList.mtName", mt)), set("mtDataList.$.status", status)).toFuture()
-    f.onFailure({
-      case ex: Exception => logger.error(ex.getMessage, ex)
-    })
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -92,7 +88,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
 
     val f = col.find(and(in("_id.monitor", monitors: _*), gte("_id.time", startTime.toDate), lt("_id.time", endTime.toDate)))
       .sort(ascending("_id.time")).toFuture()
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -105,7 +101,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
     val f = col.find(and(equal("_id.monitor", monitor),
         gte("_id.time", startTime.toDate), lt("_id.time", endTime.toDate)))
       .limit(limit).sort(ascending("_id.time")).toFuture()
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -120,7 +116,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
     val col = getCollection(colName)
     val f = col.find(and(equal("_id.monitor", monitor), gte("_id.time", startTime.toDate), lt("_id.time", endTime.toDate)))
       .sort(ascending("_id.time")).toFuture()
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
 
     for (docs <- f) yield {
       for {
@@ -153,7 +149,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
 
     val collection = getCollection(colName)
     val f = collection.bulkWrite(setUpdates, BulkWriteOptions().ordered(true)).toFuture()
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -161,7 +157,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
     for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(HourCollection)) {
         val f = mongodb.database.createCollection(HourCollection).toFuture()
-        f.onFailure(errorHandler)
+        f.failed.foreach(errorHandler)
         f.andThen({
           case Success(_) =>
             getCollection(HourCollection).createIndex(Indexes.descending("_id.time", "_id.monitor"), new IndexOptions().unique(true))
@@ -170,7 +166,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
 
       if (!colNames.contains(MinCollection)) {
         val f = mongodb.database.createCollection(MinCollection).toFuture()
-        f.onFailure(errorHandler)
+        f.failed.foreach(errorHandler)
         f.andThen({
           case Success(_) =>
             getCollection(MinCollection).createIndex(Indexes.descending("_id.time", "_id.monitor"), new IndexOptions().unique(true))
@@ -179,7 +175,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
 
       if (!colNames.contains(SecCollection)) {
         val f = mongodb.database.createCollection(SecCollection).toFuture()
-        f.onFailure(errorHandler)
+        f.failed.foreach(errorHandler)
         f.andThen({
           case Success(_) =>
             getCollection(SecCollection).createIndex(Indexes.descending("_id.time", "_id.monitor"), new IndexOptions().unique(true))

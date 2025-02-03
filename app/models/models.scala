@@ -1,10 +1,9 @@
 package models
 
 import com.github.nscala_time.time.Imports._
-import controllers.Assets.BadRequest
 import play.api._
 import play.api.libs.json._
-import play.api.mvc.Result
+import play.api.mvc.{Result, Results}
 
 import java.sql.Timestamp
 import scala.concurrent.Future
@@ -63,7 +62,7 @@ object ModelHelper {
 
   def handleJsonValidateError(error: Seq[(JsPath, Seq[JsonValidationError])]): Result = {
     logger.error(JsError.toJson(error).toString(), new Exception("Json validate error"))
-    BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+    Results.BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
   }
 
   def handleJsonValidateErrorFuture(error: Seq[(JsPath, Seq[JsonValidationError])]): Future[Result] = {

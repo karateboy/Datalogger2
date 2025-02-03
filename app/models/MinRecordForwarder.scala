@@ -1,4 +1,5 @@
 package models
+
 import akka.actor.Actor
 import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
@@ -16,6 +17,7 @@ object MinRecordForwarder {
   trait Factory {
     def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String): Actor
   }
+
   val logger: Logger = Logger(this.getClass)
 }
 
@@ -31,6 +33,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
   self ! ForwardMin
 
   def receive: Receive = handler(None)
+
   def checkLatest() = {
     val url = s"http://$server/MinRecordRange/$monitor"
     val f = ws.url(url).get().map {
@@ -53,10 +56,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
             uploadRecord(serverLatest.getMillis)
           })
     }
-    f onFailure {
-      case ex: Throwable =>
-        ModelHelper.logException(ex)
-    }
+    f.failed.foreach(errorHandler)
   }
 
   def uploadRecord(latestRecordTime: Long): Unit = {
@@ -80,7 +80,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
               logger.error(s"${response.status}:${response.statusText}")
               context become handler(None)
             }
-          case Failure(exception)=>
+          case Failure(exception) =>
             context become handler(None)
             errorHandler(exception)
         }
@@ -90,27 +90,19 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
 
   def uploadRecord(start: DateTime, end: DateTime): Unit = {
     val recordFuture = recordOp.getRecordListFuture(recordOp.MinCollection)(start, end)
-    for (record <- recordFuture) {
-      if (record.nonEmpty) {
-        logger.info(s"upload min ${start.toString()} => ${end.toString}")
-        logger.info(s"Total ${record.length} records")
+    for (record <- recordFuture if record.nonEmpty) {
 
-        for (chunk <- record.grouped(60)) {
-          val f = ws.url(postUrl).post(Json.toJson(chunk.filter(_.mtDataList.nonEmpty)))
+      logger.info(s"upload min ${start.toString()} => ${end.toString}")
+      logger.info(s"Total ${record.length} records")
 
-          f onSuccess {
-            case response =>
-              logger.info(s"${response.status} : ${response.statusText}")
-              logger.info("Success upload")
-          }
-          f onFailure {
-            case ex: Throwable =>
-              ModelHelper.logException(ex)
-          }
-        }
-      } else
-        logger.error(s"No min record from $start to $end")
-
+      for (chunk <- record.grouped(60)) {
+        val f = ws.url(postUrl).post(Json.toJson(chunk.filter(_.mtDataList.nonEmpty)))
+        f.foreach(response => {
+          logger.info(s"${response.status} : ${response.statusText}")
+          logger.info("Success upload")
+        })
+        f.failed.foreach(errorHandler)
+      }
     }
   }
 

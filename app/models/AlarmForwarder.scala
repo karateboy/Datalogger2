@@ -3,6 +3,7 @@ package models
 import akka.actor.Actor
 import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
+import models.ModelHelper.errorHandler
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
@@ -19,8 +20,9 @@ object AlarmForwarder {
 }
 
 class AlarmForwarder @Inject()(alarmOp: AlarmDB, ws: WSClient)
-  (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
+                              (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
   val logger: Logger = Logger(this.getClass)
+
   import ForwardManager._
 
   logger.info(s"AlarmForwarder started $server/$monitor")
@@ -49,10 +51,7 @@ class AlarmForwarder @Inject()(alarmOp: AlarmDB, ws: WSClient)
             uploadAlarm(serverLatest.getMillis)
           })
     }
-    f onFailure {
-      case ex: Throwable =>
-        ModelHelper.logException(ex)
-    }
+    f.failed.foreach(errorHandler)
   }
 
   def uploadAlarm(latestAlarm: Long) = {
@@ -62,15 +61,11 @@ class AlarmForwarder @Inject()(alarmOp: AlarmDB, ws: WSClient)
       if (alarms.nonEmpty) {
         val url = s"http://$server/AlarmRecord/$monitor"
         val f = ws.url(url).put(Json.toJson(alarms))
-        f onSuccess {
-          case _ =>
-            context become handler(Some(alarms.last.time.getTime))
-        }
-        f onFailure {
-          case ex: Throwable =>
-            context become handler(None)
-            ModelHelper.logException(ex)
-        }
+        f.foreach(_ => context become handler(Some(alarms.last.time.getTime)))
+        f.failed.foreach(ex => {
+          context become handler(None)
+          ModelHelper.logException(ex)
+        })
       }
     }
   }

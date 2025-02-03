@@ -128,7 +128,7 @@ trait CalibrationDB {
     val end = endDate
 
     val f = calibrationReportFuture(begin, end)
-    f onFailure errorHandler()
+    f.failed.foreach(errorHandler)
     for (calibrationList <- f)
       yield {
         val resultMap = mutable.Map.empty[String, ListBuffer[(DateTime, Calibration)]]

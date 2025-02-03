@@ -24,7 +24,7 @@ class Cdx @Inject()(cdxUploader: CdxUploader,
 
   def getConfig: Action[AnyContent] = security.Authenticated.async {
     val f = sysConfigDB.getCdxConfig
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     for (config <- f) yield
       Ok(Json.toJson(config))
   }
@@ -45,7 +45,7 @@ class Cdx @Inject()(cdxUploader: CdxUploader,
 
   def getMonitorTypes: Action[AnyContent] = security.Authenticated.async {
     val f = sysConfigDB.getCdxMonitorTypes
-    f onFailure errorHandler()
+    f.failed.foreach(errorHandler())
     for (monitorTypes <- f) yield
       Ok(Json.toJson(monitorTypes))
   }

@@ -43,7 +43,7 @@ class OpenDataReceiver @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: Monito
   val timerOpt: Option[Cancellable] = {
     import scala.concurrent.duration._
     if (epaMonitors.nonEmpty)
-      Some(context.system.scheduler.schedule(FiniteDuration(5, SECONDS), FiniteDuration(1, HOURS), self, GetEpaHourData))
+      Some(context.system.scheduler.scheduleAtFixedRate(FiniteDuration(5, SECONDS), FiniteDuration(1, HOURS), self, GetEpaHourData))
     else
       None
   }
@@ -79,7 +79,7 @@ class OpenDataReceiver @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: Monito
       val startNum = start.getMillis
       val endNum = end.getMillis
       val f = WSClient.url(s"$upstream/HourRecord/$epaMonitorsIDs/$startNum/$endNum").get()
-      f onFailure errorHandler
+      f.failed.foreach(errorHandler)
       for (response <- f) yield {
         val ret = response.json.validate[Seq[RecordList]]
         ret.fold(

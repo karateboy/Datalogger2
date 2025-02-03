@@ -1,7 +1,8 @@
 package models
 
-import akka.actor.{Actor, actorRef2Scala}
+import akka.actor.Actor
 import com.google.inject.assistedinject.Assisted
+import models.ModelHelper.errorHandler
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
@@ -43,10 +44,7 @@ class InstrumentStatusTypeForwarder @Inject()(instrumentOp: InstrumentDB, ws: WS
                   self ! UpdateInstrumentStatusType
                 })
           }
-          f onFailure {
-            case ex: Throwable =>
-              ModelHelper.logException(ex)
-          }
+          f.failed.foreach(errorHandler)
         } else {
           val recordFuture = instrumentOp.getAllInstrumentFuture
           for (records <- recordFuture) {
@@ -67,14 +65,8 @@ class InstrumentStatusTypeForwarder @Inject()(instrumentOp: InstrumentDB, ws: WS
                 implicit val write1 = Json.writes[InstrumentStatusType]
                 implicit val writer = Json.writes[InstrumentStatusTypeMap]
                 val f = ws.url(url).put(Json.toJson(istMaps))
-                f onSuccess {
-                  case _ =>
-                    context become handler(Some(myIds))
-                }
-                f onFailure {
-                  case ex: Throwable =>
-                    ModelHelper.logException(ex)
-                }
+                f.foreach(_ => context become handler(Some(myIds)))
+                f.failed.foreach(errorHandler)
               }
             }
           }

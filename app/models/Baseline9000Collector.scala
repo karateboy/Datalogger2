@@ -136,7 +136,7 @@ class Baseline9000Collector @Inject()
             Some(context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, SetState(id, MonitorStatus.NormalStat)))
           }
         }
-      } onFailure serialErrorHandler
+      }.failed.foreach(serialErrorHandler)
   }
 
   private def serialErrorHandler: PartialFunction[Throwable, Unit] = {
@@ -173,7 +173,7 @@ class Baseline9000Collector @Inject()
         }
         timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
       }
-    } onFailure serialErrorHandler
+    }.failed.foreach(serialErrorHandler)
   }
 
   private def comPortOpened: Receive = {
@@ -193,7 +193,7 @@ class Baseline9000Collector @Inject()
             timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadData))
           }
         }
-      } onFailure serialErrorHandler
+      }.failed.foreach(serialErrorHandler)
 
     case AutoCalibration(instId) =>
       assert(instId == id)
@@ -255,7 +255,7 @@ class Baseline9000Collector @Inject()
           calibrateTimerOpt = for(raiseTime <- config.raiseTime) yield
             context.system.scheduler.scheduleOnce(Duration(raiseTime, SECONDS), self, HoldStart)
         }
-      } onFailure serialErrorHandler
+      }.failed.foreach(serialErrorHandler)
 
     case reportData:ReportData =>
       if(calibrateRecordStart){
@@ -301,7 +301,7 @@ class Baseline9000Collector @Inject()
             context.system.scheduler.scheduleOnce(Duration(downTime, SECONDS), self, CalibrateEnd)
           }
         }
-      } onFailure serialErrorHandler
+      }.failed.foreach(serialErrorHandler)
 
     case CalibrateEnd =>
       val values = calibrationDataList.map {
@@ -379,7 +379,7 @@ class Baseline9000Collector @Inject()
             logger.info(s"Ignore setState $state during calibration")
           }
         }
-      } onFailure serialErrorHandler
+      }.failed.foreach(serialErrorHandler)
   }
 
   override def postStop(): Unit = {

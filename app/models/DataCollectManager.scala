@@ -478,7 +478,7 @@ class DataCollectManager @Inject()
     //Try to trigger at 30 sec
     val next30 = DateTime.now().withSecondOfMinute(30).plusMinutes(1)
     val postSeconds = new org.joda.time.Duration(DateTime.now, next30).getStandardSeconds
-    context.system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
+    context.system.scheduler.scheduleAtFixedRate(FiniteDuration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
   }
 
   private val autoStateConfigOpt: Option[Seq[AutoStateConfig]] = AutoState.getConfig(config)
@@ -488,7 +488,7 @@ class DataCollectManager @Inject()
       //Try to trigger at 30 sec
       val next = DateTime.now().withSecondOfMinute(0).plusMinutes(1)
       val postSeconds = new org.joda.time.Duration(DateTime.now, next).getStandardSeconds
-      Some(context.system.scheduler.schedule(FiniteDuration(postSeconds, SECONDS), Duration(1, MINUTES), self, AutoState))
+      Some(context.system.scheduler.scheduleAtFixedRate(FiniteDuration(postSeconds, SECONDS), Duration(1, MINUTES), self, AutoState))
     } else
       None
 

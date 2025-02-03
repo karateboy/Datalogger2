@@ -9,6 +9,7 @@ import play.api.libs.ws.WSClient
 
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
 object CalibrationForwarder {
   trait Factory {
@@ -17,9 +18,10 @@ object CalibrationForwarder {
 }
 
 class CalibrationForwarder @Inject()
-(ws:WSClient, calibrationOp: CalibrationDB)
+(ws: WSClient, calibrationOp: CalibrationDB)
 (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
   val logger: Logger = Logger(this.getClass)
+
   import ForwardManager._
   import calibrationOp._
 
@@ -49,10 +51,7 @@ class CalibrationForwarder @Inject()
             uploadCalibration(serverLatest.getMillis)
           })
     }
-    f onFailure {
-      case ex: Throwable =>        
-        ModelHelper.logException(ex)
-    }
+    FiniteDuration(1, SECONDS)
   }
 
   def uploadCalibration(latestCalibration: Long) = {
@@ -61,15 +60,11 @@ class CalibrationForwarder @Inject()
       if (records.nonEmpty) {
         val url = s"http://$server/CalibrationRecord/$monitor"
         val f = ws.url(url).put(Json.toJson(records))
-        f onSuccess {
-          case response =>
-            context become handler(Some(records.last.startTime.getTime))
-        }
-        f onFailure {
-          case ex: Throwable =>
-            context become handler(None)
-            ModelHelper.logException(ex)
-        }
+        f.foreach(_=> context become handler(Some(records.last.startTime.getTime)))
+        f.failed.foreach(ex => {
+          context become handler(None)
+          ModelHelper.logException(ex)
+        })
       }
     }
   }

@@ -20,6 +20,7 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
                         lineNotify: LineNotify, sysConfig: SysConfig) extends AlarmDB {
 
   val logger: Logger = Logger(getClass)
+
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
@@ -33,11 +34,8 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
     for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(colName)) {
         val f = mongodb.database.createCollection(colName).toFuture()
-        f.onFailure(errorHandler)
-        f.onSuccess({
-          case _ =>
-            collection.createIndex(ascending("time", "level", "src"))
-        })
+        f.failed.foreach(errorHandler)
+        f.foreach(_ => collection.createIndex(ascending("time", "level", "src")))
       }
     }
   }
@@ -51,7 +49,7 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
     val f = collection.find(and(gte("time", start), lt("time", end), equal("level", level)))
       .sort(descending("time")).toFuture()
 
-    f onFailure errorHandler()
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -61,7 +59,7 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
       lt("time", end),
       equal("level", level))).sort(descending("time")).toFuture()
 
-    f onFailure errorHandler()
+    f.failed.foreach(errorHandler)
     f
   }
 

@@ -73,7 +73,7 @@ class Adam6066Collector @Inject()
           }
 
         }
-      } onFailure errorHandler
+      }.failed.foreach(errorHandler)
     case IsConnected =>
       sender ! masterOpt.nonEmpty
 
@@ -116,7 +116,7 @@ class Adam6066Collector @Inject()
               self ! ConnectHost
           }
         }
-      } onFailure errorHandler
+      }.failed.foreach(errorHandler)
 
     case SetState(id, state) =>
       logger.info(s"$self => $state")
