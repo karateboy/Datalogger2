@@ -1,5 +1,5 @@
 name := """DataLogger2"""
-val mainVersion = "2.8.10"
+val mainVersion = "2.8.11"
 val distVersion = ""
 version := s"$mainVersion$distVersion"
 
@@ -20,6 +20,8 @@ libraryDependencies += guice
 // https://mvnrepository.com/artifact/com.typesafe.play/play-json
 libraryDependencies += "com.typesafe.play" %% "play-json" % "2.8.2"
 
+// https://mvnrepository.com/artifact/org.apache.commons/commons-lang3
+libraryDependencies += "org.apache.commons" % "commons-lang3" % "3.17.0"
 
 // https://mvnrepository.com/artifact/org.mongodb.scala/mongo-scala-driver
 libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "4.2.0"
