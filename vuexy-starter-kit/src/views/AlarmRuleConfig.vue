@@ -216,7 +216,7 @@ export default Vue.extend({
       alarmLevels: [
         { id: 1, txt: '資訊' },
         { id: 2, txt: '警告' },
-        { id: 3, txt: '嚴重' },
+        { id: 3, txt: '錯誤' },
       ],
       tableTypes: [
         { txt: '小時資料', id: 'hour' },
