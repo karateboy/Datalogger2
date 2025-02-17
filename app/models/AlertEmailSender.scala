@@ -12,7 +12,6 @@ object AlertEmailSender {
       bodyHtml = Some(msg)
     )
     try {
-      Thread.currentThread().setContextClassLoader(getClass.getClassLoader)
       mailerClient.send(mail)
     } catch {
       case ex: Exception =>
