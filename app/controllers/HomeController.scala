@@ -9,6 +9,7 @@ import models.ModelHelper.{errorHandler, handleJsonValidateError, handleJsonVali
 import models._
 import play.api._
 import play.api.libs.json._
+import play.api.libs.mailer.{Email, MailerClient}
 import play.api.libs.ws.{WSClient, WSResponse}
 import play.api.mvc._
 
@@ -29,7 +30,8 @@ class HomeController @Inject()(
                                 @Named("dataCollectManager") manager: ActorRef,
                                 tableType: TableType,
                                 security: Security,
-                                cc: ControllerComponents) extends AbstractController(cc) {
+                                cc: ControllerComponents,
+                                mailerClient: MailerClient) extends AbstractController(cc) {
 
   val title = "資料擷取器"
 
@@ -390,6 +392,7 @@ class HomeController @Inject()(
   }
 
   import DataCollectManager.WriteDO
+
   def writeDO(instruments: String): Action[JsValue] = security.Authenticated(parse.json) {
     implicit request =>
       implicit val read: Reads[WriteDO] = Json.reads[WriteDO]
@@ -726,19 +729,32 @@ class HomeController @Inject()(
       import EmailTarget._
       val ret = request.body.validate[Seq[EmailTarget]]
       ret.fold(
-        error => {
-          logger.error(JsError.toJson(error).toString())
-          Future {
-            BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
-          }
-        },
+        error => ModelHelper.handleJsonValidateErrorFuture(error),
         emails => {
-          for (_ <- emailTargetOp.deleteAll) yield {
+          for (_ <- emailTargetOp.deleteAll()) yield {
             emailTargetOp.upsertMany(emails)
             Ok(Json.obj("ok" -> true))
           }
         })
   })
+
+  def testAlertEmail(email: String): Action[AnyContent] = security.Authenticated {
+    val mail = Email(
+      subject = s"測試信件",
+      from = "AirIoT <airiot@wecc.com.tw>",
+      to = Seq(email),
+      bodyHtml = Some("這是測試信件")
+    )
+    try {
+      //Thread.currentThread().setContextClassLoader(getClass.getClassLoader)
+      mailerClient.send(mail)
+    } catch {
+      case ex: Exception =>
+        logger.error("Failed to send email", ex)
+    }
+
+    Ok(Json.obj("ok" -> true))
+  }
 
   def getEffectiveRatio: Action[AnyContent] = security.Authenticated.async({
     val f = sysConfig.getEffectiveRatio
@@ -830,6 +846,7 @@ class HomeController @Inject()(
   }
 
   import calibrationConfigDB._
+
   def getCalibrationConfig: Action[AnyContent] = security.Authenticated.async {
     val f = calibrationConfigDB.getListFuture
     f.failed.foreach(errorHandler)
@@ -858,24 +875,24 @@ class HomeController @Inject()(
       Ok(Json.obj("ok" -> ret))
   }
 
-  def executeCalibration(id:String): Action[AnyContent] = security.Authenticated.async {
-    for(calibrationConfigs <- calibrationConfigDB.getListFuture) yield {
+  def executeCalibration(id: String): Action[AnyContent] = security.Authenticated.async {
+    for (calibrationConfigs <- calibrationConfigDB.getListFuture) yield {
       val configOpt = calibrationConfigs.find(_._id == id)
-      if(configOpt.isDefined){
+      if (configOpt.isDefined) {
         manager ! StartMultiCalibration(configOpt.get)
         Ok(Json.obj("ok" -> true))
-      }else
+      } else
         BadRequest("No such calibration config")
     }
   }
 
-  def cancelCalibration(id:String): Action[AnyContent] = security.Authenticated.async {
-    for(calibrationConfigs <- calibrationConfigDB.getListFuture) yield {
+  def cancelCalibration(id: String): Action[AnyContent] = security.Authenticated.async {
+    for (calibrationConfigs <- calibrationConfigDB.getListFuture) yield {
       val configOpt = calibrationConfigs.find(_._id == id)
-      if(configOpt.isDefined){
+      if (configOpt.isDefined) {
         manager ! StopMultiCalibration(configOpt.get)
         Ok(Json.obj("ok" -> true))
-      }else
+      } else
         BadRequest("No such calibration config")
     }
   }
