@@ -114,7 +114,7 @@ class ThetaCollector @Inject()
           } catch {
             case ex: Exception =>
               logger.error(ex.getMessage, ex)
-              alarmOp.log(alarmOp.instrumentSrc(id), alarmOp.Level.ERR, s"Unable to open:${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(id), Alarm.Level.ERR, s"Unable to open:${ex.getMessage}")
               import scala.concurrent.duration._
               context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
           }

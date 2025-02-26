@@ -161,7 +161,7 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
         calibrations.foreach(calibration => {
           calibrationDB.insertFuture(calibration)
           if (!calibration.multipointSuccess())
-            alarmDB.log(alarmDB.src(calibration.monitorType), alarmDB.Level.ERR,
+            alarmDB.log(alarmDB.src(calibration.monitorType), Alarm.Level.ERR,
               s"${calibration.monitorType} multi-point calibration failed.")
         })
         context.parent ! ExecuteSeq(T700_STANDBY_SEQ, on = true)

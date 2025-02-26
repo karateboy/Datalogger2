@@ -70,9 +70,9 @@ class NewTaipeiOpenData @Inject()(WSClient: WSClient,
         f.onComplete {
           case Success(response) =>
             if (response.status == 200) {
-              alarmDB.log(alarmDB.src(), alarmDB.Level.INFO, s"新北OpenData上傳${recordList._id.time.toString}小時值成功")
+              alarmDB.log(alarmDB.src(), Alarm.Level.INFO, s"新北OpenData上傳${recordList._id.time.toString}小時值成功")
             } else {
-              alarmDB.log(alarmDB.src(), alarmDB.Level.ERR, s"新北OpenData上傳${recordList._id.time.toString}小時值失敗 status=${response.status} 錯誤訊息 ${response.body}")
+              alarmDB.log(alarmDB.src(), Alarm.Level.ERR, s"新北OpenData上傳${recordList._id.time.toString}小時值失敗 status=${response.status} 錯誤訊息 ${response.body}")
             }
           case Failure(ex) =>
             throw ex
@@ -80,7 +80,7 @@ class NewTaipeiOpenData @Inject()(WSClient: WSClient,
       } catch {
         case ex: Throwable =>
           logger.error("新北OpenData上傳錯誤", ex)
-          alarmDB.log(alarmDB.src(), alarmDB.Level.ERR, s"新北OpenData上傳${recordList._id.time.toString}小時值失敗 錯誤訊息 ${ex.getMessage}")
+          alarmDB.log(alarmDB.src(), Alarm.Level.ERR, s"新北OpenData上傳${recordList._id.time.toString}小時值失敗 錯誤訊息 ${ex.getMessage}")
       }
     }
 }

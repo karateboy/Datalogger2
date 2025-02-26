@@ -1,6 +1,7 @@
 package models.mongodb
 
 import com.github.nscala_time.time.Imports._
+import models.Alarm.Level
 import models.ModelHelper._
 import models._
 import org.bson.codecs.configuration.CodecRegistry

@@ -151,7 +151,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
         case e: MqttException =>
           logger.error("Unable to set up client: " + e.toString)
           import scala.concurrent.duration._
-          alarmOp.log(alarmOp.instrumentSrc(id), alarmOp.Level.ERR, s"無法連接:${e.getMessage}")
+          alarmOp.log(alarmOp.instrumentSrc(id), Alarm.Level.ERR, s"無法連接:${e.getMessage}")
           context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, CreateClient)
       }
     case ConnectBroker =>

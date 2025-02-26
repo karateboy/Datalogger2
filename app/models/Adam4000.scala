@@ -186,7 +186,7 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
       } catch {
         case ex: Exception =>
           logger.error(ex.getMessage, ex)
-          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
+          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"無法連接:${ex.getMessage}")
           import scala.concurrent.duration._
           context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenCom)
       }

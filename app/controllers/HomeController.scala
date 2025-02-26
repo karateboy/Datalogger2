@@ -746,7 +746,6 @@ class HomeController @Inject()(
       bodyHtml = Some("這是測試信件")
     )
     try {
-      //Thread.currentThread().setContextClassLoader(getClass.getClassLoader)
       mailerClient.send(mail)
     } catch {
       case ex: Exception =>

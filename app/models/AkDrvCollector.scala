@@ -124,7 +124,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
             comm.clearBuffer = true;
             logger.error(ex.getMessage, ex)
             if (connected) {
-              alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"${ex.getMessage}")
             }
 
         } finally {
@@ -159,7 +159,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
           } catch {
             case ex: Exception =>
               logger.error(ex.getMessage, ex)
-              alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
               context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenCom)
@@ -219,7 +219,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
       if (enable) {
         for(oldReg<-oldModelReg)
           if (oldReg.modeRegs(idx)._2 != enable)
-            alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, statusType.desc)
+            alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, statusType.desc)
 
       }
     }
@@ -233,12 +233,12 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
       if (enable) {
         for(regValues <- oldModelReg){
           if (regValues.warningRegs(idx)._2 != enable)
-            alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.WARN, statusType.desc)
+            alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, statusType.desc)
         }
       } else {
         for(regValues <- oldModelReg){
           if (regValues.warningRegs(idx)._2 != enable)
-            alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, s"${statusType.desc} 解除")
+            alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, s"${statusType.desc} 解除")
         }
       }
     }

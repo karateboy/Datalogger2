@@ -26,12 +26,27 @@ class AlarmRuleOp @Inject()(sqlServer: SqlServer) extends AlarmRuleDb {
         [startTime] [time](2) NULL,
         [endTime] [time](2) NULL,
         [tableTypes] [nvarchar](16) NOT NULL,
+        [messageTemplate] [nvarchar](128) NULL,
+        [coldPeriod] [int] NULL,
        CONSTRAINT [PK_alarmRules] PRIMARY KEY CLUSTERED
       (
         [id] ASC
       )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
       ) ON [PRIMARY]
            """.execute().apply()
+    } else {
+      if (!sqlServer.getColumnNames(tabName).contains("messageTemplate")) {
+        sql"""
+         ALTER TABLE [dbo].[alarmRules]
+         ADD [messageTemplate] [nvarchar](128) NULL
+         """.execute().apply()
+      }
+      if (!sqlServer.getColumnNames(tabName).contains("coldPeriod")) {
+        sql"""
+         ALTER TABLE [dbo].[alarmRules]
+         ADD [coldPeriod] [int] NULL
+         """.execute().apply()
+      }
     }
   }
 
@@ -47,7 +62,9 @@ class AlarmRuleOp @Inject()(sqlServer: SqlServer) extends AlarmRuleDb {
       rs.string("tableTypes").split(",").toSeq,
       rs.boolean("enable"),
       rs.stringOpt("startTime"),
-      rs.stringOpt("endTime")
+      rs.stringOpt("endTime"),
+      rs.stringOpt("messageTemplate"),
+      rs.intOpt("coldPeriod")
     )
 
   override def getRulesAsync: Future[Seq[AlarmRule]] = Future {
@@ -72,6 +89,8 @@ class AlarmRuleOp @Inject()(sqlServer: SqlServer) extends AlarmRuleDb {
             ,[startTime] = ${rule.startTime}
             ,[endTime] = ${rule.endTime}
             ,[tableTypes] = ${rule.tableTypes.mkString(",")}
+            ,[messageTemplate] = ${rule.messageTemplate}
+            ,[coldPeriod] = ${rule.coldPeriod}
           WHERE [id] = ${rule._id}
           IF(@@ROWCOUNT = 0)
             BEGIN
@@ -85,7 +104,9 @@ class AlarmRuleOp @Inject()(sqlServer: SqlServer) extends AlarmRuleDb {
                  ,[enable]
                  ,[startTime]
                  ,[endTime]
-                 ,[tableTypes])
+                 ,[tableTypes]
+                 ,[messageTemplate]
+                 ,[coldPeriod])
               VALUES
                  (${rule._id}
                  ,${rule.monitors.mkString(",")}
@@ -96,7 +117,9 @@ class AlarmRuleOp @Inject()(sqlServer: SqlServer) extends AlarmRuleDb {
                  ,${rule.enable}
                  ,${rule.startTime}
                  ,${rule.endTime}
-                 ,${rule.tableTypes.mkString(",")})
+                 ,${rule.tableTypes.mkString(",")}
+                 ,${rule.messageTemplate}
+                 ,${rule.coldPeriod})
             END
           """.update().apply()
     }
@@ -106,7 +129,7 @@ class AlarmRuleOp @Inject()(sqlServer: SqlServer) extends AlarmRuleDb {
   override def deleteAsync(_id: String): Future[DeleteResult] = Future {
     implicit val session: DBSession = AutoSession
     val ret =
-    sql"""
+      sql"""
          DELETE FROM [dbo].[alarmRules]
          WHERE [id] = ${_id}
          """.update().apply()

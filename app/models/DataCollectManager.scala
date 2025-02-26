@@ -555,7 +555,7 @@ class DataCollectManager @Inject()
         for (std_law <- mtCase.std_law; v <- value) {
           if (v > std_law) {
             val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, value)}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
-            alarmOp.log(alarmOp.src(mt), alarmOp.Level.INFO, msg)
+            alarmOp.log(alarmOp.src(mt), Alarm.Level.INFO, msg)
             overThreshold = true
             mtCase.overLawSignalType.foreach(signalType => {
               self ! WriteSignal(signalType, bit = true)
@@ -1173,7 +1173,7 @@ class DataCollectManager @Inject()
             .exists(mt => !minRecordMap.contains(mt) ||
               minRecordMap.contains(mt) && minRecordMap(mt).size < 45)) {
             logger.error(s"$instID has less than 45 minRecords. Restart $instID")
-            alarmOp.log(alarmOp.srcInstrumentID(instID), alarmOp.Level.ERR, s"$instID 每小時分鐘資料小於45筆. 重新啟動 $instID 設備")
+            alarmOp.log(alarmOp.srcInstrumentID(instID), Alarm.Level.ERR, s"$instID 每小時分鐘資料小於45筆. 重新啟動 $instID 設備")
             self ! RestartInstrument(instID)
           }
         }

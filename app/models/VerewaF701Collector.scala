@@ -1,6 +1,7 @@
 package models
 import akka.actor._
 import com.google.inject.assistedinject.Assisted
+import models.Alarm.Level
 import models.ModelHelper._
 import models.Protocol.{ProtocolParam, serial}
 import play.api._
@@ -106,29 +107,29 @@ class VerewaF701Collector @Inject()
     import alarmOp._
     if ((instrumentStatus & 0x1) != (status & 0x1)) {
       if ((status & 0x1) == 1)
-        alarmOp.log(alarmOp.instrumentSrc(id), alarmOp.Level.INFO, "standby")
+        alarmOp.log(alarmOp.instrumentSrc(id), Alarm.Level.INFO, "standby")
       else
-        alarmOp.log(instrumentSrc(id), Level.INFO, "concentration")
+        alarmOp.log(instrumentSrc(id), Alarm.Level.INFO, "concentration")
     }
 
     if ((instrumentStatus & 0x2) != (status & 0x2)) {
       if ((status & 0x2) == 1)
-        alarmOp.log(alarmOp.instrumentSrc(id), alarmOp.Level.INFO, "Film measurement")
+        alarmOp.log(alarmOp.instrumentSrc(id), Alarm.Level.INFO, "Film measurement")
     }
 
     if ((instrumentStatus & 0x4) != (status & 0x4)) {
       if ((status & 0x4) == 1)
-        alarmOp.log(alarmOp.instrumentSrc(id), Level.INFO, "Zero point measurement")
+        alarmOp.log(alarmOp.instrumentSrc(id), Alarm.Level.INFO, "Zero point measurement")
     }
 
     if ((instrumentStatus & 0x8) != (status & 0x8)) {
       if ((status & 0x8) == 1)
-        log(instrumentSrc(id), Level.INFO, "Reference measurement (Reference check)")
+        log(instrumentSrc(id), Alarm.Level.INFO, "Reference measurement (Reference check)")
     }
 
     if ((instrumentStatus & 0x80) != (status & 0x80)) {
       if ((status & 0x80) == 1)
-        log(instrumentSrc(id), Level.INFO, "Measurement")
+        log(instrumentSrc(id), Alarm.Level.INFO, "Measurement")
     }
 
     instrumentStatus = status
@@ -137,15 +138,15 @@ class VerewaF701Collector @Inject()
   def checkErrorStatus(error: Byte) {
     import alarmOp._
     if ((error & 0x1) != 0) {
-      log(instrumentSrc(id), Level.WARN, "Volume error")
+      log(instrumentSrc(id), Alarm.Level.WARN, "Volume error")
     }
 
     if ((error & 0x2) != 0) {
-      log(instrumentSrc(id), Level.WARN, "Vacuum break")
+      log(instrumentSrc(id), Alarm.Level.WARN, "Vacuum break")
     }
 
     if ((error & 0x4) != 0) {
-      log(instrumentSrc(id), Level.WARN, "Volume<500 liter and 250 liter at 1/2 h sample time, respectively.")
+      log(instrumentSrc(id), Alarm.Level.WARN, "Volume<500 liter and 250 liter at 1/2 h sample time, respectively.")
     }
 
     if ((error & 0x10) != 0) {

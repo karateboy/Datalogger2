@@ -81,7 +81,7 @@ class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mail
             (${ar.time}, ${ar.src}, ${ar.level}, ${ar.desc})
              """.execute().apply()
 
-      if (ar.level >= Level.ERR) {
+      if (ar.level >= Alarm.Level.ERR) {
         if (LoggerConfig.config.alertEmail)
         emailTargetOp.getList().foreach { emailTargets =>
           val emails = emailTargets.map(_._id)

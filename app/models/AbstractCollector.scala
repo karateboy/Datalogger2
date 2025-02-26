@@ -94,7 +94,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
       case ex: Exception =>
         log.error(s"$instId:$desc=>${ex.getMessage}", ex)
         if (connected)
-          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
+          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"${ex.getMessage}")
 
         connected = false
     } finally {
@@ -145,7 +145,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
           } catch {
             case ex: Exception =>
               log.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
-              alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
               context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
@@ -544,7 +544,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
     } {
       if (enable) {
         if (oldModelReg.isEmpty || oldModelReg.get.modeRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, statusType.desc)
+          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, statusType.desc)
         }
       }
     }
@@ -557,11 +557,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
     } {
       if (enable) {
         if (oldModelReg.isEmpty || oldModelReg.get.warnRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.WARN, statusType.desc)
+          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, statusType.desc)
         }
       } else {
         if (oldModelReg.isDefined && oldModelReg.get.warnRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, s"${statusType.desc} 解除")
+          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, s"${statusType.desc} 解除")
         }
       }
     }
