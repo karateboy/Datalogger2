@@ -14,6 +14,7 @@ import scala.concurrent.Future
 
 @Singleton
 class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
+  val logger: Logger = Logger(this.getClass)
   private var mtList = List.empty[String]
 
   init()
@@ -162,7 +163,7 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
   private def getTab(tabName: String) = SQLSyntax.createUnsafely(s"[dbo].[$tabName]")
 
   private def mapper(rs: WrappedResultSet): RecordList = {
-    val id = RecordListID(rs.jodaDateTime("time").toDate, rs.string("monitor"))
+    val id = RecordListID(rs.timestamp("time"), rs.string("monitor"))
     val mtDataOptList =
       for (mt <- mtList) yield {
         for (status <- rs.stringOpt(s"${mt}_s")) yield
@@ -216,7 +217,7 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
   override def ensureMonitorType(mt: String): Unit = {
     synchronized {
       if (!mtList.contains(mt)) {
-        Logger.info(s"alter record table by adding $mt")
+        logger.info(s"alter record table by adding $mt")
         val tabList =
           Seq(HourCollection, MinCollection, SecCollection)
         tabList.foreach(tab => {
@@ -314,12 +315,12 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
       }
   }
 
-  override def getHourCollectionList(): Future[Seq[String]] = Future {
+  override def getHourCollectionList: Future[Seq[String]] = Future {
     sqlServer.getTables().filter(tab => tab.startsWith(HourCollection))
 
   }
 
-  override def getMinCollectionList(): Future[Seq[String]] = Future {
+  override def getMinCollectionList: Future[Seq[String]] = Future {
     sqlServer.getTables().filter(tab => tab.startsWith(MinCollection))
   }
 }

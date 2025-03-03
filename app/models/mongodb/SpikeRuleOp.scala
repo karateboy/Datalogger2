@@ -24,26 +24,26 @@ class SpikeRuleOp @Inject()(mongodb: MongoDB) extends SpikeRuleDB {
   for(colNames <- mongodb.database.listCollectionNames().toFuture()) {
     if (!colNames.contains(ColName)) {
       val f = mongodb.database.createCollection(ColName).toFuture()
-      f.onFailure(errorHandler)
+      f.failed.foreach(errorHandler)
     }
   }
 
   override def getRules(): Future[Seq[SpikeRule]] = {
     val f = collection.find(Filters.exists("_id")).toFuture()
-    f onFailure(errorHandler())
+    f.failed.foreach(errorHandler)
     f
   }
 
   override def upsert(rule:SpikeRule): Future[UpdateResult] ={
     val f = collection.replaceOne(Filters.equal("_id", rule._id), rule, ReplaceOptions()
       .upsert(true)).toFuture()
-    f onFailure(errorHandler())
+    f.failed.foreach(errorHandler)
     f
   }
 
   override def delete(_id:SpikeRuleID): Future[DeleteResult] = {
     val f = collection.deleteOne(Filters.equal("_id", _id)).toFuture()
-    f onFailure errorHandler()
+    f.failed.foreach(errorHandler)
     f
   }
 }

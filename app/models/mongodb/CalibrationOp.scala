@@ -3,10 +3,7 @@ package models.mongodb
 import com.github.nscala_time.time.Imports._
 import models.ModelHelper._
 import models._
-import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
-import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import org.mongodb.scala.MongoCollection
-import org.mongodb.scala.model._
 
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -32,7 +29,7 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
     import org.mongodb.scala.model.Sorts._
 
     val f = collection.find(and(gte("startTime", start.toDate), lt("startTime", end.toDate))).sort(ascending("startTime")).toFuture()
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     waitReadyResult(f)
   }
 
@@ -43,7 +40,7 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
     import org.mongodb.scala.model.Sorts._
 
     val f = collection.find(and(gte("startTime", start.toDate), lt("startTime", end.toDate))).sort(ascending("startTime")).toFuture()
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -51,7 +48,7 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
     val f = collection.find(gte("startTime", start.toDate)).sort(ascending("startTime")).toFuture()
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -60,7 +57,7 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
     import org.mongodb.scala.model.Sorts._
 
     val f = collection.find(and(equal("monitorType", mt), gte("startTime", start.toDate), lt("startTime", end.toDate))).sort(ascending("startTime")).toFuture()
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     waitReadyResult(f)
   }
 
@@ -72,11 +69,10 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
     for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(colName)) {
         val f = mongodb.database.createCollection(colName).toFuture()
-        f.onFailure(errorHandler)
-        f.onSuccess({
-          case _ =>
-            val cf = collection.createIndex(ascending("monitorType", "startTime", "endTime")).toFuture()
-            cf.onFailure(errorHandler)
+        f.failed.foreach(errorHandler)
+        f.foreach(_ => {
+          val cf = collection.createIndex(ascending("monitorType", "startTime", "endTime")).toFuture()
+          cf.failed.foreach(errorHandler)
         })
       }
     }
@@ -87,7 +83,7 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
     import org.mongodb.scala.model.Sorts._
 
     val f = collection.find(equal("monitorType", mt)).sort(descending("startTime")).limit(1).toFuture()
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     f.map { seq =>
       seq.headOption
     }

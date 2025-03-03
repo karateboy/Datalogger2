@@ -1,4 +1,5 @@
 package models
+
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.{ProtocolParam, tcp, tcpCli}
 import play.api._
@@ -11,7 +12,7 @@ object T700Collector extends TapiTxx(ModelConfig("T700", List.empty[String])) {
   import akka.actor._
 
   trait Factory {
-    def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, host:String): Actor
+    def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, host: String): Actor
   }
 
   trait CliFactory {
@@ -21,11 +22,11 @@ object T700Collector extends TapiTxx(ModelConfig("T700", List.empty[String])) {
               @Assisted("protocolParam") protocol: ProtocolParam): Actor
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor ={
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt: Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Factory])
     val f2 = f.asInstanceOf[Factory]
     val driverParam = validateParam(param)
-    if(protocol.protocol == Protocol.tcp)
+    if (protocol.protocol == Protocol.tcp)
       f2(id, modelReg, driverParam, protocol.host.get)
     else {
       assert(fOpt.get.isInstanceOf[CliFactory])
@@ -44,14 +45,16 @@ object T700Collector extends TapiTxx(ModelConfig("T700", List.empty[String])) {
 }
 
 import javax.inject._
+
 class T700Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
                               alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
                               calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                              (@Assisted("instId") instId: String, @Assisted modelReg: ModelReg,
-                              @Assisted config: TapiConfig, @Assisted host:String)
+                              @Assisted config: TapiConfig, @Assisted host: String)
   extends TapiTxxCollector(instrumentOp, monitorStatusOp,
     alarmOp, monitorTypeOp,
-    calibrationOp, instrumentStatusOp)(instId, modelReg, config, host){
+    calibrationOp, instrumentStatusOp)(instId, modelReg, config, host) {
+  val logger: Logger = Logger(this.getClass)
 
   import DataCollectManager._
   import TapiTxx._
@@ -62,16 +65,18 @@ class T700Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
   var lastSeqTime = DateTime.now
 
   import context.dispatcher
+
   context.system.scheduler.scheduleOnce(FiniteDuration(30, SECONDS), self, ExecuteSeq(T700_STANDBY_SEQ, on = true))
 
   override def reportData(regValue: ModelRegValue): Option[ReportData] = None
 
   import com.serotonin.modbus4j.locator.BaseLocator
+
   override def executeSeq(seqName: String, on: Boolean): Unit = {
-    Logger.info(s"T700 execute $seqName sequence.")
+    logger.info(s"T700 execute $seqName sequence.")
     val seq = Integer.parseInt(seqName)
     if ((seq == lastSeqNo && lastSeqOp == on) && (DateTime.now() < lastSeqTime + 5.second)) {
-      Logger.info(s"T700 in cold period, ignore same seq operation")
+      logger.info(s"T700 in cold period, ignore same seq operation")
     } else {
       lastSeqTime = DateTime.now
       lastSeqOp = on

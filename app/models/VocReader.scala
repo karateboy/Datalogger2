@@ -6,7 +6,6 @@ import models.ForwardManager.ForwardHourRecord
 import play.api._
 
 import java.io.File
-import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.mutable
 import scala.concurrent.duration.{FiniteDuration, MINUTES}
 import scala.concurrent.{Future, blocking}
@@ -17,23 +16,24 @@ case class VocMonitorConfig(id: String, name: String, lat: Double, lng: Double, 
 case class VocReaderConfig(enable: Boolean, monitors: Seq[VocMonitorConfig])
 
 object VocReader {
+  val logger: Logger = Logger(getClass)
   var count = 0
 
   def start(configuration: Configuration, actorSystem: ActorSystem, monitorOp: MonitorDB, monitorTypeOp: MonitorTypeDB,
             recordOp: RecordDB, dataCollectManager: ActorRef): Option[ActorRef] = {
     def getConfig: Option[VocReaderConfig] = {
       def getMonitorConfig(config: Configuration) = {
-        val id = config.getString("id").get
-        val name = config.getString("name").get
-        val lat = config.getDouble("lat").get
-        val lng = config.getDouble("lng").get
-        val path = config.getString("path").get
+        val id = config.get[String]("id")
+        val name = config.get[String]("name")
+        val lat = config.get[Double]("lat")
+        val lng = config.get[Double]("lng")
+        val path = config.get[String]("path")
         VocMonitorConfig(id, name, lat, lng, path)
       }
 
-      for {config <- configuration.getConfig("vocReader")
-           enable <- config.getBoolean("enable") if enable
-           monitorConfigs <- config.getConfigSeq("monitors")
+      for {config <- configuration.getOptional[Configuration]("vocReader")
+           enable <- config.getOptional[Boolean]("enable") if enable
+           monitorConfigs <- config.getOptional[Seq[Configuration]]("monitors")
            monitors = monitorConfigs.map(getMonitorConfig)
            }
       yield
@@ -41,7 +41,7 @@ object VocReader {
     }
 
     for (config <- getConfig if config.enable) yield {
-      Logger.info(config.toString)
+      logger.info(config.toString)
       config.monitors.foreach(config => {
         val m = Monitor(_id = config.id, desc = config.name, lat = Some(config.lat), lng = Some(config.lng))
         monitorOp.upsertMonitor(m)
@@ -77,11 +77,12 @@ class VocReader(config: VocReaderConfig,
                 recordOp: RecordDB,
                 dataCollectManager: ActorRef)
   extends Actor with ActorLogging {
-  Logger.info("VocReader start")
+
+  log.info("VocReader start")
 
   import DataCollectManager._
-  import VocReader._
   import ReaderHelper._
+  import VocReader._
   import context.dispatcher
 
   def receive: Receive = handler(mutable.Map.empty[String, mutable.Set[String]], None)
@@ -150,7 +151,7 @@ class VocReader(config: VocReaderConfig,
     for (f <- files) {
       if (f.getName.toLowerCase().endsWith("tx0")) {
         try {
-          Logger.info(s"parse ${f.getAbsolutePath}")
+          log.info(s"parse ${f.getAbsolutePath}")
           for (dateTime <- getFileDateTime(f.getName, year, month)) {
             parser(monitorConfig.id, f, dateTime)
             parsedFileList.add(f.getAbsolutePath)
@@ -158,7 +159,7 @@ class VocReader(config: VocReaderConfig,
           }
         } catch {
           case ex: Throwable =>
-            Logger.error("skip buggy file", ex)
+            log.error("skip buggy file", ex)
         }
       }
     }
@@ -198,11 +199,11 @@ class VocReader(config: VocReaderConfig,
         dataCollectManager ! ForwardHourRecord(dateTime, dateTime.plusHours(1))
 
       case Failure(exception) =>
-        Logger.error("failed", exception)
+        log.error("failed", exception)
     }
   }
 
   override def postStop(): Unit = {
-    Logger.info("VocReader stopped")
+    log.info("VocReader stopped")
   }
 }

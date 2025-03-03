@@ -1,7 +1,8 @@
 package models
 
-import akka.actor.{Actor, actorRef2Scala}
+import akka.actor.Actor
 import com.google.inject.assistedinject.Assisted
+import models.ModelHelper.errorHandler
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
 import play.api.libs.ws.WSClient
@@ -19,10 +20,10 @@ object InstrumentStatusTypeForwarder {
 
 class InstrumentStatusTypeForwarder @Inject()(instrumentOp: InstrumentDB, ws: WSClient)
   (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
-
+  val logger: Logger = Logger(this.getClass)
   import ForwardManager._
 
-  Logger.info(s"InstrumentStatusTypeForwarder started $server/$monitor")
+  logger.info(s"InstrumentStatusTypeForwarder started $server/$monitor")
 
   def receive = handler(None)
 
@@ -36,17 +37,14 @@ class InstrumentStatusTypeForwarder @Inject()(instrumentOp: InstrumentDB, ws: WS
               val result = response.json.validate[String]
               result.fold(
                 error => {
-                  Logger.error(JsError.toJson(error).toString())
+                  logger.error(JsError.toJson(error).toString())
                 },
                 ids => {
                   context become handler(Some(ids))
                   self ! UpdateInstrumentStatusType
                 })
           }
-          f onFailure {
-            case ex: Throwable =>
-              ModelHelper.logException(ex)
-          }
+          f.failed.foreach(errorHandler)
         } else {
           val recordFuture = instrumentOp.getAllInstrumentFuture
           for (records <- recordFuture) {
@@ -59,7 +57,7 @@ class InstrumentStatusTypeForwarder @Inject()(instrumentOp: InstrumentDB, ws: WS
               }.mkString("")
 
               if (myIds != instrumentStatusTypeIdOpt.get) {
-                Logger.info("statusTypeId is not equal. updating...")
+                logger.info("statusTypeId is not equal. updating...")
                 val istMaps = withStatusType.map { inst =>
                   InstrumentStatusTypeMap(inst._id, inst.statusType.get)
                 }
@@ -67,14 +65,8 @@ class InstrumentStatusTypeForwarder @Inject()(instrumentOp: InstrumentDB, ws: WS
                 implicit val write1 = Json.writes[InstrumentStatusType]
                 implicit val writer = Json.writes[InstrumentStatusTypeMap]
                 val f = ws.url(url).put(Json.toJson(istMaps))
-                f onSuccess {
-                  case _ =>
-                    context become handler(Some(myIds))
-                }
-                f onFailure {
-                  case ex: Throwable =>
-                    ModelHelper.logException(ex)
-                }
+                f.foreach(_ => context become handler(Some(myIds)))
+                f.failed.foreach(errorHandler)
               }
             }
           }

@@ -1,4 +1,5 @@
 package models
+
 import akka.actor.Actor
 import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
@@ -16,11 +17,14 @@ object MinRecordForwarder {
   trait Factory {
     def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String): Actor
   }
+
+  val logger: Logger = Logger(this.getClass)
 }
 
 class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
                                   (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
-  Logger.info(s"MinRecordForwarder created with server=$server monitor=$monitor")
+  val logger: Logger = Logger(this.getClass)
+  logger.info(s"MinRecordForwarder created with server=$server monitor=$monitor")
 
   private val postUrl = s"http://$server/Record/Min/$monitor"
 
@@ -29,6 +33,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
   self ! ForwardMin
 
   def receive: Receive = handler(None)
+
   def checkLatest() = {
     val url = s"http://$server/MinRecordRange/$monitor"
     val f = ws.url(url).get().map {
@@ -36,10 +41,10 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
         val result = response.json.validate[LatestRecordTime]
         result.fold(
           error => {
-            Logger.error(JsError.toJson(error).toString())
+            logger.error(JsError.toJson(error).toString())
           },
           latest => {
-            Logger.info(s"server latest min: ${new DateTime(latest.time).toString}")
+            logger.info(s"server latest min: ${new DateTime(latest.time).toString}")
             val serverLatest =
               if (latest.time == 0) {
                 DateTime.now() - 1.day
@@ -51,10 +56,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
             uploadRecord(serverLatest.getMillis)
           })
     }
-    f onFailure {
-      case ex: Throwable =>
-        ModelHelper.logException(ex)
-    }
+    f.failed.foreach(errorHandler)
   }
 
   def uploadRecord(latestRecordTime: Long): Unit = {
@@ -75,10 +77,10 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
                 context become handler(Some(records.last._id.time.getTime))
               }
             } else {
-              Logger.error(s"${response.status}:${response.statusText}")
+              logger.error(s"${response.status}:${response.statusText}")
               context become handler(None)
             }
-          case Failure(exception)=>
+          case Failure(exception) =>
             context become handler(None)
             errorHandler(exception)
         }
@@ -88,27 +90,19 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
 
   def uploadRecord(start: DateTime, end: DateTime): Unit = {
     val recordFuture = recordOp.getRecordListFuture(recordOp.MinCollection)(start, end)
-    for (record <- recordFuture) {
-      if (record.nonEmpty) {
-        Logger.info(s"upload min ${start.toString()} => ${end.toString}")
-        Logger.info(s"Total ${record.length} records")
+    for (record <- recordFuture if record.nonEmpty) {
 
-        for (chunk <- record.grouped(60)) {
-          val f = ws.url(postUrl).post(Json.toJson(chunk.filter(_.mtDataList.nonEmpty)))
+      logger.info(s"upload min ${start.toString()} => ${end.toString}")
+      logger.info(s"Total ${record.length} records")
 
-          f onSuccess {
-            case response =>
-              Logger.info(s"${response.status} : ${response.statusText}")
-              Logger.info("Success upload")
-          }
-          f onFailure {
-            case ex: Throwable =>
-              ModelHelper.logException(ex)
-          }
-        }
-      } else
-        Logger.error(s"No min record from $start to $end")
-
+      for (chunk <- record.grouped(60)) {
+        val f = ws.url(postUrl).post(Json.toJson(chunk.filter(_.mtDataList.nonEmpty)))
+        f.foreach(response => {
+          logger.info(s"${response.status} : ${response.statusText}")
+          logger.info("Success upload")
+        })
+        f.failed.foreach(errorHandler)
+      }
     }
   }
 

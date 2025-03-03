@@ -7,6 +7,14 @@ import scala.concurrent.Future
 
 case class Alarm(time: Date, src: String, level: Int, desc: String)
 
+object Alarm {
+  object Level {
+    val INFO = 1
+    val WARN = 2
+    val ERR = 3
+  }
+}
+
 trait AlarmDB {
 
   def src(mt: String) = s"T:$mt"
@@ -32,10 +40,4 @@ trait AlarmDB {
   def log(src: String, level: Int, desc: String, coldPeriod: Int = 30): Unit
 
   def log(ar: Alarm): Unit = log(ar.src, ar.level, ar.desc)
-
-  object Level {
-    val INFO = 1
-    val WARN = 2
-    val ERR = 3
-  }
 }

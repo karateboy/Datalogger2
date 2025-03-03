@@ -21,6 +21,7 @@ case class AqiSubReport(value: Option[Double], aqi: Option[Double])
 case class AqiReport(aqi: Option[Double], sub_map: Map[AqiMonitorType, AqiSubReport])
 
 object AQI {
+  val logger: Logger = Logger(this.getClass)
   private final case object O3_8hr extends AqiMonitorType
 
   final case object O3 extends AqiMonitorType
@@ -68,7 +69,7 @@ object AQI {
 
   def updateAqiTypeMapping(monitorTypes: Seq[String]): Unit = {
     if (monitorTypes.length != aqiMonitorType.length) {
-      Logger.error(s"AQI type mapping length not equal!")
+      logger.error(s"AQI type mapping length not equal!")
     } else
       for ((k, v) <- aqiMonitorType.zip(monitorTypes)) {
         mtMap.update(k, v)

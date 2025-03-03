@@ -1,35 +1,43 @@
 package models
+
 import com.github.nscala_time.time.Imports._
 import com.typesafe.config.ConfigFactory
 import play.api._
 import play.api.libs.json._
 
 case class TapiConfig(slaveID: Int, calibrationTime: Option[LocalTime], monitorTypes: Option[List[String]],
-    raiseTime:Option[Int], downTime:Option[Int], holdTime:Option[Int], 
-    calibrateZeoSeq:Option[String], calibrateSpanSeq:Option[String],
-    calibratorPurgeSeq:Option[String], calibratorPurgeTime:Option[Int],
-    calibrateZeoDO:Option[Int], calibrateSpanDO:Option[Int], skipInternalVault:Option[Boolean]){
+                      raiseTime: Option[Int], downTime: Option[Int], holdTime: Option[Int],
+                      calibrateZeoSeq: Option[String], calibrateSpanSeq: Option[String],
+                      calibratorPurgeSeq: Option[String], calibratorPurgeTime: Option[Int],
+                      calibrateZeoDO: Option[Int], calibrateSpanDO: Option[Int], skipInternalVault: Option[Boolean]) {
   def toDeviceConfig: DeviceConfig = DeviceConfig(slaveID = Some(slaveID),
     calibrationTime = calibrationTime, monitorTypes = monitorTypes,
     raiseTime = raiseTime, downTime = downTime, holdTime = holdTime,
     calibrateZeoSeq = calibrateZeoSeq, calibrateSpanSeq = calibrateSpanSeq,
-    calibratorPurgeSeq = calibratorPurgeSeq, calibratorPurgeTime= calibratorPurgeTime,
+    calibratorPurgeSeq = calibratorPurgeSeq, calibratorPurgeTime = calibratorPurgeTime,
     calibrateZeoDO = calibrateZeoDO, calibrateSpanDO = calibrateSpanDO,
     skipInternalVault = skipInternalVault)
 }
-    
+
 
 object TapiTxx {
   val T700_PURGE_SEQ = "100"
   val T700_STANDBY_SEQ = "99"
+
+  import ModelHelper._
+
+  implicit val tapiConfigReads: Reads[TapiConfig] = Json.reads[TapiConfig]
+  implicit val tapiConfigWrites: Writes[TapiConfig] = Json.writes[TapiConfig]
 }
 
 abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
-  implicit val cfgReads = Json.reads[TapiConfig]
-  implicit val cfgWrites = Json.writes[TapiConfig]
-  
-  def getModel = modelConfig.model
-  def readModelSetting = {
+
+  import TapiTxx._
+
+  val logger: Logger = Logger(this.getClass)
+  def getModel: String = modelConfig.model
+
+  def readModelSetting: ModelReg = {
     val model = modelConfig.model
     val driverConfig = ConfigFactory.load(model)
     import java.util.ArrayList
@@ -55,7 +63,7 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
         HoldingReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String], v.get(2).asInstanceOf[String])
       }
     }
-    
+
     val modeRegList = {
       val modeRegAnyList = driverConfig.getAnyRefList(s"TAPI.$model.DiscreteInput.mode")
       for {
@@ -77,7 +85,7 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
         DiscreteInputReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String])
       }
     }
-        
+
     val coilRegList = {
       val coilRegAnyList = driverConfig.getAnyRefList(s"TAPI.$model.Coil.reg")
       for {
@@ -87,27 +95,27 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
       } yield {
         CoilReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String])
       }
-    }    
-    
-    ModelReg(inputRegList.toList, holdingRegList.toList, modeRegList.toList, warnRegList.toList, coilRegList.toList) 
+    }
+
+    ModelReg(inputRegList.toList, holdingRegList.toList, modeRegList.toList, warnRegList.toList, coilRegList.toList)
   }
 
-  override def verifyParam(json: String) = {
+  override def verifyParam(json: String): String = {
     val ret = Json.parse(json).validate[TapiConfig]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => {
         //Append monitor Type into config
         val mt = modelConfig.monitorTypeIDs
-        val newParam = TapiConfig(param.slaveID, param.calibrationTime, Some(mt), 
-            param.raiseTime, param.downTime, param.holdTime,
-            param.calibrateZeoSeq, param.calibrateSpanSeq,
-            param.calibratorPurgeSeq, param.calibratorPurgeTime,
-            param.calibrateZeoDO, param.calibrateSpanDO,
-            param.skipInternalVault)
+        val newParam = TapiConfig(param.slaveID, param.calibrationTime, Some(mt),
+          param.raiseTime, param.downTime, param.holdTime,
+          param.calibrateZeoSeq, param.calibrateSpanSeq,
+          param.calibratorPurgeSeq, param.calibratorPurgeTime,
+          param.calibrateZeoDO, param.calibrateSpanDO,
+          param.skipInternalVault)
 
         Json.toJson(newParam).toString()
       })
@@ -121,17 +129,17 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
       List.empty[String]
   }
 
-  def validateParam(json: String) = {
+  def validateParam(json: String): TapiConfig = {
     val ret = Json.parse(json).validate[TapiConfig]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => param)
   }
 
-  override def getCalibrationTime(param: String) = {
+  override def getCalibrationTime(param: String): Option[LocalTime] = {
     val config = validateParam(param)
     config.calibrationTime
   }

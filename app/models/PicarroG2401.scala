@@ -3,7 +3,6 @@ package models
 import akka.actor.Actor
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
-import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 import play.api.Logger
 
 import java.io.{BufferedReader, InputStreamReader, OutputStream}
@@ -73,7 +72,7 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
   extends AbstractCollector(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
     alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
-
+  val logger: Logger = Logger(this.getClass)
   import PicarroG2401._
 
   @volatile var socketOpt: Option[Socket] = None
@@ -99,14 +98,14 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
             }
 
             val cmd = "_Meas_GetConc\r"
-            Logger.debug(s"DAS=>Picarro ${cmd}")
+            logger.debug(s"DAS=>Picarro ${cmd}")
             out.write(cmd.getBytes())
             val resp = readUntileNonEmpty()
-            Logger.debug(s"Picarro=>DAS $resp")
+            logger.debug(s"Picarro=>DAS $resp")
             val tokens = resp.split(";")
             if (tokens.length != predefinedIST.length) {
-              Logger.error(s"Data length ${tokens.length} != ${predefinedIST.length}")
-              Logger.error(resp)
+              logger.error(s"Data length ${tokens.length} != ${predefinedIST.length}")
+              logger.error(resp)
             }
 
             val inputs =
@@ -154,23 +153,23 @@ class PicarroG2401Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
         if (on) {
           if (address == 0) {
             val cmd = "_valves_seq_setstate 9\r"
-            Logger.debug(s"DAS=>Picarro $cmd")
+            logger.debug(s"DAS=>Picarro $cmd")
             out.write(cmd.getBytes())
             val resp = readUntileNonEmpty()
-            Logger.debug(s"Picarro=>DAS $resp")
+            logger.debug(s"Picarro=>DAS $resp")
           } else {
             val cmd = "_valves_seq_setstate 10\r"
-            Logger.debug(s"DAS=>Picarro $cmd")
+            logger.debug(s"DAS=>Picarro $cmd")
             out.write(cmd.getBytes())
             val resp = readUntileNonEmpty()
-            Logger.debug(s"Picarro=>DAS $resp")
+            logger.debug(s"Picarro=>DAS $resp")
           }
         } else {
           val cmd = "_valves_seq_setstate 0\r"
-          Logger.debug(s"DAS=>Picarro $cmd")
+          logger.debug(s"DAS=>Picarro $cmd")
           out.write(cmd.getBytes())
           val resp = readUntileNonEmpty()
-          Logger.debug(s"Picarro=>DAS $resp")
+          logger.debug(s"Picarro=>DAS $resp")
         }
     }
   }

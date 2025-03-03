@@ -16,7 +16,7 @@ class CalibrationConfigOp @Inject()(sqlServer: SqlServer) extends CalibrationCon
   private def mapper(rs: WrappedResultSet) = CalibrationConfig(
     _id = rs.string("id"),
     instrumentIds = rs.string("instrumentIds").split(",").toSeq,
-    calibrationTime = rs.jodaLocalTimeOpt("calibrationTime").map(t=>t.toString("HH:mm:ss")),
+    calibrationTime = rs.localTimeOpt("calibrationTime").map(t=>t.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"))),
     pointConfigs = Json.parse(rs.string("pointConfigs")).as[Seq[PointCalibrationConfig]]
   )
 

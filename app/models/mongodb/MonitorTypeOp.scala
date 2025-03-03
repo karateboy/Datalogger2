@@ -49,7 +49,7 @@ class MonitorTypeOp @Inject()(mongodb: MongoDB, alarmDB: AlarmDB) extends Monito
       }
 
     val f = collection.bulkWrite(updateModels, BulkWriteOptions().ordered(true)).toFuture()
-    f.onFailure(errorHandler)
+    f.failed.foreach(errorHandler)
     waitReadyResult(f)
   }
 
@@ -69,13 +69,13 @@ class MonitorTypeOp @Inject()(mongodb: MongoDB, alarmDB: AlarmDB) extends Monito
 
   override def deleteItemFuture(_id: String): Unit = {
       val f = collection.deleteOne(Filters.equal("_id", _id)).toFuture()
-      f onFailure errorHandler
+      f.failed.foreach(errorHandler)
   }
 
   override def upsertItemFuture(mt: MonitorType): Future[UpdateResult] = {
     import org.mongodb.scala.model.ReplaceOptions
     val f = collection.replaceOne(Filters.equal("_id", mt._id), mt, ReplaceOptions().upsert(true)).toFuture()
-    f.onFailure(errorHandler)
+    f.failed.foreach(errorHandler)
     f
   }
 

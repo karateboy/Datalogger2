@@ -7,13 +7,14 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths, StandardOpenOption}
 import scala.collection.JavaConverters.asScalaBufferConverter
 object ReaderHelper {
+  val logger: Logger = Logger(this.getClass)
   def getParsedFileList(dir: String, filename: String = "parsed.list"): Seq[String] = {
     val parsedFileName = s"$dir/$filename"
     try {
       Files.readAllLines(Paths.get(parsedFileName), StandardCharsets.UTF_8).asScala
     } catch {
       case ex: Throwable =>
-        Logger.info(s"Cannot open $parsedFileName")
+        logger.info(s"Cannot open $parsedFileName")
         Seq.empty[String]
     }
   }
@@ -24,7 +25,7 @@ object ReaderHelper {
       Files.delete(Paths.get(parsedFileName))
     } catch {
       case ex: Throwable =>
-        Logger.error(s"Cannot delete $parsedFileName", ex)
+        logger.error(s"Cannot delete $parsedFileName", ex)
     }
   }
 
@@ -33,7 +34,7 @@ object ReaderHelper {
       Files.write(Paths.get(s"$dir/$filename"), (filePath + "\n").getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.APPEND)
     } catch {
       case ex: Throwable =>
-        Logger.warn(ex.getMessage)
+        logger.warn(ex.getMessage)
     }
   }
 

@@ -1,9 +1,7 @@
 package models.mongodb
 
 import models.ModelHelper.{errorHandler, waitReadyResult}
-import models.{AlarmConfig, Group, User, UserDB}
-import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
-import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
+import models.{AlarmConfig, User, UserDB}
 import org.mongodb.scala.model.Updates
 import play.api.Logger
 
@@ -12,45 +10,45 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 @Singleton
 class UserOp @Inject()(mongoDB: MongoDB) extends UserDB {
+  val logger: Logger = Logger(getClass)
 
-  import org.mongodb.scala._
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
+  import org.mongodb.scala._
   import org.mongodb.scala.bson.codecs.Macros._
 
   lazy private val ColName = "users"
   lazy private val codecRegistry = fromRegistries(fromProviders(classOf[User], classOf[AlarmConfig]), DEFAULT_CODEC_REGISTRY)
   lazy private val collection: MongoCollection[User] = mongoDB.database.withCodecRegistry(codecRegistry).getCollection(ColName)
 
-  private def init() {
+  private def init(): Unit = {
     for (colNames <- mongoDB.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(ColName)) {
         val f = mongoDB.database.createCollection(ColName).toFuture()
-        f.onFailure(errorHandler)
+        f.failed.foreach(errorHandler)
       }
     }
 
     val f = collection.countDocuments().toFuture()
-    f.onSuccess({
-      case count: Long =>
-        if (count == 0) {
-          Logger.info("Create default user:" + defaultUser.toString())
-          newUser(defaultUser)
-        }
+    f.foreach(count => {
+      if (count == 0) {
+        logger.info("Create default user:" + defaultUser.toString)
+        newUser(defaultUser)
+      }
     })
-    f.onFailure(errorHandler)
+    f.failed.foreach(errorHandler)
   }
 
-  init
+  init()
 
-  override def newUser(user: User) = {
+  override def newUser(user: User): Unit = {
     val f = collection.insertOne(user).toFuture()
     waitReadyResult(f)
   }
 
   import org.mongodb.scala.model.Filters._
 
-  override def deleteUser(email: String) = {
+  override def deleteUser(email: String): Unit = {
     val f = collection.deleteOne(equal("_id", email)).toFuture()
     waitReadyResult(f)
   }
@@ -83,29 +81,20 @@ class UserOp @Inject()(mongoDB: MongoDB) extends UserDB {
 
   override def getUserByEmail(email: String): Option[User] = {
     val f = collection.find(equal("_id", email)).first().toFuture()
-    f.onFailure {
-      errorHandler
-    }
+    f.failed.foreach(errorHandler)
     val user = waitReadyResult(f)
-    if (user != null)
-      Some(user)
-    else
-      None
+    Option(user)
   }
 
   override def getAllUsers(): Seq[User] = {
     val f = collection.find().toFuture()
-    f.onFailure {
-      errorHandler
-    }
+    f.failed.foreach(errorHandler)
     waitReadyResult(f)
   }
 
   override def getAdminUsers(): Seq[User] = {
     val f = collection.find(equal("isAdmin", true)).toFuture()
-    f.onFailure {
-      errorHandler
-    }
+    f.failed.foreach(errorHandler)
     waitReadyResult(f)
   }
 

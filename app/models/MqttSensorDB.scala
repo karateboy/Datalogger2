@@ -1,6 +1,5 @@
 package models
 
-import com.google.inject.ImplementedBy
 import org.mongodb.scala.result.{DeleteResult, UpdateResult}
 import play.api.libs.json.Json
 

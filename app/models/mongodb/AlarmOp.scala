@@ -1,6 +1,7 @@
 package models.mongodb
 
 import com.github.nscala_time.time.Imports._
+import models.Alarm.Level
 import models.ModelHelper._
 import models._
 import org.bson.codecs.configuration.CodecRegistry
@@ -19,6 +20,8 @@ import scala.language.implicitConversions
 class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTargetOp: EmailTargetOp,
                         lineNotify: LineNotify, sysConfig: SysConfig) extends AlarmDB {
 
+  val logger: Logger = Logger(getClass)
+
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
@@ -32,11 +35,8 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
     for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(colName)) {
         val f = mongodb.database.createCollection(colName).toFuture()
-        f.onFailure(errorHandler)
-        f.onSuccess({
-          case _ =>
-            collection.createIndex(ascending("time", "level", "src"))
-        })
+        f.failed.foreach(errorHandler)
+        f.foreach(_ => collection.createIndex(ascending("time", "level", "src")))
       }
     }
   }
@@ -50,7 +50,7 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
     val f = collection.find(and(gte("time", start), lt("time", end), equal("level", level)))
       .sort(descending("time")).toFuture()
 
-    f onFailure errorHandler()
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -60,7 +60,7 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
       lt("time", end),
       equal("level", level))).sort(descending("time")).toFuture()
 
-    f onFailure errorHandler()
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -93,7 +93,7 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
           }
         }
       }, // onNext
-      (ex: Throwable) => Logger.error("Alarm failed:", ex), // onError
+      (ex: Throwable) => logger.error("Alarm failed:", ex), // onError
       () => {} // onComplete
     )
 

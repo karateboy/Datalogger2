@@ -6,7 +6,6 @@ import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc._
 
-import java.io.File
 import java.util.Date
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -15,10 +14,13 @@ import scala.concurrent.Future
 class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb,
                            recordDB: RecordDB,
                            excelUtility: ExcelUtility,
-                           tableType: TableType) extends Controller {
+                           tableType: TableType,
+                           security: Security,
+                           cc: ControllerComponents,
+                           assets: Assets) extends AbstractController(cc) {
+  val logger: Logger = Logger(this.getClass)
 
-
-  def getAlarmRules: Action[AnyContent] = Security.Authenticated.async {
+  def getAlarmRules: Action[AnyContent] = security.Authenticated.async {
     implicit request =>
       for (ret <- alarmRuleDb.getRulesAsync) yield {
         implicit val w1: OWrites[AlarmRule] = Json.writes[AlarmRule]
@@ -26,12 +28,12 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb,
       }
   }
 
-  def upsertAlarmRule: Action[JsValue] = Security.Authenticated.async(BodyParsers.parse.json) {
+  def upsertAlarmRule: Action[JsValue] = security.Authenticated.async(parse.json) {
     implicit request =>
       implicit val r1 = Json.reads[AlarmRule]
       val result = request.body.validate[AlarmRule]
       result.fold(err => {
-        Logger.error(JsError(err).toString)
+        logger.error(JsError(err).toString)
         Future.successful(BadRequest(Json.obj("ok" -> false, "msg" -> JsError(err).toString())))
       },
         rule => {
@@ -40,27 +42,22 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb,
         })
   }
 
-  def deleteAlarmRule(id: String): Action[AnyContent] = Security.Authenticated.async {
+  def deleteAlarmRule(id: String): Action[AnyContent] = security.Authenticated.async {
     implicit request =>
       alarmRuleDb.deleteAsync(id).map { _ =>
         Ok(Json.obj("ok" -> true))
       }
   }
 
-  def getUpsertTemplate: Action[AnyContent] = Security.Authenticated.async {
+  def getUpsertTemplate: Action[AnyContent] = security.Authenticated.async {
     implicit request =>
-      Assets.at("/public", "upsertTemplate.xlsx")(request)
+      assets.at("/public", "upsertTemplate.xlsx")(request)
   }
 
-  private def upsertMinData(file: File): Boolean = {
-
-    true
-  }
-
-  def upsertData: Action[MultipartFormData[play.api.libs.Files.TemporaryFile]] = Security.Authenticated.async(parse.multipartFormData) {
+  def upsertData: Action[MultipartFormData[play.api.libs.Files.TemporaryFile]] = security.Authenticated.async(parse.multipartFormData) {
     implicit request =>
       val file = request.body.file("data").get
-      val tmpFile = file.ref.file
+      val tmpFile = file.ref.path.toFile
 
       val dataMaps = excelUtility.getUpsertMinData(tmpFile)
       if (dataMaps.isEmpty) {

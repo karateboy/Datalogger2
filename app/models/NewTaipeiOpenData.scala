@@ -22,11 +22,11 @@ class NewTaipeiOpenData @Inject()(WSClient: WSClient,
 
 
   def getConfig: Option[NewTaipeiOpenDataConfig] =
-    for {config <- configuration.getConfig("newTaipeiOpenData")
-         enable <- config.getBoolean("enable")
-         pid <- config.getString("pid")
-         api <- config.getString("api")
-         url <- config.getString("url")
+    for {config <- configuration.getOptional[Configuration]("newTaipeiOpenData")
+         enable <- config.getOptional[Boolean]("enable")
+         pid <- config.getOptional[String]("pid")
+         api <- config.getOptional[String]("api")
+         url <- config.getOptional[String]("url")
          } yield
       NewTaipeiOpenDataConfig(enable, pid, api, url)
 
@@ -65,14 +65,14 @@ class NewTaipeiOpenData @Inject()(WSClient: WSClient,
         implicit val w2: OWrites[PayLoad] = Json.writes[PayLoad]
         val postUrl = s"${config.url}api/v1/open.dataset.content.update"
         val f = WSClient.url(postUrl)
-          .withHeaders("Content-Type" -> "application/json", "Authorization" -> config.api)
+          .addHttpHeaders("Content-Type" -> "application/json", "Authorization" -> config.api)
           .post(Json.toJson(payload))
         f.onComplete {
           case Success(response) =>
             if (response.status == 200) {
-              alarmDB.log(alarmDB.src(), alarmDB.Level.INFO, s"新北OpenData上傳${recordList._id.time.toString}小時值成功")
+              alarmDB.log(alarmDB.src(), Alarm.Level.INFO, s"新北OpenData上傳${recordList._id.time.toString}小時值成功")
             } else {
-              alarmDB.log(alarmDB.src(), alarmDB.Level.ERR, s"新北OpenData上傳${recordList._id.time.toString}小時值失敗 status=${response.status} 錯誤訊息 ${response.body}")
+              alarmDB.log(alarmDB.src(), Alarm.Level.ERR, s"新北OpenData上傳${recordList._id.time.toString}小時值失敗 status=${response.status} 錯誤訊息 ${response.body}")
             }
           case Failure(ex) =>
             throw ex
@@ -80,7 +80,7 @@ class NewTaipeiOpenData @Inject()(WSClient: WSClient,
       } catch {
         case ex: Throwable =>
           logger.error("新北OpenData上傳錯誤", ex)
-          alarmDB.log(alarmDB.src(), alarmDB.Level.ERR, s"新北OpenData上傳${recordList._id.time.toString}小時值失敗 錯誤訊息 ${ex.getMessage}")
+          alarmDB.log(alarmDB.src(), Alarm.Level.ERR, s"新北OpenData上傳${recordList._id.time.toString}小時值失敗 錯誤訊息 ${ex.getMessage}")
       }
     }
 }

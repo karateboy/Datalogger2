@@ -26,10 +26,10 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
                                    @Assisted("protocol") protocol: ProtocolParam) extends Actor with ActorLogging {
   val InputKey = "Input"
 
+  import DataCollectManager._
   import TapiTxxCollector._
   import com.serotonin.modbus4j._
   import com.serotonin.modbus4j.ip.IpParameters
-  import DataCollectManager._
 
   val HoldingKey = "Holding"
   val ModeKey = "Mode"
@@ -228,7 +228,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
           case ex: Exception =>
             log.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
             if (connected)
-              alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"${ex.getMessage}")
 
             connected = false
         } finally {
@@ -296,7 +296,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
           } catch {
             case ex: Exception =>
               log.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
-              alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
               context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
@@ -654,7 +654,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     } {
       if (enable) {
         if (oldModelReg.isEmpty || oldModelReg.get.modeRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, statusType.desc)
+          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, statusType.desc)
         }
       }
     }
@@ -667,11 +667,11 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     } {
       if (enable) {
         if (oldModelReg.isEmpty || oldModelReg.get.warnRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.WARN, statusType.desc)
+          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, statusType.desc)
         }
       } else {
         if (oldModelReg.isDefined && oldModelReg.get.warnRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, s"${statusType.desc} 解除")
+          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, s"${statusType.desc} 解除")
         }
       }
     }
@@ -697,9 +697,9 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
       kv =>
         val k = kv._1
         val v = kv._2
-        instrumentStatusOp.Status(k.key, v)
+        InstrumentStatusDB.Status(k.key, v)
     }
-    val instStatus = instrumentStatusOp.InstrumentStatus(DateTime.now(), instId, isList).excludeNaN
+    val instStatus = InstrumentStatusDB.InstrumentStatus(DateTime.now(), instId, isList).excludeNaN
     instrumentStatusOp.log(instStatus)
   }
 

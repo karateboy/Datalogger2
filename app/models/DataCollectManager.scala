@@ -107,6 +107,8 @@ object DataCollectManager {
 
   object ManualSpan extends CalibrationType(false, false)
 
+  case object ReloadAlarmRule
+
   private def updateEffectiveRatio(sysConfig: SysConfigDB): Unit = {
     for (ratio <- sysConfig.getEffectiveRatio)
       effectiveRatio = ratio
@@ -322,6 +324,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                                      cdxUploader: CdxUploader,
                                      newTaipeiOpenData: NewTaipeiOpenData,
                                      tableType: TableType)() {
+  val logger: Logger = Logger(this.getClass)
 
   import DataCollectManager._
 
@@ -436,7 +439,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
               }
 
             case Failure(exception) =>
-              Logger.error("failed", exception)
+              logger.error("failed", exception)
           }
         }
 
@@ -463,11 +466,13 @@ class DataCollectManager @Inject()
  calibrationDB: CalibrationDB,
  sysConfig: SysConfigDB,
  calibrationConfigDB: CalibrationConfigDB,
- forwardManagerFactory: ForwardManager.Factory) extends Actor with InjectedActorSupport {
+ forwardManagerFactory: ForwardManager.Factory,
+ alarmRuleDb: AlarmRuleDb,
+ tableType: TableType) extends Actor with InjectedActorSupport {
 
   import DataCollectManager._
 
-  Logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
+  logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
   DataCollectManager.updateEffectiveRatio(sysConfig)
 
   for (aqiMonitorTypes <- sysConfig.getAqiMonitorTypes)
@@ -478,7 +483,7 @@ class DataCollectManager @Inject()
     //Try to trigger at 30 sec
     val next30 = DateTime.now().withSecondOfMinute(30).plusMinutes(1)
     val postSeconds = new org.joda.time.Duration(DateTime.now, next30).getStandardSeconds
-    context.system.scheduler.schedule(Duration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
+    context.system.scheduler.scheduleAtFixedRate(FiniteDuration(postSeconds, SECONDS), Duration(1, MINUTES), self, CalculateData)
   }
 
   private val autoStateConfigOpt: Option[Seq[AutoStateConfig]] = AutoState.getConfig(config)
@@ -488,7 +493,7 @@ class DataCollectManager @Inject()
       //Try to trigger at 30 sec
       val next = DateTime.now().withSecondOfMinute(0).plusMinutes(1)
       val postSeconds = new org.joda.time.Duration(DateTime.now, next).getStandardSeconds
-      Some(context.system.scheduler.schedule(FiniteDuration(postSeconds, SECONDS), Duration(1, MINUTES), self, AutoState))
+      Some(context.system.scheduler.scheduleAtFixedRate(FiniteDuration(postSeconds, SECONDS), Duration(1, MINUTES), self, AutoState))
     } else
       None
 
@@ -517,24 +522,25 @@ class DataCollectManager @Inject()
   }
 
 
-  {
-    // Start all active instruments
-    val instrumentList = instrumentOp.getInstrumentList()
-    instrumentList.foreach {
-      inst =>
-        if (inst.active)
-          self ! StartInstrument(inst)
-    }
-
-    // Setup all multi-calibrations timer
-    for (multiCalibrationList <- calibrationConfigDB.getListFuture) {
-      multiCalibrationList.foreach { calibrationConfig =>
-        self ! SetupMultiCalibrationTimer(calibrationConfig)
-      }
-    }
-
-    Logger.info("DataCollect manager started")
+  // Start all active instruments
+  val instrumentList = instrumentOp.getInstrumentList()
+  instrumentList.foreach {
+    inst =>
+      if (inst.active)
+        self ! StartInstrument(inst)
   }
+
+  // Setup all multi-calibrations timer
+  for (multiCalibrationList <- calibrationConfigDB.getListFuture) {
+    multiCalibrationList.foreach { calibrationConfig =>
+      self ! SetupMultiCalibrationTimer(calibrationConfig)
+    }
+  }
+
+  // Reload Alarm Rule
+  self ! ReloadAlarmRule
+
+  logger.info("DataCollect manager started")
 
   private def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord]): Boolean = {
     var overThreshold = false
@@ -549,7 +555,7 @@ class DataCollectManager @Inject()
         for (std_law <- mtCase.std_law; v <- value) {
           if (v > std_law) {
             val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, value)}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
-            alarmOp.log(alarmOp.src(mt), alarmOp.Level.INFO, msg)
+            alarmOp.log(alarmOp.src(mt), Alarm.Level.INFO, msg)
             overThreshold = true
             mtCase.overLawSignalType.foreach(signalType => {
               self ! WriteSignal(signalType, bit = true)
@@ -568,7 +574,8 @@ class DataCollectManager @Inject()
     Map.empty[String, (DateTime, Boolean)],
     emptyCalibrationListMap,
     Map.empty[String, CalibratorState],
-    Map.empty[String, Cancellable])
+    Map.empty[String, Cancellable],
+    Seq.empty[AlarmRule])
 
   private def getCollectorMap(instrumentMap: Map[String, InstrumentParam]): Map[ActorRef, String] =
     instrumentMap.map(kv => kv._2.actor -> kv._1)
@@ -600,8 +607,8 @@ class DataCollectManager @Inject()
               signalDataMap: Map[String, (DateTime, Boolean)],
               calibrationListMap: CalibrationListMap,
               instrumentCalibratorMap: Map[String, CalibratorState],
-              calibratorTimerMap: Map[String, Cancellable]
-             ): Receive = {
+              calibratorTimerMap: Map[String, Cancellable],
+              alarmRules: Seq[AlarmRule]): Receive = {
     case ForwardHour =>
       for (forwardManager <- forwardManagerOpt)
         forwardManager ! ForwardHour
@@ -620,20 +627,31 @@ class DataCollectManager @Inject()
         forwardManager ! fmr
 
 
+    case ReloadAlarmRule =>
+      val f = alarmRuleDb.getRulesAsync
+      f.onComplete {
+        case Success(rules) =>
+          context become handler(instrumentMap, latestDataMap, mtDataList, restartList,
+            signalTypeHandlerMap, signalDataMap, calibrationListMap, instrumentCalibratorMap, calibratorTimerMap, rules)
+
+        case Failure(ex) =>
+          logger.error("Failed to reload alarm rules", ex)
+      }
+
     case AutoState =>
       for (autoStateConfigs <- autoStateConfigOpt)
         autoStateConfigs.foreach(config => {
           if (config.period == "Hour" && config.time.toInt == DateTime.now().getMinuteOfHour) {
-            Logger.info(s"AutoState=>$config")
+            logger.info(s"AutoState=>$config")
             self ! SetState(config.instID, config.state)
           }
         })
 
     case StartInstrument(inst) =>
       if (!instrumentTypeOp.map.contains(inst.instType))
-        Logger.error(s"${inst._id} of ${inst.instType} is unknown!")
+        logger.error(s"${inst._id} of ${inst.instType} is unknown!")
       else if (instrumentMap.contains(inst._id))
-        Logger.error(s"${inst._id} is already started!")
+        logger.error(s"${inst._id} is already started!")
       else {
         val instType = instrumentTypeOp.map(inst.instType)
         val collector = instrumentTypeOp.start(inst.instType, inst._id, inst.protocol, inst.param)
@@ -664,13 +682,13 @@ class DataCollectManager @Inject()
         context become handler(
           instrumentMap + (inst._id -> instrumentParam),
           latestDataMap, mtDataList, restartList, signalTypeHandlerMap, signalDataMap,
-          calibrationListMap, instrumentCalibratorMap, calibratorTimerMap)
+          calibrationListMap, instrumentCalibratorMap, calibratorTimerMap, alarmRules)
       }
 
     case StopInstrument(id: String) =>
       for (param <- instrumentMap.get(id)) {
-        Logger.info(s"Stop collecting instrument $id ")
-        Logger.info(s"remove ${param.mtList}")
+        logger.info(s"Stop collecting instrument $id ")
+        logger.info(s"remove ${param.mtList}")
         for (timer <- param.calibrationTimerOpt)
           timer.cancel()
 
@@ -689,7 +707,8 @@ class DataCollectManager @Inject()
         if (!restartList.contains(id))
           context become handler(instrumentMap - id,
             latestDataMap -- param.mtList, mtDataList, restartList,
-            filteredSignalHandlerMap, signalDataMap, calibrationListMap, instrumentCalibratorMap, calibratorTimerMap)
+            filteredSignalHandlerMap, signalDataMap, calibrationListMap,
+            instrumentCalibratorMap, calibratorTimerMap, alarmRules)
         else {
           val removed = restartList.filter(_ != id)
           val f = instrumentOp.getInstrumentFuture(id)
@@ -700,7 +719,7 @@ class DataCollectManager @Inject()
           context become handler(instrumentMap - id,
             latestDataMap -- param.mtList, mtDataList, removed,
             filteredSignalHandlerMap, signalDataMap, calibrationListMap,
-            instrumentCalibratorMap, calibratorTimerMap)
+            instrumentCalibratorMap, calibratorTimerMap, alarmRules)
         }
       }
     case SetupMultiCalibrationTimer(config) =>
@@ -708,7 +727,8 @@ class DataCollectManager @Inject()
         context become handler(instrumentMap,
           latestDataMap, mtDataList, restartList,
           signalTypeHandlerMap, signalDataMap,
-          calibrationListMap, instrumentCalibratorMap, calibratorTimerMap + (config._id -> calibrationTimer))
+          calibrationListMap, instrumentCalibratorMap,
+          calibratorTimerMap + (config._id -> calibrationTimer), alarmRules)
       }
 
     case RemoveMultiCalibrationTimer(_id) =>
@@ -719,7 +739,7 @@ class DataCollectManager @Inject()
       context become handler(instrumentMap,
         latestDataMap, mtDataList, restartList,
         signalTypeHandlerMap, signalDataMap,
-        calibrationListMap, instrumentCalibratorMap, calibratorTimerMap - _id)
+        calibrationListMap, instrumentCalibratorMap, calibratorTimerMap - _id, alarmRules)
 
     case StartMultiCalibration(calibrationConfig) =>
       val calibrator = MultiCalibrator.start(calibrationConfig,
@@ -742,7 +762,7 @@ class DataCollectManager @Inject()
       context become handler(instrumentMap,
         latestDataMap, mtDataList, restartList,
         signalTypeHandlerMap, signalDataMap,
-        calibrationListMap, newCalibratorMap, newCalibratorTimerMap)
+        calibrationListMap, newCalibratorMap, newCalibratorTimerMap, alarmRules)
 
     case UpdateMultiCalibratorState(calibrationConfig: CalibrationConfig, state: String) =>
       var newCalibratorMap = instrumentCalibratorMap
@@ -753,7 +773,7 @@ class DataCollectManager @Inject()
       context become handler(instrumentMap,
         latestDataMap, mtDataList, restartList,
         signalTypeHandlerMap, signalDataMap,
-        calibrationListMap, newCalibratorMap, calibratorTimerMap)
+        calibrationListMap, newCalibratorMap, calibratorTimerMap, alarmRules)
 
     case StopMultiCalibration(config) =>
       for (calibratorState <- instrumentCalibratorMap.get(config.instrumentIds.head)) {
@@ -763,25 +783,25 @@ class DataCollectManager @Inject()
       context become handler(instrumentMap,
         latestDataMap, mtDataList, restartList,
         signalTypeHandlerMap, signalDataMap,
-        calibrationListMap, instrumentCalibratorMap -- config.instrumentIds, calibratorTimerMap)
+        calibrationListMap, instrumentCalibratorMap -- config.instrumentIds, calibratorTimerMap, alarmRules)
 
     case MultiCalibrationDone(config) =>
-      Logger.info(s"MultiCalibrationDone ${config._id}")
+      logger.info(s"MultiCalibrationDone ${config._id}")
       context become handler(instrumentMap,
         latestDataMap, mtDataList, restartList,
         signalTypeHandlerMap, signalDataMap,
-        calibrationListMap, instrumentCalibratorMap -- config.instrumentIds, calibratorTimerMap)
+        calibrationListMap, instrumentCalibratorMap -- config.instrumentIds, calibratorTimerMap, alarmRules)
       sender ! PoisonPill
 
     case RestartInstrument(id) =>
       self ! StopInstrument(id)
       context become handler(instrumentMap,
         latestDataMap, mtDataList, restartList :+ id, signalTypeHandlerMap, signalDataMap,
-        calibrationListMap, instrumentCalibratorMap, calibratorTimerMap)
+        calibrationListMap, instrumentCalibratorMap, calibratorTimerMap, alarmRules)
 
     case RestartMyself =>
       for (id <- getCollectorMap(instrumentMap).get(sender)) {
-        Logger.info(s"restart $id")
+        logger.info(s"restart $id")
         self ! RestartInstrument(id)
       }
 
@@ -810,11 +830,13 @@ class DataCollectManager @Inject()
 
         context become handler(instrumentMap,
           latestDataMap ++ pairs, (DateTime.now, instId, dataList) :: mtDataList, restartList,
-          signalTypeHandlerMap, signalDataMap, calibrationListMap, instrumentCalibratorMap, calibratorTimerMap)
+          signalTypeHandlerMap, signalDataMap, calibrationListMap,
+          instrumentCalibratorMap, calibratorTimerMap, alarmRules)
       }
 
     case CalculateData =>
       import scala.collection.mutable.ListBuffer
+      self ! ReloadAlarmRule
 
       val now = DateTime.now()
       //Update Calibration Map
@@ -950,8 +972,14 @@ class DataCollectManager @Inject()
 
         context become handler(instrumentMap,
           latestDataMap, currentData, restartList, signalTypeHandlerMap, signalDataMap, calibrationListMap,
-          instrumentCalibratorMap, calibratorTimerMap)
-        val f = recordOp.upsertRecord(recordOp.MinCollection)(RecordList.factory(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId))
+          instrumentCalibratorMap, calibratorTimerMap, alarmRules)
+
+        val recordList = RecordList.factory(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId)
+        // Alarm check
+        val alarms = alarmRuleDb.checkAlarm(tableType.min, recordList, alarmRules)(monitorOp, monitorTypeOp, alarmOp)
+        alarms.foreach(alarmOp.log)
+
+        val f = recordOp.upsertRecord(recordOp.MinCollection)(recordList)
         f onComplete {
           case Success(_) =>
             self ! ForwardMin
@@ -981,10 +1009,11 @@ class DataCollectManager @Inject()
     case UpdateCalibrationMap(map) =>
       context become handler(instrumentMap,
         latestDataMap, mtDataList, restartList,
-        signalTypeHandlerMap, signalDataMap, map, instrumentCalibratorMap, calibratorTimerMap)
+        signalTypeHandlerMap, signalDataMap, map,
+        instrumentCalibratorMap, calibratorTimerMap, alarmRules)
 
     case SetState(instId, state) =>
-      Logger.info(s"SetState($instId, $state)")
+      logger.info(s"SetState($instId, $state)")
       instrumentMap.get(instId).map { param =>
         param.actor ! SetState(instId, state)
       }
@@ -996,7 +1025,7 @@ class DataCollectManager @Inject()
         param.calibrationTimerOpt =
           for (localTime: LocalTime <- param.calibrationTimeOpt) yield {
             val now = DateTime.now()
-            val calibrationTime = now.toLocalDate().toDateTime(localTime)
+            val calibrationTime = now.toLocalDate.toDateTime(localTime)
 
             val period = if (now < calibrationTime)
               new Period(now, calibrationTime)
@@ -1013,7 +1042,7 @@ class DataCollectManager @Inject()
         context become handler(
           instrumentMap + (instId -> param),
           latestDataMap, mtDataList, restartList, signalTypeHandlerMap, signalDataMap,
-          calibrationListMap, instrumentCalibratorMap, calibratorTimerMap)
+          calibrationListMap, instrumentCalibratorMap, calibratorTimerMap, alarmRules)
       }
 
     case ManualZeroCalibration(instId) =>
@@ -1027,7 +1056,7 @@ class DataCollectManager @Inject()
       }
 
     case WriteTargetDO(instId, bit, on) =>
-      Logger.debug(s"WriteTargetDO($instId, $bit, $on)")
+      logger.debug(s"WriteTargetDO($instId, $bit, $on)")
       instrumentMap.get(instId).map { param =>
         param.actor ! WriteDO(bit, on)
       }
@@ -1035,7 +1064,7 @@ class DataCollectManager @Inject()
     case ToggleTargetDO(instId, bit: Int, seconds) =>
       //Cancel previous timer if any
       onceTimer map { t => t.cancel() }
-      Logger.debug(s"ToggleTargetDO($instId, $bit)")
+      logger.debug(s"ToggleTargetDO($instId, $bit)")
       self ! WriteTargetDO(instId, bit, on = true)
       onceTimer = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(seconds, SECONDS),
         self, WriteTargetDO(instId, bit, on = false)))
@@ -1059,14 +1088,14 @@ class DataCollectManager @Inject()
         } else
           calibratorOpt.get ! msg
       } else {
-        Logger.warn(s"Calibrator is not online! Ignore execute (${msg.seqName} - ${msg.on}).")
+        logger.warn(s"Calibrator is not online! Ignore execute (${msg.seqName} - ${msg.on}).")
       }
 
     case msg: WriteDO =>
       if (digitalOutputOpt.isDefined)
         digitalOutputOpt.get ! msg
       else {
-        Logger.warn(s"DO is not online! Ignore output (${msg.bit} - ${msg.on}).")
+        logger.warn(s"DO is not online! Ignore output (${msg.bit} - ${msg.on}).")
       }
 
     case GetLatestSignal =>
@@ -1075,7 +1104,7 @@ class DataCollectManager @Inject()
       val resultMap = filteredSignalMap map { p => p._1 -> p._2._2 }
       context become handler(instrumentMap, latestDataMap,
         mtDataList, restartList, signalTypeHandlerMap, filteredSignalMap,
-        calibrationListMap, instrumentCalibratorMap, calibratorTimerMap)
+        calibrationListMap, instrumentCalibratorMap, calibratorTimerMap, alarmRules)
 
       sender() ! resultMap
 
@@ -1096,7 +1125,7 @@ class DataCollectManager @Inject()
         }
 
         if (monitorTypeOp.map(mt).measuringBy.isEmpty) {
-          Logger.warn(s"$mt has not measuring instrument!")
+          logger.warn(s"$mt has not measuring instrument!")
           None
         } else {
           val measuringList = monitorTypeOp.map(mt).measuringBy.get
@@ -1108,7 +1137,7 @@ class DataCollectManager @Inject()
       }
       context become handler(instrumentMap, latestDataMap,
         mtDataList, restartList, signalTypeHandlerMap, signalDataMap,
-        calibrationListMap, instrumentCalibratorMap, calibratorTimerMap)
+        calibrationListMap, instrumentCalibratorMap, calibratorTimerMap, alarmRules)
       sender ! latestMap
 
     case AddSignalTypeHandler(mtId, signalHandler) =>
@@ -1116,7 +1145,7 @@ class DataCollectManager @Inject()
       handlerMap = handlerMap + (sender() -> signalHandler)
       context become handler(instrumentMap, latestDataMap,
         mtDataList, restartList, signalTypeHandlerMap + (mtId -> handlerMap), signalDataMap,
-        calibrationListMap, instrumentCalibratorMap, calibratorTimerMap)
+        calibrationListMap, instrumentCalibratorMap, calibratorTimerMap, alarmRules)
 
     case WriteSignal(mtId, bit) =>
       monitorTypeOp.logDiMonitorType(alarmOp, mtId, bit)
@@ -1131,7 +1160,7 @@ class DataCollectManager @Inject()
       }).toMap
       context become handler(instrumentMap, latestDataMap,
         mtDataList, restartList, signalTypeHandlerMap, signalDataMap ++ updateMap,
-        calibrationListMap, instrumentCalibratorMap, calibratorTimerMap)
+        calibrationListMap, instrumentCalibratorMap, calibratorTimerMap, alarmRules)
 
     case CheckInstruments =>
       val now = DateTime.now()
@@ -1143,8 +1172,8 @@ class DataCollectManager @Inject()
           if (instParam.mtList.filter(mt => !monitorTypeOp.map(mt).signalType)
             .exists(mt => !minRecordMap.contains(mt) ||
               minRecordMap.contains(mt) && minRecordMap(mt).size < 45)) {
-            Logger.error(s"$instID has less than 45 minRecords. Restart $instID")
-            alarmOp.log(alarmOp.srcInstrumentID(instID), alarmOp.Level.ERR, s"$instID 每小時分鐘資料小於45筆. 重新啟動 $instID 設備")
+            logger.error(s"$instID has less than 45 minRecords. Restart $instID")
+            alarmOp.log(alarmOp.srcInstrumentID(instID), Alarm.Level.ERR, s"$instID 每小時分鐘資料小於45筆. 重新啟動 $instID 設備")
             self ! RestartInstrument(instID)
           }
         }

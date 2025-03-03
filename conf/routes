@@ -107,7 +107,7 @@ GET           /ActiveMonitor                                                    
 PUT           /ActiveMonitor/:id                                                                   controllers.HomeController.setActiveMonitorID(id)
 
 
-GET           /Record/:monitorType/:start/:end                                                     controllers.Query.recordList(monitorType, start:Long, end:Long)
+#GET           /Record/:monitorType/:start/:end                                                    controllers.Query.recordList(monitorType, start:Long, end:Long)
 PUT           /Record/:tabType                                                                     controllers.Query.updateRecord(tabType)
 
 GET           /HourRecord/:start/:end                                                              controllers.Query.hourRecordList(start:Long, end:Long)
@@ -126,6 +126,7 @@ GET           /Tables                                                           
 #SYSCONFIG
 GET           /AlertEmailTargets                                                                   controllers.HomeController.getAlertEmailTargets
 POST          /AlertEmailTargets                                                                   controllers.HomeController.saveAlertEmailTargets
+GET           /TestAlertEmail                                                                      controllers.HomeController.testAlertEmail(email)
 GET           /SystemConfig/EffectiveRatio                                                         controllers.HomeController.getEffectiveRatio
 POST          /SystemConfig/EffectiveRatio                                                         controllers.HomeController.saveEffectiveRatio
 GET           /SystemConfig/AqiMonitorTypes                                                        controllers.Realtime.getAqiMonitorTypeMapping

@@ -2,12 +2,11 @@ package controllers
 
 import com.github.nscala_time.time.Imports.DateTime
 import models.ModelHelper.errorHandler
-import models.{CdxUploader, MonitorTypeDB, NewTaipeiOpenData, RecordDB, SysConfigDB}
-import play.api.{Environment, Logger}
+import models._
 import play.api.libs.json.{JsError, JsValue, Json}
-import play.api.mvc.{Action, AnyContent, BodyParsers, Controller}
+import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponents}
+import play.api.{Environment, Logger}
 
-import java.nio.file.Paths
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -17,23 +16,25 @@ class Cdx @Inject()(cdxUploader: CdxUploader,
                     sysConfigDB: SysConfigDB,
                     recordDB: RecordDB,
                     environment: Environment,
-                    newTaipeiOpenData: NewTaipeiOpenData) extends Controller {
-
+                    newTaipeiOpenData: NewTaipeiOpenData,
+                    security: Security,
+                    cc: ControllerComponents) extends AbstractController(cc) {
+  val logger: Logger = Logger(this.getClass)
   import CdxUploader._
 
-  def getConfig: Action[AnyContent] = Security.Authenticated.async {
+  def getConfig: Action[AnyContent] = security.Authenticated.async {
     val f = sysConfigDB.getCdxConfig
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     for (config <- f) yield
       Ok(Json.toJson(config))
   }
 
-  def putConfig: Action[JsValue] = Security.Authenticated.async(BodyParsers.parse.json) {
+  def putConfig: Action[JsValue] = security.Authenticated.async(parse.json) {
     implicit request =>
       val ret = request.body.validate[CdxConfig]
       ret.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           Future.successful(BadRequest(JsError.toJson(error).toString))
         },
         config => {
@@ -42,19 +43,19 @@ class Cdx @Inject()(cdxUploader: CdxUploader,
         })
   }
 
-  def getMonitorTypes: Action[AnyContent] = Security.Authenticated.async {
+  def getMonitorTypes: Action[AnyContent] = security.Authenticated.async {
     val f = sysConfigDB.getCdxMonitorTypes
-    f onFailure errorHandler()
+    f.failed.foreach(errorHandler())
     for (monitorTypes <- f) yield
       Ok(Json.toJson(monitorTypes))
   }
 
-  def putMonitorTypes: Action[JsValue] = Security.Authenticated.async(BodyParsers.parse.json) {
+  def putMonitorTypes: Action[JsValue] = security.Authenticated.async(parse.json) {
     implicit request =>
       val ret = request.body.validate[Seq[CdxMonitorType]]
       ret.fold(
         error => {
-          Logger.error(JsError.toJson(error).toString())
+          logger.error(JsError.toJson(error).toString())
           Future.successful(BadRequest(JsError.toJson(error).toString))
         },
         monitorTypes => {
@@ -68,7 +69,7 @@ class Cdx @Inject()(cdxUploader: CdxUploader,
         })
   }
 
-  def CdxUploadData(startNum:Long, endNum:Long): Action[AnyContent] = Security.Authenticated.async {
+  def CdxUploadData(startNum:Long, endNum:Long): Action[AnyContent] = security.Authenticated.async {
     val start = new DateTime(startNum)
     val end = new DateTime(endNum)
     val recordFuture = recordDB.getRecordListFuture(recordDB.HourCollection)(start, end)
@@ -82,7 +83,7 @@ class Cdx @Inject()(cdxUploader: CdxUploader,
     }
   }
 
-  def newTaipeiOpenDataUpload(startNum:Long, endNum:Long): Action[AnyContent] = Security.Authenticated.async {
+  def newTaipeiOpenDataUpload(startNum:Long, endNum:Long): Action[AnyContent] = security.Authenticated.async {
     val start = new DateTime(startNum)
     val end = new DateTime(endNum)
     val recordFuture = recordDB.getRecordListFuture(recordDB.HourCollection)(start, end)

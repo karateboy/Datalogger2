@@ -1,8 +1,6 @@
 package models
 
 import akka.actor.Actor
-import com.github.nscala_time.time
-import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
@@ -57,6 +55,7 @@ class UpsCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monito
     alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
 
+  val logger: Logger = Logger(getClass)
   import DataCollectManager._
 
   monitorTypeOp.ensure(monitorTypeOp.signalType(UPS_SHUTDOWN, "中斷UPS電源"))
@@ -69,7 +68,7 @@ class UpsCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monito
   @volatile var serialOpt: Option[SerialComm] = None
 
   override def onWriteSignal(mt: String, bit: Boolean): Unit = {
-    Logger.info(s"UPS receive $mt signal cmd")
+    logger.info(s"UPS receive $mt signal cmd")
     for(serial <- serialOpt){
       if(bit) {
         serial.port.writeBytes("S.2R0600\r".getBytes)
