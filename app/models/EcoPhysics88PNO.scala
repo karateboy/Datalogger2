@@ -14,13 +14,13 @@ import scala.concurrent.{Future, blocking}
 object EcoPhysics88PNO extends AbstractDrv(_id = "EcoPhysics88P_NO", desp = "Eco Physics 88P-NO Only",
   protocols = List(Protocol.serial)) {
   override val logger: Logger = Logger(this.getClass)
-  val instrumentStatusKeyList = List(
+  val instrumentStatusKeyList: List[InstrumentStatusType] = List(
     InstrumentStatusType(key = "NO_eco", addr = 1, desc = "NO", "ppm"),
 
     InstrumentStatusType(key = "Instrument internal temp", addr = 4,
       desc = "Instrument internal temperature", "C"),
-    InstrumentStatusType(key = "Peltier cooling temp", addr = 5,
-      desc = "Peltier cooling temperature", "C"),
+    InstrumentStatusType(key = "Pettier cooling temp", addr = 5,
+      desc = "Pettier cooling temperature", "C"),
     InstrumentStatusType(key = "reaction chamber temp", addr = 6,
       desc = "reaction chamber temperature", "C"),
     InstrumentStatusType(key = "converter temp", addr = 7,
@@ -31,17 +31,17 @@ object EcoPhysics88PNO extends AbstractDrv(_id = "EcoPhysics88P_NO", desp = "Eco
       desc = "ozone destroyer temperature", "C"),
     InstrumentStatusType(key = "ozone generator temp", addr = 10,
       desc = "ozone generator temperature", "C"),
-    InstrumentStatusType(key = "vacumm pump temp", addr = 11,
-      desc = "vacumm pump temperature", "C"),
+    InstrumentStatusType(key = "vacuum pump temp", addr = 11,
+      desc = "vacuum pump temperature", "C"),
 
     InstrumentStatusType(key = "bypass regulation pressure.", addr = 12,
       desc = "bypass regulation pressure.", "mbar"),
     InstrumentStatusType(key = "reaction chamber pressure.", addr = 13,
       desc = "reaction chamber pressure.", "mbar"),
-    InstrumentStatusType(key = "zero calbration gas pressure.", addr = 14,
-      desc = "zero calbration gas pressure.", "mbar"),
-    InstrumentStatusType(key = "span calbration gas pressure.", addr = 15,
-      desc = "span calbration gas pressure.", "mbar")
+    InstrumentStatusType(key = "zero calibration gas pressure.", addr = 14,
+      desc = "zero calibration gas pressure.", "mbar"),
+    InstrumentStatusType(key = "span calibration gas pressure.", addr = 15,
+      desc = "span calibration gas pressure.", "mbar")
   )
 
   val map: Map[Int, InstrumentStatusType] = instrumentStatusKeyList.map(p => p.addr -> p).toMap
@@ -52,8 +52,7 @@ object EcoPhysics88PNO extends AbstractDrv(_id = "EcoPhysics88P_NO", desp = "Eco
       DataReg(monitorType = ist.key, ist.addr, 1.0f)
   }
 
-  override def getMonitorTypes(param: String): List[String] =
-    List("NO_eco")
+  override def getMonitorTypes(param: String): List[String] = List("NO_eco")
 
   override def getCalibrationTime(param: String): Option[Imports.LocalTime] = {
     val config = Json.parse(param).validate[DeviceConfig].asOpt.get
@@ -145,14 +144,15 @@ class EcoPhysics88PNOCollector @Inject()(instrumentOp: InstrumentDB, monitorStat
           }
         ret.flatten
       } catch {
-        case _: Throwable =>
+        case ex: Throwable =>
+          logger.error("readReg failed", ex)
           None
       }
     }
   }
 
   def makeCmd(cmd: String): Array[Byte] = {
-    val slaveID = deviceConfig.slaveID.get
+    val slaveID = deviceConfig.slaveID.getOrElse(1)
     val cmdTxt = s"${STX}0$slaveID$cmd$ETX"
     val buffer: Array[Byte] = cmdTxt.getBytes
     val BCC = buffer.foldLeft(0: Byte)((a, b) => (a ^ b).toByte)
