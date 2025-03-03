@@ -3,7 +3,7 @@
     <b-card>
       <b-form @submit.prevent>
         <b-row>
-          <b-col cols="12">
+          <b-col cols="6">
             <b-form-group label="測點" label-for="monitor" label-cols-md="3">
               <v-select
                 id="monitor"
@@ -14,7 +14,7 @@
               />
             </b-form-group>
           </b-col>
-          <b-col cols="12">
+          <b-col cols="6">
             <b-form-group
               label="測項 (需先定義分級)"
               label-for="monitorType"
@@ -30,7 +30,7 @@
             </b-form-group>
             <small class="text-danger">{{ errorMsg }}</small>
           </b-col>
-          <b-col cols="12">
+          <b-col cols="6">
             <b-form-group
               label="資料種類"
               label-for="dataType"
@@ -45,7 +45,7 @@
               />
             </b-form-group>
           </b-col>
-          <b-col cols="12">
+          <b-col cols="6">
             <b-form-group label="方位" label-for="nWay" label-cols-md="3">
               <v-select
                 id="nWay"
@@ -56,7 +56,7 @@
               />
             </b-form-group>
           </b-col>
-          <b-col cols="12">
+          <b-col cols="6">
             <b-form-group
               label="資料區間"
               label-for="dataRange"

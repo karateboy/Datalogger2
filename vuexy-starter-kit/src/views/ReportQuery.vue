@@ -3,7 +3,7 @@
     <b-card>
       <b-form @submit.prevent>
         <b-row>
-          <b-col cols="12">
+          <b-col cols="6">
             <b-form-group
               label="報表種類"
               label-for="reportType"
@@ -18,9 +18,7 @@
               />
             </b-form-group>
           </b-col>
-        </b-row>
-        <b-row>
-          <b-col cols="12">
+          <b-col cols="6">
             <b-form-group
               label="查詢日期"
               label-for="dataRange"

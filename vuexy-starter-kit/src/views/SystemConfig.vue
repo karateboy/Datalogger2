@@ -218,7 +218,7 @@
       </b-form>
     </b-card>
     <b-card title="異常通報">
-      <b-table :items="emails" :fields="fields" bordered>
+      <b-table fixed :items="emails" :fields="fields" bordered>
         <template #thead-top>
           <b-tr>
             <b-td colspan="2">
@@ -267,7 +267,7 @@
         </template>
       </b-table>
       <br />
-      <b-table-simple bordered>
+      <b-table-simple fixed bordered>
         <b-thead>
           <b-tr>
             <b-th> Line通報Token </b-th>
@@ -289,10 +289,8 @@
               >
                 儲存
               </b-button>
-              <b-button
-                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              <b-button variant="gradient-info"
                 type="submit"
-                variant="primary"
                 class="mr-1"
                 @click="testLineToken"
               >
