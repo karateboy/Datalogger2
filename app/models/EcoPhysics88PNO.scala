@@ -170,7 +170,7 @@ class EcoPhysics88PNOCollector @Inject()(instrumentOp: InstrumentDB, monitorStat
         SerialPort.PARITY_NONE))
   }
 
-  override def getDataRegList: Seq[DataReg] = EcoPhysics88P.getDataRegList
+  override def getDataRegList: Seq[DataReg] = EcoPhysics88PNO.getDataRegList
 
   override def getCalibrationReg: Option[CalibrationReg] = Some(CalibrationReg(0, 2))
 
