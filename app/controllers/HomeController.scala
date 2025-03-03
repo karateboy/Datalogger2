@@ -31,7 +31,8 @@ class HomeController @Inject()(
                                 tableType: TableType,
                                 security: Security,
                                 cc: ControllerComponents,
-                                mailerClient: MailerClient) extends AbstractController(cc) {
+                                mailerClient: MailerClient,
+                                every8d: Every8d) extends AbstractController(cc) {
 
   val title = "資料擷取器"
 
@@ -814,6 +815,37 @@ class HomeController @Inject()(
       Ok(Json.obj("ok" -> ret))
   }
 
+  def saveSmsPhones(): Action[JsValue] = security.Authenticated(parse.json) {
+    implicit request =>
+      implicit val reads: Reads[EditData] = Json.reads[EditData]
+      val ret = request.body.validate[EditData]
+
+      ret.fold(
+        error => handleJsonValidateError(error),
+        param => {
+          val phones = param.value.split(",")
+          sysConfig.setSmsPhones(phones)
+          Ok(Json.obj("ok" -> true))
+        })
+  }
+
+  def getSmsPhones: Action[AnyContent] = security.Authenticated.async {
+    val f = sysConfig.getSmsPhones
+    f.failed.foreach(errorHandler)
+    for (ret <- f) yield
+      Ok(Json.toJson(ret))
+  }
+
+  def verifySmsPhones(phones: String): Action[AnyContent] = security.Authenticated.async {
+    val f = every8d.sendSMS("測試訊息", "", phones.split(",").toList)
+    if(f.isEmpty)
+      Future.successful(Ok(Json.obj("ok" -> true)))
+    else {
+      f.get.failed.foreach(errorHandler)
+      for (ret <- f.get) yield
+        Ok(Json.obj("ok" -> true))
+    }
+  }
   case class EditData(id: String, value: String)
 
   def splitTable(): Action[JsValue] = security.Authenticated.async(parse.json) {

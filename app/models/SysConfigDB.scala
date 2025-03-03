@@ -21,6 +21,7 @@ trait SysConfigDB {
   val AQI_MONITOR_TYPES = "AqiMonitorTypes"
   val EPA_LAST_RECORD_TIME = "EPA_Last_Record_Time"
   val LINE_TOKEN = "LineToken"
+  val SMS_PHONES = "SmsPhones"
 
   def getSpectrumLastParseTime: Future[Instant]
 
@@ -66,4 +67,7 @@ trait SysConfigDB {
 
   def setLineToken(token: String): Future[UpdateResult]
 
+  def getSmsPhones: Future[Seq[String]]
+
+  def setSmsPhones(phones: Seq[String]): Future[UpdateResult]
 }

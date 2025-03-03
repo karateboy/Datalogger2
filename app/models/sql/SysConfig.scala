@@ -225,4 +225,17 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
       val ret = set(LINE_TOKEN, token)
       UpdateResult.acknowledged(ret, ret, null)
     }
+
+  override def getSmsPhones: Future[Seq[String]] = Future {
+    val valueOpt = get(SMS_PHONES)
+    val ret =
+      for (value <- valueOpt) yield
+        value.v.split(",").filter(_.nonEmpty).toSeq
+    ret.getOrElse(Seq.empty[String])
+  }
+
+  override def setSmsPhones(phones: Seq[String]): Future[UpdateResult] = Future {
+    val ret = set(SMS_PHONES, phones.mkString(","))
+    UpdateResult.acknowledged(ret, ret, null)
+  }
 }

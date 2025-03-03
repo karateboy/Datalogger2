@@ -155,4 +155,8 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
   override def getLineToken: Future[String] = get(LINE_TOKEN).map(_.asString().getValue)
 
   override def setLineToken(token: String): Future[UpdateResult] = set(LINE_TOKEN, BsonString(token))
+
+  override def getSmsPhones: Future[Seq[String]] = get(SMS_PHONES).map(_.asString().getValue.split(",").toSeq)
+
+  override def setSmsPhones(phones: Seq[String]): Future[UpdateResult] = set(SMS_PHONES, BsonString(phones.mkString(",")))
 }
