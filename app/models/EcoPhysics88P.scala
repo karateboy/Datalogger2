@@ -156,7 +156,7 @@ class EcoPhysics88PCollector @Inject()(instrumentOp: InstrumentDB, monitorStatus
   }
 
   def makeCmd(cmd: String): Array[Byte] = {
-    val slaveID = deviceConfig.slaveID.get
+    val slaveID = deviceConfig.slaveID.getOrElse(1)
     val cmdTxt = s"${STX}0$slaveID$cmd$ETX"
     val buffer: Array[Byte] = cmdTxt.getBytes
     val BCC = buffer.foldLeft(0: Byte)((a, b) => (a ^ b).toByte)
