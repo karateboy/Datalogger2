@@ -23,12 +23,13 @@ class OpenDataReceiver @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: Monito
                                  WSClient: WSClient,
                                  sysConfigDB: SysConfigDB, epaMonitorOp: EpaMonitorOp) extends Actor {
   val logger: Logger = Logger(this.getClass)
+
   import OpenDataReceiver._
   import com.github.nscala_time.time.Imports._
 
   val epaMonitors: Seq[Monitor] = epaMonitorOp.getEpaMonitors.getOrElse(Seq.empty[Monitor])
 
-  if(epaMonitors.nonEmpty){
+  if (epaMonitors.nonEmpty) {
     for (epaMonitor <- epaMonitors)
       logger.info(s"OpenDataReceiver set up to receive $epaMonitor")
 
@@ -89,6 +90,12 @@ class OpenDataReceiver @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: Monito
           },
           recordLists => {
             logger.info(s"Total ${recordLists.size} records fetched.")
+            //Ensure monitorType
+            val mtSet = Set.empty[String] ++ recordLists.flatMap(_.mtDataList.map(_.mtName))
+            mtSet.foreach(mt => {
+              monitorTypeOp.ensure(mt)
+              recordOp.ensureMonitorType(mt)
+            })
             recordOp.upsertManyRecords(recordOp.HourCollection)(recordLists)
             true
           }
