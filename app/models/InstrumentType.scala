@@ -24,7 +24,9 @@ trait DriverOps {
   import akka.actor._
 
   def id: String
+
   def description: String
+
   def protocol: List[String]
 
   def verifyParam(param: String): String
@@ -33,11 +35,11 @@ trait DriverOps {
 
   def getCalibrationTime(param: String): Option[LocalTime]
 
-  def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, f2:Option[AnyRef]): Actor
+  def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, f2: Option[AnyRef]): Actor
 
   def isDoInstrument: Boolean = false
 
-  def isCalibrator:Boolean = false
+  def isCalibrator: Boolean = false
 
 }
 
@@ -74,11 +76,13 @@ class InstrumentTypeOp @Inject()
  ma350Factory: Ma350Drv.Factory,
  metOne1020Factory: MetOne1020.Factory,
  ecoPhysics88PFactory: EcoPhysics88P.Factory,
+ ecoPhysics88PNOFactory: EcoPhysics88PNO.Factory,
  hydreonRainGaugeFactory: HydreonRainGauge.Factory,
  upsFactory: UpsDrv.Factory,
  pseudoDeviceFactory: PseudoDevice.Factory,
  monitorTypeOp: MonitorTypeDB) extends InjectedActorSupport {
   val logger: Logger = Logger(this.getClass)
+
   import Protocol._
 
   implicit val prtocolWrite = Json.writes[ProtocolInfo]
@@ -90,7 +94,7 @@ class InstrumentTypeOp @Inject()
 
   private val akDeviceTypeMap: Map[String, InstrumentType] =
     AkDrv.getInstrumentTypeList(environment, akDrvFactory, monitorTypeOp)
-    .map(dt => dt.id -> dt).toMap
+      .map(dt => dt.id -> dt).toMap
 
   private val otherDeviceList = Seq(
     InstrumentType(Adam4000, adam4000Factory, analog = true),
@@ -120,12 +124,13 @@ class InstrumentTypeOp @Inject()
     InstrumentType(Ma350Drv, ma350Factory),
     InstrumentType(MetOne1020, metOne1020Factory),
     InstrumentType(EcoPhysics88P, ecoPhysics88PFactory),
+    InstrumentType(EcoPhysics88PNO, ecoPhysics88PNOFactory),
     InstrumentType(HydreonRainGauge, hydreonRainGaugeFactory),
     InstrumentType(UpsDrv, upsFactory),
     InstrumentType(PseudoDevice, pseudoDeviceFactory)
   )
 
-  private val otherMap = otherDeviceList.map(dt=> dt.id->dt).toMap
+  private val otherMap = otherDeviceList.map(dt => dt.id -> dt).toMap
   val map: Map[String, InstrumentType] = tcpModbusDeviceTypeMap ++ akDeviceTypeMap ++ otherMap
 
   val DoInstruments: Seq[InstrumentType] = otherDeviceList.filter(_.driver.isDoInstrument)
