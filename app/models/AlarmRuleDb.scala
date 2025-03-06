@@ -5,6 +5,7 @@ import play.api.Logger
 
 import java.time.format.{DateTimeFormatter, FormatStyle}
 import java.time.{Instant, LocalDateTime, LocalTime, ZoneId}
+import scala.collection.mutable
 import scala.concurrent.Future
 import scala.math.Ordering.Implicits.infixOrderingOps
 
@@ -22,7 +23,7 @@ trait AlarmRuleDb {
 
   def deleteAsync(_id: String): Future[DeleteResult]
 
-  private var alarmRuleTriggerMap = Map.empty[AlarmRule, Instant]
+  private val ruleTriggerMap = mutable.Map.empty[String, Instant]
 
   def checkAlarm(tableType: TableType#Value, recordList: RecordList, alarmRules: Seq[AlarmRule])
                 (monitorDB: MonitorDB, monitorTypeDB: MonitorTypeDB, alarmDB: AlarmDB): Seq[Alarm] = {
@@ -50,18 +51,19 @@ trait AlarmRuleDb {
         val alarmLevel: Int = if (rule.coldPeriod.isEmpty)
           rule.alarmLevel
         else {
-          val lastTrigger = alarmRuleTriggerMap.get(rule)
+          val lastTrigger = ruleTriggerMap.get(rule._id)
           if (lastTrigger.isDefined) {
             val now = Instant.now()
             val coldPeriod = rule.coldPeriod.get
-            if (now < lastTrigger.get.plusSeconds(60 * coldPeriod)) {
+            if (now.isBefore(lastTrigger.get.plusSeconds(60 * coldPeriod))) {
+              logger.info(s"cold period, last trigger time is $lastTrigger")
               Alarm.Level.INFO
             } else {
-              alarmRuleTriggerMap += rule -> Instant.now()
+              ruleTriggerMap.update(rule._id, Instant.now)
               rule.alarmLevel
             }
           } else {
-            alarmRuleTriggerMap += rule -> Instant.now()
+            ruleTriggerMap.update(rule._id, Instant.now)
             rule.alarmLevel
           }
         }

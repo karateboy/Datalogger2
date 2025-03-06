@@ -216,6 +216,12 @@ interface AlarmRule {
 interface EditAlarmRule extends AlarmRule {
   dirty?: boolean;
 }
+const randomString =
+    (num:number) => {
+      const characters =
+          'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      return Math.random().toString(36).substring(0, num);
+    }
 
 export default Vue.extend({
   components: {},
@@ -341,12 +347,12 @@ export default Vue.extend({
     newRule() {
       this.alarmRules.push({
         dirty: true,
-        _id: `${this.alarmRules.length + 1}`,
+        _id: `${randomString(10)}`,
         monitors: [this.monitors[0]._id],
         monitorTypes: [this.monitorTypes[0]._id],
         alarmLevel: 1,
         enable: true,
-        startTime: '0:00',
+        startTime: '00:00',
         endTime: '23:00',
         tableTypes: ['hour'],
         messageTemplate: "$time $monitor $mt超標 $value, $(WD_SPEED), $(WD_DIR)",

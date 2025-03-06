@@ -87,6 +87,8 @@ class VocReader(config: VocReaderConfig,
 
   def receive: Receive = handler(mutable.Map.empty[String, mutable.Set[String]], None)
 
+  self ! ReadFile
+
   def handler(parsedMap: mutable.Map[String, mutable.Set[String]], timerOpt: Option[Cancellable]): Receive = {
     case ReadFile =>
       Future {
