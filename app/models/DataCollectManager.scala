@@ -107,7 +107,7 @@ object DataCollectManager {
 
   object ManualSpan extends CalibrationType(false, false)
 
-  case object ReloadAlarmRule
+  private case object ReloadAlarmRule
 
   private def updateEffectiveRatio(sysConfig: SysConfigDB): Unit = {
     for (ratio <- sysConfig.getEffectiveRatio)

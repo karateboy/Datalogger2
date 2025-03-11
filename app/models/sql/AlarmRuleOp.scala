@@ -77,6 +77,7 @@ class AlarmRuleOp @Inject()(sqlServer: SqlServer) extends AlarmRuleDb {
 
   override def upsertAsync(rule: AlarmRule): Future[UpdateResult] = Future {
     implicit val session: DBSession = AutoSession
+    ruleTriggerMap -= rule._id
     val ret = {
       sql"""
           UPDATE [dbo].[alarmRules]
@@ -128,6 +129,7 @@ class AlarmRuleOp @Inject()(sqlServer: SqlServer) extends AlarmRuleDb {
 
   override def deleteAsync(_id: String): Future[DeleteResult] = Future {
     implicit val session: DBSession = AutoSession
+    ruleTriggerMap -= _id
     val ret =
       sql"""
          DELETE FROM [dbo].[alarmRules]

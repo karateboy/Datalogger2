@@ -38,6 +38,7 @@ class AlarmRuleOp @Inject()(mongodb: MongoDB) extends AlarmRuleDb{
   override def upsertAsync(rule: AlarmRule): Future[UpdateResult] = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.ReplaceOptions
+    ruleTriggerMap -= rule._id
     val f = collection.replaceOne(equal("_id", rule._id), rule, ReplaceOptions().upsert(true)).toFuture()
     f.failed.foreach(errorHandler)
     f
@@ -46,6 +47,7 @@ class AlarmRuleOp @Inject()(mongodb: MongoDB) extends AlarmRuleDb{
 
   override def deleteAsync(_id: String): Future[DeleteResult] = {
     import org.mongodb.scala.model.Filters._
+    ruleTriggerMap -= _id
     val f = collection.deleteOne(equal("_id", _id)).toFuture()
     f.failed.foreach(errorHandler)
     f

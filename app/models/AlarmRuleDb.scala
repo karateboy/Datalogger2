@@ -23,7 +23,7 @@ trait AlarmRuleDb {
 
   def deleteAsync(_id: String): Future[DeleteResult]
 
-  private val ruleTriggerMap = mutable.Map.empty[String, Instant]
+  protected val ruleTriggerMap: mutable.Map[String, Instant] = mutable.Map.empty
 
   def checkAlarm(tableType: TableType#Value, recordList: RecordList, alarmRules: Seq[AlarmRule])
                 (monitorDB: MonitorDB, monitorTypeDB: MonitorTypeDB, alarmDB: AlarmDB): Seq[Alarm] = {
@@ -48,26 +48,6 @@ trait AlarmRuleDb {
           }
         }
 
-        val alarmLevel: Int = if (rule.coldPeriod.isEmpty)
-          rule.alarmLevel
-        else {
-          val lastTrigger = ruleTriggerMap.get(rule._id)
-          if (lastTrigger.isDefined) {
-            val now = Instant.now()
-            val coldPeriod = rule.coldPeriod.get
-            if (now.isBefore(lastTrigger.get.plusSeconds(60 * coldPeriod))) {
-              logger.info(s"cold period, last trigger time is $lastTrigger")
-              Alarm.Level.INFO
-            } else {
-              ruleTriggerMap.update(rule._id, Instant.now)
-              rule.alarmLevel
-            }
-          } else {
-            ruleTriggerMap.update(rule._id, Instant.now)
-            rule.alarmLevel
-          }
-        }
-
         val startTime = rule.startTime.flatMap(parseLocalTime).getOrElse(LocalTime.MIN)
         val endTime = rule.endTime.flatMap(parseLocalTime).getOrElse(LocalTime.MAX)
         val time = LocalDateTime.ofInstant(recordList._id.time.toInstant, ZoneId.systemDefault()).toLocalTime
@@ -79,6 +59,27 @@ trait AlarmRuleDb {
           if ((startTime <= time && time < endTime) && (v > max || v < min)) {
             val monitor = monitorDB.map(recordList._id.monitor)
             val monitorType = monitorTypeDB.map(mtData.mtName)
+            val alarmLevel: Int = if (rule.coldPeriod.isEmpty)
+              rule.alarmLevel
+            else {
+              val lastTriggerTime = ruleTriggerMap.get(rule._id)
+              if (lastTriggerTime.isDefined) {
+                val now = Instant.now()
+                val coldPeriod = rule.coldPeriod.get
+                if (now.isBefore(lastTriggerTime.get.plusSeconds(60 * coldPeriod))) {
+                  logger.info(s"Alarm rule ${rule._id}: cold period, last trigger time is $lastTriggerTime")
+                  Alarm.Level.INFO
+                } else {
+                  ruleTriggerMap.update(rule._id, Instant.now)
+                  rule.alarmLevel
+                }
+              } else {
+                ruleTriggerMap.update(rule._id, Instant.now)
+                rule.alarmLevel
+              }
+            }
+
+
             val localDateTime = LocalDateTime.ofInstant(recordList._id.time.toInstant, ZoneId.systemDefault())
             val message = if (rule.messageTemplate.isEmpty)
               s"${monitor.desc} ${monitorType.desp} ${localDateTime.toString} 測值 ${monitorTypeDB.format(mtData.mtName, Some(v))} 超限"
