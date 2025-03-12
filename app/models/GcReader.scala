@@ -34,7 +34,8 @@ object GcReader {
   var count = 0
   val logger: Logger = Logger(this.getClass)
   def start(configuration: Configuration, actorSystem: ActorSystem, monitorOp: MonitorDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, alarmDB: AlarmDB, sysConfigDB: SysConfigDB): Option[ActorRef] = {
+            recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, alarmDB: AlarmDB,
+            sysConfigDB: SysConfigDB, ylUploaderConfig: YlUploaderConfig): Option[ActorRef] = {
     def getConfig: Option[GcReaderConfig] = {
       def getMonitorConfig(config: Configuration) = {
         val id = config.get[String]("id")
@@ -65,14 +66,16 @@ object GcReader {
         monitorOp.ensure(Monitor(_id = config.id, desc = config.name, lat = Some(config.lat), lng = Some(config.lng)))
       })
       count = count + 1
-      actorSystem.actorOf(props(config, monitorTypeOp, recordOp, WSClient, monitorDB, alarmDB = alarmDB, sysConfigDB = sysConfigDB),
+      actorSystem.actorOf(props(config, monitorTypeOp, recordOp, WSClient, monitorDB,
+        alarmDB = alarmDB, sysConfigDB = sysConfigDB, ylUploaderConfig = ylUploaderConfig),
         s"GcReader$count")
     }
   }
 
   private def props(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB,
-                    recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, alarmDB: AlarmDB, sysConfigDB: SysConfigDB) =
-    Props(new GcReader(config, monitorTypeOp, recordOp, WSClient, monitorDB, alarmDB, sysConfigDB))
+                    recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, alarmDB: AlarmDB,
+                    sysConfigDB: SysConfigDB, ylUploaderConfig: YlUploaderConfig) =
+    Props(new GcReader(config, monitorTypeOp, recordOp, WSClient, monitorDB, alarmDB, sysConfigDB, ylUploaderConfig))
 
 
   case object ParseReport
@@ -96,7 +99,8 @@ object GcReader {
 
   def parser(gcMonitorConfig: GcMonitorConfig, reportDir: File)
             (implicit recordOp: RecordDB, wsClient: WSClient,
-             monitorDB: MonitorDB, monitorTypeDB: MonitorTypeDB, sysConfigDB: SysConfigDB): Boolean = {
+             monitorDB: MonitorDB, monitorTypeDB: MonitorTypeDB, sysConfigDB: SysConfigDB,
+             ylUploaderConfig: YlUploaderConfig): Boolean = {
     import com.github.nscala_time.time.Imports._
 
     import java.nio.charset.StandardCharsets
@@ -214,7 +218,7 @@ object GcReader {
         case Success(_) =>
           // Upload
           logger.info(s"upload GC record $dateTime")
-          Uploader.upload(wsClient)(record, monitorDB.map(gcMonitorConfig.id))
+          YlUploader.upload(wsClient)(record, monitorDB.map(gcMonitorConfig.id), ylUploaderConfig)
         case Failure(exception) =>
           logger.error("failed", exception)
       }
@@ -225,7 +229,8 @@ object GcReader {
 }
 
 private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, WSClient: WSClient,
-                       monitorDB: MonitorDB, alarmDB: AlarmDB, sysConfigDB: SysConfigDB)
+                       monitorDB: MonitorDB, alarmDB: AlarmDB, sysConfigDB: SysConfigDB,
+                       ylUploaderConfig: YlUploaderConfig)
   extends Actor with ActorLogging {
   val logger: Logger = Logger(this.getClass)
   logger.info("GcReader start")
@@ -300,6 +305,7 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
       implicit val implicitMonitorDB: MonitorDB = monitorDB
       implicit val implicitMonitorTypeDB: MonitorTypeDB = monitorTypeOp
       implicit val implicitSysConfigDB: SysConfigDB = sysConfigDB
+      implicit val implicitYlUploaderConfig: YlUploaderConfig = ylUploaderConfig
       try {
         for (gcMonitorConfig <- config.monitors) {
           Future {

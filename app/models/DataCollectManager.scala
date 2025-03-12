@@ -500,6 +500,8 @@ class DataCollectManager @Inject()
     } else
       None
 
+  private val ylUploaderConfigOpt: Option[YlUploaderConfig] = YlUploader.getConfig(config)
+  logger.info(s"YL UploaderConfig=$ylUploaderConfigOpt")
   private val readerList: List[ActorRef] = startReaders()
   private val forwardManagerOpt: Option[ActorRef] =
     for (serverConfig <- ForwardManager.getConfig(config)) yield
@@ -521,7 +523,9 @@ class DataCollectManager @Inject()
     for (readerRef <- VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
       readers.append(readerRef)
 
-    for(readerRef<-GcReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, WSClient, monitorOp, alarmOp, sysConfig))
+    for {ylUploadConfig <- ylUploaderConfigOpt
+         readerRef <- GcReader.start(config, context.system, monitorOp, monitorTypeOp,
+           recordOp, WSClient, monitorOp, alarmOp, sysConfig, ylUploadConfig)}
       readers.append(readerRef)
 
     readers.toList
@@ -988,7 +992,9 @@ class DataCollectManager @Inject()
         val f = recordOp.upsertRecord(recordOp.MinCollection)(recordList)
         f onComplete {
           case Success(_) =>
-            Uploader.upload(WSClient)(recordList, monitorOp.map(Monitor.activeId))
+            for(ylUploadConfig <- ylUploaderConfigOpt)
+              YlUploader.upload(WSClient)(recordList, monitorOp.map(Monitor.activeId), ylUploadConfig)
+
             self ! ForwardMin
           case Failure(exception) =>
             errorHandler(exception)
