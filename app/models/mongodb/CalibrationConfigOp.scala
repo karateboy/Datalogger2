@@ -1,12 +1,12 @@
 package models.mongodb
 
 import models.ModelHelper.errorHandler
-import models.{Alarm, CalibrationConfig, CalibrationConfigDB, PointCalibrationConfig}
+import models.{CalibrationConfig, CalibrationConfigDB, PointCalibrationConfig}
 import org.bson.codecs.configuration.CodecRegistry
 import org.mongodb.scala.model.Filters
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import javax.inject.{Inject, Singleton}
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
@@ -25,11 +25,8 @@ class CalibrationConfigOp @Inject()(mongoDB: MongoDB) extends CalibrationConfigD
     for (colNames <- mongoDB.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(colName)) {
         val f = mongoDB.database.createCollection(colName).toFuture()
-        f.onFailure(errorHandler)
-        f.onSuccess({
-          case _ =>
-            collection.createIndex(ascending("name"))
-        })
+        f.failed.foreach(errorHandler)
+        f.foreach(_ => collection.createIndex(ascending("name")))
       }
     }
   }
@@ -40,19 +37,19 @@ class CalibrationConfigOp @Inject()(mongoDB: MongoDB) extends CalibrationConfigD
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.ReplaceOptions
     val f = collection.replaceOne(equal("_id", calibrationConfig._id), calibrationConfig, ReplaceOptions().upsert(true)).toFuture()
-    f onFailure errorHandler()
+    f.failed.foreach(errorHandler)
     f map (_.wasAcknowledged())
   }
 
   override def getListFuture: Future[Seq[CalibrationConfig]] = {
     val f = collection.find().toFuture()
-    f onFailure errorHandler()
+    f.failed.foreach(errorHandler)
     f
   }
 
   override def deleteFuture(_id: String): Future[Boolean] = {
     val f = collection.deleteOne(Filters.equal("_id", _id)).toFuture()
-    f onFailure errorHandler()
+    f.failed.foreach(errorHandler)
     f map (_.wasAcknowledged())
   }
 }

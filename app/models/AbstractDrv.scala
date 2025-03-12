@@ -10,16 +10,15 @@ object AbstractDrv {
 }
 
 abstract class AbstractDrv(_id: String, desp: String, protocols: List[String]) extends DriverOps {
-  implicit val cfgReads = Json.reads[DeviceConfig]
-  implicit val cfgWrites = Json.writes[DeviceConfig]
-
+  import DeviceConfig._
+  val logger: Logger = Logger(this.getClass)
   def getDataRegList: List[DataReg]
 
   override def verifyParam(json: String) = {
     val ret = Json.parse(json).validate[DeviceConfig]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => {
@@ -54,7 +53,7 @@ abstract class AbstractDrv(_id: String, desp: String, protocols: List[String]) e
     val ret = Json.parse(json).validate[DeviceConfig]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       param => param)

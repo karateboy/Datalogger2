@@ -6,16 +6,21 @@ import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc._
 
-import java.io.File
 import java.util.Date
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb, recordDB: RecordDB, excelUtility: ExcelUtility) extends Controller {
+class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb,
+                           recordDB: RecordDB,
+                           excelUtility: ExcelUtility,
+                           tableType: TableType,
+                           security: Security,
+                           cc: ControllerComponents,
+                           assets: Assets) extends AbstractController(cc) {
+  val logger: Logger = Logger(this.getClass)
 
-
-  def getAlarmRules: Action[AnyContent] = Security.Authenticated.async {
+  def getAlarmRules: Action[AnyContent] = security.Authenticated.async {
     implicit request =>
       for (ret <- alarmRuleDb.getRulesAsync) yield {
         implicit val w1: OWrites[AlarmRule] = Json.writes[AlarmRule]
@@ -23,12 +28,12 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb, recordDB: RecordDB, excelUt
       }
   }
 
-  def upsertAlarmRule: Action[JsValue] = Security.Authenticated.async(BodyParsers.parse.json) {
+  def upsertAlarmRule: Action[JsValue] = security.Authenticated.async(parse.json) {
     implicit request =>
       implicit val r1 = Json.reads[AlarmRule]
       val result = request.body.validate[AlarmRule]
       result.fold(err => {
-        Logger.error(JsError(err).toString)
+        logger.error(JsError(err).toString)
         Future.successful(BadRequest(Json.obj("ok" -> false, "msg" -> JsError(err).toString())))
       },
         rule => {
@@ -37,27 +42,22 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb, recordDB: RecordDB, excelUt
         })
   }
 
-  def deleteAlarmRule(id: String): Action[AnyContent] = Security.Authenticated.async {
+  def deleteAlarmRule(id: String): Action[AnyContent] = security.Authenticated.async {
     implicit request =>
       alarmRuleDb.deleteAsync(id).map { _ =>
         Ok(Json.obj("ok" -> true))
       }
   }
 
-  def getUpsertTemplate: Action[AnyContent] = Security.Authenticated.async {
+  def getUpsertTemplate: Action[AnyContent] = security.Authenticated.async {
     implicit request =>
-      Assets.at("/public", "upsertTemplate.xlsx")(request)
+      assets.at("/public", "upsertTemplate.xlsx")(request)
   }
 
-  private def upsertMinData(file: File): Boolean = {
-
-    true
-  }
-
-  def upsertData: Action[MultipartFormData[play.api.libs.Files.TemporaryFile]] = Security.Authenticated.async(parse.multipartFormData) {
+  def upsertData: Action[MultipartFormData[play.api.libs.Files.TemporaryFile]] = security.Authenticated.async(parse.multipartFormData) {
     implicit request =>
       val file = request.body.file("data").get
-      val tmpFile = file.ref.file
+      val tmpFile = file.ref.path.toFile
 
       val dataMaps = excelUtility.getUpsertMinData(tmpFile)
       if (dataMaps.isEmpty) {
@@ -85,9 +85,9 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb, recordDB: RecordDB, excelUt
   def queryData(monitorStr:String, monitorTypeStr:String, tabTypeStr: String, startNum: Long, endNum: Long): Action[AnyContent] = Action.async {
     val monitors = monitorStr.split(':')
     val monitorTypes = monitorTypeStr.split(':')
-    val tabType = TableType.withName(tabTypeStr)
+    val tabType = tableType.withName(tabTypeStr)
     val (start, end) =
-      if (tabType == TableType.hour) {
+      if (tabType == tableType.hour) {
         val original_start = new DateTime(startNum)
         val original_end = new DateTime(endNum)
         (original_start.withMinuteOfHour(0), original_end.withMinuteOfHour(0))
@@ -95,7 +95,7 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb, recordDB: RecordDB, excelUt
         (new DateTime(startNum), new DateTime(endNum))
       }
 
-    val resultFuture: Future[Seq[RecordList]] = recordDB.getRecordListFuture(TableType.mapCollection(tabType))(start, end, monitors)
+    val resultFuture: Future[Seq[RecordList]] = recordDB.getRecordListFuture(tableType.mapCollection(tabType))(start, end, monitors)
     implicit val recordListIDwrite: OWrites[RecordListID] = Json.writes[RecordListID]
     implicit val mtDataWrite: OWrites[MtRecord] = Json.writes[MtRecord]
     implicit val recordListWrite: OWrites[RecordList] = Json.writes[RecordList]

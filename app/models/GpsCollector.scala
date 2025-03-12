@@ -3,7 +3,6 @@ package models
 import akka.actor._
 import com.google.inject.assistedinject.Assisted
 import jssc.SerialPort
-import models.GpsCollector.monitorTypes
 import models.Protocol.{ProtocolParam, serial}
 import net.sf.marineapi.nmea.io.AbstractDataReader
 import net.sf.marineapi.nmea.util.Position
@@ -84,11 +83,11 @@ class SerialDataReader(serialComm: SerialComm) extends AbstractDataReader {
 class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String, @Assisted protocolParam: ProtocolParam,
                                                            @Assisted gpsParam: GpsParam) extends Actor
   with ActorLogging with SentenceListener with ExceptionListener with PositionListener {
-
-  Logger.info(s"$id $protocolParam")
+  val logger: Logger = Logger(this.getClass)
+  logger.info(s"$id $protocolParam")
+  import DataCollectManager._
   import GpsCollector._
   import context.dispatcher
-  import DataCollectManager._
 
   val mtPOS_IN_THE_RANGE = monitorTypeDB.signalType(POS_IN_THE_RANGE, "位置在範圍內")
   monitorTypeDB.ensure(mtPOS_IN_THE_RANGE)
@@ -115,15 +114,15 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
       } catch {
         case _ :Throwable =>
           import context.dispatcher
-          Logger.error(s"failed to open COM${protocolParam.comPort.get}")
+          logger.error(s"failed to open COM${protocolParam.comPort.get}")
           context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, OpenCom)
       }
     case SetState(id, state) =>
-      Logger.warn(s"Ignore $self => $state")
+      logger.warn(s"Ignore $self => $state")
   }
 
   def init() {
-    Logger.info("Init GPS reader...")
+    logger.info("Init GPS reader...")
     reader = new SentenceReader(new SerialDataReader(comm))
     reader.setExceptionListener(this)
     val provider = new PositionProvider(reader)
@@ -196,7 +195,7 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
   }
 
   def onException(ex: Exception) {
-    Logger.warn(ex.getMessage)
+    logger.warn(ex.getMessage)
   }
 
   /*
@@ -204,7 +203,7 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
 	 * @see net.sf.marineapi.nmea.event.SentenceListener#readingPaused()
 	 */
   def readingPaused() {
-    Logger.error("-- Paused --");
+    logger.error("-- Paused --");
   }
 
   /*
@@ -212,7 +211,7 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
 	 * @see net.sf.marineapi.nmea.event.SentenceListener#readingStarted()
 	 */
   def readingStarted() {
-    Logger.info("GPS -- Started");
+    logger.info("GPS -- Started");
   }
 
   /*
@@ -220,7 +219,7 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
 	 * @see net.sf.marineapi.nmea.event.SentenceListener#readingStopped()
 	 */
   def readingStopped() {
-    Logger.info("GPS -- Stopped");
+    logger.info("GPS -- Stopped");
   }
 
   /*
@@ -231,7 +230,7 @@ class GpsCollector @Inject()(monitorTypeDB: MonitorTypeDB)(@Assisted id: String,
 	 */
   def sentenceRead(event: SentenceEvent) {
     // here we receive each sentence read from the port
-    Logger.info(event.getSentence().toString());
+    logger.info(event.getSentence().toString());
   }
 
 }

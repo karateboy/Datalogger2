@@ -23,6 +23,7 @@ trait SysConfigDB {
   val LINE_TOKEN = "LineToken"
   val VOC_MONITOR_TYPES = "VocMonitorTypes"
   val VOC_AUDIT_MONITOR_TYPES = "VocAuditMonitorTypes"
+  val SMS_PHONES = "SmsPhones"
 
   def getSpectrumLastParseTime: Future[Instant]
 
@@ -76,4 +77,8 @@ trait SysConfigDB {
   def getVocAuditMonitorTypes: Future[Seq[String]]
 
   def setVocAuditMonitorTypes(monitorTypes: Seq[String]): Future[UpdateResult]
+
+  def getSmsPhones: Future[Seq[String]]
+
+  def setSmsPhones(phones: Seq[String]): Future[UpdateResult]
 }

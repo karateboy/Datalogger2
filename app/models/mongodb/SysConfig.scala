@@ -11,7 +11,8 @@ import play.api.libs.json.Json
 import java.time.Instant
 import java.util.Date
 import javax.inject.{Inject, Singleton}
-import scala.collection.JavaConversions.asScalaBuffer
+import scala.collection.JavaConverters._
+import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -88,13 +89,13 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
   private def upsert(_id: String, doc: Document): Future[UpdateResult] = {
     val uo = new ReplaceOptions().upsert(true)
     val f = collection.replaceOne(Filters.equal("_id", _id), doc, uo).toFuture()
-    f.onFailure(errorHandler)
+    f.failed.foreach(errorHandler)
     f
   }
 
   override def getAlertEmailTarget: Future[Seq[String]] =
     for (v <- get(AlertEmailTarget)) yield
-      v.asArray().toSeq.map(_.asString().getValue)
+      v.asArray().toList.map(_.asString().getValue)
 
   override def setAlertEmailTarget(emails: Seq[String]): Future[UpdateResult] = set(AlertEmailTarget, emails)
 
@@ -107,7 +108,7 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
 
   private def get(_id: String): Future[BsonValue] = {
     val f = collection.find(Filters.eq("_id", _id)).headOption()
-    f.onFailure(errorHandler)
+    f.failed.foreach(errorHandler)
     for (ret <- f) yield {
       val doc = ret.getOrElse(defaultConfig(_id))
       doc(valueKey)
@@ -129,7 +130,7 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(ColName)) {
         val f = mongodb.database.createCollection(ColName).toFuture()
-        f.onFailure(errorHandler)
+        f.failed.foreach(errorHandler)
         waitReadyResult(f)
       }
     }
@@ -162,4 +163,8 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
   override def getVocAuditMonitorTypes: Future[Seq[String]] = get(VOC_AUDIT_MONITOR_TYPES).map(_.asArray().toSeq.map(_.asString().getValue))
 
   override def setVocAuditMonitorTypes(monitorTypes: Seq[String]): Future[UpdateResult] = set(VOC_AUDIT_MONITOR_TYPES, monitorTypes)
+
+  override def getSmsPhones: Future[Seq[String]] = get(SMS_PHONES).map(_.asString().getValue.split(",").toSeq)
+
+  override def setSmsPhones(phones: Seq[String]): Future[UpdateResult] = set(SMS_PHONES, BsonString(phones.mkString(",")))
 }

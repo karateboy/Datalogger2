@@ -3,7 +3,6 @@ package models
 import akka.actor.Actor
 import com.github.nscala_time.time.Imports
 import com.google.inject.assistedinject.Assisted
-import jssc.SerialPort
 import models.Protocol.ProtocolParam
 import play.api.Logger
 import play.api.libs.json.Json
@@ -54,8 +53,8 @@ class HydreonRainGaugeCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
     alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
 
-
-  Logger.info(s"HydreonRainGauge collector $instId start")
+  val logger: Logger = Logger(this.getClass)
+  logger.info(s"HydreonRainGauge collector $instId start")
   @volatile var serialOpt: Option[SerialComm] = None
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] =
@@ -79,14 +78,14 @@ class HydreonRainGaugeCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
             serial.port.writeBytes("R\r\n".getBytes)
             Thread.sleep(500)
             val reply = serial.port.readString()
-            Logger.debug(reply)
+            logger.debug(reply)
             if (reply != null) {
               val regs = List((HydreonRainGauge.instrumentStatusKeyList(0), getData(reply)))
               Some(ModelRegValue2(inputRegs = regs,
                 modeRegs = List.empty[(InstrumentStatusType, Boolean)],
                 warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
             } else {
-              Logger.error("no reply")
+              logger.error("no reply")
               None
             }
           }
@@ -99,7 +98,7 @@ class HydreonRainGaugeCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
         ret.flatten
       } catch {
         case ex: Throwable =>
-          Logger.error("failed to read reg", ex)
+          logger.error("failed to read reg", ex)
           None
       }
     }

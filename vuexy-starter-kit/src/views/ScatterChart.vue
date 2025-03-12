@@ -2,72 +2,84 @@
   <div>
     <b-card>
       <b-form @submit.prevent>
-        <b-form-group label="測點" label-for="monitor" label-cols-md="3">
-          <v-select
-            id="monitor"
-            v-model="form.monitors"
-            label="desc"
-            :reduce="mt => mt._id"
-            :options="monitors"
-            :close-on-select="false"
-            multiple
-          />
-        </b-form-group>
-        <b-form-group label="測項" label-for="monitorType" label-cols-md="3">
-          <v-select
-            id="monitorType"
-            v-model="form.monitorTypes"
-            label="desp"
-            :reduce="mt => mt._id"
-            :options="activatedMonitorTypes"
-            :close-on-select="false"
-            multiple
-          />
-        </b-form-group>
-        <b-form-group label="資料種類" label-for="dataType" label-cols-md="3">
-          <v-select
-            id="dataType"
-            v-model="form.dataType"
-            label="txt"
-            :reduce="dt => dt.id"
-            :options="dataTypes"
-          />
-        </b-form-group>
-        <b-form-group
-          label="回歸趨勢模式"
-          label-for="regressionModes"
-          label-cols-md="3"
-        >
-          <v-select
-            id="regressionModes"
-            v-model="form.regressionSettings.type"
-            label="txt"
-            :reduce="dt => dt.id"
-            :options="regressionModes"
-          />
-        </b-form-group>
-        <b-form-group label="狀態" label-for="statusFilter" label-cols-md="3">
-          <v-select
-            id="statusFilter"
-            v-model="form.statusFilter"
-            label="txt"
-            :reduce="dt => dt.id"
-            :options="statusFilters"
-          />
-        </b-form-group>
-        <b-form-group label="資料區間" label-for="dataRange" label-cols-md="3">
-          <date-picker
-            id="dataRange"
-            v-model="form.range"
-            :range="true"
-            type="datetime"
-            format="YYYY-MM-DD HH:mm"
-            value-type="timestamp"
-            :show-second="false"
-          />
-        </b-form-group>
         <b-row>
-          <b-col offset-md="3">
+          <b-col cols="6">
+            <b-form-group label="測點" label-for="monitor" label-cols-md="3">
+              <v-select
+                  id="monitor"
+                  v-model="form.monitors"
+                  label="desc"
+                  :reduce="mt => mt._id"
+                  :options="monitors"
+                  :close-on-select="false"
+                  multiple
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="6">
+            <b-form-group label="測項" label-for="monitorType" label-cols-md="3">
+              <v-select
+                  id="monitorType"
+                  v-model="form.monitorTypes"
+                  label="desp"
+                  :reduce="mt => mt._id"
+                  :options="activatedMonitorTypes"
+                  :close-on-select="false"
+                  multiple
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="6">
+            <b-form-group label="資料種類" label-for="dataType" label-cols-md="3">
+              <v-select
+                  id="dataType"
+                  v-model="form.dataType"
+                  label="txt"
+                  :reduce="dt => dt.id"
+                  :options="dataTypes"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="6">
+            <b-form-group
+                label="回歸趨勢模式"
+                label-for="regressionModes"
+                label-cols-md="3"
+            >
+              <v-select
+                  id="regressionModes"
+                  v-model="form.regressionSettings.type"
+                  label="txt"
+                  :reduce="dt => dt.id"
+                  :options="regressionModes"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="6">
+            <b-form-group label="狀態" label-for="statusFilter" label-cols-md="3">
+              <v-select
+                  id="statusFilter"
+                  v-model="form.statusFilter"
+                  label="txt"
+                  :reduce="dt => dt.id"
+                  :options="statusFilters"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="6">
+            <b-form-group label="資料區間" label-for="dataRange" label-cols-md="3">
+              <date-picker
+                  id="dataRange"
+                  v-model="form.range"
+                  :range="true"
+                  type="datetime"
+                  format="YYYY-MM-DD HH:mm"
+                  value-type="timestamp"
+                  :show-second="false"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="6" class="text-center">
             <b-button
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
               type="submit"
@@ -130,15 +142,11 @@ export default Vue.extend({
       name: '%eq R^2:%r2 標準差:%se',
     };
     return {
-      dataTypes: [
-        { txt: '小時資料', id: 'hour' },
-        { txt: '分鐘資料', id: 'min' },
-      ],
       statusFilters: [
         { id: 'all', txt: '全部' },
         { id: 'normal', txt: '正常量測值' },
-        { id: 'calbration', txt: '校正' },
-        { id: 'maintance', txt: '維修' },
+        { id: 'calibration', txt: '校正' },
+        { id: 'maintenance', txt: '維修' },
         { id: 'invalid', txt: '無效數據' },
         { id: 'valid', txt: '有效數據' },
         { id: 'validWithoutEngineExhaustion', txt: '有效數據(不含引擎排放)' },
@@ -167,6 +175,7 @@ export default Vue.extend({
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['activatedMonitorTypes', 'mtMap']),
     ...mapState('monitors', ['monitors']),
+    ...mapGetters('tables', ['dataTypes']),
   },
   watch: {},
   async mounted() {
@@ -177,6 +186,7 @@ export default Vue.extend({
 
     await this.fetchMonitorTypes();
     await this.fetchMonitors();
+    await this.fetchTables();
 
     if (this.activatedMonitorTypes.length !== 0)
       this.form.monitorTypes.push(this.activatedMonitorTypes[0]._id);
@@ -188,6 +198,7 @@ export default Vue.extend({
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapActions('monitors', ['fetchMonitors']),
+    ...mapActions('tables', ['fetchTables']),
     ...mapMutations(['setLoading']),
     async query() {
       if (this.form.monitorTypes.length !== 2) {

@@ -3,7 +3,7 @@
     <b-card>
       <b-form @submit.prevent>
         <b-row>
-          <b-col cols="12">
+          <b-col cols="6">
             <b-form-group label="測點" label-for="monitor" label-cols-md="3">
               <v-select
                 id="monitor"
@@ -16,7 +16,7 @@
               />
             </b-form-group>
           </b-col>
-          <b-col cols="12">
+          <b-col cols="6">
             <b-form-group
               label="測項"
               label-for="monitorType"
@@ -36,7 +36,22 @@
               >
             </b-form-group>
           </b-col>
-          <b-col cols="12">
+          <b-col cols="6">
+            <b-form-group
+              label="資料種類"
+              label-for="dataType"
+              label-cols-md="3"
+            >
+              <v-select
+                id="dataType"
+                v-model="form.dataType"
+                label="txt"
+                :reduce="dt => dt.id"
+                :options="dataTypes"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="6">
             <b-form-group
               label="時間單位"
               label-for="reportUnit"
@@ -51,7 +66,7 @@
               />
             </b-form-group>
           </b-col>
-          <b-col cols="12">
+          <b-col cols="6">
             <b-form-group
               label="狀態"
               label-for="statusFilter"
@@ -66,7 +81,7 @@
               />
             </b-form-group>
           </b-col>
-          <b-col cols="12">
+          <b-col cols="6">
             <b-form-group
               label="圖表類型"
               label-for="chartType"
@@ -81,7 +96,7 @@
               />
             </b-form-group>
           </b-col>
-          <b-col cols="12">
+          <b-col cols="6">
             <b-form-group
               label="資料區間"
               label-for="dataRange"
@@ -99,7 +114,7 @@
             </b-form-group>
           </b-col>
           <!-- submit and reset -->
-          <b-col offset-md="3">
+          <b-col class="text-center">
             <b-button
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
               type="submit"
@@ -167,8 +182,8 @@ export default Vue.extend({
       statusFilters: [
         { id: 'all', txt: '全部' },
         { id: 'normal', txt: '正常量測值' },
-        { id: 'calbration', txt: '校正' },
-        { id: 'maintance', txt: '維修' },
+        { id: 'calibration', txt: '校正' },
+        { id: 'maintenance', txt: '維修' },
         { id: 'invalid', txt: '無效數據' },
         { id: 'valid', txt: '有效數據' },
       ],
@@ -215,6 +230,7 @@ export default Vue.extend({
       form: {
         monitors: Array<string>(),
         monitorTypes: Array<string>(),
+        dataType: 'hour',
         reportUnit: 'Hour',
         statusFilter: 'all',
         chartType: 'line',
@@ -227,8 +243,17 @@ export default Vue.extend({
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['activatedMonitorTypes']),
     ...mapState('monitors', ['monitors']),
+    ...mapGetters('tables', ['dataTypes']),
   },
-  watch: {},
+  watch: {
+    'form.dataType': function(val, oldVal){
+      if(val === 'hour'){
+        this.form.reportUnit = 'Hour';
+      }else{
+        this.form.reportUnit = 'Min';
+      }
+    },
+  },
   async mounted() {
     const { skin } = useAppConfig();
     if (skin.value == 'dark') {
@@ -237,6 +262,7 @@ export default Vue.extend({
 
     await this.fetchMonitorTypes();
     await this.fetchMonitors();
+    await this.fetchTables();
 
     if (this.activatedMonitorTypes.length !== 0)
       this.form.monitorTypes.push(this.activatedMonitorTypes[0]._id);
@@ -248,6 +274,7 @@ export default Vue.extend({
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapActions('monitors', ['fetchMonitors']),
+    ...mapActions('tables', ['fetchTables']),
     ...mapMutations(['setLoading']),
     async query() {
       this.setLoading({ loading: true });
@@ -255,9 +282,9 @@ export default Vue.extend({
       const monitors = this.form.monitors.join(':');
       const url = `/HistoryTrend/${monitors}/${this.form.monitorTypes.join(
         ':',
-      )}/${this.form.includeRaw}/${this.form.reportUnit}/${
-        this.form.statusFilter
-      }/${this.form.range[0]}/${this.form.range[1]}`;
+      )}/${this.form.includeRaw}/${this.form.dataType}/${
+        this.form.reportUnit
+      }/${this.form.statusFilter}/${this.form.range[0]}/${this.form.range[1]}`;
       const res = await axios.get(url);
       const ret = res.data;
 
@@ -324,9 +351,9 @@ export default Vue.extend({
       const monitors = this.form.monitors.join(':');
       const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
         ':',
-      )}/${this.form.includeRaw}/${this.form.reportUnit}/${
-        this.form.statusFilter
-      }/${this.form.range[0]}/${this.form.range[1]}`;
+      )}/${this.form.includeRaw}/${this.form.dataType}/${
+        this.form.reportUnit
+      }/${this.form.statusFilter}/${this.form.range[0]}/${this.form.range[1]}`;
 
       window.open(url);
     },

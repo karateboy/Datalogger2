@@ -3,9 +3,7 @@ package models
 import akka.actor.Actor
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
-import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 import play.api.Logger
-import play.api.libs.json.Json
 
 import java.io.{BufferedReader, InputStreamReader, OutputStream}
 import java.net.Socket
@@ -15,6 +13,7 @@ import scala.concurrent.{Future, blocking}
 
 object PicarroG2307 extends AbstractDrv(_id = "picarroG2307", desp = "Picarro G2307",
   protocols = List(Protocol.tcp)) {
+  override val logger: Logger = Logger(this.getClass)
   val predefinedIST = List(
     InstrumentStatusType(key = "H2CO", addr = 0, desc = "H2CO", ""),
     InstrumentStatusType(key = "H2CO_30s", addr = 1, desc = "H2CO_30s", ""),
@@ -72,6 +71,8 @@ class PicarroG2307Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = predefinedIST
 
+  override val readPeriod: Int = 1
+
   override def readReg(statusTypeList: List[InstrumentStatusType], full:Boolean): Future[Option[ModelRegValue2]] =
     Future {
       blocking {
@@ -89,10 +90,10 @@ class PicarroG2307Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
             }
 
             val cmd = "_Meas_GetConc\r"
-            Logger.debug(s"DAS=>Picarro $cmd")
+            logger.debug(s"DAS=>Picarro $cmd")
             out.write(cmd.getBytes())
             val resp = readUntileNonEmpty()
-            Logger.debug(s"Picarro=>DAS $resp")
+            logger.debug(s"Picarro=>DAS $resp")
             val tokens = resp.split(";")
 
             val inputs =
@@ -114,11 +115,11 @@ class PicarroG2307Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
       }
     }
 
-  override def connectHost: Unit = {
+  override def connectHost(): Unit = {
     val socket = new Socket(protocolParam.host.get, 51020)
     socketOpt = Some(socket)
-    outOpt = Some(socket.getOutputStream())
-    inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream())))
+    outOpt = Some(socket.getOutputStream)
+    inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream)))
   }
 
   override def getDataRegList: Seq[DataReg] = predefinedIST.filter(p => dataAddress.contains(p.addr)).map {
@@ -143,23 +144,23 @@ class PicarroG2307Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
       if (on) {
         if (address == 0) {
           val cmd = "_valves_seq_setstate 9\r"
-          Logger.debug(s"DAS=>Picarro $cmd")
+          logger.debug(s"DAS=>Picarro $cmd")
           out.write(cmd.getBytes())
           val resp = readUntileNonEmpty()
-          Logger.debug(s"Picarro=>DAS $resp")
+          logger.debug(s"Picarro=>DAS $resp")
         } else {
           val cmd = "_valves_seq_setstate 10\r"
-          Logger.debug(s"DAS=>Picarro $cmd")
+          logger.debug(s"DAS=>Picarro $cmd")
           out.write(cmd.getBytes())
           val resp = readUntileNonEmpty()
-          Logger.debug(s"Picarro=>DAS $resp")
+          logger.debug(s"Picarro=>DAS $resp")
         }
       } else {
         val cmd = "_valves_seq_setstate 0\r"
-        Logger.debug(s"DAS=>Picarro $cmd")
+        logger.debug(s"DAS=>Picarro $cmd")
         out.write(cmd.getBytes())
         val resp = readUntileNonEmpty()
-        Logger.debug(s"Picarro=>DAS $resp")
+        logger.debug(s"Picarro=>DAS $resp")
       }
     }
   }

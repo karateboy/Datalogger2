@@ -10,6 +10,7 @@ import scala.concurrent.Future
 import scala.math.BigDecimal.RoundingMode
 
 trait MonitorTypeDB {
+  val logger: Logger = Logger(this.getClass)
   implicit val configWrite = Json.writes[ThresholdConfig]
   implicit val configRead = Json.reads[ThresholdConfig]
   implicit val mtWrite = Json.writes[MonitorType]
@@ -88,16 +89,16 @@ trait MonitorTypeDB {
 
   def logDiMonitorType(alarmDB: AlarmDB, mt: String, v: Boolean): Unit = {
     if (!signalMtvList.contains(mt))
-      Logger.warn(s"${mt} is not DI monitor type!")
+      logger.warn(s"${mt} is not DI monitor type!")
 
     val previousValue = diValueMap.getOrElse(mt, !v)
     diValueMap = diValueMap + (mt -> v)
     if (previousValue != v) {
       val mtCase = map(mt)
       if (v)
-        alarmDB.log(alarmDB.src(), alarmDB.Level.WARN, s"${mtCase.desp}=>觸發", 1)
+        alarmDB.log(alarmDB.src(), Alarm.Level.WARN, s"${mtCase.desp}=>觸發", 1)
       else
-        alarmDB.log(alarmDB.src(), alarmDB.Level.INFO, s"${mtCase.desp}=>解除", 1)
+        alarmDB.log(alarmDB.src(), Alarm.Level.INFO, s"${mtCase.desp}=>解除", 1)
     }
   }
 

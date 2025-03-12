@@ -1,12 +1,11 @@
 package models
 
 import com.github.nscala_time.time.Imports._
-import controllers.Assets.BadRequest
 import play.api._
-import play.api.data.validation.ValidationError
 import play.api.libs.json._
-import play.api.mvc.Result
+import play.api.mvc.{Result, Results}
 
+import java.sql.Timestamp
 import scala.concurrent.Future
 import scala.language.implicitConversions
 
@@ -15,57 +14,58 @@ import scala.language.implicitConversions
  */
 
 object ModelHelper {
-  implicit def getSqlTimestamp(t: DateTime) = {
+  val logger: Logger = Logger(this.getClass)
+  implicit def getSqlTimestamp(t: DateTime): Timestamp = {
     new java.sql.Timestamp(t.getMillis)
   }
 
-  implicit def getDateTime(st: java.sql.Timestamp) = {
+  implicit def getDateTime(st: java.sql.Timestamp): DateTime = {
     new DateTime(st)
   }
 
   import org.mongodb.scala.bson.BsonDateTime
 
-  implicit def toDateTime(time: BsonDateTime) = new DateTime(time.getValue)
+  implicit def toDateTime(time: BsonDateTime): DateTime = new DateTime(time.getValue)
 
-  implicit def toBsonDateTime(jdtime: DateTime) = new BsonDateTime(jdtime.getMillis)
+  implicit def toBsonDateTime(jdtime: DateTime): BsonDateTime = new BsonDateTime(jdtime.getMillis)
 
   def main(args: Array[String]) {
     val timestamp = DateTime.parse("2015-04-01")
     println(timestamp.toString())
   }
 
-  def logException(ex: Throwable) = {
-    Logger.error(ex.getMessage, ex)
+  def logException(ex: Throwable): Unit = {
+    logger.error(ex.getMessage, ex)
   }
 
-  def logInstrumentError(id: String, msg: String, ex: Throwable) = {
-    Logger.error(msg, ex)
+  def logInstrumentError(id: String, msg: String, ex: Throwable): Unit = {
+    logger.error(msg, ex)
     //log(instStr(id), Level.ERR, msg)
   }
 
   def logInstrumentInfo(id: String, msg: String) = {
-    Logger.info(msg)
+    logger.info(msg)
     //log(instStr(id), Level.INFO, msg)
   }
 
   def errorHandler: PartialFunction[Throwable, Any] = {
     case ex: Throwable =>
-      Logger.error("Error=>", ex)
+      logger.error("Error=>", ex)
       throw ex
   }
 
   def errorHandler(prompt: String = "Error=>"): PartialFunction[Throwable, Any] = {
     case ex: Throwable =>
-      Logger.error(prompt, ex)
+      logger.error(prompt, ex)
       throw ex
   }
 
-  def handleJsonValidateError(error: Seq[(JsPath, Seq[ValidationError])]): Result = {
-    Logger.error(JsError.toJson(error).toString(), new Exception("Json validate error"))
-    BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
+  def handleJsonValidateError(error: Seq[(JsPath, Seq[JsonValidationError])]): Result = {
+    logger.error(JsError.toJson(error).toString(), new Exception("Json validate error"))
+    Results.BadRequest(Json.obj("ok" -> false, "msg" -> JsError.toJson(error).toString()))
   }
 
-  def handleJsonValidateErrorFuture(error: Seq[(JsPath, Seq[ValidationError])]): Future[Result] = {
+  def handleJsonValidateErrorFuture(error: Seq[(JsPath, Seq[JsonValidationError])]): Future[Result] = {
     Future.successful(handleJsonValidateError(error))
   }
 
@@ -79,7 +79,7 @@ object ModelHelper {
 
   private def getSinCosSum(speedList: Seq[Double], directionList: Seq[Double]): Option[(Double, Double)] = {
     if (speedList.length != directionList.length)
-      Logger.error(s"speed #=${speedList.length} dir #=${directionList.length}")
+      logger.error(s"speed #=${speedList.length} dir #=${directionList.length}")
 
     val speedDirections = speedList.zip(directionList)
     if (speedDirections.nonEmpty) {
@@ -100,7 +100,7 @@ object ModelHelper {
 
   def speedDirectionAvg(speedList: List[Double], directionList: List[Double]): Option[(Double, Double)] = {
     if (speedList.length != directionList.length)
-      Logger.error(s"speed #=${speedList.length} dir #=${directionList.length}")
+      logger.error(s"speed #=${speedList.length} dir #=${directionList.length}")
 
     val speedDirections = speedList.zip(directionList)
     if (speedDirections.nonEmpty) {
@@ -140,7 +140,7 @@ object ModelHelper {
 
   import scala.concurrent._
 
-  def waitReadyResult[T](f: Future[T]) = {
+  def waitReadyResult[T](f: Future[T]): T = {
     import scala.concurrent.duration._
     import scala.util._
 
@@ -150,22 +150,33 @@ object ModelHelper {
       case Success(t) =>
         t
       case Failure(ex) =>
-        Logger.error(ex.getMessage, ex)
+        logger.error(ex.getMessage, ex)
         throw ex
     }
+  }
+
+  implicit val localTimeReads: Reads[LocalTime] = new Reads[LocalTime] {
+    override def reads(json: JsValue): JsResult[LocalTime] = {
+      val str = json.as[String]
+      val time = LocalTime.parse(str)
+      JsSuccess(time)
+    }
+  }
+
+  implicit val localTimeWrites: Writes[LocalTime] = new Writes[LocalTime] {
+    override def writes(o: LocalTime): JsValue = JsString(o.toString())
   }
 }
 
 object EnumUtils {
   def enumReads[E <: Enumeration](enum: E): Reads[E#Value] = new Reads[E#Value] {
     def reads(json: JsValue): JsResult[E#Value] = json match {
-      case JsString(s) => {
+      case JsString(s) =>
         try {
           JsSuccess(enum.withName(s))
         } catch {
           case _: NoSuchElementException => JsError(s"Enumeration expected of type: '${enum.getClass}', but it does not appear to contain the value: '$s'")
         }
-      }
       case _ => JsError("String value expected")
     }
   }

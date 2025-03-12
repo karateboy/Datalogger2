@@ -27,6 +27,7 @@ class MoxaE1212Collector @Inject()
 (instrumentOp: InstrumentDB)
 (@Assisted id: String, @Assisted protocolParam: ProtocolParam, @Assisted param: MoxaE1212Param) extends Actor with ActorLogging {
 
+  val logger: Logger = Logger(this.getClass)
   import MoxaE1212Collector._
   import DataCollectManager._
   import context.dispatcher
@@ -37,7 +38,7 @@ class MoxaE1212Collector @Inject()
     val resetTime = DateTime.now().withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0) + 1.hour
     val duration = new Duration(DateTime.now(), resetTime)
     import scala.concurrent.duration._
-    context.system.scheduler.schedule(FiniteDuration(duration.getStandardSeconds, SECONDS),
+    context.system.scheduler.scheduleAtFixedRate(FiniteDuration(duration.getStandardSeconds, SECONDS),
       scala.concurrent.duration.Duration(1, HOURS), self, ResetCounter)
   }
   @volatile var cancelable: Cancellable = _
@@ -93,15 +94,15 @@ class MoxaE1212Collector @Inject()
             cancelable = context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Exception =>
-              Logger.error(ex.getMessage, ex)
-              Logger.info("Try again 1 min later...")
+              logger.error(ex.getMessage, ex)
+              logger.info("Try again 1 min later...")
               //Try again
               import scala.concurrent.duration._
               cancelable = context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
           }
 
         }
-      } onFailure errorHandler
+      }.failed.foreach(errorHandler)
 
     case Collect =>
       Future {
@@ -154,21 +155,21 @@ class MoxaE1212Collector @Inject()
             cancelable = context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, Collect)
           } catch {
             case ex: Throwable =>
-              Logger.error("Read reg failed", ex)
+              logger.error("Read reg failed", ex)
               masterOpt.get.destroy()
               context become handler(collectorState, None)
               self ! ConnectHost
           }
         }
-      } onFailure errorHandler
+      }.failed.foreach(errorHandler)
 
     case SetState(id, state) =>
-      Logger.info(s"$self => $state")
+      logger.info(s"$self => $state")
       instrumentOp.setState(id, state)
       context become handler(state, masterOpt)
 
     case ResetCounter =>
-      Logger.info("Reset counter to 0")
+      logger.info("Reset counter to 0")
       try {
         import com.serotonin.modbus4j.locator.BaseLocator
         val resetRegAddr = 272
@@ -185,7 +186,7 @@ class MoxaE1212Collector @Inject()
       }
 
     case WriteDO(bit, on) =>
-      Logger.info(s"Output DO $bit to $on")
+      logger.info(s"Output DO $bit to $on")
       try {
         import com.serotonin.modbus4j.locator.BaseLocator
         val locator = BaseLocator.coilStatus(1, bit)

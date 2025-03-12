@@ -10,7 +10,8 @@ import scala.concurrent.Future
 
 @Singleton
 class SqlServer @Inject()(lifecycle: ApplicationLifecycle) {
-  Logger.info("sql server ready")
+  val logger: Logger = Logger(this.getClass)
+  logger.info("sql server ready")
   DBs.setupAll()
 
   lifecycle.addStopHook { () =>

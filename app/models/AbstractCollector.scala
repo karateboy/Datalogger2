@@ -29,9 +29,9 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
                                  deviceConfig: DeviceConfig,
                                  protocol: ProtocolParam) extends Actor with ActorLogging {
 
-  import TapiTxxCollector._
-  import DataCollectManager._
   import AbstractCollector._
+  import DataCollectManager._
+  import TapiTxxCollector._
   import context.dispatcher
 
   self ! ConnectHost
@@ -68,6 +68,8 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
 
   import scala.concurrent.{Future, blocking}
 
+  val readPeriod : Int = 3
+
   def receive(): Receive = normalPhase()
   import AbstractCollector._
 
@@ -90,15 +92,15 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
       connected = true
     } catch {
       case ex: Exception =>
-        log.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
+        log.error(s"$instId:$desc=>${ex.getMessage}", ex)
         if (connected)
-          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
+          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"${ex.getMessage}")
 
         connected = false
     } finally {
       import scala.concurrent.duration._
       readRegTimer = if (protocol.protocol == Protocol.tcp)
-        Some(context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
+        Some(context.system.scheduler.scheduleOnce(Duration(readPeriod, SECONDS), self, ReadRegister))
       else
         Some(context.system.scheduler.scheduleOnce(Duration(4, SECONDS), self, ReadRegister))
     }
@@ -143,7 +145,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
           } catch {
             case ex: Exception =>
               log.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
-              alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
               context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
@@ -304,7 +306,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
           else
             triggerSpanCalibration(true)
         }
-      } onFailure calibrationErrorHandler(instId, calibrationTimerOpt, endState)
+      }.failed.foreach(calibrationErrorHandler(instId, calibrationTimerOpt, endState))
 
     case HoldStart =>
       log.info(s"${self.path.name} => HoldStart")
@@ -343,7 +345,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
           else
             triggerSpanCalibration(false)
         }
-      } onFailure calibrationErrorHandler(instId, calibrationTimerOpt, endState)
+      }.failed.foreach(calibrationErrorHandler(instId, calibrationTimerOpt, endState))
 
     case rd: ReportData =>
       if (recordCalibration)
@@ -542,7 +544,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
     } {
       if (enable) {
         if (oldModelReg.isEmpty || oldModelReg.get.modeRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, statusType.desc)
+          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, statusType.desc)
         }
       }
     }
@@ -555,11 +557,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
     } {
       if (enable) {
         if (oldModelReg.isEmpty || oldModelReg.get.warnRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.WARN, statusType.desc)
+          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, statusType.desc)
         }
       } else {
         if (oldModelReg.isDefined && oldModelReg.get.warnRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, s"${statusType.desc} 解除")
+          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, s"${statusType.desc} 解除")
         }
       }
     }
@@ -581,9 +583,9 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
       kv =>
         val k = kv._1
         val v = kv._2
-        instrumentStatusOp.Status(k.key, v)
+        InstrumentStatusDB.Status(k.key, v)
     }
-    val instStatus = instrumentStatusOp.InstrumentStatus(DateTime.now(), instId, isList).excludeNaN
+    val instStatus = InstrumentStatusDB.InstrumentStatus(DateTime.now(), instId, isList).excludeNaN
     instrumentStatusOp.log(instStatus)
   }
 

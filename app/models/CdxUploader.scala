@@ -7,9 +7,10 @@ import play.api.libs.json.Json
 import java.nio.file.Path
 import java.util.Date
 import javax.inject.{Inject, Singleton}
-import javax.xml.ws.Holder
+import scala.xml.Elem
 
 object CdxUploader {
+  val logger: Logger = Logger(this.getClass)
   case class ItemIdMap(epaId: Int, itemName: String)
   case class CdxMonitorType(mt:String, name:String, min:Option[Double], max:Option[Double])
 
@@ -52,7 +53,7 @@ class CdxUploader @Inject()(alarmDB: AlarmDB, environment: Environment){
   import CdxUploader._
   val serviceID = "AQX_S_00"
 
-  def mtRecprdToXML(siteCounty: String, siteID: String, date: Date, mtRecord: MtRecord) = {
+  private def mtRecordToXML(siteCounty: String, siteID: String, date: Date, mtRecord: MtRecord): Elem = {
     val map = itemIdMap(mtRecord.mtName)
     val dateTime = new DateTime(date)
     val dateStr = dateTime.toString("YYYY-MM-dd")
@@ -97,18 +98,18 @@ class CdxUploader @Inject()(alarmDB: AlarmDB, environment: Environment){
           cdxMtConfig match {
             case CdxMonitorType(_, _, Some(min), Some(max))=>
               for(v<-mtRecord.value if v>= min && v <= max) yield
-                mtRecprdToXML(cdxConfig.siteCounty, cdxConfig.siteID, recordList._id.time, mtRecord)
+                mtRecordToXML(cdxConfig.siteCounty, cdxConfig.siteID, recordList._id.time, mtRecord)
 
             case CdxMonitorType(_, _, None, Some(max))=>
               for(v<-mtRecord.value if v <= max) yield
-                mtRecprdToXML(cdxConfig.siteCounty, cdxConfig.siteID, recordList._id.time, mtRecord)
+                mtRecordToXML(cdxConfig.siteCounty, cdxConfig.siteID, recordList._id.time, mtRecord)
 
             case CdxMonitorType(_, _, Some(min), None)=>
               for(v<-mtRecord.value if v>= min) yield
-                mtRecprdToXML(cdxConfig.siteCounty, cdxConfig.siteID, recordList._id.time, mtRecord)
+                mtRecordToXML(cdxConfig.siteCounty, cdxConfig.siteID, recordList._id.time, mtRecord)
 
             case _=>
-              Some(mtRecprdToXML(cdxConfig.siteCounty, cdxConfig.siteID, recordList._id.time, mtRecord))
+              Some(mtRecordToXML(cdxConfig.siteCounty, cdxConfig.siteID, recordList._id.time, mtRecord))
           }
         } else
           None
@@ -140,28 +141,9 @@ class CdxUploader @Inject()(alarmDB: AlarmDB, environment: Environment){
     val xmlStr = getXml(localPath, recordList, cdxConfig, mtConfigs)
 
     if (cdxConfig.enable) {
-      val fileName = s"${serviceID}_${dateTime.toString("MMdd")}${dateTime.getHourOfDay}_${cdxConfig.user}.xml"
-      val errMsgHolder = new Holder("")
-      val resultHolder = new Holder(Integer.valueOf(0))
-      val unknownHolder = new Holder(new java.lang.Boolean(true))
-      try{
-        CdxWebService.service.putFile(cdxConfig.user, cdxConfig.password, fileName, xmlStr.getBytes("UTF-8"), errMsgHolder, resultHolder, unknownHolder)
-        if (resultHolder.value != 1) {
-          Logger.error(s"errMsg:${errMsgHolder.value}")
-          Logger.error(s"ret:${resultHolder.value.toString}")
-          Logger.error(s"unknown:${unknownHolder.value.toString}")
-          alarmDB.log(alarmDB.srcCDX(), alarmDB.Level.ERR, s"CDX上傳${dateTime.toString(fmt)}小時值失敗 錯誤訊息 ${errMsgHolder.value}")
-        } else {
-          Logger.info(s"Success upload ${dateTime.date.toString}")
-          alarmDB.log(alarmDB.srcCDX(), alarmDB.Level.INFO, s"CDX 上傳${dateTime.toString(fmt)}小時值成功")
-        }
-      }catch{
-        case ex:Throwable =>
-          Logger.error("CDX: 上傳錯誤", ex)
-          alarmDB.log(alarmDB.srcCDX(), alarmDB.Level.ERR, s"CDX上傳${dateTime.toString(fmt)}小時值失敗 錯誤訊息 ${ex.getMessage}")
-      }
+      logger.warn("CDX upload is deprecated. Use EPA's own program instead.")
     }else{
-      alarmDB.log(alarmDB.srcCDX(), alarmDB.Level.INFO, s"CDX 模擬上傳${dateTime.toString(fmt)}小時值成功")
+      alarmDB.log(alarmDB.srcCDX(), Alarm.Level.INFO, s"CDX 模擬上傳${dateTime.toString(fmt)}小時值成功")
     }
   }
 }

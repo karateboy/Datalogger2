@@ -5,22 +5,22 @@ package models
  */
 object MonitorStatusFilter extends Enumeration {
 
-  val ValidData = Value("valid")
-  val Normal = Value("normal")
-  val Calbration = Value("calbration")
-  val Maintance = Value("maintance")
-  val InvalidData = Value("invalid")
-  val All = Value("all")  
+  val ValidData: Value = Value("valid")
+  private val Normal: Value = Value("normal")
+  private val Calibration: Value = Value("calibration")
+  private val Maintenance: Value = Value("maintenance")
+  private val InvalidData: Value = Value("invalid")
+  private val All: Value = Value("all")
 
-  val map = Map(
+  val map: Map[Value, String] = Map(
     All -> "全部",
     Normal -> "正常量測值",
-    Calbration -> "校正",
-    Maintance -> "維修",
+    Calibration -> "校正",
+    Maintenance -> "維修",
     InvalidData -> "無效數據",
     ValidData -> "有效數據")
 
-  def isMatched(msf: MonitorStatusFilter.Value, stat: String) = {
+  def isMatched(msf: MonitorStatusFilter.Value, stat: String): Boolean = {
     msf match {
       case MonitorStatusFilter.All =>
         true
@@ -28,10 +28,10 @@ object MonitorStatusFilter extends Enumeration {
       case MonitorStatusFilter.Normal =>
         stat == MonitorStatus.NormalStat
 
-      case MonitorStatusFilter.Calbration=>
+      case MonitorStatusFilter.Calibration=>
         MonitorStatus.isCalibration(stat)
         
-      case MonitorStatusFilter.Maintance =>
+      case MonitorStatusFilter.Maintenance =>
         MonitorStatus.isMaintenance(stat)
 
       case MonitorStatusFilter.InvalidData =>

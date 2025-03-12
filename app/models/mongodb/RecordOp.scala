@@ -14,8 +14,8 @@ import scala.concurrent.Future
 import scala.util.Success
 
 @Singleton
-class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibrationOp: CalibrationOp) extends RecordDB {
-
+class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
+  val logger: Logger = Logger(this.getClass)
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
@@ -26,7 +26,7 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
   override def insertManyRecord(colName: String)(docs: Seq[RecordList]): Future[InsertManyResult] = {
     val col = getCollection(colName)
     val f = col.insertMany(docs).toFuture()
-    f onFailure errorHandler(s"insertManyRecord $colName")
+    f.failed.foreach(errorHandler(s"insertManyRecord $colName"))
     f
   }
 
@@ -41,9 +41,7 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     val f = col.updateOne(Filters.equal("_id", RecordListID(doc._id.time, doc._id.monitor)), updates,
       UpdateOptions().upsert(true)).toFuture()
 
-    f.onFailure({
-      case ex: Exception => Logger.error(ex.getMessage, ex)
-    })
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -56,9 +54,7 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     val f = col.updateOne(
       and(equal("_id", RecordListID(new Date(dt), monitor)),
         equal("mtDataList.mtName", mt)), set("mtDataList.$.status", status)).toFuture()
-    f.onFailure({
-      case ex: Exception => Logger.error(ex.getMessage, ex)
-    })
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -90,9 +86,9 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
 
     val col = getCollection(colName)
 
-    val f = col.find(and(in("_id.monitor", monitors: _*), gte("_id.time", startTime.toDate()), lt("_id.time", endTime.toDate())))
+    val f = col.find(and(in("_id.monitor", monitors: _*), gte("_id.time", startTime.toDate), lt("_id.time", endTime.toDate)))
       .sort(ascending("_id.time")).toFuture()
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -103,9 +99,9 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
 
     val col = getCollection(colName)
     val f = col.find(and(equal("_id.monitor", monitor),
-        gte("_id.time", startTime.toDate()), lt("_id.time", endTime.toDate())))
+        gte("_id.time", startTime.toDate), lt("_id.time", endTime.toDate)))
       .limit(limit).sort(ascending("_id.time")).toFuture()
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -118,9 +114,9 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
     import org.mongodb.scala.model.Sorts._
 
     val col = getCollection(colName)
-    val f = col.find(and(equal("_id.monitor", monitor), gte("_id.time", startTime.toDate()), lt("_id.time", endTime.toDate())))
+    val f = col.find(and(equal("_id.monitor", monitor), gte("_id.time", startTime.toDate), lt("_id.time", endTime.toDate)))
       .sort(ascending("_id.time")).toFuture()
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
 
     for (docs <- f) yield {
       for {
@@ -153,15 +149,15 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
 
     val collection = getCollection(colName)
     val f = collection.bulkWrite(setUpdates, BulkWriteOptions().ordered(true)).toFuture()
-    f onFailure errorHandler
+    f.failed.foreach(errorHandler)
     f
   }
 
-  private def init() {
+  private def init(): Unit = {
     for (colNames <- mongodb.database.listCollectionNames().toFuture()) {
       if (!colNames.contains(HourCollection)) {
         val f = mongodb.database.createCollection(HourCollection).toFuture()
-        f.onFailure(errorHandler)
+        f.failed.foreach(errorHandler)
         f.andThen({
           case Success(_) =>
             getCollection(HourCollection).createIndex(Indexes.descending("_id.time", "_id.monitor"), new IndexOptions().unique(true))
@@ -170,7 +166,7 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
 
       if (!colNames.contains(MinCollection)) {
         val f = mongodb.database.createCollection(MinCollection).toFuture()
-        f.onFailure(errorHandler)
+        f.failed.foreach(errorHandler)
         f.andThen({
           case Success(_) =>
             getCollection(MinCollection).createIndex(Indexes.descending("_id.time", "_id.monitor"), new IndexOptions().unique(true))
@@ -179,7 +175,7 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
 
       if (!colNames.contains(SecCollection)) {
         val f = mongodb.database.createCollection(SecCollection).toFuture()
-        f.onFailure(errorHandler)
+        f.failed.foreach(errorHandler)
         f.andThen({
           case Success(_) =>
             getCollection(SecCollection).createIndex(Indexes.descending("_id.time", "_id.monitor"), new IndexOptions().unique(true))
@@ -210,6 +206,20 @@ class RecordOp @Inject()(mongodb: MongoDB, monitorTypeOp: MonitorTypeOp, calibra
         col.deleteMany(Filters.lte("_id.time", splitDate.toDate)).toFuture()
       }
       true
+    }
+  }
+
+  override def getHourCollectionList: Future[Seq[String]] = {
+    val f = mongodb.database.listCollectionNames().toFuture()
+    for (colNames <- f) yield {
+      colNames.filter(_.startsWith(HourCollection))
+    }
+  }
+
+  override def getMinCollectionList: Future[Seq[String]] = {
+    val f = mongodb.database.listCollectionNames().toFuture()
+    for (colNames <- f) yield {
+      colNames.filter(_.startsWith(MinCollection))
     }
   }
 }

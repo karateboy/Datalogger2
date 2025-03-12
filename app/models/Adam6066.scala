@@ -1,7 +1,7 @@
 package models
 
 import akka.actor._
-import models.Protocol.{ProtocolParam, tcp}
+import models.Protocol.tcp
 import play.api._
 import play.api.libs.json._
 
@@ -11,7 +11,7 @@ import javax.inject._
 
 @Singleton
 class Adam6066 @Inject()() extends DriverOps {
-
+  val logger: Logger = Logger(this.getClass)
   implicit val cfgReads = Json.reads[Adam6066ChannelCfg]
   implicit val reads = Json.reads[Adam6066Param]
   implicit val w1 = Json.writes[Adam6066ChannelCfg]
@@ -21,7 +21,7 @@ class Adam6066 @Inject()() extends DriverOps {
     val ret = Json.parse(param).validate[Adam6066Param]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       params => {
@@ -35,7 +35,7 @@ class Adam6066 @Inject()() extends DriverOps {
     val ret = Json.parse(json).validate[Adam6066Param]
     ret.fold(
       error => {
-        Logger.error(JsError.toJson(error).toString())
+        logger.error(JsError.toJson(error).toString())
         throw new Exception(JsError.toJson(error).toString())
       },
       params => {

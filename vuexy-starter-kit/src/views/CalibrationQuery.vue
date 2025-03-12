@@ -3,7 +3,7 @@
     <b-card>
       <b-form @submit.prevent>
         <b-row>
-          <b-col cols="12">
+          <b-col cols="6">
             <b-form-group
               label="資料區間"
               label-for="dataRange"
@@ -21,7 +21,7 @@
             </b-form-group>
           </b-col>
           <!-- submit and reset -->
-          <b-col offset-md="3">
+          <b-col cols="6" class="text-center">
             <b-button
               type="submit"
               variant="gradient-primary"

@@ -2,6 +2,7 @@ package models.sql
 
 import com.github.nscala_time.time.Imports
 import models.InstrumentStatusDB
+import models.InstrumentStatusDB.{InstrumentStatus, Status}
 import play.api.libs.json.Json
 import scalikejdbc._
 
@@ -22,9 +23,9 @@ class InstrumentStatusOp @Inject()(sqlServer: SqlServer) extends InstrumentStatu
            ,[instID]
            ,[statusList])
      VALUES
-           (${is.time.toDate}
+           (${is.time}
            ,${is.instID}
-           ,${statusList})
+           ,$statusList)
          """.update().apply()
   }
 
@@ -51,7 +52,7 @@ class InstrumentStatusOp @Inject()(sqlServer: SqlServer) extends InstrumentStatu
 
   private def mapper(rs: WrappedResultSet): InstrumentStatus = {
     val statusList = Json.parse(rs.string("statusList")).validate[Seq[Status]].asOpt.getOrElse(Seq.empty[Status])
-    InstrumentStatus(rs.jodaDateTime("time"), instID = rs.string("instID"), statusList)
+    InstrumentStatus(rs.timestamp("time"), instID = rs.string("instID"), statusList)
   }
 
   private def init()(implicit session: DBSession = AutoSession): Unit = {

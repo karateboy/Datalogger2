@@ -12,6 +12,7 @@ import scala.concurrent.{Future, blocking}
 
 object MetOne1020 extends AbstractDrv(_id = "MetOne1020", desp = "MetOne 1020",
   protocols = List(Protocol.serial)) {
+  override val logger: Logger = Logger(this.getClass)
   val instrumentStatusKeyList = List(
     InstrumentStatusType(key = MonitorType.PM25, addr = 1, desc = "Conc", "mg/m3"),
     InstrumentStatusType(key = "Qtot", addr = 2, desc = "Qtot", "m3"),
@@ -45,7 +46,7 @@ object MetOne1020 extends AbstractDrv(_id = "MetOne1020", desp = "MetOne 1020",
   }
 
   override def verifyParam(json: String) = {
-    Logger.info(json)
+    logger.info(json)
     json
   }
 
@@ -69,9 +70,9 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
 
   @volatile var serialOpt: Option[SerialComm] = None
+  val logger: Logger = Logger(this.getClass)
 
-
-  Logger.info(s"MetOne1020 collector start with protocolType ${deviceConfig.slaveID}")
+  logger.info(s"MetOne1020 collector start with protocolType ${deviceConfig.slaveID}")
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] =
     if (deviceConfig.slaveID.contains(1))
@@ -103,7 +104,7 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
                 warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
             }
           } else {
-            Logger.error("no reply")
+            logger.error("no reply")
             None
           }
         }
@@ -111,7 +112,7 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
       ret.flatten
     } catch {
       case ex: Throwable =>
-        Logger.error("MetOne readReg error", ex)
+        logger.error("MetOne readReg error", ex)
         None
     }
   }
@@ -133,7 +134,7 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
           serial.port.writeBytes(cmd)
           val replies = serial.getMessageByCrWithTimeout(timeout = 2)
           if (replies.nonEmpty) {
-            replies.foreach(line => Logger.info(s"MetOne=>${line.trim}"))
+            replies.foreach(line => logger.info(s"MetOne=>${line.trim}"))
             val measure =
               for (line <- replies if line.contains(",")) yield {
                 val inputs = line.trim.split(",")
@@ -144,7 +145,7 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
               modeRegs = List.empty[(InstrumentStatusType, Boolean)],
               warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
           } else {
-            Logger.error("no reply")
+            logger.error("no reply")
             None
           }
         }
@@ -152,7 +153,7 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
       ret.flatten
     } catch {
       case ex: Throwable =>
-        Logger.error("MetOne readReg error", ex)
+        logger.error("MetOne readReg error", ex)
         None
     }
   }

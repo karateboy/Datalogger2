@@ -3,7 +3,7 @@
     <b-card>
       <b-form @submit.prevent>
         <b-row>
-          <b-col cols="12">
+          <b-col cols="6">
             <b-form-group label="測點" label-for="monitor" label-cols-md="3">
               <v-select
                 id="monitor"
@@ -16,7 +16,22 @@
               />
             </b-form-group>
           </b-col>
-          <b-col cols="12">
+          <b-col cols="6">
+            <b-form-group
+              label="資料種類"
+              label-for="dataType"
+              label-cols-md="3"
+            >
+              <v-select
+                id="dataType"
+                v-model="form.dataType"
+                label="txt"
+                :reduce="dt => dt.id"
+                :options="hourDataTypes"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="6">
             <b-form-group
               label="統計單位"
               label-for="reportUnit"
@@ -31,7 +46,7 @@
               />
             </b-form-group>
           </b-col>
-          <b-col cols="12">
+          <b-col cols="6">
             <b-form-group
               label="圖表類型"
               label-for="chartType"
@@ -46,7 +61,7 @@
               />
             </b-form-group>
           </b-col>
-          <b-col cols="12">
+          <b-col cols="6">
             <b-form-group
               label="資料區間"
               label-for="dataRange"
@@ -64,7 +79,7 @@
             </b-form-group>
           </b-col>
           <!-- submit and reset -->
-          <b-col offset-md="3">
+          <b-col class="text-center">
             <b-button
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
               type="submit"
@@ -162,6 +177,7 @@ export default Vue.extend({
       ],
       form: {
         monitors: Array<string>(),
+        dataType: 'hour',
         reportUnit: 'Day',
         chartType: 'line',
         range,
@@ -172,6 +188,7 @@ export default Vue.extend({
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['activatedMonitorTypes']),
     ...mapState('monitors', ['monitors']),
+    ...mapGetters('tables', ['hourDataTypes']),
   },
   watch: {},
   async mounted() {
@@ -181,6 +198,7 @@ export default Vue.extend({
     }
 
     await this.fetchMonitors();
+    await this.fetchTables();
 
     if (this.monitors.length !== 0) {
       this.form.monitors.push(this.monitors[0]._id);
@@ -188,6 +206,7 @@ export default Vue.extend({
   },
   methods: {
     ...mapActions('monitors', ['fetchMonitors']),
+    ...mapActions('tables', ['fetchTables']),
     ...mapMutations(['setLoading']),
     async query() {
       this.setLoading({ loading: true });
@@ -197,7 +216,7 @@ export default Vue.extend({
         let isDailyAqi = true;
         if (this.form.reportUnit === 'Hour') isDailyAqi = false;
 
-        const url = `/AqiTrend/${monitors}/${isDailyAqi}/${this.form.range[0]}/${this.form.range[1]}`;
+        const url = `/AqiTrend/${monitors}/${isDailyAqi}/${this.form.dataType}/${this.form.range[0]}/${this.form.range[1]}`;
         const res = await axios.get(url);
         const ret = res.data;
         if (this.form.chartType !== 'boxplot') {
@@ -253,7 +272,7 @@ export default Vue.extend({
       let isDailyAqi = true;
       if (this.form.reportUnit === 'Hour') isDailyAqi = false;
 
-      const url = `${baseUrl}AqiTrend/excel/${monitors}/${isDailyAqi}/${this.form.range[0]}/${this.form.range[1]}`;
+      const url = `${baseUrl}AqiTrend/excel/${monitors}/${isDailyAqi}/${this.form.dataType}/${this.form.range[0]}/${this.form.range[1]}`;
       window.open(url);
     },
   },

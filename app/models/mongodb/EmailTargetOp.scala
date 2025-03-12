@@ -25,7 +25,7 @@ class EmailTargetOp @Inject()(mongodb: MongoDB, sysConfig: SysConfigDB) extends 
     val colNames = waitReadyResult(mongodb.database.listCollectionNames().toFuture())
     if (!colNames.contains(colName)) {
       val f = mongodb.database.createCollection(colName).toFuture()
-      f.onFailure(errorHandler)
+      f.failed.foreach(errorHandler)
       for(_ <-f){
         importFromSysConfig()
       }
@@ -45,13 +45,13 @@ class EmailTargetOp @Inject()(mongodb: MongoDB, sysConfig: SysConfigDB) extends 
 
   override def upsert(et: EmailTarget): Future[UpdateResult] = {
     val f = collection.replaceOne(Filters.equal("_id", et._id), et, ReplaceOptions().upsert(true)).toFuture()
-    f.onFailure(errorHandler)
+    f.failed.foreach(errorHandler)
     f
   }
 
   override def get(_id:String): Future[EmailTarget] = {
     val f = collection.find(Filters.equal("_id", _id)).first().toFuture()
-    f.onFailure(errorHandler())
+    f.failed.foreach(errorHandler)
     f
   }
 
@@ -62,19 +62,19 @@ class EmailTargetOp @Inject()(mongodb: MongoDB, sysConfig: SysConfigDB) extends 
         ReplaceOneModel(Filters.equal("_id", et._id), et, ReplaceOptions().upsert(true))
     }
     val f = collection.bulkWrite(updateModels).toFuture()
-    f onFailure (errorHandler)
+    f.failed.foreach(errorHandler)
     f
   }
 
   override def getList(): Future[Seq[EmailTarget]] = {
     val f = collection.find(Filters.exists("_id")).toFuture()
-    f onFailure(errorHandler())
+    f.failed.foreach(errorHandler)
     f
   }
 
   override def delete(_id: String): Future[DeleteResult] = {
     val f = collection.deleteOne(Filters.equal("_id", _id)).toFuture()
-    f onFailure(errorHandler())
+    f.failed.foreach(errorHandler)
     f
   }
   override def deleteAll(): Future[DeleteResult] = {

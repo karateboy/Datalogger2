@@ -88,6 +88,11 @@ export default {
       default: () => {},
     },
   },
+  data() {
+    return {
+      version: '1.0.0',
+    };
+  },
   computed: {
     ...mapState('user', ['userInfo']),
     role() {
@@ -98,11 +103,6 @@ export default {
   },
   async mounted() {
     await this.getVersion();
-  },
-  data() {
-    return {
-      version: '1.0.0',
-    };
   },
   methods: {
     async getVersion() {

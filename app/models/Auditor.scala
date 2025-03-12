@@ -27,6 +27,7 @@ class Auditor @Inject()(recordOp:RecordOp,
                         spikeRuleOp: SpikeRuleDB,
                         constantRuleOp: ConstantRuleDB,
                         variationRuleOp: VariationRuleDB) extends Actor {
+  val logger: Logger = Logger(this.getClass)
   import Auditor._
   override def receive: Receive = {
     case Audit =>
@@ -41,7 +42,7 @@ class Auditor @Inject()(recordOp:RecordOp,
           checkVariationRule(rules, recordOp)
       }catch {
         case ex:Throwable=>
-          Logger.error("Failed to audit", ex)
+          logger.error("Failed to audit", ex)
       }
   }
 }

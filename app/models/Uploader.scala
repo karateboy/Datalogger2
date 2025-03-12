@@ -1,16 +1,16 @@
 package models
 
-import org.apache.http.HttpStatus
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
 
-import java.time.{LocalDateTime, ZoneId}
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
 object Uploader {
+  val logger: Logger = Logger(this.getClass)
   case class UploadData(DataInfo: Seq[ItemData])
 
   case class ItemData(lon: Double, lat: Double, id: String,
@@ -36,22 +36,22 @@ object Uploader {
       return
 
     val url = "https://www.yesylepb.com.tw/WebService/MonitorCarData.ashx"
-    Logger.debug(s"upload to $url")
-    Logger.debug(Json.toJson(UploadData(itemData)).toString())
+    logger.debug(s"upload to $url")
+    logger.debug(Json.toJson(UploadData(itemData)).toString())
     val f = ws.url("https://www.yesylepb.com.tw/WebService/MonitorCarData.ashx")
-      .withHeaders(("RequiredValidateToken", "OwEsu5KJAAAMPdPpZfYN"), ("method", "UploadMonitorCarData"))
+      .withHttpHeaders(("RequiredValidateToken", "OwEsu5KJAAAMPdPpZfYN"), ("method", "UploadMonitorCarData"))
       .post(Json.toJson(UploadData(itemData)))
 
     f.onComplete({
       case Success(resp) =>
-        if (resp.status == HttpStatus.SC_OK) {
-          Logger.info(s"Success upload ${recordList._id.time}")
-          Logger.debug(s"${resp.json.toString()}")
+        if (resp.status == 200) {
+          logger.info(s"Success upload ${recordList._id.time}")
+          logger.debug(s"${resp.json.toString()}")
         } else {
-          Logger.error(s"Failed to upload ${resp.status} ${resp.json.toString()}")
+          logger.error(s"Failed to upload ${resp.status} ${resp.json.toString()}")
         }
       case Failure(exception) =>
-        Logger.error(s"failed to upload ${recordList._id.time}", exception)
+        logger.error(s"failed to upload ${recordList._id.time}", exception)
     })
   }
 }

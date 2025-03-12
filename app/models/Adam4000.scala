@@ -158,7 +158,7 @@ import javax.inject._
 
 class Adam4000Collector @Inject()(alarmOp: AlarmDB)
                                  (@Assisted instId: String, @Assisted protocolParam: ProtocolParam, @Assisted moduleList: List[Adam4000Module]) extends Actor {
-
+  val logger: Logger = Logger(this.getClass)
   import Adam4000Collector._
   import DataCollectManager._
   import context.dispatcher
@@ -181,12 +181,12 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
           val oneHourLater = DateTime.now().plusHours(1)
           val nextHour = oneHourLater.withMinuteOfHour(0).withSecondOfMinute(0)
           val elapsedSeconds = new org.joda.time.Duration(DateTime.now, nextHour).getStandardSeconds
-          resetTimerOpt = Some(context.system.scheduler.schedule(FiniteDuration(elapsedSeconds, SECONDS), FiniteDuration(1, HOURS), self, ResetCounter))
+          resetTimerOpt = Some(context.system.scheduler.scheduleAtFixedRate(FiniteDuration(elapsedSeconds, SECONDS), FiniteDuration(1, HOURS), self, ResetCounter))
         }
       } catch {
         case ex: Exception =>
-          Logger.error(ex.getMessage, ex)
-          alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
+          logger.error(ex.getMessage, ex)
+          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"無法連接:${ex.getMessage}")
           import scala.concurrent.duration._
           context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenCom)
       }
@@ -229,7 +229,7 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
       }
       timerOpt = Some(context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(3, SECONDS), self, ReadInput))
     case ResetCounter =>
-      Logger.info("Reset counter")
+      logger.info("Reset counter")
       Future {
         blocking {
           for (module <- moduleList if module.module == ADAM4080) {
@@ -241,11 +241,11 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
             }
           }
         }
-      } onFailure errorHandler
+      }.failed.foreach(errorHandler)
 
     case WriteModuleDo(address, ch, on) =>
       val os = comm.os
-      Logger.info(s"Output DO $ch channel to $on")
+      logger.info(s"Output DO $ch channel to $on")
       val writeCmd = if (on)
         s"#${address}1${ch}01\r"
       else
@@ -310,12 +310,12 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
           MonitorStatus.NormalStat
 
         val mtd = MonitorTypeData(mt, value, status)
-        Logger.debug(s"$instId: 4080 $mt $value $status")
+        logger.debug(s"$instId: 4080 $mt $value $status")
         context.parent ! ReportData(List(mtd))
       }
     } catch {
       case ex: Throwable =>
-        Logger.error(s"$instId: 4080 unable to decode $str", ex)
+        logger.error(s"$instId: 4080 unable to decode $str", ex)
     }
   }
 

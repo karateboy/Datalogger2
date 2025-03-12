@@ -6,7 +6,6 @@ import com.google.inject.assistedinject.Assisted
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
 import play.api.libs.json._
-import play.api.libs.ws.WSClient
 
 import javax.inject.Inject
 import scala.concurrent.duration.{FiniteDuration, MINUTES, SECONDS}
@@ -16,26 +15,27 @@ case class LatestRecordTime(time: Long)
 case class ForwardManagerConfig(server: String, monitor: String)
 
 object ForwardManager {
+  val logger: Logger = Logger(this.getClass)
   implicit val latestRecordTimeRead: Reads[LatestRecordTime] = Json.reads[LatestRecordTime]
   var managerOpt: Option[ActorRef] = None
   var count = 0
 
   def getConfig(configuration: Configuration): Option[ForwardManagerConfig] = {
     try {
-      for (serverConfig <- configuration.getConfig("server")
-           if serverConfig.getBoolean("enable").getOrElse(false)) yield {
-        val server = serverConfig.getString("host").getOrElse("localhost")
-        val monitor = serverConfig.getString("monitor").getOrElse("A01")
+      for (serverConfig <- configuration.getOptional[Configuration]("server")
+           if serverConfig.getOptional[Boolean]("enable").getOrElse(false)) yield {
+        val server = serverConfig.getOptional[String]("host").getOrElse("localhost")
+        val monitor = serverConfig.getOptional[String]("monitor").getOrElse("A01")
         ForwardManagerConfig(server, monitor)
       }
     } catch {
       case ex: Exception =>
-        Logger.error("failed to get server config", ex)
+        logger.error("failed to get server config", ex)
         None
     }
   }
 
-  def updateInstrumentStatusType = {
+  def updateInstrumentStatusType(): Option[Unit] = {
     managerOpt map {
       _ ! UpdateInstrumentStatusType
     }
@@ -72,41 +72,41 @@ class ForwardManager @Inject()(hourRecordForwarderFactory: HourRecordForwarder.F
                                instrumentStatusForwarderFactory: InstrumentStatusForwarder.Factory,
                                instrumentStatusTypeForwarderFactory: InstrumentStatusTypeForwarder.Factory)
                               (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor with InjectedActorSupport {
-
+  val logger: Logger = Logger(this.getClass)
   import ForwardManager._
 
-  Logger.info(s"create forwarder to $server/$monitor")
+  logger.info(s"create forwarder to $server/$monitor")
 
-  val hourRecordForwarder = injectedChild(hourRecordForwarderFactory(server, monitor), "hourForwarder")
+  private val hourRecordForwarder = injectedChild(hourRecordForwarderFactory(server, monitor), "hourForwarder")
 
-  val minRecordForwarder = injectedChild(minRecordForwarderFactory(server, monitor), "minForwarder")
+  private val minRecordForwarder = injectedChild(minRecordForwarderFactory(server, monitor), "minForwarder")
 
-  val calibrationForwarder = injectedChild(calibrationForwarderFactory(server, monitor), "calibrationForwarder")
+  private val calibrationForwarder = injectedChild(calibrationForwarderFactory(server, monitor), "calibrationForwarder")
 
-  val alarmForwarder = injectedChild(alarmForwarderFactory(server, monitor), "alarmForwarder")
+  private val alarmForwarder = injectedChild(alarmForwarderFactory(server, monitor), "alarmForwarder")
 
-  val instrumentStatusForwarder = injectedChild(instrumentStatusForwarderFactory(server, monitor),
+  private val instrumentStatusForwarder = injectedChild(instrumentStatusForwarderFactory(server, monitor),
     "instrumentStatusForwarder")
 
-  val statusTypeForwarder = injectedChild(instrumentStatusTypeForwarderFactory(server, monitor),
+  private val statusTypeForwarder = injectedChild(instrumentStatusTypeForwarderFactory(server, monitor),
     "statusTypeForwarder")
 
 
-  val timer = {
+  val timer: Cancellable = {
     import context.dispatcher
-    context.system.scheduler.schedule(FiniteDuration(30, SECONDS), FiniteDuration(10, MINUTES), instrumentStatusForwarder, ForwardInstrumentStatus)
+    context.system.scheduler.scheduleAtFixedRate(FiniteDuration(30, SECONDS), FiniteDuration(10, MINUTES), instrumentStatusForwarder, ForwardInstrumentStatus)
   }
 
-  val timer2 = {
+  private val timer2 = {
     import context.dispatcher
-    context.system.scheduler.schedule(FiniteDuration(30, SECONDS), FiniteDuration(5, MINUTES), calibrationForwarder, ForwardCalibration)
+    context.system.scheduler.scheduleAtFixedRate(FiniteDuration(30, SECONDS), FiniteDuration(5, MINUTES), calibrationForwarder, ForwardCalibration)
   }
 
-  val timer3 = {
+  private val timer3 = {
     import context.dispatcher
 
     import scala.concurrent.duration._
-    context.system.scheduler.schedule(FiniteDuration(30, SECONDS), FiniteDuration(3, MINUTES), alarmForwarder, ForwardAlarm)
+    context.system.scheduler.scheduleAtFixedRate(FiniteDuration(30, SECONDS), FiniteDuration(3, MINUTES), alarmForwarder, ForwardAlarm)
   }
 
   /*
@@ -115,12 +115,12 @@ class ForwardManager @Inject()(hourRecordForwarderFactory: HourRecordForwarder.F
     context.system.scheduler.schedule(FiniteDuration(3, SECONDS), FiniteDuration(1, MINUTES), self, GetInstrumentCmd)
   }*/
 
-  val timer5 = {
+  private val timer5 = {
     import context.dispatcher
-    context.system.scheduler.schedule(FiniteDuration(30, SECONDS), FiniteDuration(10, MINUTES), statusTypeForwarder, UpdateInstrumentStatusType)
+    context.system.scheduler.scheduleAtFixedRate(FiniteDuration(30, SECONDS), FiniteDuration(10, MINUTES), statusTypeForwarder, UpdateInstrumentStatusType)
   }
 
-  def receive = {
+  def receive: Receive = {
     case ForwardHour =>
       hourRecordForwarder ! ForwardHour
 
@@ -134,7 +134,7 @@ class ForwardManager @Inject()(hourRecordForwarderFactory: HourRecordForwarder.F
       minRecordForwarder ! fmr
 
     case ForwardCalibration =>
-      Logger.info("Forward Calibration")
+      logger.info("Forward Calibration")
       calibrationForwarder ! ForwardCalibration
 
     case ForwardAlarm =>
@@ -155,12 +155,12 @@ class ForwardManager @Inject()(hourRecordForwarderFactory: HourRecordForwarder.F
         val result = response.json.validate[Seq[InstrumentCommand]]
         result.fold(
           error => {
-            Logger.error(JsError.toJson(error).toString())
+            logger.error(JsError.toJson(error).toString())
           },
           cmdSeq => {
             if (!cmdSeq.isEmpty) {
-              Logger.info("receive cmd from server=>")
-              Logger.info(cmdSeq.toString())
+              logger.info("receive cmd from server=>")
+              logger.info(cmdSeq.toString())
               for (cmd <- cmdSeq) {
                 cmd.cmd match {
                   case InstrumentCommand.AutoCalibration.cmd =>

@@ -26,7 +26,7 @@ class GroupOp @Inject()(mongodb: MongoDB) extends GroupDB {
     for(colNames <- mongodb.database.listCollectionNames().toFuture()){
       if (!colNames.contains(ColName)) {
         val f = mongodb.database.createCollection(ColName).toFuture()
-        f.onFailure(errorHandler)
+        f.failed.foreach(errorHandler)
         f.andThen({
           case Success(_) =>
             createDefaultGroup
@@ -63,27 +63,20 @@ class GroupOp @Inject()(mongodb: MongoDB) extends GroupDB {
 
   override def getGroupByID(_id: String): Option[Group] = {
     val f = collection.find(equal("_id", _id)).first().toFuture()
-    f.onFailure {
-      errorHandler
-    }
+    f.failed.foreach(errorHandler)
     val group = waitReadyResult(f)
-    if(group != null)
-      Some(group)
-    else
-      None
+    Option(group)
   }
 
   override def getAllGroups(): Seq[Group] = {
     val f = collection.find().toFuture()
-    f.onFailure {
-      errorHandler
-    }
+    f.failed.foreach(errorHandler)
     waitReadyResult(f)
   }
 
   override def addMonitor(_id: String, monitorID:String): Future[UpdateResult] = {
     val f = collection.updateOne(Filters.equal("_id", _id), Updates.addToSet("monitors", monitorID)).toFuture()
-    f onFailure(errorHandler)
+    f.failed.foreach(errorHandler)
     f
   }
 }

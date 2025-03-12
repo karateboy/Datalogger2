@@ -5,7 +5,6 @@ import com.github.nscala_time.time.Imports._
 import com.google.inject.assistedinject.Assisted
 import models.AkDrv.{OpenCom, ReadRegister}
 import models.Protocol.ProtocolParam
-import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
 import play.api._
 
 import javax.inject._
@@ -19,13 +18,14 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
                                alarmOp: AlarmDB, instrumentStatusOp: InstrumentStatusDB)
                               (@Assisted instId: String, @Assisted protocol: ProtocolParam, @Assisted modelReg: AkModelReg,
                                @Assisted deviceConfig: AkDeviceConfig) extends Actor {
+  val logger: Logger = Logger(this.getClass)
   import DataCollectManager._
   @volatile var timerOpt: Option[Cancellable] = None
 
   @volatile var (collectorState: String, instrumentStatusTypesOpt) = {
     val instList = instrumentOp.getInstrument(instId)
     if (instList.nonEmpty) {
-      val inst: Instrument = instList(0)
+      val inst: Instrument = instList.head
       (inst.state, inst.statusType)
     } else
       (MonitorStatus.NormalStat, None)
@@ -36,7 +36,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
   val WarnKey = "Warn"
 
   def probeInstrumentStatusType: Seq[InstrumentStatusType] = {
-    Logger.info("Probing supported ak registers...")
+    logger.info("Probing supported ak registers...")
     def probeReg(addr: Int, desc: String) = {
       try {
         val cmd = AkProtocol.AskRegCmd(deviceConfig.stationNo, deviceConfig.channelNum, addr).getCmd
@@ -45,8 +45,8 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
         true
       } catch {
         case ex: Throwable =>
-          Logger.error(ex.getMessage, ex)
-          Logger.info(s"$addr $desc is not supported.")
+          logger.error(ex.getMessage, ex)
+          logger.info(s"$addr $desc is not supported.")
           false
       }
     }
@@ -65,7 +65,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
         yield
           InstrumentStatusType(key = s"$WarnKey${r.addr}", addr = r.addr, desc = r.desc, unit = "")
 
-    Logger.info("Finish probing.")
+    logger.info("Finish probing.")
     inputRegStatusType ++  modeRegStatusType ++ warningRegStatusType
   }
 
@@ -100,7 +100,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
   @volatile var connected = false
   @volatile var oldModelReg: Option[AkModelRegValue] = None
 
-  def receive: Receive = normalReceive
+  def receive: Receive = normalReceive()
 
   import scala.concurrent.{Future, blocking}
   def readRegFuture(recordCalibration: Boolean): Future[Unit] =
@@ -122,9 +122,9 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
         } catch {
           case ex: Exception =>
             comm.clearBuffer = true;
-            Logger.error(ex.getMessage, ex)
+            logger.error(ex.getMessage, ex)
             if (connected) {
-              alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"${ex.getMessage}")
             }
 
         } finally {
@@ -158,8 +158,8 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
             timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(5, SECONDS), self, ReadRegister))
           } catch {
             case ex: Exception =>
-              Logger.error(ex.getMessage, ex)
-              alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.ERR, s"無法連接:${ex.getMessage}")
+              logger.error(ex.getMessage, ex)
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
               context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenCom)
@@ -172,12 +172,12 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
 
     case SetState(id, state) =>
       if (state == MonitorStatus.ZeroCalibrationStat) {
-        Logger.error(s"Unexpected command: SetState($state)")
+        logger.error(s"Unexpected command: SetState($state)")
       } else {
         collectorState = state
         instrumentOp.setState(instId, collectorState)
       }
-      Logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
+      logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
 
     case AutoCalibration(instId) =>
 
@@ -188,7 +188,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
     case ExecuteSeq(seq, on) =>
   }
 
-  @volatile var nextLoggingStatusTime = {
+  @volatile var nextLoggingStatusTime: DateTime = {
     def getNextTime(period: Int) = {
       val now = DateTime.now()
       val residual = (now.getMinuteOfHour + period) % period
@@ -201,9 +201,9 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
     nextTime
   }
 
-  def needStatus: Boolean = DateTime.now() >= nextLoggingStatusTime
+  private def needStatus: Boolean = DateTime.now() >= nextLoggingStatusTime
 
-  def regValueReporter(regValue: AkModelRegValue)(recordCalibration: Boolean) = {
+  def regValueReporter(regValue: AkModelRegValue)(recordCalibration: Boolean): Unit = {
     for (report <- reportData(regValue)) {
       context.parent ! report
       if (recordCalibration)
@@ -219,7 +219,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
       if (enable) {
         for(oldReg<-oldModelReg)
           if (oldReg.modeRegs(idx)._2 != enable)
-            alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, statusType.desc)
+            alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, statusType.desc)
 
       }
     }
@@ -233,12 +233,12 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
       if (enable) {
         for(regValues <- oldModelReg){
           if (regValues.warningRegs(idx)._2 != enable)
-            alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.WARN, statusType.desc)
+            alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, statusType.desc)
         }
       } else {
         for(regValues <- oldModelReg){
           if (regValues.warningRegs(idx)._2 != enable)
-            alarmOp.log(alarmOp.instrumentSrc(instId), alarmOp.Level.INFO, s"${statusType.desc} 解除")
+            alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, s"${statusType.desc} 解除")
         }
       }
     }
@@ -249,7 +249,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
         logInstrumentStatus(regValue)
       } catch {
         case _: Throwable =>
-          Logger.error("Log instrument status failed")
+          logger.error("Log instrument status failed")
       }
       nextLoggingStatusTime = nextLoggingStatusTime + 6.minute
     }
@@ -257,21 +257,21 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
     oldModelReg = Some(regValue)
   }
 
-  def logInstrumentStatus(regValue: AkModelRegValue) = {
+  def logInstrumentStatus(regValue: AkModelRegValue): Unit = {
     val isList = regValue.inputRegs.map {
       kv =>
         val k = kv._1
         val v = kv._2
-        instrumentStatusOp.Status(k.key, v)
+        InstrumentStatusDB.Status(k.key, v)
     }
-    val instStatus = instrumentStatusOp.InstrumentStatus(DateTime.now(), instId, isList).excludeNaN
+    val instStatus = InstrumentStatusDB.InstrumentStatus(DateTime.now().toDate, instId, isList).excludeNaN
     instrumentStatusOp.log(instStatus)
   }
 
   def findDataRegIdx(regValue: AkModelRegValue)(addr: Int) = {
     val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
     if (dataReg.isEmpty) {
-      Logger.warn(s"$instId Cannot found Data register!")
+      logger.warn(s"$instId Cannot found Data register!")
       None
     } else
       Some(dataReg.get._2)

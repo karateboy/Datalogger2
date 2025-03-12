@@ -11,7 +11,6 @@ import play.api.libs.ws.WSClient
 import java.io.File
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDateTime, ZoneId}
-import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{FiniteDuration, MINUTES}
 import scala.concurrent.{Future, blocking}
@@ -33,27 +32,27 @@ case class GcReaderConfig(enable: Boolean, monitors: Seq[GcMonitorConfig])
 
 object GcReader {
   var count = 0
-
+  val logger: Logger = Logger(this.getClass)
   def start(configuration: Configuration, actorSystem: ActorSystem, monitorOp: MonitorDB, monitorTypeOp: MonitorTypeDB,
             recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, alarmDB: AlarmDB, sysConfigDB: SysConfigDB): Option[ActorRef] = {
     def getConfig: Option[GcReaderConfig] = {
       def getMonitorConfig(config: Configuration) = {
-        val id = config.getString("id").get
-        val name = config.getString("name").get
-        val lat = config.getDouble("lat").get
-        val lng = config.getDouble("lng").get
-        val path = config.getString("path").get
-        val fileName = config.getString("fileName").get
-        val mtPostfix = config.getString("mtPostfix")
-        val mtAnnotation = config.getString("mtAnnotation")
-        val backupPath = config.getString("backupPath")
+        val id = config.get[String]("id")
+        val name = config.get[String]("name")
+        val lat = config.get[Double]("lat")
+        val lng = config.get[Double]("lng")
+        val path = config.get[String]("path")
+        val fileName = config.get[String]("fileName")
+        val mtPostfix = config.getOptional[String]("mtPostfix")
+        val mtAnnotation = config.getOptional[String]("mtAnnotation")
+        val backupPath = config.getOptional[String]("backupPath")
         GcMonitorConfig(id, name, lat, lng, path, fileName = fileName,
           mtPostfix = mtPostfix, mtAnnotation = mtAnnotation, backupPath = backupPath)
       }
 
-      for {config <- configuration.getConfig("gcReader")
-           enable <- config.getBoolean("enable") if enable
-           monitorConfigs <- config.getConfigSeq("monitors")
+      for {config <- configuration.getOptional[Configuration]("gcReader")
+           enable <- config.getOptional[Boolean]("enable") if enable
+           monitorConfigs <- config.getOptional[Seq[Configuration]]("monitors")
            monitors = monitorConfigs.map(getMonitorConfig)
            }
       yield
@@ -61,7 +60,7 @@ object GcReader {
     }
 
     for (config <- getConfig if config.enable) yield {
-      Logger.info(config.toString)
+      logger.info(config.toString)
       config.monitors.foreach(config => {
         monitorOp.ensure(Monitor(_id = config.id, desc = config.name, lat = Some(config.lat), lng = Some(config.lng)))
       })
@@ -87,7 +86,7 @@ object GcReader {
       val dirs = allDirs.filter(p => p != null && p.isDirectory)
       dirs.filter(p => p.getName.endsWith(".D"))
     } else {
-      Logger.warn(s"invalid input path $files_path")
+      logger.warn(s"invalid input path $files_path")
       List.empty[File]
     }
   }
@@ -214,10 +213,10 @@ object GcReader {
       f onComplete {
         case Success(_) =>
           // Upload
-          Logger.info(s"upload GC record $dateTime")
+          logger.info(s"upload GC record $dateTime")
           Uploader.upload(wsClient)(record, monitorDB.map(gcMonitorConfig.id))
         case Failure(exception) =>
-          Logger.error("failed", exception)
+          logger.error("failed", exception)
       }
     }
 
@@ -228,7 +227,8 @@ object GcReader {
 private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, WSClient: WSClient,
                        monitorDB: MonitorDB, alarmDB: AlarmDB, sysConfigDB: SysConfigDB)
   extends Actor with ActorLogging {
-  Logger.info("GcReader start")
+  val logger: Logger = Logger(this.getClass)
+  logger.info("GcReader start")
 
   import GcReader._
 
@@ -253,14 +253,14 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
         for (dir <- dirs) yield {
           val absPath = dir.getAbsolutePath
           if (!retryMap.contains(absPath))
-            Logger.info(s"Processing $absPath")
+            logger.info(s"Processing $absPath")
 
           def moveDir(): Unit =
             try {
               FileUtils.moveToDirectory(dir, new File(gcMonitorConfig.backupPath.getOrElse("C:\\GC\\backup")), true)
             } catch {
               case ex: Throwable =>
-                Logger.error(s"Failed to move ${dir.getAbsolutePath} to backup folder ${gcMonitorConfig.backupPath.getOrElse("C:\\GC\\backup")}", ex)
+                logger.error(s"Failed to move ${dir.getAbsolutePath} to backup folder ${gcMonitorConfig.backupPath.getOrElse("C:\\GC\\backup")}", ex)
             }
 
           def deleteDir(): Unit =
@@ -268,12 +268,12 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
               FileUtils.deleteDirectory(dir)
             } catch {
               case ex: Throwable =>
-                Logger.error(s"Failed to delete ${dir.getAbsolutePath}", ex)
+                logger.error(s"Failed to delete ${dir.getAbsolutePath}", ex)
             }
 
           try {
             parser(gcMonitorConfig, dir)
-            Logger.info(s"Handle $absPath successfully.")
+            logger.info(s"Handle $absPath successfully.")
             receiveTime = Instant.now()
             //moveDir()
             deleteDir()
@@ -284,7 +284,7 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
                 if (updatedRetryMap(absPath) + 1 <= MAX_RETRY_COUNT) {
                   updatedRetryMap = updatedRetryMap + (absPath -> (updatedRetryMap(absPath) + 1))
                 } else {
-                  Logger.info(s"$absPath reach max retries. Give up! $ex")
+                  logger.info(s"$absPath reach max retries. Give up! $ex")
                   moveDir()
                   updatedRetryMap = updatedRetryMap - absPath
                 }
@@ -307,19 +307,19 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
               context become handler(processInputPath(gcMonitorConfig, parser), receiveTime)
               if(receiveTime.plusSeconds(90*60).isBefore(Instant.now())) {
                 val localDateTime = LocalDateTime.ofInstant(receiveTime, ZoneId.systemDefault())
-                alarmDB.log(alarmDB.src(), alarmDB.Level.ERR, s"未收到quant.txt警報，最後收到檔案時間為 ${localDateTime.format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"))}")
+                alarmDB.log(alarmDB.src(), Alarm.Level.ERR, s"未收到quant.txt警報，最後收到檔案時間為 ${localDateTime.format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"))}")
               }
             }
           }
         }
       } catch {
         case ex: Throwable =>
-          Logger.error("process InputPath failed", ex)
+          logger.error("process InputPath failed", ex)
       } finally {
         context.system.scheduler.scheduleOnce(FiniteDuration(1, MINUTES), self, ParseReport)
       }
     case ReaderReset =>
-      Logger.info("ReaderReset")
+      logger.info("ReaderReset")
       context become handler(Map.empty[String, Int], Instant.now())
     // wait for the next 1 minute ParseReport event
   }

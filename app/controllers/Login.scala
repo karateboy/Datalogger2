@@ -1,23 +1,26 @@
 package controllers
 
-import models.mongodb.{GroupOp, UserOp}
 import models.{Ability, GroupDB, User, UserDB}
 import play.api.Configuration
 import play.api.libs.json._
 import play.api.mvc._
 case class Credential(user: String, password: String)
-import javax.inject._
 import models.Group
+
+import javax.inject._
 case class UserData(user:User, group:Group)
 /**
  * @author user
  */
-class Login @Inject()(userOp: UserDB, groupOp:GroupDB, configuration: Configuration)
-  extends Controller {
+class Login @Inject()(userOp: UserDB,
+                      groupOp:GroupDB,
+                      configuration: Configuration,
+                      security: Security,
+                      cc: ControllerComponents) extends AbstractController(cc) {
   implicit val credentialReads = Json.reads[Credential]
-  val bypassLogin: Boolean = configuration.getBoolean("logger.bypassLogin").getOrElse(false)
+  val bypassLogin: Boolean = configuration.getOptional[Boolean]("logger.bypassLogin").getOrElse(false)
 
-  def authenticate = Action(BodyParsers.parse.json){
+  def authenticate: Action[JsValue] = Action(parse.json){
     implicit request =>
       implicit val writes = Json.writes[User]
       implicit val w3 = Json.writes[Ability]
@@ -36,10 +39,10 @@ class Login @Inject()(userOp: UserDB, groupOp:GroupDB, configuration: Configurat
         }
         val userInfo = UserInfo(user._id, user.name, userGroup, user.isAdmin)
         val group = groupOp.getGroupByID(userGroup).get
-        Ok(Json.obj("ok"->true, "userData"->UserData(user, group))).withSession(Security.setUserinfo(request, userInfo))
+        Ok(Json.obj("ok"->true, "userData"->UserData(user, group))).withSession(security.setUserinfo(request, userInfo))
       }else{
-        val credentail = request.body.validate[Credential]
-        credentail.fold(
+        val credential = request.body.validate[Credential]
+        credential.fold(
           error=>{
             BadRequest(Json.obj("ok"->false, "msg"->JsError.toJson(error)))
           },
@@ -59,17 +62,17 @@ class Login @Inject()(userOp: UserDB, groupOp:GroupDB, configuration: Configurat
               }
               val userInfo = UserInfo(user._id, user.name, userGroup, user.isAdmin)
               val group = groupOp.getGroupByID(userGroup).get
-              Ok(Json.obj("ok"->true, "userData"->UserData(user, group))).withSession(Security.setUserinfo(request, userInfo))
+              Ok(Json.obj("ok"->true, "userData"->UserData(user, group))).withSession(security.setUserinfo(request, userInfo))
             }
           })
       }
   }
 
-  def isLogin = Security.Authenticated {
+  def isLogin: Action[AnyContent] = security.Authenticated {
     Ok(Json.obj("ok"->true))
   }
 
-  def logout = Action{
+  def logout: Action[AnyContent] = Action{
     Ok("").withNewSession
   }
 }

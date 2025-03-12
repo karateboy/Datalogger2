@@ -9,7 +9,7 @@ import java.io.{InputStream, OutputStream}
 case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputStream) {
   var clearBuffer: Boolean = false
   private var readBuffer = Array.empty[Byte]
-
+  val logger: Logger = Logger(this.getClass)
   def getLineWithTimeout(timeout: Int): List[String] = handleWithTimeout(getLine)(timeout)
 
   private def handleWithTimeout(readFunction: () => List[String])(timeout: Int): List[String] = {
@@ -134,7 +134,7 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
   }
 
   def close = {
-    Logger.info(s"port is closed")
+    logger.info(s"port is closed")
     is.close
     os.close
     port.closePort()
@@ -180,6 +180,7 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
 }
 
 object SerialComm {
+  val logger: Logger = Logger(this.getClass)
   def open(n: Int): SerialComm = open(n, SerialPort.BAUDRATE_9600)
 
   def open(n: Int, baudRate: Int): SerialComm = {
@@ -302,18 +303,18 @@ class SerialInputStream(serialPort: jssc.SerialPort) extends InputStream {
 }
 
 class SerialRTU(n: Int, baudRate: Int) extends SerialPortWrapper {
-
+  val logger: Logger = Logger(this.getClass)
   var serialCommOpt: Option[SerialComm] = None
 
   override def close(): Unit = {
-    Logger.info(s"SerialRTU COM${n} close")
+    logger.info(s"SerialRTU COM${n} close")
 
     for (serialComm <- serialCommOpt)
       serialComm.close
   }
 
   override def open(): Unit = {
-    Logger.info(s"SerialRTU COM${n} open")
+    logger.info(s"SerialRTU COM${n} open")
     serialCommOpt = Some(SerialComm.open(n, baudRate))
   }
 

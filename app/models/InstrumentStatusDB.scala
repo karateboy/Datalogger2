@@ -1,33 +1,30 @@
 package models
 
 import com.github.nscala_time.time.Imports
-import com.github.nscala_time.time.Imports.DateTime
-import com.google.inject.ImplementedBy
-import play.api.libs.json.Json
+import play.api.libs.json.{Json, OWrites, Reads}
 
+import java.util.Date
 import scala.concurrent.Future
-
-trait InstrumentStatusDB {
+object InstrumentStatusDB {
   case class Status(key: String, value: Double)
-  case class InstrumentStatusJSON(time:Long, instID: String, statusList: Seq[Status])
-  case class InstrumentStatus(time: DateTime, instID: String, statusList: Seq[Status]) {
-    def excludeNaN = {
-      val validList = statusList.filter { s => !(s.value.isNaN() || s.value.isInfinite() || s.value.isNegInfinity) }
+
+  case class InstrumentStatus(time: Date, instID: String, statusList: Seq[Status]) {
+    def excludeNaN: InstrumentStatus = {
+      val validList = statusList.filter { s => !(s.value.isNaN || s.value.isInfinite || s.value.isNegInfinity) }
       InstrumentStatus(time, instID, validList)
     }
-    def toJSON = {
-      val validList = statusList.filter { s => !(s.value.isNaN() || s.value.isInfinite() || s.value.isNegInfinity) }
-      InstrumentStatusJSON(time.getMillis, instID, validList)
-    }
+
   }
 
 
-  implicit val stRead = Json.reads[Status]
-  implicit val isRead = Json.reads[InstrumentStatus]
-  implicit val stWrite = Json.writes[Status]
-  implicit val isWrite = Json.writes[InstrumentStatus]
-  implicit val jsonWrite = Json.writes[InstrumentStatusJSON]
+  implicit val stRead: Reads[Status] = Json.reads[Status]
+  implicit val isRead: Reads[InstrumentStatus] = Json.reads[InstrumentStatus]
+  implicit val stWrite: OWrites[Status] = Json.writes[Status]
+  implicit val isWrite: OWrites[InstrumentStatus] = Json.writes[InstrumentStatus]
+}
 
+trait InstrumentStatusDB {
+  import InstrumentStatusDB._
   def log(is: InstrumentStatus): Unit
 
   def query(id: String, start: Imports.DateTime, end: Imports.DateTime): Seq[InstrumentStatus]

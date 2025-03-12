@@ -218,7 +218,7 @@
       </b-form>
     </b-card>
     <b-card title="異常通報">
-      <b-table :items="emails" :fields="fields" bordered>
+      <b-table fixed :items="emails" :fields="fields" bordered>
         <template #thead-top>
           <b-tr>
             <b-td colspan="2">
@@ -267,14 +267,12 @@
         </template>
       </b-table>
       <br />
-      <b-table-simple bordered>
-        <b-thead>
+      <b-table-simple fixed bordered>
+        <b-tbody>
           <b-tr>
             <b-th> Line通報Token </b-th>
             <b-th> 操作 </b-th>
           </b-tr>
-        </b-thead>
-        <b-tbody>
           <b-tr>
             <b-td>
               <b-form-input id="lineToken" v-model="lineToken" />
@@ -289,12 +287,37 @@
               >
                 儲存
               </b-button>
-              <b-button
-                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              <b-button variant="gradient-info"
                 type="submit"
-                variant="primary"
                 class="mr-1"
                 @click="testLineToken"
+              >
+                測試
+              </b-button>
+            </b-td>
+          </b-tr>
+          <b-tr>
+            <b-th> SMS 通報電話(以,分隔) </b-th>
+            <b-th> 操作 </b-th>
+          </b-tr>
+          <b-tr>
+            <b-td>
+              <b-form-input id="smsPhones" v-model="smsPhones" />
+            </b-td>
+            <b-td>
+              <b-button
+                  v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                  type="submit"
+                  variant="primary"
+                  class="mr-1"
+                  @click="saveSmsPhones"
+              >
+                儲存
+              </b-button>
+              <b-button variant="gradient-info"
+                        type="submit"
+                        class="mr-1"
+                        @click="testSmsPhones"
               >
                 測試
               </b-button>
@@ -355,6 +378,7 @@ export default Vue.extend({
       aqiMonitorTypes,
       disconnectCheckTime: '',
       lineToken: '',
+      smsPhones: '',
     };
   },
   computed: {
@@ -377,6 +401,7 @@ export default Vue.extend({
     await this.getLineToken();
     await this.fetchMonitorTypes();
     await this.getAqiMapping();
+    await this.getSmsPhones();
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
@@ -496,6 +521,40 @@ export default Vue.extend({
       try {
         const res = await axios.get(
           `/SystemConfig/LineToken/Verify/${this.lineToken}`,
+        );
+        if (res.status === 200) {
+          await this.$bvModal.msgBoxOk('成功');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    async getSmsPhones() {
+      try {
+        const res = await axios.get('/SystemConfig/SmsPhones');
+        console.info('getSmsPhones', res.data);
+        this.smsPhones = res.data.join(',');
+      } catch (err) {
+        throw new Error('failed to get SMS Token!');
+      }
+    },
+    async saveSmsPhones() {
+      try {
+        const res = await axios.post('/SystemConfig/SmsPhones', {
+          id: '',
+          value: this.smsPhones,
+        });
+        if (res.status === 200) {
+          await this.$bvModal.msgBoxOk('成功');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    async testSmsPhones() {
+      try {
+        const res = await axios.get(
+            `/SystemConfig/SmsPhones/Verify/${this.smsPhones}`,
         );
         if (res.status === 200) {
           await this.$bvModal.msgBoxOk('成功');
