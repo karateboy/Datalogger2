@@ -838,7 +838,7 @@ class HomeController @Inject()(
 
   def verifySmsPhones(phones: String): Action[AnyContent] = security.Authenticated.async {
     val f = every8d.sendSMS("測試訊息", "", phones.split(",").toList)
-    if(f.isEmpty)
+    if (f.isEmpty)
       Future.successful(Ok(Json.obj("ok" -> true)))
     else {
       f.get.failed.foreach(errorHandler)
@@ -846,7 +846,44 @@ class HomeController @Inject()(
         Ok(Json.obj("ok" -> true))
     }
   }
-  case class EditData(id: String, value: String)
+
+  def saveLineChannelToken(): Action[JsValue] = security.Authenticated(parse.json) {
+    implicit request =>
+      implicit val reads: Reads[EditData] = Json.reads[EditData]
+      val ret = request.body.validate[EditData]
+
+      ret.fold(
+        error => handleJsonValidateError(error),
+        param => {
+          val token = param.value
+          sysConfig.setLineChannelToken(token)
+          Ok(Json.obj("ok" -> true))
+        })
+  }
+
+  def getLineChannelToken: Action[AnyContent] = security.Authenticated.async {
+    val f = sysConfig.getLineChannelToken
+    f.failed.foreach(errorHandler)
+    for (ret <- f) yield
+      Ok(Json.toJson(ret))
+  }
+
+  def verifyLineChannelToken(): Action[JsValue] = security.Authenticated.async(parse.json) {
+    implicit request =>
+      implicit val reads: Reads[EditData] = Json.reads[EditData]
+      val ret = request.body.validate[EditData]
+
+      ret.fold(
+        error => Future.successful(handleJsonValidateError(error)),
+        param => {
+          val f = lineNotify.broadcast(param.value, "測試頻道廣播訊息")
+          f.failed.foreach(errorHandler)
+          for (ret <- f) yield
+            Ok(Json.obj("ok" -> ret))
+        })
+  }
+
+  private case class EditData(id: String, value: String)
 
   def splitTable(): Action[JsValue] = security.Authenticated.async(parse.json) {
     implicit request =>

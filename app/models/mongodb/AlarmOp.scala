@@ -90,6 +90,9 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
             for (token <- sysConfig.getLineToken if token.nonEmpty) {
               lineNotify.notify(token, ar.desc)
             }
+
+            for (token <- sysConfig.getLineChannelToken if token.nonEmpty)
+              lineNotify.broadcast(token, ar.desc)
           }
         }
       }, // onNext

@@ -270,7 +270,7 @@
       <b-table-simple fixed bordered>
         <b-tbody>
           <b-tr>
-            <b-th> Line通報Token </b-th>
+            <b-th> Line通報Token (2025/3月底失效)</b-th>
             <b-th> 操作 </b-th>
           </b-tr>
           <b-tr>
@@ -291,6 +291,33 @@
                 type="submit"
                 class="mr-1"
                 @click="testLineToken"
+              >
+                測試
+              </b-button>
+            </b-td>
+          </b-tr>
+          <b-tr>
+            <b-th> Line Channel Access Token</b-th>
+            <b-th> 操作 </b-th>
+          </b-tr>
+          <b-tr>
+            <b-td>
+              <b-form-input id="lineChannelToken" v-model="lineChannelToken" />
+            </b-td>
+            <b-td>
+              <b-button
+                  v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                  type="submit"
+                  variant="primary"
+                  class="mr-1"
+                  @click="saveLineChannelToken"
+              >
+                儲存
+              </b-button>
+              <b-button variant="gradient-info"
+                        type="submit"
+                        class="mr-1"
+                        @click="testLineChannelToken"
               >
                 測試
               </b-button>
@@ -379,6 +406,7 @@ export default Vue.extend({
       disconnectCheckTime: '',
       lineToken: '',
       smsPhones: '',
+      lineChannelToken: '',
     };
   },
   computed: {
@@ -402,6 +430,7 @@ export default Vue.extend({
     await this.fetchMonitorTypes();
     await this.getAqiMapping();
     await this.getSmsPhones();
+    await this.getLineChannelToken();
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
@@ -555,6 +584,43 @@ export default Vue.extend({
       try {
         const res = await axios.get(
             `/SystemConfig/SmsPhones/Verify/${this.smsPhones}`,
+        );
+        if (res.status === 200) {
+          await this.$bvModal.msgBoxOk('成功');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    async getLineChannelToken() {
+      try {
+        const res = await axios.get('/SystemConfig/LineChannelToken');
+        this.lineChannelToken = res.data;
+      } catch (err) {
+        throw new Error('failed to get Line Channel Token!');
+      }
+    },
+    async saveLineChannelToken() {
+      try {
+        const res = await axios.post('/SystemConfig/LineChannelToken', {
+          id: '',
+          value: this.lineChannelToken,
+        });
+        if (res.status === 200) {
+          await this.$bvModal.msgBoxOk('成功');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    async testLineChannelToken() {
+      try {
+        const res = await axios.post(
+            `/SystemConfig/LineChannelToken/Verify`,
+            {
+              id: '',
+              value: this.lineChannelToken,
+            }
         );
         if (res.status === 200) {
           await this.$bvModal.msgBoxOk('成功');

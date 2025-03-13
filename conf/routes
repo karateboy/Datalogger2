@@ -137,6 +137,9 @@ GET           /SystemConfig/LineToken/Verify/:token                             
 POST          /SystemConfig/SmsPhones                                                              controllers.HomeController.saveSmsPhones
 GET           /SystemConfig/SmsPhones                                                              controllers.HomeController.getSmsPhones
 GET           /SystemConfig/SmsPhones/Verify/:phones                                               controllers.HomeController.verifySmsPhones(phones)
+POST          /SystemConfig/LineChannelToken                                                       controllers.HomeController.saveLineChannelToken
+GET           /SystemConfig/LineChannelToken                                                       controllers.HomeController.getLineChannelToken
+POST          /SystemConfig/LineChannelToken/Verify                                                controllers.HomeController.verifyLineChannelToken
 POST          /SystemConfig/SplitTable                                                             controllers.HomeController.splitTable
 
 #Rules
