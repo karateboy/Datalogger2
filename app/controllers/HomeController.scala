@@ -166,7 +166,7 @@ class HomeController @Inject()(
             val f3 = f2.map {
               _ =>
                 Future.sequence {
-                  for (mt <- mtList) yield
+                  for (mt <- monitorTypeOp.populateCalculatedTypes(mtList)) yield
                     monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog, recordDB)
                 }
             }

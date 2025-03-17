@@ -5,6 +5,7 @@ import models.ModelHelper._
 import models.MultiCalibrator.TriggerVault
 import models.Protocol.ProtocolParam
 import models.TapiTxx.T700_STANDBY_SEQ
+import play.api.Logger
 
 import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
@@ -27,12 +28,13 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
                                 (instId: String,
                                  desc: String,
                                  deviceConfig: DeviceConfig,
-                                 protocol: ProtocolParam) extends Actor with ActorLogging {
+                                 protocol: ProtocolParam) extends Actor {
 
   import AbstractCollector._
   import DataCollectManager._
   import TapiTxxCollector._
   import context.dispatcher
+  val log = Logger(getClass)
 
   self ! ConnectHost
   @volatile var readRegTimer: Option[Cancellable] = None
@@ -364,7 +366,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
         }
 
         if (calibrations.isEmpty) {
-          log.warning(s"No calibration data for $mt")
+          log.warn(s"No calibration data for $mt")
           (mt, 0d)
         } else
           (mt, calibrations.sum / calibrations.length)
@@ -592,7 +594,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
   def findDataRegIdx(regValue: ModelRegValue2)(addr: Int): Option[Int] = {
     val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
     if (dataReg.isEmpty) {
-      log.warning(s"$instId Cannot found Data register $addr !")
+      log.warn(s"$instId Cannot found Data register $addr !")
       log.info(regValue.inputRegs.toString())
       None
     } else

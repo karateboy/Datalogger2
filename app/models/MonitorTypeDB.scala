@@ -49,6 +49,9 @@ trait MonitorTypeDB {
     rangeType(NOISE, "NOISE", "dB", 2),
     rangeType(H2S, "H2S", "ppb", 2),
     rangeType(H2, "H2", "ppb", 2),
+    rangeType(LEQA, "LeqA", "dB", 2, accumulated = true),
+    rangeType(LEQZ, "LeqZ", "dB", 2, accumulated = true),
+    rangeType(LDN, "LDN", "dB", 2, accumulated = true),
     /////////////////////////////////////////////////////
     signalType(DOOR, "門禁"),
     signalType(SMOKE, "煙霧"),
@@ -158,9 +161,9 @@ trait MonitorTypeDB {
     }
   }
 
-  def rangeType(_id: String, desp: String, unit: String, prec: Int, accumulated: Boolean = false): MonitorType = {
+  def rangeType(_id: String, desp: String, unit: String, prec: Int, accumulated: Boolean = false, acoustic: Boolean = false): MonitorType = {
     rangeOrder += 1
-    MonitorType(_id, desp, unit, prec, rangeOrder, accumulated = Some(accumulated))
+    MonitorType(_id, desp, unit, prec, rangeOrder, accumulated = Some(accumulated), acoustic = Some(acoustic))
   }
 
   def deleteMonitorType(_id: String) = {
@@ -281,8 +284,8 @@ trait MonitorTypeDB {
 
   def getMinMtRecordByRawValue(mt: String, rawValue: Option[Double], status: String)(mOpt: Option[Double], bOpt: Option[Double]): MtRecord = {
     val mtCase = map(mt)
-    val value:Option[Double] = rawValue.map(v => {
-      if(mtCase.calibrate.getOrElse(false)){
+    val value: Option[Double] = rawValue.map(v => {
+      if (mtCase.calibrate.getOrElse(false)) {
         val calibratedValue =
           for {
             m <- mOpt
@@ -295,5 +298,16 @@ trait MonitorTypeDB {
         v
     })
     MtRecord(mt, value, status, rawValue = rawValue)
+  }
+
+
+  def populateCalculatedTypes(mtList:Seq[String]): Seq[String] = {
+    val calculatedMtvList: Seq[String] = calculatedMonitorTypeEntries.flatMap(pair=>
+      if(pair._1.forall(mtList.contains))
+        Seq(pair._2)
+      else
+        Seq.empty[String]
+    )
+    mtList ++ calculatedMtvList
   }
 }

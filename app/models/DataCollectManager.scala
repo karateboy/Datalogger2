@@ -817,8 +817,9 @@ class DataCollectManager @Inject()
           } else
             reportData.dataList(monitorTypeOp)
 
+        val fullDataList = dataList ++ MonitorType.getCalculatedMonitorTypeData(dataList, now)
         val pairs =
-          for (data <- dataList) yield {
+          for (data <- fullDataList) yield {
             val currentMap = latestDataMap.getOrElse(data.mt, Map.empty[String, Record])
             val filteredMap = currentMap.filter { kv =>
               val r = kv._2
