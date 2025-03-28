@@ -1,5 +1,5 @@
 name := """DataLogger2"""
-val mainVersion = "2.8.23"
+val mainVersion = "2.8.24"
 val distVersion = "-yl"
 version := s"$mainVersion$distVersion"
 

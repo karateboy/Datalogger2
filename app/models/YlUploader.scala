@@ -31,10 +31,14 @@ object YlUploader {
     }
 
   def upload(ws: WSClient)(recordList: RecordList, monitor: Monitor, config:YlUploaderConfig): Unit = {
-    val itemData = recordList.mtDataList.map(mtData => {
+    val itemDataList = recordList.mtDataList
+      .filter(mtData=>MonitorStatus.isValid(mtData.status))
+      .map(mtData => {
       val formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss").withZone(ZoneId.systemDefault())
-      ItemData(lon = monitor.lng.getOrElse(120.1826),
-        lat = monitor.lat.getOrElse(23.7608),
+      val latOpt = recordList.mtDataList.find(_.mtName == MonitorType.LAT).flatMap(_.value)
+      val lngOpt = recordList.mtDataList.find(_.mtName == MonitorType.LNG).flatMap(_.value)
+      ItemData(lon = lngOpt.getOrElse(monitor.lng.getOrElse(120.1826)),
+        lat = latOpt.getOrElse(monitor.lat.getOrElse(23.7608)),
         deviceId = config.deviceId,
         id = mtData.mtName,
         TimeCode = config.timeCode,
@@ -46,10 +50,10 @@ object YlUploader {
     if(config.upload) {
       val url = config.url
       logger.debug(s"upload to $url")
-      logger.debug(Json.toJson(UploadData(itemData)).toString())
+      logger.debug(Json.toJson(UploadData(itemDataList)).toString())
       val f = ws.url(url)
         .withHttpHeaders(("RequiredValidateToken", config.token), ("method", "UploadMonitorCarData"))
-        .post(Json.toJson(UploadData(itemData)))
+        .post(Json.toJson(UploadData(itemDataList)))
 
       f.onComplete({
         case Success(resp) =>
