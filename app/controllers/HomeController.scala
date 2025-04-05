@@ -808,13 +808,6 @@ class HomeController @Inject()(
       Ok(Json.toJson(ret))
   }
 
-  def verifyLineToken(token: String): Action[AnyContent] = security.Authenticated.async {
-    val f = lineNotify.notify(token, "測試訊息")
-    f.failed.foreach(errorHandler)
-    for (ret <- f) yield
-      Ok(Json.obj("ok" -> ret))
-  }
-
   def saveSmsPhones(): Action[JsValue] = security.Authenticated(parse.json) {
     implicit request =>
       implicit val reads: Reads[EditData] = Json.reads[EditData]

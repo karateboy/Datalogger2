@@ -133,7 +133,6 @@ GET           /SystemConfig/AqiMonitorTypes                                     
 POST          /SystemConfig/AqiMonitorTypes                                                        controllers.Realtime.postAqiMonitorTypeMapping
 POST          /SystemConfig/LineToken                                                              controllers.HomeController.saveLineToken
 GET           /SystemConfig/LineToken                                                              controllers.HomeController.getLineToken
-GET           /SystemConfig/LineToken/Verify/:token                                                controllers.HomeController.verifyLineToken(token)
 POST          /SystemConfig/SmsPhones                                                              controllers.HomeController.saveSmsPhones
 GET           /SystemConfig/SmsPhones                                                              controllers.HomeController.getSmsPhones
 GET           /SystemConfig/SmsPhones/Verify/:phones                                               controllers.HomeController.verifySmsPhones(phones)

@@ -69,37 +69,39 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
 
 
   private def logFilter(ar: Alarm, coldPeriod: Int = 30): Unit = {
-    val start = Date.from(Instant.ofEpochMilli(ar.time.getTime).minusSeconds(coldPeriod * 60))
-    val end = ar.time
+    def insertAlarm(): Unit = {
+      collection.insertOne(ar).toFuture()
+      if (ar.level >= Level.ERR) {
+        if (LoggerConfig.config.alertEmail)
+          emailTargetOp.getList().foreach { emailTargets =>
+            val emails = emailTargets.map(_._id)
 
-    val countObserver = collection.countDocuments(and(gte("time", start), lt("time", end),
-      equal("src", ar.src), equal("level", ar.level), equal("desc", ar.desc)))
-
-    countObserver.subscribe(
-      (count: Long) => {
-        if (count == 0) {
-          collection.insertOne(ar).toFuture()
-          if (ar.level >= Level.ERR) {
-            if (LoggerConfig.config.alertEmail)
-              emailTargetOp.getList().foreach { emailTargets =>
-                val emails = emailTargets.map(_._id)
-
-                AlertEmailSender.sendAlertMail(mailerClient = mailerClient)("警報通知", emails, ar.desc)
-              }
-
-            for (token <- sysConfig.getLineToken if token.nonEmpty) {
-              lineNotify.notify(token, ar.desc)
-            }
-
-            for (token <- sysConfig.getLineChannelToken if token.nonEmpty)
-              lineNotify.broadcast(token, ar.desc)
+            AlertEmailSender.sendAlertMail(mailerClient = mailerClient)("警報通知", emails, ar.desc)
           }
-        }
-      }, // onNext
-      (ex: Throwable) => logger.error("Alarm failed:", ex), // onError
-      () => {} // onComplete
-    )
 
+        for (token <- sysConfig.getLineChannelToken if token.nonEmpty)
+          lineNotify.broadcast(token, ar.desc)
+      }
+    }
+
+    if (coldPeriod == 0) {
+      insertAlarm()
+    } else {
+      val start = Date.from(Instant.ofEpochMilli(ar.time.getTime).minusSeconds(coldPeriod * 60))
+      val end = ar.time
+
+      val countObserver = collection.countDocuments(and(gte("time", start), lt("time", end),
+        equal("src", ar.src), equal("level", ar.level), equal("desc", ar.desc)))
+
+      countObserver.subscribe(
+        (count: Long) => {
+          if (count == 0)
+            insertAlarm()
+        }, // onNext
+        (ex: Throwable) => logger.error("Alarm failed:", ex), // onError
+        () => {} // onComplete
+      )
+    }
   }
 
   override def log(src: String, level: Int, desc: String, coldPeriod: Int = 30): Unit = {

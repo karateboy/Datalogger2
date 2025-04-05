@@ -978,7 +978,7 @@ class DataCollectManager @Inject()
         val recordList = RecordList.factory(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId)
         // Alarm check
         val alarms = alarmRuleDb.checkAlarm(tableType.min, recordList, alarmRules)(monitorOp, monitorTypeOp, alarmOp)
-        alarms.foreach(alarmOp.log)
+        alarms.foreach(ar=>alarmOp.log(ar.src, ar.level, ar.desc, 0))
 
         val f = recordOp.upsertRecord(recordOp.MinCollection)(recordList)
         f onComplete {
