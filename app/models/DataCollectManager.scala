@@ -130,8 +130,8 @@ object DataCollectManager {
         } sum
         val statusValues = {
           val kv = statusMap.maxBy(kv => kv._2.length)
-          if (kv._1 == MonitorStatus.NormalStat && (alwaysValid ||
-            statusMap(kv._1).size < totalSize * effectiveRatio)) {
+          if (!alwaysValid && kv._1 == MonitorStatus.NormalStat &&
+            (statusMap(kv._1).size < totalSize * effectiveRatio)) {
             //return most status except normal
             val noNormalStatusMap = statusMap - kv._1
             noNormalStatusMap.maxBy(kv => kv._2.length)
