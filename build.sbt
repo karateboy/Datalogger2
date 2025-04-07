@@ -1,6 +1,6 @@
 name := """DataLogger2"""
 
-version := "1.wl.6"
+version := "1.wl.7"
 
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala, LauncherJarPlugin, JavaAppPackaging, WindowsPlugin)
@@ -34,7 +34,8 @@ routesGenerator := StaticRoutesGenerator
 mappings in Universal ++=
 (baseDirectory.value / "report_template" * "*" get) map
     (x => x -> ("report_template/" + x.getName))
- 	
+
+mappings in Universal ++= Seq((baseDirectory.value / "cleanup.bat", "cleanup.bat"))
 //libraryDependencies += "com.google.guava" % "guava" % "19.0"
 scalacOptions += "-feature"
 resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
