@@ -427,21 +427,23 @@ export default Vue.extend({
         if (resp.status === 200) {
           this.weatherForecast = '';
           let weatherElements: Array<any> =
-            resp.data.records.locations[0].location[0].weatherElement;
+            resp.data.records.Locations[0].Location[0].WeatherElement;
+
           let desc = weatherElements.find(
-            p => p.elementName === 'WeatherDescription',
+            p => p.ElementName === '天氣預報綜合描述',
           );
+
           if (desc !== undefined) {
-            this.weatherForecast += desc.time[0].elementValue[0].value;
+            this.weatherForecast += desc.Time[0].ElementValue[0].WeatherDescription;
           }
 
-          let wx = weatherElements.find(p => p.elementName === 'Wx');
+          let wx = weatherElements.find(p => p.ElementName === '天氣現象');
           if (wx !== undefined) {
-            this.weatherUrl = `https://www.cwa.gov.tw/V8/assets/img/weather_icons/weathers/svg_icon/day/${wx.time[0].elementValue[1].value}.svg`;
+            this.weatherUrl = `https://www.cwa.gov.tw/V8/assets/img/weather_icons/weathers/svg_icon/day/${wx.Time[0].ElementValue[0].WeatherCode}.svg`;
           }
         }
       } catch (err) {
-        console.error(err);
+
       }
     },
     getMtName(mt: string) {
