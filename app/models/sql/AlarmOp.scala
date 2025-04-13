@@ -80,7 +80,7 @@ class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mail
           }
 
         for (token <- sysConfig.getLineChannelToken if token.nonEmpty)
-          lineNotify.broadcast(token, ar.desc)
+          lineNotify.notify(token, ar.desc)
       }
     }
 

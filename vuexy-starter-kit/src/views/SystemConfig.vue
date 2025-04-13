@@ -270,33 +270,6 @@
       <b-table-simple fixed bordered>
         <b-tbody>
           <b-tr>
-            <b-th> Line通報Token (2025/3月底失效)</b-th>
-            <b-th> 操作 </b-th>
-          </b-tr>
-          <b-tr>
-            <b-td>
-              <b-form-input id="lineToken" v-model="lineToken" />
-            </b-td>
-            <b-td>
-              <b-button
-                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-                type="submit"
-                variant="primary"
-                class="mr-1"
-                @click="saveLineToken"
-              >
-                儲存
-              </b-button>
-              <b-button variant="gradient-info"
-                type="submit"
-                class="mr-1"
-                @click="testLineToken"
-              >
-                測試
-              </b-button>
-            </b-td>
-          </b-tr>
-          <b-tr>
             <b-th> Line Channel Access Token</b-th>
             <b-th> 操作 </b-th>
           </b-tr>
@@ -324,7 +297,34 @@
             </b-td>
           </b-tr>
           <b-tr>
-            <b-th> SMS 通報電話(以,分隔) </b-th>
+            <b-th> Line Channel Group ID (以,分隔)</b-th>
+            <b-th> 操作 </b-th>
+          </b-tr>
+          <b-tr>
+            <b-td>
+              <b-form-input id="LineChannelGroupID" v-model="lineChannelGroupId" />
+            </b-td>
+            <b-td>
+              <b-button
+                  v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                  type="submit"
+                  variant="primary"
+                  class="mr-1"
+                  @click="saveLineChannelGroupId"
+              >
+                儲存
+              </b-button>
+              <b-button variant="gradient-info"
+                        type="submit"
+                        class="mr-1"
+                        @click="testLineChannelGroupId"
+              >
+                測試
+              </b-button>
+            </b-td>
+          </b-tr>
+          <b-tr>
+            <b-th> SMS 通報電話 (以,分隔) </b-th>
             <b-th> 操作 </b-th>
           </b-tr>
           <b-tr>
@@ -405,6 +405,7 @@ export default Vue.extend({
       aqiMonitorTypes,
       disconnectCheckTime: '',
       lineToken: '',
+      lineChannelGroupId: '',
       smsPhones: '',
       lineChannelToken: '',
     };
@@ -417,20 +418,18 @@ export default Vue.extend({
 
       if (!isNumber(this.form.effectiveRatio)) return false;
 
-      if (this.form.effectiveRatio > 1 || this.form.effectiveRatio < 0)
-        return false;
+      return !(this.form.effectiveRatio > 1 || this.form.effectiveRatio < 0);
 
-      return true;
     },
   },
   async mounted() {
     await this.getEffectiveRatio();
     await this.getAlertEmailTarget();
-    await this.getLineToken();
     await this.fetchMonitorTypes();
     await this.getAqiMapping();
     await this.getSmsPhones();
     await this.getLineChannelToken();
+    await this.getLineChannelGroupId();
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
@@ -525,43 +524,9 @@ export default Vue.extend({
         throw new Error('failed to test email!');
       }
     },
-    async getLineToken() {
-      try {
-        const res = await axios.get('/SystemConfig/LineToken');
-        this.lineToken = res.data;
-      } catch (err) {
-        throw new Error('failed to get Line Token!');
-      }
-    },
-    async saveLineToken() {
-      try {
-        const res = await axios.post('/SystemConfig/LineToken', {
-          id: '',
-          value: this.lineToken,
-        });
-        if (res.status === 200) {
-          await this.$bvModal.msgBoxOk('成功');
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    },
-    async testLineToken() {
-      try {
-        const res = await axios.get(
-          `/SystemConfig/LineToken/Verify/${this.lineToken}`,
-        );
-        if (res.status === 200) {
-          await this.$bvModal.msgBoxOk('成功');
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    },
     async getSmsPhones() {
       try {
         const res = await axios.get('/SystemConfig/SmsPhones');
-        console.info('getSmsPhones', res.data);
         this.smsPhones = res.data.join(',');
       } catch (err) {
         throw new Error('failed to get SMS Token!');
@@ -620,6 +585,43 @@ export default Vue.extend({
             {
               id: '',
               value: this.lineChannelToken,
+            }
+        );
+        if (res.status === 200) {
+          await this.$bvModal.msgBoxOk('成功');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    async getLineChannelGroupId() {
+      try {
+        const res = await axios.get('/SystemConfig/LineChannelGroupId');
+        this.lineChannelGroupId = res.data.join(',');
+      } catch (err) {
+        throw new Error('failed to get Line Channel Group Id!');
+      }
+    },
+    async saveLineChannelGroupId() {
+      try {
+        const res = await axios.post('/SystemConfig/LineChannelGroupId', {
+          id: '',
+          value: this.lineChannelGroupId,
+        });
+        if (res.status === 200) {
+          await this.$bvModal.msgBoxOk('成功');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    async testLineChannelGroupId() {
+      try {
+        const res = await axios.post(
+            `/SystemConfig/LineChannelGroupId/Verify`,
+            {
+              id: '',
+              value: this.lineChannelGroupId,
             }
         );
         if (res.status === 200) {

@@ -37,7 +37,8 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     EPA_LAST_RECORD_TIME -> Document(valueKey -> Date.from(Instant.parse("2022-01-01T00:00:00.000Z"))),
     LINE_TOKEN -> Document(valueKey -> ""),
     SMS_PHONES -> Document(valueKey -> ""),
-    LINE_CHANNEL_TOKEN -> Document(valueKey -> "")
+    LINE_CHANNEL_TOKEN -> Document(valueKey -> ""),
+    LINE_CHANNEL_GROUP_ID -> Document(valueKey -> "")
   )
 
   override def getSpectrumLastParseTime: Future[Instant] = getInstant(SpectrumLastParseTime)()
@@ -167,4 +168,10 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
 
   override def setLineChannelToken(token: String): Future[UpdateResult] =
     set(LINE_CHANNEL_TOKEN, BsonString(token))
+
+  override def getLineChannelGroupId: Future[Seq[String]] =
+    get(LINE_CHANNEL_GROUP_ID).map(_.asString().getValue.split(",").toSeq)
+
+  override def setLineChannelGroupId(groupId: Seq[String]): Future[UpdateResult] =
+    set(LINE_CHANNEL_GROUP_ID, BsonString(groupId.mkString(",")))
 }
