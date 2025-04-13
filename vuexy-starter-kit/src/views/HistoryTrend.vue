@@ -246,10 +246,10 @@ export default Vue.extend({
     ...mapGetters('tables', ['dataTypes']),
   },
   watch: {
-    'form.dataType': function(val, oldVal){
-      if(val === 'hour'){
+    'form.dataType': function (val, oldVal) {
+      if (val === 'hour') {
         this.form.reportUnit = 'Hour';
-      }else{
+      } else {
         this.form.reportUnit = 'Min';
       }
     },

@@ -279,18 +279,19 @@
             </b-td>
             <b-td>
               <b-button
-                  v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-                  type="submit"
-                  variant="primary"
-                  class="mr-1"
-                  @click="saveLineChannelToken"
+                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                type="submit"
+                variant="primary"
+                class="mr-1"
+                @click="saveLineChannelToken"
               >
                 儲存
               </b-button>
-              <b-button variant="gradient-info"
-                        type="submit"
-                        class="mr-1"
-                        @click="testLineChannelToken"
+              <b-button
+                variant="gradient-info"
+                type="submit"
+                class="mr-1"
+                @click="testLineChannelToken"
               >
                 測試
               </b-button>
@@ -302,22 +303,26 @@
           </b-tr>
           <b-tr>
             <b-td>
-              <b-form-input id="LineChannelGroupID" v-model="lineChannelGroupId" />
+              <b-form-input
+                id="LineChannelGroupID"
+                v-model="lineChannelGroupId"
+              />
             </b-td>
             <b-td>
               <b-button
-                  v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-                  type="submit"
-                  variant="primary"
-                  class="mr-1"
-                  @click="saveLineChannelGroupId"
+                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                type="submit"
+                variant="primary"
+                class="mr-1"
+                @click="saveLineChannelGroupId"
               >
                 儲存
               </b-button>
-              <b-button variant="gradient-info"
-                        type="submit"
-                        class="mr-1"
-                        @click="testLineChannelGroupId"
+              <b-button
+                variant="gradient-info"
+                type="submit"
+                class="mr-1"
+                @click="testLineChannelGroupId"
               >
                 測試
               </b-button>
@@ -333,18 +338,19 @@
             </b-td>
             <b-td>
               <b-button
-                  v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-                  type="submit"
-                  variant="primary"
-                  class="mr-1"
-                  @click="saveSmsPhones"
+                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                type="submit"
+                variant="primary"
+                class="mr-1"
+                @click="saveSmsPhones"
               >
                 儲存
               </b-button>
-              <b-button variant="gradient-info"
-                        type="submit"
-                        class="mr-1"
-                        @click="testSmsPhones"
+              <b-button
+                variant="gradient-info"
+                type="submit"
+                class="mr-1"
+                @click="testSmsPhones"
               >
                 測試
               </b-button>
@@ -419,7 +425,6 @@ export default Vue.extend({
       if (!isNumber(this.form.effectiveRatio)) return false;
 
       return !(this.form.effectiveRatio > 1 || this.form.effectiveRatio < 0);
-
     },
   },
   async mounted() {
@@ -548,7 +553,7 @@ export default Vue.extend({
     async testSmsPhones() {
       try {
         const res = await axios.get(
-            `/SystemConfig/SmsPhones/Verify/${this.smsPhones}`,
+          `/SystemConfig/SmsPhones/Verify/${this.smsPhones}`,
         );
         if (res.status === 200) {
           await this.$bvModal.msgBoxOk('成功');
@@ -580,13 +585,10 @@ export default Vue.extend({
     },
     async testLineChannelToken() {
       try {
-        const res = await axios.post(
-            `/SystemConfig/LineChannelToken/Verify`,
-            {
-              id: '',
-              value: this.lineChannelToken,
-            }
-        );
+        const res = await axios.post(`/SystemConfig/LineChannelToken/Verify`, {
+          id: '',
+          value: this.lineChannelToken,
+        });
         if (res.status === 200) {
           await this.$bvModal.msgBoxOk('成功');
         }
@@ -618,11 +620,11 @@ export default Vue.extend({
     async testLineChannelGroupId() {
       try {
         const res = await axios.post(
-            `/SystemConfig/LineChannelGroupId/Verify`,
-            {
-              id: '',
-              value: this.lineChannelGroupId,
-            }
+          `/SystemConfig/LineChannelGroupId/Verify`,
+          {
+            id: '',
+            value: this.lineChannelGroupId,
+          },
         );
         if (res.status === 200) {
           await this.$bvModal.msgBoxOk('成功');
