@@ -5,6 +5,7 @@ import play.api.Logger
 
 import java.time.format.{DateTimeFormatter, FormatStyle}
 import java.time.{Instant, LocalDateTime, LocalTime, ZoneId}
+import java.util.Date
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.math.Ordering.Implicits.infixOrderingOps
@@ -28,7 +29,7 @@ trait AlarmRuleDb {
   def checkAlarm(tableType: TableType#Value, recordList: RecordList, alarmRules: Seq[AlarmRule])
                 (monitorDB: MonitorDB, monitorTypeDB: MonitorTypeDB, alarmDB: AlarmDB): Seq[Alarm] = {
     val mtMap = recordList.mtMap
-    val alarms =
+    val alarms = {
       for {
         rule <- alarmRules if rule.enable && rule.tableTypes.contains(tableType.toString)
         monitor <- rule.monitors if monitor == recordList._id.monitor
@@ -98,11 +99,16 @@ trait AlarmRuleDb {
             }
 
 
-            Some(Alarm(recordList._id.time, alarmDB.src(mtData.mtName), alarmLevel, message))
+            Some(Alarm(new Date(), alarmDB.src(mtData.mtName), alarmLevel, message))
           } else
             None
         }
       }
+    }
+    val ret = alarms.flatten.flatten
+    if (ret.nonEmpty) {
+      ret.foreach(alarm=>logger.debug(s"Alarm rule triggered: ${alarm.desc}"))
+    }
     alarms.flatten.flatten
   }
 }

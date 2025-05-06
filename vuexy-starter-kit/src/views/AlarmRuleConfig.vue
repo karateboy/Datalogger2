@@ -4,35 +4,35 @@
       <b-row>
         <b-col cols="12" class="p-1">
           <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="primary"
-              class="mr-1"
-              @click="newRule"
+            v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+            variant="primary"
+            class="mr-1"
+            @click="newRule"
           >
             新增
           </b-button>
           <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="primary"
-              class="mr-1"
-              @click="save"
+            v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+            variant="primary"
+            class="mr-1"
+            @click="save"
           >
             儲存
           </b-button>
           <b-button
-              v-ripple.400="'rgba(186, 191, 199, 0.15)'"
-              type="reset"
-              variant="outline-secondary"
-              class="mr-1"
-              @click="getAlarmRules"
+            v-ripple.400="'rgba(186, 191, 199, 0.15)'"
+            type="reset"
+            variant="outline-secondary"
+            class="mr-1"
+            @click="getAlarmRules"
           >
             取消
           </b-button>
           <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="danger"
-              class="mr-1"
-              @click="removeRule"
+            v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+            variant="danger"
+            class="mr-1"
+            @click="removeRule"
           >
             刪除
           </b-button>
@@ -71,116 +71,117 @@
         </b-col>
       </b-row>
       <b-table
-          responsive
-          :fields="columns"
-          :items="alarmRules"
-          select-mode="single"
-          selectable
-          selected-variant="info"
-          bordered
-          style="min-height: 750px"
-          small
-          @row-selected="onSelected"
+        responsive
+        :fields="columns"
+        :items="alarmRules"
+        select-mode="single"
+        selectable
+        selected-variant="info"
+        bordered
+        style="min-height: 750px"
+        small
+        @row-selected="onSelected"
       >
         <template #cell(enable)="row">
           <b-form-checkbox
-              v-model="row.item.enable"
-              switch
-              @change="markDirty(row.item)"
+            v-model="row.item.enable"
+            switch
+            @change="markDirty(row.item)"
           />
         </template>
         <template #cell(_id)="row">
-          <b-form-input v-model="row.item._id" @change="markDirty(row.item)"/>
+          <b-form-input v-model="row.item._id" @change="markDirty(row.item)" />
         </template>
         <template #cell(monitors)="row">
           <v-select
-              id="monitor"
-              v-model="row.item.monitors"
-              label="desc"
-              :reduce="m => m._id"
-              :options="monitors"
-              multiple
-              @input="markDirty(row.item)"
+            id="monitor"
+            v-model="row.item.monitors"
+            label="desc"
+            :reduce="m => m._id"
+            :options="monitors"
+            multiple
+            @input="markDirty(row.item)"
           />
         </template>
         <template #cell(monitorTypes)="row">
           <v-select
-              id="monitorType"
-              v-model="row.item.monitorTypes"
-              label="desp"
-              :reduce="mt => mt._id"
-              :options="activatedMonitorTypes"
-              multiple
-              @input="markDirty(row.item)"
+            id="monitorType"
+            v-model="row.item.monitorTypes"
+            label="desp"
+            :reduce="mt => mt._id"
+            :options="activatedMonitorTypes"
+            multiple
+            @input="markDirty(row.item)"
           />
         </template>
         <template #cell(tableTypes)="row">
           <v-select
-              id="tableTypes"
-              v-model="row.item.tableTypes"
-              label="txt"
-              :reduce="entry => entry.id"
-              :options="tableTypes"
-              multiple
-              @input="markDirty(row.item)"
+            id="tableTypes"
+            v-model="row.item.tableTypes"
+            label="txt"
+            :reduce="entry => entry.id"
+            :options="tableTypes"
+            multiple
+            @input="markDirty(row.item)"
           />
         </template>
         <template #cell(messageTemplate)="row">
-          <b-form-textarea rows="5"
-                           v-model="row.item.messageTemplate"
-                           @change="markDirty(row.item)"/>
+          <b-form-textarea
+            v-model="row.item.messageTemplate"
+            rows="5"
+            @change="markDirty(row.item)"
+          />
         </template>
         <template #cell(max)="row">
-          <div style="max-width: 4rem;">
+          <div style="max-width: 4rem">
             <b-form-input
-                v-model.number="row.item.max"
-                type="number"
-                @change="markDirty(row.item)"
+              v-model.number="row.item.max"
+              type="number"
+              @change="markDirty(row.item)"
             />
           </div>
         </template>
         <template #cell(min)="row">
-          <div style="max-width: 4rem;">
+          <div style="max-width: 4rem">
             <b-form-input
-                v-model.number="row.item.min"
-                type="number"
-                @change="markDirty(row.item)"
+              v-model.number="row.item.min"
+              type="number"
+              @change="markDirty(row.item)"
             />
           </div>
         </template>
         <template #cell(alarmLevel)="row">
           <b-form-select
-              v-model="row.item.alarmLevel"
-              :options="alarmLevels"
-              value-field="id"
-              text-field="txt"
-              required
-              @change="markDirty(row.item)"
+            v-model="row.item.alarmLevel"
+            :options="alarmLevels"
+            value-field="id"
+            text-field="txt"
+            required
+            @change="markDirty(row.item)"
           ></b-form-select>
         </template>
         <template #cell(startTime)="row">
           <b-form-input
-              v-model="row.item.startTime"
-              type="time"
-              size="sm"
-              @change="markDirty(row.item)"
+            v-model="row.item.startTime"
+            type="time"
+            size="sm"
+            @change="markDirty(row.item)"
           />
         </template>
         <template #cell(endTime)="row">
           <b-form-input
-              v-model="row.item.endTime"
-              type="time"
-              size="sm"
-              @change="markDirty(row.item)"
+            v-model="row.item.endTime"
+            type="time"
+            size="sm"
+            @change="markDirty(row.item)"
           />
         </template>
         <template #cell(coldPeriod)="row">
-
           <b-form-spinbutton
-              v-model.number="row.item.coldPeriod"
-              min="0"
-              max="60"
-              @change="markDirty(row.item)"
+            v-model.number="row.item.coldPeriod"
+            min="0"
+            max="60"
+            @change="markDirty(row.item)"
           ></b-form-spinbutton>
         </template>
       </b-table>
@@ -193,8 +194,8 @@
 <script lang="ts">
 import Vue from 'vue';
 import axios from 'axios';
-import {mapActions, mapGetters, mapState} from 'vuex';
-import {isNumber} from 'highcharts';
+import { mapActions, mapGetters, mapState } from 'vuex';
+import { isNumber } from 'highcharts';
 
 const Ripple = require('vue-ripple-directive');
 
@@ -216,12 +217,11 @@ interface AlarmRule {
 interface EditAlarmRule extends AlarmRule {
   dirty?: boolean;
 }
-const randomString =
-    (num:number) => {
-      const characters =
-          'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-      return Math.random().toString(36).substring(0, num);
-    }
+const randomString = (num: number) => {
+  const characters =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  return Math.random().toString(36).substring(0, num);
+};
 
 export default Vue.extend({
   components: {},
@@ -280,13 +280,13 @@ export default Vue.extend({
     return {
       columns,
       alarmLevels: [
-        {id: 1, txt: '資訊'},
-        {id: 2, txt: '警告'},
-        {id: 3, txt: '錯誤'},
+        { id: 1, txt: '資訊' },
+        { id: 2, txt: '警告' },
+        { id: 3, txt: '錯誤' },
       ],
       tableTypes: [
-        {txt: '小時資料', id: 'hour'},
-        {txt: '分鐘資料', id: 'min'},
+        { txt: '小時資料', id: 'hour' },
+        { txt: '分鐘資料', id: 'min' },
       ],
       alarmRules,
       selected: Array<AlarmRule>(),
@@ -355,13 +355,14 @@ export default Vue.extend({
         startTime: '00:00',
         endTime: '23:00',
         tableTypes: ['hour'],
-        messageTemplate: "$time $monitor $mt超標 $value, $(WD_SPEED), $(WD_DIR)",
+        messageTemplate:
+          '$time $monitor $mt超標 $value, $(WD_SPEED), $(WD_DIR)',
       });
     },
     async removeRule() {
       const toBeDeletedRules = this.selected.map(p => p._id);
       const ret = await this.$bvModal.msgBoxConfirm(
-          `請確認要刪除${toBeDeletedRules.join(',')}等規則`,
+        `請確認要刪除${toBeDeletedRules.join(',')}等規則`,
       );
 
       if (ret === true) {

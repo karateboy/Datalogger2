@@ -102,6 +102,7 @@ class Module(environment: Environment,
     bindActorFactory[HydreonRainGaugeCollector, HydreonRainGauge.Factory]
     bindActorFactory[UpsCollector, UpsDrv.Factory]
     bindActorFactory[PseudoDeviceCollector, PseudoDevice.Factory]
+    bindActorFactory[PseudoDevice2, PseudoDevice2.Factory]
     bindActorFactory[ForwardManager, ForwardManager.Factory]
     bindActorFactory[HourRecordForwarder, HourRecordForwarder.Factory]
     bindActorFactory[MinRecordForwarder, MinRecordForwarder.Factory]

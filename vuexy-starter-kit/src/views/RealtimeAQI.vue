@@ -174,9 +174,7 @@
             <td class="text-center" style="font-size: 10pt" nowrap="">
               0 - 4.4
             </td>
-            <td class="text-center" style="font-size: 10pt" nowrap="">
-              0 - 8
-            </td>
+            <td class="text-center" style="font-size: 10pt" nowrap="">0 - 8</td>
             <td class="text-center" style="font-size: 10pt" nowrap="">
               0 - 21
             </td>

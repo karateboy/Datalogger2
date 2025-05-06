@@ -133,10 +133,15 @@ GET           /SystemConfig/AqiMonitorTypes                                     
 POST          /SystemConfig/AqiMonitorTypes                                                        controllers.Realtime.postAqiMonitorTypeMapping
 POST          /SystemConfig/LineToken                                                              controllers.HomeController.saveLineToken
 GET           /SystemConfig/LineToken                                                              controllers.HomeController.getLineToken
-GET           /SystemConfig/LineToken/Verify/:token                                                controllers.HomeController.verifyLineToken(token)
 POST          /SystemConfig/SmsPhones                                                              controllers.HomeController.saveSmsPhones
 GET           /SystemConfig/SmsPhones                                                              controllers.HomeController.getSmsPhones
 GET           /SystemConfig/SmsPhones/Verify/:phones                                               controllers.HomeController.verifySmsPhones(phones)
+POST          /SystemConfig/LineChannelToken                                                       controllers.HomeController.saveLineChannelToken
+GET           /SystemConfig/LineChannelToken                                                       controllers.HomeController.getLineChannelToken
+POST          /SystemConfig/LineChannelToken/Verify                                                controllers.HomeController.verifyLineChannelToken
+POST          /SystemConfig/LineChannelGroupId                                                     controllers.HomeController.saveLineChannelGroupId
+GET           /SystemConfig/LineChannelGroupId                                                     controllers.HomeController.getLineChannelGroupId
+POST          /SystemConfig/LineChannelGroupId/Verify                                              controllers.HomeController.verifyLineChannelGroupId
 POST          /SystemConfig/SplitTable                                                             controllers.HomeController.splitTable
 
 #Rules

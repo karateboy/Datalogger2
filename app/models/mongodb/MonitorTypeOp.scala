@@ -5,8 +5,7 @@ import models.{AlarmDB, MonitorType, MonitorTypeDB, ThresholdConfig}
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model._
-import org.mongodb.scala.result.{InsertOneResult, UpdateResult}
-import play.api.Logger
+import org.mongodb.scala.result.UpdateResult
 
 import javax.inject.{Inject, Singleton}
 
@@ -42,7 +41,6 @@ class MonitorTypeOp @Inject()(mongodb: MongoDB, alarmDB: AlarmDB) extends Monito
 
     val updateModels =
       for (mt <- defaultMonitorTypes) yield {
-
         UpdateOneModel(
           Filters.eq("_id", mt._id),
           getUpdates(mt), UpdateOptions().upsert(true))

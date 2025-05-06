@@ -10,7 +10,6 @@ import models.TapiTxx.T700_STANDBY_SEQ
 import org.mongodb.scala.result.UpdateResult
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
-import play.api.libs.ws.WSClient
 
 import javax.inject._
 import scala.collection.mutable.ListBuffer
@@ -131,8 +130,8 @@ object DataCollectManager {
         } sum
         val statusValues = {
           val kv = statusMap.maxBy(kv => kv._2.length)
-          if (kv._1 == MonitorStatus.NormalStat && (alwaysValid ||
-            statusMap(kv._1).size < totalSize * effectiveRatio)) {
+          if (!alwaysValid && kv._1 == MonitorStatus.NormalStat &&
+            (statusMap(kv._1).size < totalSize * effectiveRatio)) {
             //return most status except normal
             val noNormalStatusMap = statusMap - kv._1
             noNormalStatusMap.maxBy(kv => kv._2.length)
@@ -827,8 +826,9 @@ class DataCollectManager @Inject()
           } else
             reportData.dataList(monitorTypeOp)
 
+        val fullDataList = dataList ++ MonitorType.getCalculatedMonitorTypeData(dataList, now)
         val pairs =
-          for (data <- dataList) yield {
+          for (data <- fullDataList) yield {
             val currentMap = latestDataMap.getOrElse(data.mt, Map.empty[String, Record])
             val filteredMap = currentMap.filter { kv =>
               val r = kv._2
@@ -987,7 +987,7 @@ class DataCollectManager @Inject()
         val recordList = RecordList.factory(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId)
         // Alarm check
         val alarms = alarmRuleDb.checkAlarm(tableType.min, recordList, alarmRules)(monitorOp, monitorTypeOp, alarmOp)
-        alarms.foreach(alarmOp.log)
+        alarms.foreach(ar=>alarmOp.log(ar.src, ar.level, ar.desc, 0))
 
         val f = recordOp.upsertRecord(recordOp.MinCollection)(recordList)
         f onComplete {

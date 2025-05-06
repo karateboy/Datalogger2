@@ -419,7 +419,7 @@ export default Vue.extend({
         'picarroG2131i',
         'picarroG2307',
         'EcoPhysics88P',
-        'EcoPhysics88P_NO'
+        'EcoPhysics88P_NO',
       ];
       for (const t of types) {
         if (this.form.instType === t) return true;

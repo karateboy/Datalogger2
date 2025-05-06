@@ -5,7 +5,7 @@ import buildinfo.BuildInfo
 import com.github.nscala_time.time.Imports._
 import models.DataCollectManager.{RemoveMultiCalibrationTimer, SetupMultiCalibrationTimer, StartMultiCalibration, StopMultiCalibration}
 import models.ForwardManager.{ForwardHourRecord, ForwardMinRecord}
-import models.ModelHelper.{errorHandler, handleJsonValidateError, handleJsonValidateErrorFuture}
+import models.ModelHelper.{errorHandler, handleJsonValidateError, handleJsonValidateErrorFuture, waitReadyResult}
 import models._
 import play.api._
 import play.api.libs.json._
@@ -166,7 +166,7 @@ class HomeController @Inject()(
             val f3 = f2.map {
               _ =>
                 Future.sequence {
-                  for (mt <- mtList) yield
+                  for (mt <- monitorTypeOp.populateCalculatedTypes(mtList)) yield
                     monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog, recordDB)
                 }
             }
@@ -818,13 +818,6 @@ class HomeController @Inject()(
       Ok(Json.toJson(ret))
   }
 
-  def verifyLineToken(token: String): Action[AnyContent] = security.Authenticated.async {
-    val f = lineNotify.notify(token, "測試訊息")
-    f.failed.foreach(errorHandler)
-    for (ret <- f) yield
-      Ok(Json.obj("ok" -> ret))
-  }
-
   def saveSmsPhones(): Action[JsValue] = security.Authenticated(parse.json) {
     implicit request =>
       implicit val reads: Reads[EditData] = Json.reads[EditData]
@@ -848,7 +841,7 @@ class HomeController @Inject()(
 
   def verifySmsPhones(phones: String): Action[AnyContent] = security.Authenticated.async {
     val f = every8d.sendSMS("測試訊息", "", phones.split(",").toList)
-    if(f.isEmpty)
+    if (f.isEmpty)
       Future.successful(Ok(Json.obj("ok" -> true)))
     else {
       f.get.failed.foreach(errorHandler)
@@ -856,7 +849,90 @@ class HomeController @Inject()(
         Ok(Json.obj("ok" -> true))
     }
   }
-  case class EditData(id: String, value: String)
+
+  def saveLineChannelToken(): Action[JsValue] = security.Authenticated(parse.json) {
+    implicit request =>
+      implicit val reads: Reads[EditData] = Json.reads[EditData]
+      val ret = request.body.validate[EditData]
+
+      ret.fold(
+        error => handleJsonValidateError(error),
+        param => {
+          val token = param.value
+          sysConfig.setLineChannelToken(token)
+          Ok(Json.obj("ok" -> true))
+        })
+  }
+
+  def getLineChannelToken: Action[AnyContent] = security.Authenticated.async {
+    val f = sysConfig.getLineChannelToken
+    f.failed.foreach(errorHandler)
+    for (ret <- f) yield
+      Ok(Json.toJson(ret))
+  }
+
+  def verifyLineChannelToken(): Action[JsValue] = security.Authenticated.async(parse.json) {
+    implicit request =>
+      implicit val reads: Reads[EditData] = Json.reads[EditData]
+      val ret = request.body.validate[EditData]
+
+      ret.fold(
+        error => Future.successful(handleJsonValidateError(error)),
+        param => {
+          val f = lineNotify.broadcast(param.value, "測試頻道廣播訊息")
+          f.failed.foreach(errorHandler)
+          for (ret <- f) yield
+            Ok(Json.obj("ok" -> ret))
+        })
+  }
+
+  def saveLineChannelGroupId(): Action[JsValue] = security.Authenticated(parse.json) {
+    implicit request =>
+      implicit val reads: Reads[EditData] = Json.reads[EditData]
+      val ret = request.body.validate[EditData]
+
+      ret.fold(
+        error => handleJsonValidateError(error),
+        param => {
+          val token = param.value
+          sysConfig.setLineChannelGroupId(token.split(','))
+          Ok(Json.obj("ok" -> true))
+        })
+  }
+
+  def getLineChannelGroupId: Action[AnyContent] = security.Authenticated.async {
+    val f = sysConfig.getLineChannelGroupId
+    f.failed.foreach(errorHandler)
+    for (ret <- f) yield
+      Ok(Json.toJson(ret))
+  }
+
+  def verifyLineChannelGroupId(): Action[JsValue] = security.Authenticated.async(parse.json) {
+    implicit request =>
+      implicit val reads: Reads[EditData] = Json.reads[EditData]
+      val ret = request.body.validate[EditData]
+
+      ret.fold(
+        error => Future.successful(handleJsonValidateError(error)),
+        param => {
+          val groupIds = param.value.split(",")
+          val channelToken = waitReadyResult(sysConfig.getLineChannelToken)
+          val allF =
+            groupIds.toSeq.map(id => {
+              if (id.nonEmpty) {
+                val f = lineNotify.pushMessage(channelToken, id, "測試群組訊息")
+                f.failed.foreach(errorHandler)
+                f
+              } else
+                Future.successful(true)
+            })
+
+          for (ret <- Future.sequence(allF)) yield
+            Ok(Json.obj("ok" -> ret))
+        })
+  }
+
+  private case class EditData(id: String, value: String)
 
   def splitTable(): Action[JsValue] = security.Authenticated.async(parse.json) {
     implicit request =>

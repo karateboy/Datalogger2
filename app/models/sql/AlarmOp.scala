@@ -1,6 +1,6 @@
 package models.sql
 
-import models.{Alarm, AlarmDB, AlertEmailSender, LineNotify, LoggerConfig}
+import models._
 import play.api.libs.mailer.MailerClient
 import scalikejdbc._
 
@@ -64,16 +64,7 @@ class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mail
   }
 
   private def logFilter(ar: Alarm, coldPeriod: Int = 30): Unit = {
-    val start = Date.from(Instant.ofEpochMilli(ar.time.getTime).minusSeconds(coldPeriod * 60))
-    val end = ar.time
-    implicit val session: DBSession = AutoSession
-    val countOpt =
-      sql"""
-          Select Count(*)
-          FROM [dbo].[alarms]
-          Where [time] >= $start and [time] < $end and [src] = ${ar.src} and [desc] = ${ar.desc}
-         """.map(rs => rs.int(1)).first().apply()
-    for (count <- countOpt if count == 0) {
+    def insertAlarm()(implicit session: DBSession = AutoSession): Unit = {
       sql"""
              INSERT INTO [dbo].[alarms]
                 ([time],[src],[level],[desc])
@@ -83,14 +74,30 @@ class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mail
 
       if (ar.level >= Alarm.Level.ERR) {
         if (LoggerConfig.config.alertEmail)
-        emailTargetOp.getList().foreach { emailTargets =>
-          val emails = emailTargets.map(_._id)
-          AlertEmailSender.sendAlertMail(mailerClient = mailerClient)("警報通知", emails, ar.desc)
-        }
+          emailTargetOp.getList().foreach { emailTargets =>
+            val emails = emailTargets.map(_._id)
+            AlertEmailSender.sendAlertMail(mailerClient = mailerClient)("警報通知", emails, ar.desc)
+          }
 
-        for(token <- sysConfig.getLineToken if token.nonEmpty) {
+        for (token <- sysConfig.getLineChannelToken if token.nonEmpty)
           lineNotify.notify(token, ar.desc)
-        }
+      }
+    }
+
+    if (coldPeriod == 0) {
+      insertAlarm()
+    } else {
+      val start = Date.from(Instant.ofEpochMilli(ar.time.getTime).minusSeconds(coldPeriod * 60))
+      val end = ar.time
+      implicit val session: DBSession = AutoSession
+      val countOpt =
+        sql"""
+          Select Count(*)
+          FROM [dbo].[alarms]
+          Where [time] >= $start and [time] < $end and [src] = ${ar.src} and [desc] = ${ar.desc}
+         """.map(rs => rs.int(1)).first().apply()
+      for (count <- countOpt if count == 0) {
+        insertAlarm()
       }
     }
   }

@@ -1,5 +1,10 @@
 package models
 
+import models.DataCollectManager.MonitorTypeData
+
+import java.time.ZoneId
+import java.util.Date
+
 case class ThresholdConfig(elapseTime: Int)
 
 case class MonitorType(_id: String,
@@ -91,19 +96,47 @@ object MonitorType {
   val NOY_NO = "NOY-NO"
   val NOY = "NOY"
   val PH_RAIN = "PH_RAIN"
+  val LEQA = "LEQA"
+  val LEQZ = "LEQZ"
+
   var rangeOrder = 0
   var signalOrder = 1000
 
   //Calculated types
-  val TRUE_WIND_SPEED = "TRUE_WIND_SPEED"
-  val TRUE_WIND_DIR = "TRUE_WIND_DIR"
-  val RELATIVE_WIND_SPEED = "RELATIVE_WIND_SPEED"
-  val RELATIVE_WIND_DIR = "RELATIVE_WIND_DIR"
   val DIRECTION = "DIRECTION"
+  val LDN = "LDN"
 
-  def getRawType(mt:String): String = mt + "_raw"
-  def getRealType(rawMt:String):String = rawMt.reverse.drop(4).reverse
-  def isRawValueType(mt:String):Boolean = mt.endsWith("_raw")
+  val calculatedMonitorTypeEntries: Seq[(Seq[String], String, (Seq[MonitorTypeData], Date) => Option[MonitorTypeData])] =
+    Seq(
+      (Seq(LEQA), LDN, (mtDataList, now) =>
+        for (mtData <- mtDataList.find(_.mt == LEQA))
+          yield {
+            val localTime = now.toInstant
+              .atZone(ZoneId.systemDefault())
+              .toLocalTime;
+
+            if (localTime.getHour < 7 || localTime.getHour >= 22)
+              MonitorTypeData(LDN, mtData.value + 10, mtData.status)
+            else
+              MonitorTypeData(LDN, mtData.value, mtData.status)
+          }
+      )
+    )
+
+  def getCalculatedMonitorTypeData(mtDateList: Seq[MonitorTypeData], now: Date): Seq[MonitorTypeData] =
+    calculatedMonitorTypeEntries.flatMap {
+      case (mtList, _, func) =>
+        if (mtList.forall(mtName => mtDateList.exists(_.mt == mtName)))
+          func(mtDateList, now)
+        else
+          None
+    }
+
+  def getRawType(mt: String): String = mt + "_raw"
+
+  def getRealType(rawMt: String): String = rawMt.reverse.drop(4).reverse
+
+  def isRawValueType(mt: String): Boolean = mt.endsWith("_raw")
 
 }
 
