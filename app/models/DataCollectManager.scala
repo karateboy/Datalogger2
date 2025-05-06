@@ -10,6 +10,7 @@ import models.TapiTxx.T700_STANDBY_SEQ
 import org.mongodb.scala.result.UpdateResult
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
+import play.api.libs.ws.WSClient
 
 import javax.inject._
 import scala.collection.mutable.ListBuffer
@@ -468,7 +469,6 @@ class DataCollectManager @Inject()
  calibrationConfigDB: CalibrationConfigDB,
  forwardManagerFactory: ForwardManager.Factory,
  WSClient: WSClient,
- environment: Environment,
  alarmRuleDb: AlarmRuleDb,
  tableType: TableType) extends Actor with InjectedActorSupport {
 
