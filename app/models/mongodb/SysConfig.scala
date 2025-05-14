@@ -36,6 +36,8 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     AQI_MONITOR_TYPES -> Document(valueKey ->AQI.defaultMappingTypes),
     EPA_LAST_RECORD_TIME -> Document(valueKey -> Date.from(Instant.parse("2022-01-01T00:00:00.000Z"))),
     LINE_TOKEN -> Document(valueKey -> ""),
+    VOC_MONITOR_TYPES -> Document(valueKey -> Seq.empty[String]),
+    VOC_AUDIT_MONITOR_TYPES -> Document(valueKey -> Seq.empty[String]),
     SMS_PHONES -> Document(valueKey -> ""),
     LINE_CHANNEL_TOKEN -> Document(valueKey -> ""),
     LINE_CHANNEL_GROUP_ID -> Document(valueKey -> "")

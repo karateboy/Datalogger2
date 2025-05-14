@@ -217,7 +217,7 @@ object GcReader {
       f onComplete {
         case Success(_) =>
           // Upload
-          logger.info(s"upload GC record $dateTime")
+          logger.debug(s"upload GC record $dateTime")
           YlUploader.upload(wsClient)(record, monitorDB.map(gcMonitorConfig.id), ylUploaderConfig)
         case Failure(exception) =>
           logger.error("failed", exception)

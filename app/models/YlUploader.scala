@@ -58,7 +58,7 @@ object YlUploader {
       f.onComplete({
         case Success(resp) =>
           if (resp.status == 200) {
-            logger.info(s"Success upload ${recordList._id.time}")
+            logger.debug(s"Success upload ${recordList._id.time}")
             logger.debug(s"${resp.json.toString()}")
           } else {
             logger.error(s"Failed to upload ${resp.status} ${resp.json.toString()}")
