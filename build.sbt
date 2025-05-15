@@ -53,7 +53,8 @@ libraryDependencies += "org.scalikejdbc" %% "scalikejdbc-config" % "3.4.2"
 libraryDependencies += "org.scalikejdbc" %% "scalikejdbc-play-initializer" % "2.6.0"
 
 // https://mvnrepository.com/artifact/commons-io/commons-io
-libraryDependencies += "commons-io" % "commons-io" % "2.13.0"
+libraryDependencies += "commons-io" % "commons-io" % "2.19.0"
+
 // https://mvnrepository.com/artifact/com.typesafe.play/play-mailer
 libraryDependencies += "com.typesafe.play" %% "play-mailer" % "7.0.2"
 

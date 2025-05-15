@@ -3,17 +3,16 @@ package models
 import akka.actor._
 import models.DataCollectManager.ReaderReset
 import models.ModelHelper.waitReadyResult
-import org.apache.commons.io.FileUtils
-import org.apache.commons.io.filefilter.DirectoryFileFilter
 import play.api._
 import play.api.libs.ws.WSClient
 
 import java.io.File
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDateTime, ZoneId}
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, MINUTES}
-import scala.concurrent.{Future, blocking}
 import scala.language.implicitConversions
 import scala.util.{Failure, Success}
 
@@ -33,6 +32,7 @@ case class GcReaderConfig(enable: Boolean, monitors: Seq[GcMonitorConfig])
 object GcReader {
   var count = 0
   val logger: Logger = Logger(this.getClass)
+
   def start(configuration: Configuration, actorSystem: ActorSystem, monitorOp: MonitorDB, monitorTypeOp: MonitorTypeDB,
             recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, alarmDB: AlarmDB,
             sysConfigDB: SysConfigDB, ylUploaderConfig: YlUploaderConfig): Option[ActorRef] = {
@@ -80,6 +80,7 @@ object GcReader {
 
   case object ParseReport
 
+  /*
   def listDirs(files_path: String): List[File] = {
     //import java.io.FileFilter
     val path = new java.io.File(files_path)
@@ -88,6 +89,34 @@ object GcReader {
       val allDirs = FileUtils.listFilesAndDirs(path, DirectoryFileFilter.DIRECTORY, DirectoryFileFilter.DIRECTORY).asScala.toList
       val dirs = allDirs.filter(p => p != null && p.isDirectory)
       dirs.filter(p => p.getName.endsWith(".D"))
+    } else {
+      logger.warn(s"invalid input path $files_path")
+      List.empty[File]
+    }
+  }*/
+
+  def listDirs(files_path: String): List[File] = {
+    //import java.io.FileFilter
+    val path = new java.io.File(files_path)
+    if (path.exists() && path.isDirectory) {
+      def isArchive(f: File) = {
+        import java.nio.file._
+        import java.nio.file.attribute.DosFileAttributes
+
+        val dfa = Files.readAttributes(Paths.get(f.getAbsolutePath), classOf[DosFileAttributes])
+        dfa.isArchive
+      }
+
+      val allFileAndDirs = new java.io.File(files_path).listFiles().toList
+      val dirs = allFileAndDirs.filter(p => p != null && p.isDirectory && !isArchive(p))
+      val resultDirs = dirs.filter(p => p.getName.endsWith(".D"))
+      val diveDirs = dirs.filter(p => !p.getName.endsWith(".D"))
+      if (diveDirs.isEmpty)
+        resultDirs
+      else {
+        val deepDir = diveDirs flatMap (dir => listDirs(dir.getAbsolutePath))
+        resultDirs ++ deepDir
+      }
     } else {
       logger.warn(s"invalid input path $files_path")
       List.empty[File]
@@ -108,7 +137,7 @@ object GcReader {
     import scala.collection.JavaConverters._
 
     val f1 =
-      if(vocMonitorTypes.isEmpty) {
+      if (vocMonitorTypes.isEmpty) {
         for (monitorTypes <- sysConfigDB.getVocMonitorTypes) yield {
           vocMonitorTypes = monitorTypes.toSet
         }
@@ -116,7 +145,7 @@ object GcReader {
         Future.successful(())
 
     val f2 =
-      if(vocAuditMonitorTypes.isEmpty) {
+      if (vocAuditMonitorTypes.isEmpty) {
         for (monitorTypes <- sysConfigDB.getVocAuditMonitorTypes) yield {
           vocAuditMonitorTypes = monitorTypes.toSet
         }
@@ -193,24 +222,24 @@ object GcReader {
           val mtCase = srcMtCase.copy(_id = mtRecord.mtName, desp = srcMtCase.desp + gcMonitorConfig.mtAnnotation.getOrElse(""))
           monitorTypeDB.ensure(mtCase)
           recordOp.ensureMonitorType(mtRecord.mtName)
-          if(!vocAuditMonitorTypes.contains(mtRecord.mtName)) {
+          if (!vocAuditMonitorTypes.contains(mtRecord.mtName)) {
             needUpdateVocAuditMonitorTypes = true
             vocAuditMonitorTypes = vocAuditMonitorTypes + mtRecord.mtName
           }
         } else {
           monitorTypeDB.ensure(mtRecord.mtName)
           recordOp.ensureMonitorType(mtRecord.mtName)
-          if(!vocMonitorTypes.contains(mtRecord.mtName)) {
+          if (!vocMonitorTypes.contains(mtRecord.mtName)) {
             needUpdateVocMonitorTypes = true
             vocMonitorTypes = vocMonitorTypes + mtRecord.mtName
           }
         }
       })
 
-      if(needUpdateVocMonitorTypes)
+      if (needUpdateVocMonitorTypes)
         sysConfigDB.setVocMonitorTypes(vocMonitorTypes.toList)
 
-      if(needUpdateVocAuditMonitorTypes)
+      if (needUpdateVocAuditMonitorTypes)
         sysConfigDB.setVocAuditMonitorTypes(vocAuditMonitorTypes.toList)
 
       val f = recordOp.upsertRecord(recordOp.HourCollection)(record)
@@ -222,6 +251,7 @@ object GcReader {
         case Failure(exception) =>
           logger.error("failed", exception)
       }
+      waitReadyResult(f)
     }
 
     true
@@ -246,42 +276,28 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
   private val MAX_RETRY_COUNT = 120
   self ! ParseReport
 
-  import ReaderHelper._
 
-  def handler(retryMap: Map[String, Int], lastReceiveTime:Instant): Receive = {
+  def handler(retryMap: Map[String, Int], lastReceiveTime: Instant): Receive = {
     case ParseReport =>
       var receiveTime = lastReceiveTime
+
       def processInputPath(gcMonitorConfig: GcMonitorConfig, parser: (GcMonitorConfig, File) => Boolean): Map[String, Int] = {
+
         var updatedRetryMap = retryMap
 
         val dirs = listDirs(gcMonitorConfig.path)
+        val dirToBeDeleted = ListBuffer.empty[File]
         for (dir <- dirs) yield {
           val absPath = dir.getAbsolutePath
           if (!retryMap.contains(absPath))
             logger.info(s"Processing $absPath")
 
-          def moveDir(): Unit =
-            try {
-              FileUtils.moveToDirectory(dir, new File(gcMonitorConfig.backupPath.getOrElse("C:\\GC\\backup")), true)
-            } catch {
-              case ex: Throwable =>
-                logger.error(s"Failed to move ${dir.getAbsolutePath} to backup folder ${gcMonitorConfig.backupPath.getOrElse("C:\\GC\\backup")}", ex)
-            }
-
-          def deleteDir(): Unit =
-            try {
-              FileUtils.deleteDirectory(dir)
-            } catch {
-              case ex: Throwable =>
-                logger.error(s"Failed to delete ${dir.getAbsolutePath}", ex)
-            }
 
           try {
             parser(gcMonitorConfig, dir)
             logger.info(s"Handle $absPath successfully.")
             receiveTime = Instant.now()
-            //moveDir()
-            deleteDir()
+            dirToBeDeleted += dir
             updatedRetryMap = updatedRetryMap - absPath
           } catch {
             case ex: Throwable =>
@@ -290,13 +306,17 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
                   updatedRetryMap = updatedRetryMap + (absPath -> (updatedRetryMap(absPath) + 1))
                 } else {
                   logger.info(s"$absPath reach max retries. Give up! $ex")
-                  moveDir()
+                  dirToBeDeleted += dir
                   updatedRetryMap = updatedRetryMap - absPath
                 }
               } else
                 updatedRetryMap = updatedRetryMap + (absPath -> 1)
           }
         }
+        dirToBeDeleted.foreach(dir => {
+          Runtime.getRuntime
+            .exec(s"cmd.exe /c rmdir ${dir.getAbsolutePath} /S /Q")
+        })
         updatedRetryMap
       }
 
@@ -308,14 +328,10 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
       implicit val implicitYlUploaderConfig: YlUploaderConfig = ylUploaderConfig
       try {
         for (gcMonitorConfig <- config.monitors) {
-          Future {
-            blocking {
-              context become handler(processInputPath(gcMonitorConfig, parser), receiveTime)
-              if(receiveTime.plusSeconds(90*60).isBefore(Instant.now())) {
-                val localDateTime = LocalDateTime.ofInstant(receiveTime, ZoneId.systemDefault())
-                alarmDB.log(alarmDB.src(), Alarm.Level.ERR, s"未收到quant.txt警報，最後收到檔案時間為 ${localDateTime.format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"))}")
-              }
-            }
+          context become handler(processInputPath(gcMonitorConfig, parser), receiveTime)
+          if (receiveTime.plusSeconds(90 * 60).isBefore(Instant.now())) {
+            val localDateTime = LocalDateTime.ofInstant(receiveTime, ZoneId.systemDefault())
+            alarmDB.log(alarmDB.src(), Alarm.Level.ERR, s"未收到quant.txt警報，最後收到檔案時間為 ${localDateTime.format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"))}")
           }
         }
       } catch {
