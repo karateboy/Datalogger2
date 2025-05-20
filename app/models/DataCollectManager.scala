@@ -524,7 +524,7 @@ class DataCollectManager @Inject()
 
     for {ylUploadConfig <- ylUploaderConfigOpt
          readerRef <- GcReader.start(config, context.system, monitorOp, monitorTypeOp,
-           recordOp, WSClient, monitorOp, alarmOp, sysConfig, ylUploadConfig)}
+           recordOp, WSClient, monitorOp, alarmOp, sysConfig, ylUploadConfig, self)}
       readers.append(readerRef)
 
     readers.toList

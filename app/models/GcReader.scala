@@ -2,6 +2,7 @@ package models
 
 import akka.actor._
 import models.DataCollectManager.ReaderReset
+import models.ForwardManager.ForwardHourRecord
 import models.ModelHelper.waitReadyResult
 import play.api._
 import play.api.libs.ws.WSClient
@@ -35,7 +36,7 @@ object GcReader {
 
   def start(configuration: Configuration, actorSystem: ActorSystem, monitorOp: MonitorDB, monitorTypeOp: MonitorTypeDB,
             recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, alarmDB: AlarmDB,
-            sysConfigDB: SysConfigDB, ylUploaderConfig: YlUploaderConfig): Option[ActorRef] = {
+            sysConfigDB: SysConfigDB, ylUploaderConfig: YlUploaderConfig, dataCollectManager: ActorRef): Option[ActorRef] = {
     def getConfig: Option[GcReaderConfig] = {
       def getMonitorConfig(config: Configuration) = {
         val id = config.get[String]("id")
@@ -67,15 +68,18 @@ object GcReader {
       })
       count = count + 1
       actorSystem.actorOf(props(config, monitorTypeOp, recordOp, WSClient, monitorDB,
-        alarmDB = alarmDB, sysConfigDB = sysConfigDB, ylUploaderConfig = ylUploaderConfig),
+        alarmDB = alarmDB, sysConfigDB = sysConfigDB, ylUploaderConfig = ylUploaderConfig,
+      dataCollectManager = dataCollectManager),
         s"GcReader$count")
     }
   }
 
   private def props(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB,
                     recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, alarmDB: AlarmDB,
-                    sysConfigDB: SysConfigDB, ylUploaderConfig: YlUploaderConfig) =
-    Props(new GcReader(config, monitorTypeOp, recordOp, WSClient, monitorDB, alarmDB, sysConfigDB, ylUploaderConfig))
+                    sysConfigDB: SysConfigDB, ylUploaderConfig: YlUploaderConfig,
+                    dataCollectManager: ActorRef) =
+    Props(new GcReader(config, monitorTypeOp, recordOp, WSClient, monitorDB, alarmDB,
+      sysConfigDB, ylUploaderConfig, dataCollectManager))
 
 
   case object ParseReport
@@ -129,7 +133,8 @@ object GcReader {
   def parser(gcMonitorConfig: GcMonitorConfig, reportDir: File)
             (implicit recordOp: RecordDB, wsClient: WSClient,
              monitorDB: MonitorDB, monitorTypeDB: MonitorTypeDB, sysConfigDB: SysConfigDB,
-             ylUploaderConfig: YlUploaderConfig): Boolean = {
+             ylUploaderConfig: YlUploaderConfig,
+             dataCollectManager: ActorRef): Boolean = {
     import com.github.nscala_time.time.Imports._
 
     import java.nio.charset.StandardCharsets
@@ -247,6 +252,7 @@ object GcReader {
         case Success(_) =>
           // Upload
           logger.debug(s"upload GC record $dateTime")
+          dataCollectManager ! ForwardHourRecord(dateTime, dateTime.plusHours(1))
           YlUploader.upload(wsClient)(record, monitorDB.map(gcMonitorConfig.id), ylUploaderConfig)
         case Failure(exception) =>
           logger.error("failed", exception)
@@ -260,7 +266,8 @@ object GcReader {
 
 private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, WSClient: WSClient,
                        monitorDB: MonitorDB, alarmDB: AlarmDB, sysConfigDB: SysConfigDB,
-                       ylUploaderConfig: YlUploaderConfig)
+                       ylUploaderConfig: YlUploaderConfig,
+                       dataCollectManager: ActorRef)
   extends Actor with ActorLogging {
   val logger: Logger = Logger(this.getClass)
   logger.info("GcReader start")
