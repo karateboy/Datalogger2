@@ -191,14 +191,14 @@ class Query @Inject()(recordOp: RecordDB,
   }
 
 
-  def historyTrendChart(monitorStr: String, monitorTypeStr: String, includeRaw: Boolean, tab:String, reportUnitStr: String, statusFilterStr: String,
+  def historyTrendChart(monitorStr: String, monitorTypeStr: String, includeRaw: Boolean, tab: String, reportUnitStr: String, statusFilterStr: String,
                         startNum: Long, endNum: Long, outputTypeStr: String): Action[AnyContent] = security.Authenticated {
     val monitors = monitorStr.split(':')
     val monitorTypeStrArray = monitorTypeStr.split(':')
     val monitorTypes = monitorTypeStrArray
     val reportUnit = ReportUnit.withName(reportUnitStr)
     val statusFilter = MonitorStatusFilter.withName(statusFilterStr)
-    val myTableType:TableType#Value = tableType.withName(tab)
+    val myTableType: TableType#Value = tableType.withName(tab)
     val (start, end) =
       if (reportUnit.id <= ReportUnit.Hour.id) {
         if (reportUnit == ReportUnit.Hour)
@@ -1073,13 +1073,14 @@ class Query @Inject()(recordOp: RecordDB,
 
   implicit val instrumentReportWrite: OWrites[InstrumentReport] = Json.writes[InstrumentReport]
 
-  def aqiTrendChart(monitorStr: String, isDailyAqi: Boolean, tab:String, startNum: Long, endNum: Long, outputTypeStr: String): Action[AnyContent] =
+  def aqiTrendChart(monitorStr: String, isDailyAqi: Boolean, tab: String, startNum: Long, endNum: Long, outputTypeStr: String): Action[AnyContent] =
     security.Authenticated.async {
       val monitors = monitorStr.split(':')
       val start = new DateTime(startNum).withTimeAtStartOfDay()
       val end = new DateTime(endNum).withTimeAtStartOfDay() + 1.day
       val outputType = OutputType.withName(outputTypeStr)
       val myTableType = tableType.withName(tab)
+
       def getAqiMap(m: String): Future[Map[DateTime, AqiReport]] = {
         if (isDailyAqi) {
           val aqiListFuture: List[Future[(DateTime, AqiReport)]] =
@@ -1152,5 +1153,58 @@ class Query @Inject()(recordOp: RecordDB,
   def getTables: Action[AnyContent] = security.Authenticated {
     implicit request =>
       Ok(Json.toJson(tableType.tableList))
+  }
+
+  private case class Position(lat: Double, lng: Double, date: Date) {
+    def getNextPosition(bearing: Double, distance: Double, newDate:Date): Position = {
+      val lat1 = Math.toRadians(lat)
+      val lng1 = Math.toRadians(lng)
+      val R = 6371000 // Radius of the Earth in meters
+      val d = distance / R // Distance in radians
+      val bearingRad = Math.toRadians(bearing)
+
+      val lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(bearingRad))
+      val lng2 = lng1 + Math.atan2(Math.sin(bearingRad) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2))
+
+      Position(Math.toDegrees(lat2), Math.toDegrees(lng2), newDate)
+    }
+  }
+
+  private case class TraceResult(trace: Seq[Position])
+
+  def traceQuery(monitor: String, tableTypeStr: String, start: Long, end: Long): Action[AnyContent] = security.Authenticated.async {
+    implicit request =>
+      implicit val w = Json.writes[Position]
+      implicit val w2 = Json.writes[TraceResult]
+
+      val startTime = new DateTime(start)
+      val endTime = new DateTime(end)
+      val tab = tableType.withName(tableTypeStr)
+      val m = monitorOp.map(monitor)
+      for (records <- recordOp.getRecordListFuture(tableType.mapCollection(tab))(startTime, endTime, Seq(monitor))) yield {
+        if (records.isEmpty)
+          NotFound("查無資料")
+        else {
+          val recordReverse = records.reverse
+          var currentPos = Position(lat =
+            recordReverse.head.mtMap.get(MonitorType.LAT)
+              .flatMap(_.value).getOrElse(m.lat.getOrElse(23.587100069188324)),
+            lng = recordReverse.head.mtMap.get(MonitorType.LNG)
+              .flatMap(_.value).getOrElse(m.lng.getOrElse(121.14727819361042)),
+            date = recordReverse.head._id.time)
+
+          val traceOptions = for (record <- recordReverse) yield {
+            for (windDir <- record.mtMap.get(MonitorType.WIN_DIRECTION).flatMap(_.value);
+                              windSpeed <- record.mtMap.get(MonitorType.WIN_SPEED).flatMap(_.value)) yield {
+              val nextPos = currentPos.getNextPosition(windDir, windSpeed, record._id.time)
+              currentPos = nextPos
+              nextPos
+            }
+          }
+          val trace = traceOptions.flatten
+          Ok(Json.toJson(TraceResult(trace)))
+        }
+      }
+
   }
 }

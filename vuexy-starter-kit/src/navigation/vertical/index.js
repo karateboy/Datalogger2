@@ -52,6 +52,12 @@ export default [
         resource: 'Data',
       },
       {
+        title: '煙流回推軌跡線',
+        route: 'trace-query',
+        action: 'read',
+        resource: 'Data',
+      },
+      {
         title: '玫瑰圖查詢',
         route: 'wind-rose-query',
       },
