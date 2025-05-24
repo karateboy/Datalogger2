@@ -122,7 +122,7 @@ GET           /DuoFixedMonitorTypes                                             
 
 GET           /WindRose/:monitor/:monitorType/:tabType/:nWay/:start/:end                           controllers.Query.windRoseReport(monitor: String, monitorType: String, tabType:String, nWay: Int, start: Long, end: Long)
 GET           /Tables                                                                              controllers.Query.getTables
-
+GET           /TraceQuery/:monitor/:tabType/:start/:end                                            controllers.Query.traceQuery(monitor, tabType, start:Long, end:Long)
 #SYSCONFIG
 GET           /AlertEmailTargets                                                                   controllers.HomeController.getAlertEmailTargets
 POST          /AlertEmailTargets                                                                   controllers.HomeController.saveAlertEmailTargets

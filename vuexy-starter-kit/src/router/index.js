@@ -125,6 +125,24 @@ const router = new VueRouter({
       },
     },
     {
+      path: '/trace-query',
+      name: 'trace-query',
+      component: () => import('@/views/TraceQuery.vue'),
+      meta: {
+        pageTitle: '煙流回推軌跡線',
+        breadcrumb: [
+          {
+            text: '數據查詢',
+            active: true,
+          },
+          {
+            text: '煙流回推軌跡線',
+            active: true,
+          },
+        ],
+      },
+    },
+    {
       path: '/calibration-query',
       name: 'calibration-query',
       component: () => import('@/views/CalibrationQuery.vue'),
