@@ -1196,7 +1196,12 @@ class Query @Inject()(recordOp: RecordDB,
           val traceOptions = for (record <- recordReverse) yield {
             for (windDir <- record.mtMap.get(MonitorType.WIN_DIRECTION).flatMap(_.value);
                               windSpeed <- record.mtMap.get(MonitorType.WIN_SPEED).flatMap(_.value)) yield {
-              val nextPos = currentPos.getNextPosition(windDir, windSpeed, record._id.time)
+              val distance = if(tab == tableType.hour)
+                windSpeed * 3600 // m/s * 1 hour
+              else
+                windSpeed * 60 // m/s * 1 minute
+
+              val nextPos = currentPos.getNextPosition(windDir, distance, record._id.time)
               currentPos = nextPos
               nextPos
             }
