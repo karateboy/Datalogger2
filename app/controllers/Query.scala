@@ -13,6 +13,7 @@ import java.nio.file.Files
 import java.util.Date
 import javax.inject._
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -1185,28 +1186,30 @@ class Query @Inject()(recordOp: RecordDB,
         if (records.isEmpty)
           NotFound("查無資料")
         else {
+          val trace = ListBuffer.empty[Position]
           val recordReverse = records.reverse
-          var currentPos = Position(lat =
+          val currentPos = Position(lat =
             recordReverse.head.mtMap.get(MonitorType.LAT)
               .flatMap(_.value).getOrElse(m.lat.getOrElse(23.587100069188324)),
             lng = recordReverse.head.mtMap.get(MonitorType.LNG)
               .flatMap(_.value).getOrElse(m.lng.getOrElse(121.14727819361042)),
             date = recordReverse.head._id.time)
 
-          val traceOptions = for (record <- recordReverse) yield {
+          trace.append(currentPos)
+
+          var lastPos = currentPos
+          for (record <- recordReverse) {
             for (windDir <- record.mtMap.get(MonitorType.WIN_DIRECTION).flatMap(_.value);
-                              windSpeed <- record.mtMap.get(MonitorType.WIN_SPEED).flatMap(_.value)) yield {
+                              windSpeed <- record.mtMap.get(MonitorType.WIN_SPEED).flatMap(_.value)) {
               val distance = if(tab == tableType.hour)
                 windSpeed * 3600 // m/s * 1 hour
               else
                 windSpeed * 60 // m/s * 1 minute
 
-              val nextPos = currentPos.getNextPosition(windDir, distance, record._id.time)
-              currentPos = nextPos
-              nextPos
+              lastPos = lastPos.getNextPosition(windDir, distance, record._id.time)
+              trace.append(lastPos)
             }
           }
-          val trace = traceOptions.flatten
           Ok(Json.toJson(TraceResult(trace)))
         }
       }
