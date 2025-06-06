@@ -189,6 +189,7 @@ export default Vue.extend({
     },
     mapCenter(): Position {
       if (this.trace.trace.length === 0) {
+        console.info("mapCenter default is returned!",);
         if (this.form.monitor !== '') {
           let monitor = this.mMap.get(this.form.monitor) as Monitor;
           return {
@@ -199,6 +200,7 @@ export default Vue.extend({
       }
 
       let headPos = this.trace.trace[0];
+      console.info("mapCenter",this.trace.trace[0]);
       return { lat: headPos.lat, lng: headPos.lng };
     },
     masterShipIcon(): any {
