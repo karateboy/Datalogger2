@@ -183,6 +183,8 @@ export default Vue.extend({
         { id: 'all', txt: '全部' },
         { id: 'normal', txt: '正常量測值' },
         { id: 'calibration', txt: '校正' },
+        { id: 'zeroCalibration', txt: '零點校正' },
+        { id: 'spanCalibration', txt: '全幅校正' },
         { id: 'maintenance', txt: '維修' },
         { id: 'invalid', txt: '無效數據' },
         { id: 'valid', txt: '有效數據' },

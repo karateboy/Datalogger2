@@ -1,15 +1,12 @@
 package models
 
-import com.github.nscala_time.time
-import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
-import models.Calibration.CalibrationListMap
 import play.api.libs.json.{Json, OWrites, Reads}
 
 import java.util.Date
 import scala.collection.mutable
 
-case class MtRecord(mtName: String, value: Option[Double], status: String, rawValue: Option[Double] = None)
+case class MtRecord(mtName: String, value: Option[Double], var status: String, rawValue: Option[Double] = None)
 
 object RecordList {
   def factory(time: Date, mtDataList: Seq[MtRecord], monitor: String): RecordList =

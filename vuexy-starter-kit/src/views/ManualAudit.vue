@@ -211,6 +211,14 @@ export default Vue.extend({
           id: 'M',
           txt: '人工註記:無效資料',
         },
+        {
+          id: 'z',
+          txt: '人工註記:零點校正',
+        },
+        {
+          id: 's',
+          txt: '人工註記:全幅校正',
+        },
       ],
       display: false,
       columns: Array<any>(),
@@ -324,7 +332,13 @@ export default Vue.extend({
           for (let i = 0; i < item.cellData.length; i++) {
             const cellData = item.cellData[i];
             if (cellData.v !== '-') {
-              const status = this.form2.statusCode + cellData.status.substr(1);
+              let status = this.form2.statusCode + cellData.status.substr(1);
+              if (this.form2.statusCode === 'z') {
+                status = '020';
+              }else if(this.form2.statusCode === 's') {
+                status = '021';
+              }
+
               updateList.push({
                 time: item.date,
                 mt: this.form.monitorTypes[i],

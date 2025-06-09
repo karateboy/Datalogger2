@@ -8,6 +8,8 @@ object MonitorStatusFilter extends Enumeration {
   val ValidData: Value = Value("valid")
   private val Normal: Value = Value("normal")
   private val Calibration: Value = Value("calibration")
+  private val ZeroCalibration: Value = Value("zeroCalibration")
+  private val SpanCalibration: Value = Value("spanCalibration")
   private val Maintenance: Value = Value("maintenance")
   private val InvalidData: Value = Value("invalid")
   private val All: Value = Value("all")
@@ -16,6 +18,8 @@ object MonitorStatusFilter extends Enumeration {
     All -> "全部",
     Normal -> "正常量測值",
     Calibration -> "校正",
+    ZeroCalibration -> "零點校正",
+    SpanCalibration -> "全幅校正",
     Maintenance -> "維修",
     InvalidData -> "無效數據",
     ValidData -> "有效數據")
@@ -30,6 +34,12 @@ object MonitorStatusFilter extends Enumeration {
 
       case MonitorStatusFilter.Calibration=>
         MonitorStatus.isCalibration(stat)
+
+      case MonitorStatusFilter.ZeroCalibration =>
+        MonitorStatus.isZeroCalibration(stat)
+
+      case MonitorStatusFilter.SpanCalibration =>
+        MonitorStatus.isSpanCalibration(stat)
         
       case MonitorStatusFilter.Maintenance =>
         MonitorStatus.isMaintenance(stat)

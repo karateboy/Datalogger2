@@ -1,21 +1,24 @@
 package models
 
 import akka.actor._
+import com.github.nscala_time.time.Imports.LocalTime
 import models.DataCollectManager.ReaderReset
 import models.ForwardManager.ForwardHourRecord
 import models.ModelHelper.waitReadyResult
+import org.joda.time.format.DateTimeFormat
 import play.api._
 import play.api.libs.ws.WSClient
 
 import java.io.File
-import java.time.format.DateTimeFormatter
-import java.time.{Instant, LocalDateTime, ZoneId}
+import java.time.{Instant, ZoneId}
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, MINUTES}
 import scala.language.implicitConversions
 import scala.util.{Failure, Success}
+
+case class TimeSpan(start: LocalTime, end: LocalTime)
 
 case class GcMonitorConfig(id: String,
                            name: String,
@@ -25,10 +28,23 @@ case class GcMonitorConfig(id: String,
                            fileName: String,
                            mtPostfix: Option[String],
                            mtAnnotation: Option[String],
-                           backupPath: Option[String]
-                          )
+                           backupPath: Option[String],
+                           zeroTime: Option[TimeSpan] = None,
+                           spanTime: Option[TimeSpan] = None
+                          ) {
+  override def toString: String = {
+    s"GcMonitorConfig(id=$id, name=$name, lat=$lat, lng=$lng, path=$path, fileName=$fileName, " +
+      s"mtPostfix=${mtPostfix.getOrElse("None")}, mtAnnotation=${mtAnnotation.getOrElse("None")}, " +
+      s"backupPath=${backupPath.getOrElse("None")}, zeroTime=${zeroTime.map(t => s"${t.start} - ${t.end}").getOrElse("None")}, " +
+      s"spanTime=${spanTime.map(t => s"${t.start} - ${t.end}").getOrElse("None")})"
+  }
+}
 
-case class GcReaderConfig(enable: Boolean, monitors: Seq[GcMonitorConfig])
+case class GcReaderConfig(enable: Boolean,
+                          monitors: Seq[GcMonitorConfig]) {
+  override def toString: String =
+    s"GcReaderConfig(enable=$enable, monitors=${monitors.mkString(", ")}, "
+}
 
 object GcReader {
   var count = 0
@@ -48,8 +64,22 @@ object GcReader {
         val mtPostfix = config.getOptional[String]("mtPostfix")
         val mtAnnotation = config.getOptional[String]("mtAnnotation")
         val backupPath = config.getOptional[String]("backupPath")
+        val zeroTime = config.getOptional[Configuration]("zeroTime").flatMap(getTimeSpanConfig)
+        val spanTime = config.getOptional[Configuration]("spanTime").flatMap(getTimeSpanConfig)
+
         GcMonitorConfig(id, name, lat, lng, path, fileName = fileName,
-          mtPostfix = mtPostfix, mtAnnotation = mtAnnotation, backupPath = backupPath)
+          mtPostfix = mtPostfix, mtAnnotation = mtAnnotation, backupPath = backupPath,
+          zeroTime = zeroTime, spanTime = spanTime)
+      }
+
+      def getTimeSpanConfig(config: Configuration): Option[TimeSpan] = {
+        for {
+          start <- config.getOptional[String]("start")
+          end <- config.getOptional[String]("end")
+        } yield {
+          val format = DateTimeFormat.forPattern("HH:mm")
+          TimeSpan(LocalTime.parse(start, format), LocalTime.parse(end, format))
+        }
       }
 
       for {config <- configuration.getOptional[Configuration]("gcReader")
@@ -58,7 +88,7 @@ object GcReader {
            monitors = monitorConfigs.map(getMonitorConfig)
            }
       yield
-        GcReaderConfig(enable, monitors)
+        GcReaderConfig(enable = enable, monitors = monitors)
     }
 
     for (config <- getConfig if config.enable) yield {
@@ -69,7 +99,7 @@ object GcReader {
       count = count + 1
       actorSystem.actorOf(props(config, monitorTypeOp, recordOp, WSClient, monitorDB,
         alarmDB = alarmDB, sysConfigDB = sysConfigDB, ylUploaderConfig = ylUploaderConfig,
-      dataCollectManager = dataCollectManager),
+        dataCollectManager = dataCollectManager),
         s"GcReader$count")
     }
   }
@@ -219,7 +249,6 @@ object GcReader {
       var needUpdateVocAuditMonitorTypes = false
       val record = RecordList.factory(dateTime.toDate, internalValues ++ actualValues, gcMonitorConfig.id)
       record.mtDataList.foreach(mtRecord => {
-
         if (mtPostfix.nonEmpty &&
           monitorTypeDB.map.contains(mtRecord.mtName.dropRight(mtPostfix.length))) {
 
@@ -237,6 +266,23 @@ object GcReader {
           if (!vocMonitorTypes.contains(mtRecord.mtName)) {
             needUpdateVocMonitorTypes = true
             vocMonitorTypes = vocMonitorTypes + mtRecord.mtName
+          }
+        }
+        if(gcMonitorConfig.zeroTime.isDefined) {
+          val zeroTimeSpan = gcMonitorConfig.zeroTime.get
+          val zeroStart = dateTime.toLocalDate.toLocalDateTime(zeroTimeSpan.start)
+          val zeroEnd = dateTime.toLocalDate.toLocalDateTime(zeroTimeSpan.end)
+          if (dateTime.toLocalDateTime.isAfter(zeroStart) && dateTime.toLocalDateTime.isBefore(zeroEnd)) {
+            mtRecord.status = MonitorStatus.ZeroCalibrationStat
+          }
+        }
+
+        if(gcMonitorConfig.spanTime.isDefined) {
+          val spanTimeSpan = gcMonitorConfig.spanTime.get
+          val spanStart = dateTime.toLocalDate.toLocalDateTime(spanTimeSpan.start)
+          val spanEnd = dateTime.toLocalDate.toLocalDateTime(spanTimeSpan.end)
+          if (dateTime.toLocalDateTime.isAfter(spanStart) && dateTime.toLocalDateTime.isBefore(spanEnd)) {
+            mtRecord.status = MonitorStatus.SpanCalibrationStat
           }
         }
       })
@@ -269,8 +315,8 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
                        ylUploaderConfig: YlUploaderConfig,
                        dataCollectManager: ActorRef)
   extends Actor with ActorLogging {
-  val logger: Logger = Logger(this.getClass)
-  logger.info("GcReader start")
+  private val logger: Logger = Logger(this.getClass)
+  logger.info(s"GcReader start with $config")
 
   import GcReader._
 
@@ -337,8 +383,8 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
         for (gcMonitorConfig <- config.monitors) {
           context become handler(processInputPath(gcMonitorConfig, parser), receiveTime)
           if (receiveTime.plusSeconds(90 * 60).isBefore(Instant.now())) {
-            val localDateTime = LocalDateTime.ofInstant(receiveTime, ZoneId.systemDefault())
-            alarmDB.log(alarmDB.src(), Alarm.Level.ERR, s"未收到quant.txt警報，最後收到檔案時間為 ${localDateTime.format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"))}")
+            val localDateTime = java.time.LocalDateTime.ofInstant(receiveTime, ZoneId.systemDefault())
+            alarmDB.log(alarmDB.src(), Alarm.Level.ERR, s"未收到quant.txt警報，最後收到檔案時間為 $localDateTime")
           }
         }
       } catch {

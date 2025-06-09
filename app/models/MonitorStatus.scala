@@ -131,6 +131,18 @@ object MonitorStatus {
     CALIBRATION_STATS.contains(getTagInfo(s))
   }
 
+  def isZeroCalibration(s: String): Boolean = {
+    val CALIBRATION_STATS = List(ZeroCalibrationStat).map(getTagInfo)
+    CALIBRATION_STATS.contains(getTagInfo(s))
+  }
+
+  def isSpanCalibration(s: String): Boolean = {
+    val CALIBRATION_STATS = List(SpanCalibrationStat,
+      CalibrationPoint3, CalibrationPoint4, CalibrationPoint5, CalibrationPoint6).map(getTagInfo)
+
+    CALIBRATION_STATS.contains(getTagInfo(s))
+  }
+
   def isMaintenance(s: String): Boolean = {
     getTagInfo(MaintainStat) == getTagInfo(s)
   }
