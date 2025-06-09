@@ -1,11 +1,10 @@
 package models
 
 import akka.actor._
-import com.github.nscala_time.time.Imports.LocalTime
+import com.github.nscala_time.time.Imports._
 import models.DataCollectManager.ReaderReset
 import models.ForwardManager.ForwardHourRecord
 import models.ModelHelper.waitReadyResult
-import org.joda.time.format.DateTimeFormat
 import play.api._
 import play.api.libs.ws.WSClient
 
