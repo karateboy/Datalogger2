@@ -17,7 +17,13 @@ import scala.concurrent.duration.{FiniteDuration, MINUTES}
 import scala.language.implicitConversions
 import scala.util.{Failure, Success}
 
-case class TimeSpan(start: LocalTime, end: LocalTime)
+case class TimeSpan(start: LocalTime, end: LocalTime) {
+  def within(dateTime: LocalDateTime): Boolean = {
+    val localTime = dateTime.toLocalTime
+    (localTime == start) || (localTime.isAfter(start) && localTime.isBefore(end))
+  }
+
+}
 
 case class GcMonitorConfig(id: String,
                            name: String,
@@ -267,23 +273,19 @@ object GcReader {
             vocMonitorTypes = vocMonitorTypes + mtRecord.mtName
           }
         }
-        if(gcMonitorConfig.zeroTime.isDefined) {
-          val zeroTimeSpan = gcMonitorConfig.zeroTime.get
-          val zeroStart = dateTime.toLocalDate.toLocalDateTime(zeroTimeSpan.start)
-          val zeroEnd = dateTime.toLocalDate.toLocalDateTime(zeroTimeSpan.end)
-          if (dateTime.toLocalDateTime.isAfter(zeroStart) && dateTime.toLocalDateTime.isBefore(zeroEnd)) {
+
+        for(zeroTimeSpan <- gcMonitorConfig.zeroTime)
+          if (zeroTimeSpan.within(dateTime.toLocalDateTime)) {
+            logger.info(s"${dateTime.toLocalDateTime} ${mtRecord.mtName} is in zero calibration")
             mtRecord.status = MonitorStatus.ZeroCalibrationStat
           }
-        }
 
-        if(gcMonitorConfig.spanTime.isDefined) {
-          val spanTimeSpan = gcMonitorConfig.spanTime.get
-          val spanStart = dateTime.toLocalDate.toLocalDateTime(spanTimeSpan.start)
-          val spanEnd = dateTime.toLocalDate.toLocalDateTime(spanTimeSpan.end)
-          if (dateTime.toLocalDateTime.isAfter(spanStart) && dateTime.toLocalDateTime.isBefore(spanEnd)) {
+        for(spanTimeSpan <- gcMonitorConfig.spanTime)
+          if (spanTimeSpan.within(dateTime.toLocalDateTime)) {
+            logger.info(s"${dateTime.toLocalDateTime} ${mtRecord.mtName} is in span calibration")
             mtRecord.status = MonitorStatus.SpanCalibrationStat
           }
-        }
+
       })
 
       if (needUpdateVocMonitorTypes)
