@@ -18,13 +18,13 @@ class NewTaipeiOpenData @Inject()(WSClient: WSClient,
                                   alarmDB: AlarmDB,
                                   monitorTypeDB: MonitorTypeDB,
                                   configuration: Configuration) extends Enumeration {
-  private case class DataEntry(SiteId: String,
-                               ItemId: String,
-                               ItemEngName: String,
-                               ItemChName: String,
-                               ItemValue: Option[Double],
-                               ItemUnit: String,
-                               DateTime: String)
+  private case class DataEntry(siteid: String,
+                               itemid: String,
+                               pollutantitem: String,
+                               itemchname: String,
+                               itemvalue: Option[Double],
+                               itemunit: String,
+                               datetime: String)
 
   private case class PayLoad(pid: String, content: Seq[DataEntry])
 
@@ -41,6 +41,26 @@ class NewTaipeiOpenData @Inject()(WSClient: WSClient,
 
   val logger: Logger = Logger(getClass)
 
+  val pollutantMap: Map[String, String] = Map(
+    MonitorType.PRESS ->"Pressure",
+    MonitorType.PM25 -> "PM2.5",
+    MonitorType.PM10 -> "PM10",
+    MonitorType.NO2 -> "NO2",
+    MonitorType.HUMID -> "RH",
+    MonitorType.WIN_SPEED -> "Wind Speed",
+    MonitorType.CH4 -> "CH4",
+    MonitorType.NMHC -> "NMHC",
+    MonitorType.NOX -> "NOX",
+    MonitorType.RAIN -> "RAIN",
+    MonitorType.SO2 -> "SO2",
+    MonitorType.THC -> "THC",
+    MonitorType.CO -> "CO",
+    MonitorType.O3 -> "O3",
+    MonitorType.NO -> "NO",
+    MonitorType.TEMP -> "Ambient Temp",
+    MonitorType.WIN_DIRECTION -> "Wind Direction",
+  )
+
   def upload(recordList: RecordList, mtConfigs: Seq[CdxMonitorType], dryRun: Boolean = false): Unit =
     for (config <- getConfig if config.enable) {
 
@@ -54,23 +74,24 @@ class NewTaipeiOpenData @Inject()(WSClient: WSClient,
         val dataEntries = recordList.mtDataList.zipWithIndex flatMap { pair =>
           val (mtRecord, idx) = pair
           val mt = monitorTypeDB.map(mtRecord.mtName)
+          val pollutantName = pollutantMap.getOrElse(mt._id, mtRecord.mtName)
           val cdxMtConfig = mtConfigs.find(mtConfig => mtConfig.mt == mtRecord.mtName).getOrElse(CdxMonitorType(mtRecord.mtName, mtRecord.mtName, None, None))
 
           cdxMtConfig match {
             case CdxMonitorType(_, _, Some(min), Some(max)) =>
               for (v <- mtRecord.value if v >= min && v <= max) yield
-                DataEntry(config.pid, "%02d".format(idx + 1), mt._id, mt.desp, mtRecord.value, mt.unit, dateTimeString)
+                DataEntry(config.pid, "%02d".format(idx + 1), pollutantName, mt.desp, mtRecord.value, mt.unit, dateTimeString)
 
             case CdxMonitorType(_, _, None, Some(max)) =>
               for (v <- mtRecord.value if v <= max) yield
-                DataEntry(config.pid, "%02d".format(idx + 1), mt._id, mt.desp, mtRecord.value, mt.unit, dateTimeString)
+                DataEntry(config.pid, "%02d".format(idx + 1), pollutantName, mt.desp, mtRecord.value, mt.unit, dateTimeString)
 
             case CdxMonitorType(_, _, Some(min), None) =>
               for (v <- mtRecord.value if v >= min) yield
-                DataEntry(config.pid, "%02d".format(idx + 1), mt._id, mt.desp, mtRecord.value, mt.unit, dateTimeString)
+                DataEntry(config.pid, "%02d".format(idx + 1), pollutantName, mt.desp, mtRecord.value, mt.unit, dateTimeString)
 
             case _ =>
-              Some(DataEntry(config.pid, "%02d".format(idx + 1), mt._id, mt.desp, mtRecord.value, mt.unit, dateTimeString))
+              Some(DataEntry(config.pid, "%02d".format(idx + 1), pollutantName, mt.desp, mtRecord.value, mt.unit, dateTimeString))
           }
         }
         val payload = PayLoad(config.pid, dataEntries)
