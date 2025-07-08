@@ -101,8 +101,9 @@ class NewTaipeiOpenData @Inject()(WSClient: WSClient,
         implicit val w2: OWrites[PayLoad] = Json.writes[PayLoad]
         val postUrl = s"${config.url}api/v1/open.dataset.content.update"
 
+        logger.info(s"post $postUrl with payload: ${Json.toJson(payload)}")
+
         if(dryRun) {
-          logger.info(s"Dry run: would post to $postUrl with payload: ${Json.toJson(payload)}")
           return
         }
 
