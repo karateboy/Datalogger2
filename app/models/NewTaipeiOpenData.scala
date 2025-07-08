@@ -11,7 +11,7 @@ import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
-case class NewTaipeiOpenDataConfig(enable: Boolean, pid: String, api: String, url: String)
+case class NewTaipeiOpenDataConfig(enable: Boolean, pid: String, site:String, api: String, url: String)
 
 @javax.inject.Singleton
 class NewTaipeiOpenData @Inject()(WSClient: WSClient,
@@ -33,10 +33,11 @@ class NewTaipeiOpenData @Inject()(WSClient: WSClient,
     for {config <- configuration.getOptional[Configuration]("newTaipeiOpenData")
          enable <- config.getOptional[Boolean]("enable")
          pid <- config.getOptional[String]("pid")
+         site <- config.getOptional[String]("site")
          api <- config.getOptional[String]("api")
          url <- config.getOptional[String]("url")
          } yield
-      NewTaipeiOpenDataConfig(enable, pid, api, url)
+      NewTaipeiOpenDataConfig(enable, pid, site, api, url)
 
 
   val logger: Logger = Logger(getClass)
@@ -80,18 +81,18 @@ class NewTaipeiOpenData @Inject()(WSClient: WSClient,
           cdxMtConfig match {
             case CdxMonitorType(_, _, Some(min), Some(max)) =>
               for (v <- mtRecord.value if v >= min && v <= max) yield
-                DataEntry(config.pid, "%02d".format(idx + 1), pollutantName, mt.desp, mtRecord.value, mt.unit, dateTimeString)
+                DataEntry(config.site, "%02d".format(idx + 1), pollutantName, mt.desp, mtRecord.value, mt.unit, dateTimeString)
 
             case CdxMonitorType(_, _, None, Some(max)) =>
               for (v <- mtRecord.value if v <= max) yield
-                DataEntry(config.pid, "%02d".format(idx + 1), pollutantName, mt.desp, mtRecord.value, mt.unit, dateTimeString)
+                DataEntry(config.site, "%02d".format(idx + 1), pollutantName, mt.desp, mtRecord.value, mt.unit, dateTimeString)
 
             case CdxMonitorType(_, _, Some(min), None) =>
               for (v <- mtRecord.value if v >= min) yield
-                DataEntry(config.pid, "%02d".format(idx + 1), pollutantName, mt.desp, mtRecord.value, mt.unit, dateTimeString)
+                DataEntry(config.site, "%02d".format(idx + 1), pollutantName, mt.desp, mtRecord.value, mt.unit, dateTimeString)
 
             case _ =>
-              Some(DataEntry(config.pid, "%02d".format(idx + 1), pollutantName, mt.desp, mtRecord.value, mt.unit, dateTimeString))
+              Some(DataEntry(config.site, "%02d".format(idx + 1), pollutantName, mt.desp, mtRecord.value, mt.unit, dateTimeString))
           }
         }
         val payload = PayLoad(config.pid, dataEntries)
