@@ -1,5 +1,6 @@
 package models
 
+import jssc.SerialPort
 import models.AbstractCollector.ResetConnection
 import models.Protocol.ProtocolParam
 import play.api.Logger
@@ -23,7 +24,6 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
 
   val model: String
 
-  assert(protocolParam.protocol == Protocol.tcpCli)
   logger.info(s"$instId : ${this.getClass.toString} start")
   @volatile var calibrating = false
 
@@ -32,6 +32,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
   @volatile private var socketOpt: Option[Socket] = None
   @volatile private var outOpt: Option[OutputStream] = None
   @volatile private var inOpt: Option[BufferedReader] = None
+  @volatile private var serialCommOpt: Option[SerialComm] = Option.empty
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = {
     logger.info(s"Probe $model")
@@ -171,12 +172,22 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
     self ! ResetConnection
   }
 
-  override def connectHost: Unit = {
-    val socket = new Socket(protocolParam.host.get, 3000)
-    socket.setSoTimeout(1000)
-    socketOpt = Some(socket)
-    outOpt = Some(socket.getOutputStream())
-    inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream())))
+  override def connectHost(): Unit = {
+    if(protocolParam.protocol == Protocol.tcpCli) {
+      val socket = new Socket(protocolParam.host.get, 3000)
+      socket.setSoTimeout(1000)
+      socketOpt = Some(socket)
+      outOpt = Some(socket.getOutputStream)
+      inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream)))
+    }else if(protocolParam.protocol == Protocol.serialCli) {
+      val comm = SerialComm.open(protocolParam.comPort.get,
+        protocolParam.speed.getOrElse(SerialPort.BAUDRATE_9600))
+      serialCommOpt = Some(comm)
+      outOpt = Some(comm.os)
+      inOpt = Some(new BufferedReader(new InputStreamReader(comm.is)))
+    } else {
+      throw new IllegalArgumentException(s"Unsupported protocol: ${protocolParam.protocol}")
+    }
   }
 
   override def getDataRegList: Seq[DataReg] = dataInstrumentTypes.map(it => DataReg(monitorType = it.key, it.addr, multiplier = 1))
@@ -206,6 +217,10 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
     for (socket <- socketOpt)
       socket.close()
 
+    for (comm <- serialCommOpt)
+      SerialComm.close(comm)
+
+    logger.info(s"$instId : ${this.getClass.toString} stop")
     super.postStop()
   }
 }

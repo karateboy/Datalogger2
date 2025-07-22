@@ -1,8 +1,6 @@
 package models
-import akka.actor.ActorSystem
 import com.google.inject.assistedinject.Assisted
-import models.Protocol.{ProtocolParam, tcp, tcpCli}
-import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
+import models.Protocol.ProtocolParam
 
 object T300Collector extends TapiTxx(ModelConfig("T300", List(MonitorType.CO))) {
   lazy val modelReg = readModelSetting
@@ -39,7 +37,6 @@ object T300Collector extends TapiTxx(ModelConfig("T300", List(MonitorType.CO))) 
 
   override def description: String = "TAPI T300"
 
-  override def protocol: List[String] = List(tcp, tcpCli)
 }
 
 import javax.inject._

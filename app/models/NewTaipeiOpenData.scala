@@ -62,7 +62,7 @@ class NewTaipeiOpenData @Inject()(WSClient: WSClient,
     MonitorType.WIN_DIRECTION -> "Wind Direction",
   )
 
-  def upload(recordList: RecordList, mtConfigs: Seq[CdxMonitorType], dryRun: Boolean = false): Unit =
+  def upload(recordList: RecordList, mtConfigs: Seq[CdxMonitorType]): Unit =
     for (config <- getConfig if config.enable) {
 
       try {
@@ -103,10 +103,6 @@ class NewTaipeiOpenData @Inject()(WSClient: WSClient,
 
         logger.info(s"post $postUrl with payload: ${Json.toJson(payload)}")
 
-        if(dryRun) {
-          return
-        }
-
         val f = WSClient.url(postUrl)
           .addHttpHeaders("Content-Type" -> "application/json", "Authorization" -> config.api)
           .post(Json.toJson(payload))
@@ -118,6 +114,8 @@ class NewTaipeiOpenData @Inject()(WSClient: WSClient,
               alarmDB.log(alarmDB.src(), Alarm.Level.ERR, s"新北OpenData上傳${recordList._id.time.toString}小時值失敗 status=${response.status} 錯誤訊息 ${response.body}")
             }
           case Failure(ex) =>
+            logger.error("新北OpenData上傳錯誤", ex)
+            alarmDB.log(alarmDB.src(), Alarm.Level.ERR, s"新北OpenData上傳${recordList._id.time.toString}小時值失敗 錯誤訊息 ${ex.getMessage}")
             throw ex
         }
       } catch {

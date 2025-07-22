@@ -1,7 +1,7 @@
 package models
 
 import com.google.inject.assistedinject.Assisted
-import models.Protocol.{ProtocolParam, tcp, tcpCli}
+import models.Protocol.ProtocolParam
 import play.api._
 
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
@@ -38,8 +38,6 @@ object T700Collector extends TapiTxx(ModelConfig("T700", List.empty[String])) {
   override def id: String = "t700"
 
   override def description: String = "TAPI T700"
-
-  override def protocol: List[String] = List(tcp, tcpCli)
 
   override def isCalibrator: Boolean = true
 }

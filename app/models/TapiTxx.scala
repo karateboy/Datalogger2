@@ -2,6 +2,7 @@ package models
 
 import com.github.nscala_time.time.Imports._
 import com.typesafe.config.ConfigFactory
+import models.Protocol.{serialCli, tcp, tcpCli}
 import play.api._
 import play.api.libs.json._
 
@@ -150,4 +151,6 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
     val props = Props(classOf[TapiTxxCollector], id, config)
     // TapiTxxCollector.start(protocol, props)
   }*/
+
+  def protocol: List[String] = List(tcp, tcpCli, serialCli)
 }

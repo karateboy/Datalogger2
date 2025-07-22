@@ -225,6 +225,8 @@ class HomeController @Inject()(
               s"COM${inst.protocol.comPort.get}"
             case Protocol.tcpCli =>
               inst.protocol.host.getOrElse("")
+            case Protocol.serialCli =>
+              s"COM${inst.protocol.comPort.getOrElse("")}"
           }
         val calibrationTime = getCalibrationTime.map { t => t.toString("HH:mm") }
 

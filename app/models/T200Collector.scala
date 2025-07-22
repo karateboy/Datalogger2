@@ -1,9 +1,8 @@
 package models
 
-import akka.actor.ActorSystem
 import com.google.inject.assistedinject.Assisted
 import models.MonitorType.{NO, NO2, NOX}
-import models.Protocol.{ProtocolParam, tcp, tcpCli}
+import models.Protocol.ProtocolParam
 
 object T200Collector extends TapiTxx(ModelConfig("T200",
   List(MonitorType.NOX, MonitorType.NO, MonitorType.NO2))) {
@@ -38,8 +37,6 @@ object T200Collector extends TapiTxx(ModelConfig("T200",
   override def id: String = "t200"
 
   override def description: String = "TAPI T200"
-
-  override def protocol: List[String] = List(tcp, tcpCli)
 }
 
 import javax.inject._

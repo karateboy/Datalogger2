@@ -1,6 +1,5 @@
 package models
 import com.google.inject.assistedinject.Assisted
-import models.Protocol.{tcp, tcpCli}
 object T100Collector extends TapiTxx(ModelConfig("T100", List("SO2"))) {
   lazy val modelReg: ModelReg = readModelSetting
 
@@ -34,8 +33,6 @@ object T100Collector extends TapiTxx(ModelConfig("T100", List("SO2"))) {
   override def id: String = "t100"
 
   override def description: String = "TAPI T100"
-
-  override def protocol: List[String] = List(tcp, tcpCli)
 }
 
 import javax.inject._
