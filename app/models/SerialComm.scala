@@ -28,7 +28,7 @@ case class SerialComm(port: SerialPort, is: SerialInputStream, os: SerialOutputS
     strList
   }
 
-  private def getLine(): List[String] = {
+  def getLine(): List[String] = {
     def splitLine(buf: Array[Byte]): List[String] = {
       val idx = buf.indexOf('\n'.toByte)
       if (idx == -1) {

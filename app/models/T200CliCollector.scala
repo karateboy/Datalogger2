@@ -50,18 +50,18 @@ class T200CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
   override def triggerVault(zero: Boolean, on: Boolean): Unit = {}
 
   override def readDataRegSerial(serial: SerialComm): List[(InstrumentStatusType, Double)] = {
-    serial.port.writeBytes("T NOX\n".getBytes())
+    serial.port.writeBytes("T NOX\r\n".getBytes())
     Thread.sleep(500)
-    val data0: List[(InstrumentStatusType, Double)] = serial.getLine3().flatMap(line => {
+    val data0: List[(InstrumentStatusType, Double)] = serial.getLine().flatMap(line => {
       for ((_, _, value) <- getKeyUnitValue(line)) yield
         (dataInstrumentTypes.head, value)
     })
     if (data0.isEmpty)
       throw new Exception("no data")
 
-    serial.port.writeBytes("T NO\n".getBytes())
+    serial.port.writeBytes("T NO\r\n".getBytes())
     Thread.sleep(500)
-    val data1: List[(InstrumentStatusType, Double)] = serial.getLine3().flatMap(line => {
+    val data1: List[(InstrumentStatusType, Double)] = serial.getLine().flatMap(line => {
       for ((_, _, value) <- getKeyUnitValue(line)) yield
         (dataInstrumentTypes(1), value)
     })

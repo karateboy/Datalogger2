@@ -1,6 +1,7 @@
 package models
 
 import com.google.inject.assistedinject.Assisted
+import jssc.SerialPort
 import models.Protocol.ProtocolParam
 import play.api.Logger
 
@@ -21,13 +22,13 @@ class T700CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
   val logger: Logger = Logger(this.getClass)
   import context.dispatcher
 
-  assert(protocolParam.protocol == Protocol.tcpCli)
   logger.info(s"$instId T700CliCollector start")
   import com.github.nscala_time.time.Imports._
   val dataInstrumentTypes = List.empty[InstrumentStatusType]
   var socketOpt: Option[Socket] = None
   var outOpt: Option[OutputStream] = None
   var inOpt: Option[BufferedReader] = None
+  var serialCommOpt: Option[SerialComm] = Option.empty
   var lastSeqNo = ""
   var lastSeqOp = true
   var lastSeqTime = DateTime.now
@@ -40,12 +41,20 @@ class T700CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     }
   }
 
-  override def connectHost: Unit = {
-    val socket = new Socket(protocolParam.host.get, 3000)
-    socket.setSoTimeout(1000)
-    socketOpt = Some(socket)
-    outOpt = Some(socket.getOutputStream())
-    inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream())))
+  override def connectHost(): Unit = {
+    if (protocolParam.protocol == Protocol.tcpCli) {
+      val socket = new Socket(protocolParam.host.get, 3000)
+      socket.setSoTimeout(1000)
+      socketOpt = Some(socket)
+      outOpt = Some(socket.getOutputStream)
+      inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream)))
+    } else if (protocolParam.protocol == Protocol.serialCli) {
+      val comm = SerialComm.open(protocolParam.comPort.get,
+        protocolParam.speed.getOrElse(SerialPort.BAUDRATE_9600))
+      serialCommOpt = Some(comm)
+    } else {
+      throw new IllegalArgumentException(s"Unsupported protocol: ${protocolParam.protocol}")
+    }
   }
 
 
@@ -62,17 +71,32 @@ class T700CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
       lastSeqTime = DateTime.now
       lastSeqOp = on
       lastSeqNo = seq
-      for (out <- outOpt) {
-        if (on) {
-          val cmd = "C EXECSEQ \"" + seq + "\"\r\n"
-          out.write(cmd.getBytes)
-        } else
-          out.write("C STANDBY\r\n".getBytes)
+      if(protocolParam.protocol == Protocol.tcpCli) {
+        for (out <- outOpt) {
+          if (on) {
+            val cmd = "C EXECSEQ \"" + seq + "\"\r\n"
+            out.write(cmd.getBytes)
+          } else
+            out.write("C STANDBY\r\n".getBytes)
+        }
+      }else if(protocolParam.protocol == Protocol.serialCli) {
+        for (serial <- serialCommOpt) {
+          if (on) {
+            val cmd = "C EXECSEQ \"" + seq + "\"\r\n"
+            serial.port.writeBytes(cmd.getBytes())
+          } else
+            serial.port.writeBytes("C STANDBY\r\n".getBytes())
+        }
+      } else {
+        throw new IllegalArgumentException(s"Unsupported protocol: ${protocolParam.protocol}")
       }
     }
   }
 
   override def postStop(): Unit = {
+    for (comm <- serialCommOpt)
+      SerialComm.close(comm)
+
     for (in <- inOpt)
       in.close()
 

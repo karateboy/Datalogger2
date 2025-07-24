@@ -31,9 +31,9 @@ class T100CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
   }
 
   override def readDataRegSerial(serial: SerialComm): List[(InstrumentStatusType, Double)] = {
-    serial.port.writeBytes("T SO2\n".getBytes())
+    serial.port.writeBytes("T SO2\r\n".getBytes())
     Thread.sleep(500)
-    serial.getLine3().flatMap(line => {
+    serial.getLine().flatMap(line => {
       for ((_, _, value) <- getKeyUnitValue(line)) yield
         (dataInstrumentTypes.head, value)
     })
