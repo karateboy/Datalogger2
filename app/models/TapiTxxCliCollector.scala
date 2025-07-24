@@ -20,6 +20,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
 
   val logger: Logger = Logger(this.getClass)
+
   import context.dispatcher
 
   val model: String
@@ -44,17 +45,36 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
         out <- outOpt
         in <- inOpt
       } yield {
-        out.write("T LIST\r\n".getBytes)
-        Thread.sleep(1500)
-        val resp = readTillTimeout(in)
-
-        val ret =
-          for {line <- resp} yield {
-            addr = addr + 1
-            for ((key, unit, _) <- getKeyUnitValue(line) if dataInstrumentTypes.forall(ist => ist.key != key)) yield
-              InstrumentStatusType(key, addr, key, unit)
+        if (protocolParam.protocol == Protocol.tcpCli)
+          out.write("T LIST\r\n".getBytes)
+        else {
+          for (serial <- serialCommOpt) {
+            serial.port.writeBytes("T LIST\n".getBytes)
           }
-        ret.flatten
+        }
+
+        Thread.sleep(1500)
+
+        if (protocolParam.protocol == Protocol.tcpCli) {
+          val resp = readTillTimeout(in)
+
+          val ret =
+            for {line <- resp} yield {
+              addr = addr + 1
+              for ((key, unit, _) <- getKeyUnitValue(line) if dataInstrumentTypes.forall(ist => ist.key != key)) yield
+                InstrumentStatusType(key, addr, key, unit)
+            }
+          ret.flatten
+        } else {
+          val serial = serialCommOpt.get
+          val ret =
+            for {line <- serial.getLine3()} yield {
+              addr = addr + 1
+              for ((key, unit, _) <- getKeyUnitValue(line) if dataInstrumentTypes.forall(ist => ist.key != key)) yield
+                InstrumentStatusType(key, addr, key, unit)
+            }
+          ret.flatten
+        }
       }
 
     logger.info(s"Finished Probe $model")
@@ -64,27 +84,42 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
 
   def readDataReg(in: BufferedReader, out: OutputStream): List[(InstrumentStatusType, Double)]
 
+  def readDataRegSerial(serial: SerialComm): List[(InstrumentStatusType, Double)]
+
   override def readReg(statusTypeList: List[InstrumentStatusType], full: Boolean): Future[Option[ModelRegValue2]] = Future {
     blocking {
-      try{
+      try {
         for {
           in <- inOpt
           out <- outOpt
         } yield {
-          val data = readDataReg(in, out)
+          val data = if (protocolParam.protocol == Protocol.serialCli)
+            readDataReg(in, out)
+          else
+            readDataRegSerial(serialCommOpt.get)
+
           if (data.isEmpty)
             throw new Exception("no data")
 
+          def getReg(resp: List[String]): List[(InstrumentStatusType, Double)] =
+            resp.flatMap(line => {
+              for {(key, _, value) <- getKeyUnitValue(line) if dataInstrumentTypes.forall(ist => ist.key != key)
+                   st <- statusTypeList.find(st => st.key == key)} yield
+                (st, value)
+            })
+
           val statusList =
             if (full) {
-              out.write("T LIST\r\n".getBytes)
-              Thread.sleep(1500)
-              val resp = readTillTimeout(in)
-              resp.flatMap(line => {
-                for {(key, _, value) <- getKeyUnitValue(line) if dataInstrumentTypes.forall(ist => ist.key != key)
-                     st <- statusTypeList.find(st => st.key == key)} yield
-                  (st, value)
-              })
+              if (protocolParam.protocol == Protocol.tcpCli) {
+                out.write("T LIST\r\n".getBytes)
+                Thread.sleep(1500)
+                getReg(readTillTimeout(in))
+              } else {
+                val serial = serialCommOpt.get
+                serial.port.writeBytes("T LIST\n".getBytes)
+                Thread.sleep(1500)
+                getReg(serial.getLine3())
+              }
             } else
               List.empty[(InstrumentStatusType, Double)]
 
@@ -92,9 +127,10 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
             modeRegs = List.empty[(InstrumentStatusType, Boolean)],
             warnRegs = List.empty[(InstrumentStatusType, Boolean)])
         }
-      }catch{
-        case ex:Exception=>
-          if(!calibrating)
+      } catch {
+        case ex: Exception =>
+          logger.error(s"$instId : ${this.getClass.toString} readReg error: ${ex.getMessage}", ex)
+          if (!calibrating)
             reset()
 
           throw ex
@@ -103,12 +139,13 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
   }
 
   override def onCalibrationStart(): Unit = {
-    calibrating =true
+    calibrating = true
   }
 
   override def onCalibrationEnd(): Unit = {
     calibrating = false
   }
+
   def getKeyUnitValue(line: String): Option[(String, String, Double)] = {
     try {
       if (!line.startsWith("T"))
@@ -140,9 +177,9 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
           logger.error(s"$instId readline null. close socket stream")
           reset()
         }
-        if (line != null && !line.isEmpty)
+        if (line != null && line.nonEmpty)
           resp = resp :+ line.trim
-      } while (line != null && !line.isEmpty && (!expectOneLine || resp.isEmpty))
+      } while (line != null && line.nonEmpty && (!expectOneLine || resp.isEmpty))
     } catch {
       case _: SocketTimeoutException =>
         if (resp.isEmpty && !calibrating) {
@@ -154,32 +191,37 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
   }
 
   private def reset(): Unit = {
-    for (in <- inOpt) {
-      in.close()
-      inOpt = None
-    }
+    if(protocolParam.protocol == Protocol.serialCli) {
+      serialCommOpt.foreach(SerialComm.close)
+      serialCommOpt = None
+    } else if (protocolParam.protocol == Protocol.tcpCli) {
+      for (in <- inOpt) {
+        in.close()
+        inOpt = None
+      }
 
-    for (out <- outOpt) {
-      out.close()
-      outOpt = None
-    }
+      for (out <- outOpt) {
+        out.close()
+        outOpt = None
+      }
 
-    for (sock <- socketOpt) {
-      sock.close()
-      socketOpt = None
+      for (sock <- socketOpt) {
+        sock.close()
+        socketOpt = None
+      }
     }
 
     self ! ResetConnection
   }
 
   override def connectHost(): Unit = {
-    if(protocolParam.protocol == Protocol.tcpCli) {
+    if (protocolParam.protocol == Protocol.tcpCli) {
       val socket = new Socket(protocolParam.host.get, 3000)
       socket.setSoTimeout(1000)
       socketOpt = Some(socket)
       outOpt = Some(socket.getOutputStream)
       inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream)))
-    }else if(protocolParam.protocol == Protocol.serialCli) {
+    } else if (protocolParam.protocol == Protocol.serialCli) {
       val comm = SerialComm.open(protocolParam.comPort.get,
         protocolParam.speed.getOrElse(SerialPort.BAUDRATE_9600))
       serialCommOpt = Some(comm)
