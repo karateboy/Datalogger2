@@ -167,7 +167,7 @@ object DataCollectManager {
               }
             case MonitorType.RAIN =>
               if (mtCase.accumulated.contains(true))
-                Some(values.last)
+                Some(values.max)
               else
                 Some(values.sum)
 
@@ -264,7 +264,7 @@ object DataCollectManager {
               }
             case MonitorType.RAIN =>
               if (mtCase.accumulated.contains(true))
-                Some(values.last)
+                Some(values.max)
               else
                 Some(values.sum)
             case MonitorType.PM10 =>
