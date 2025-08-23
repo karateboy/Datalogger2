@@ -832,7 +832,7 @@ class HomeController @Inject()(
   }
 
   def verifySmsPhones(phones: String): Action[AnyContent] = security.Authenticated.async {
-    val f = every8d.sendSMS("測試訊息", "", phones.split(",").toList)
+    val f = every8d.sendSMS("測試訊息", "測試訊息", phones.split(",").toList)
     if (f.isEmpty)
       Future.successful(Ok(Json.obj("ok" -> true)))
     else {
