@@ -48,6 +48,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
   val HoldingKey = "Holding"
   val ModeKey = "Mode"
 
+  resetToNormal()
   self ! ConnectHost
   val WarnKey = "Warn"
   @volatile var timerOpt: Option[Cancellable] = None
