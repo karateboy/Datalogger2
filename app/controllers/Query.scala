@@ -1114,30 +1114,40 @@ class Query @Inject()(recordOp: RecordDB,
 
         val series = for {
           m <- monitors
-          timeData = timeSeq.map { t =>
-            val time = t._1
-            val x = t._2
-            if (monitorAqiMap(m).contains(time)) {
-              val aqi = monitorAqiMap(m).get(time).flatMap(_.aqi)
-              (time.getMillis, aqi)
-            } else
-              (time.getMillis, None)
-          }
         } yield {
-          seqData(monitorOp.map(m).desc, timeData)
-        }
-        val timeStrSeq =
-          if (isDailyAqi)
-            timeSeq.map(_._1.toString("YY/MM/dd"))
-          else
-            timeSeq.map(_._1.toString("MM/dd HH:00"))
+          val aqiMain = timeSeq.map { t =>
+            val time = t._1
+            val aqi = monitorAqiMap(m).get(time).flatMap(_.aqi)
+            (time.getMillis, aqi)
+          }
 
+          def getAqiSub(mt:AqiMonitorType)={
+            timeSeq.map { t =>
+              val time = t._1
+              val aqi = monitorAqiMap(m).get(time).flatMap(_.sub_map.get(mt).flatMap(_.aqi))
+              (time.getMillis, aqi)
+            }
+          }
+          Seq(
+            seqData(s"${monitorOp.map(m).desc} AQI", aqiMain),
+            seqData(s"${monitorOp.map(m).desc} O3", getAqiSub(AQI.O3)),
+            seqData(s"${monitorOp.map(m).desc} O3 8hr", getAqiSub(AQI.O3_8hr)),
+            seqData(s"${monitorOp.map(m).desc} PM2.5", getAqiSub(AQI.pm25)),
+            seqData(s"${monitorOp.map(m).desc} PM10", getAqiSub(AQI.pm10)),
+            seqData(s"${monitorOp.map(m).desc} CO 8hr", getAqiSub(AQI.CO_8hr)),
+            seqData(s"${monitorOp.map(m).desc} SO2", getAqiSub(AQI.SO2)),
+            seqData(s"${monitorOp.map(m).desc} SO2 24hr", getAqiSub(AQI.SO2_24hr)),
+            seqData(s"${monitorOp.map(m).desc} NO2", getAqiSub(AQI.NO2))
+          )
+        }
+
+        val seriesFlatten = series.flatten.toSeq
         val chart = HighchartData(
           scala.collection.immutable.Map("type" -> "column"),
           scala.collection.immutable.Map("text" -> title),
           XAxis(None),
           Seq(YAxis(None, AxisTitle(Some(Some(""))), None)),
-          series)
+          seriesFlatten)
 
         if (outputType == OutputType.excel) {
           val excelFile = excelUtility.exportChartData(chart, Array(0), showSec = false)
@@ -1157,7 +1167,7 @@ class Query @Inject()(recordOp: RecordDB,
   }
 
   private case class Position(lat: Double, lng: Double, date: Date) {
-    def getNextPosition(bearing: Double, distance: Double, newDate:Date): Position = {
+    def getNextPosition(bearing: Double, distance: Double, newDate: Date): Position = {
       val lat1 = Math.toRadians(lat)
       val lng1 = Math.toRadians(lng)
       val R = 6371000 // Radius of the Earth in meters
@@ -1200,8 +1210,8 @@ class Query @Inject()(recordOp: RecordDB,
           var lastPos = currentPos
           for (record <- recordReverse) {
             for (windDir <- record.mtMap.get(MonitorType.WIN_DIRECTION).flatMap(_.value);
-                              windSpeed <- record.mtMap.get(MonitorType.WIN_SPEED).flatMap(_.value)) {
-              val distance = if(tab == tableType.hour)
+                 windSpeed <- record.mtMap.get(MonitorType.WIN_SPEED).flatMap(_.value)) {
+              val distance = if (tab == tableType.hour)
                 windSpeed * 3600 // m/s * 1 hour
               else
                 windSpeed * 60 // m/s * 1 minute
