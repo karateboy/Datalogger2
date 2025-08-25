@@ -1150,7 +1150,8 @@ class Query @Inject()(recordOp: RecordDB,
           seriesFlatten)
 
         if (outputType == OutputType.excel) {
-          val excelFile = excelUtility.exportChartData(chart, Array(0), showSec = false)
+          val precision = Array.fill(chart.series.size){0}
+          val excelFile = excelUtility.exportChartData(chart, precision, showSec = false)
           Ok.sendFile(excelFile, fileName = _ =>
             Some("AQI查詢.xlsx"),
             onClose = () => {

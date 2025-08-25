@@ -12,7 +12,6 @@ import java.io._
 import java.math.MathContext
 import java.nio.file._
 import javax.inject._
-import scala.collection.JavaConversions.asScalaIterator
 import scala.collection.JavaConverters.asScalaIteratorConverter
 import scala.math.BigDecimal.RoundingMode
 
@@ -33,7 +32,7 @@ class ExcelUtility @Inject()
     exportChartData(chart, precArray, showSec)
   }
 
-  def exportChartData(chart: HighchartData, precArray: Array[Int], showSec: Boolean) = {
+  def exportChartData(chart: HighchartData, precision: Array[Int], showSec: Boolean) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("chart_export.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
     val format = wb.createDataFormat();
@@ -47,9 +46,9 @@ class ExcelUtility @Inject()
     val manualStyle = wb.createCellStyle()
     manualStyle.setFillForegroundColor(IndexedColors.GOLD.getIndex)
     manualStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND)
-    val maintanceStyle = wb.createCellStyle()
-    maintanceStyle.setFillForegroundColor(IndexedColors.LAVENDER.getIndex)
-    maintanceStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND)
+    val maintenanceStyle = wb.createCellStyle()
+    maintenanceStyle.setFillForegroundColor(IndexedColors.LAVENDER.getIndex)
+    maintenanceStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND)
 
     for ((series, colIdx) <- chart.series.zipWithIndex) {
       headerRow.createCell(1 + 2 * colIdx).setCellValue(series.name)
@@ -57,7 +56,7 @@ class ExcelUtility @Inject()
         headerRow.createCell(1 + 2 * colIdx + 1).setCellValue("狀態碼")
     }
 
-    val styles = precArray.map { prec =>
+    val styles = precision.map { prec =>
       val format_str: String = if (prec != 0)
         "0." + "0" * prec
       else
@@ -81,7 +80,7 @@ class ExcelUtility @Inject()
           val pair = series.data(rowIdx)
           val statusOpt = series.statusList(rowIdx)
           for (v <- pair._2 if !v.isNaN) {
-            val d = BigDecimal(v).setScale(precArray(colIdx), RoundingMode.HALF_EVEN)
+            val d = BigDecimal(v).setScale(precision(colIdx), RoundingMode.HALF_EVEN)
             cell.setCellValue(d.doubleValue())
           }
           for (status <- statusOpt) {
@@ -110,7 +109,7 @@ class ExcelUtility @Inject()
           val cell = thisRow.createCell(colIdx * 2 + 1)
           cell.setCellStyle(styles(colIdx))
           for (v <- pair._2 if !v.isNaN) {
-            val d = BigDecimal(v).setScale(precArray(colIdx), RoundingMode.HALF_EVEN)
+            val d = BigDecimal(v).setScale(precision(colIdx), RoundingMode.HALF_EVEN)
             cell.setCellValue(d.doubleValue())
             if (series.statusList.nonEmpty)
               for (status <- series.statusList(row - 1)) {
@@ -126,8 +125,8 @@ class ExcelUtility @Inject()
                   cell.setCellStyle(manualStyle)
                   statusCell.setCellStyle(manualStyle)
                 } else if (MonitorStatus.isMaintenance(status)) {
-                  cell.setCellStyle(maintanceStyle)
-                  statusCell.setCellStyle(maintanceStyle)
+                  cell.setCellStyle(maintenanceStyle)
+                  statusCell.setCellStyle(maintenanceStyle)
                 }
               }
           }
