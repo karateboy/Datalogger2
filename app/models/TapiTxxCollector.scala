@@ -3,7 +3,7 @@ package models
 import akka.actor._
 import models.ModelHelper._
 import models.MultiCalibrator.TriggerVault
-
+import play.api.Logger
 import play.api.libs.concurrent.InjectedActorSupport
 
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
@@ -35,10 +35,11 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
                                          (instId: String,
                                           modelReg: ModelReg,
                                           tapiConfig: TapiConfig,
-                                          host: String) extends Actor with ActorLogging {
+                                          host: String) extends Actor{
   import DataCollectManager._
   import context.dispatcher
 
+  private val log = Logger(this.getClass)
   val InputKey = "Input"
 
   import TapiTxxCollector._
@@ -48,7 +49,6 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
   val HoldingKey = "Holding"
   val ModeKey = "Mode"
 
-  resetToNormal()
   self ! ConnectHost
   val WarnKey = "Warn"
   @volatile var timerOpt: Option[Cancellable] = None
@@ -276,6 +276,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
               instrumentOp.updateStatusType(instId, instrumentStatusTypesOpt.get)
             }
             import scala.concurrent.duration._
+            resetToNormal()
             timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadRegister))
           } catch {
             case ex: Exception =>
@@ -291,7 +292,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
     case ReadRegister =>
       readRegFuture(false)
 
-    case SetState(id, state) =>
+    case SetState(_, state) =>
       if (state == MonitorStatus.ZeroCalibrationStat) {
         log.error(s"Unexpected command: SetState($state)")
       } else {
@@ -350,7 +351,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
       resetToNormal()
       instrumentOp.setState(id, endState)
       collectorState = endState
-      context become normalReceive
+      context become normalReceive()
   }
 
   def calibrationHandler(calibrationType: CalibrationType, startTime: DateTime, recordCalibration: Boolean, calibrationReadingList: List[ReportData],
@@ -372,7 +373,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
         collectorState = targetState
         instrumentOp.setState(instId, targetState)
         resetToNormal()
-        context become normalReceive
+        context become normalReceive()
       }
 
       log.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
@@ -460,7 +461,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
         }
 
         if (calibrations.isEmpty) {
-          log.warning(s"No calibration data for $mt")
+          log.warn(s"No calibration data for $mt")
           (mt, 0d)
         } else
           (mt, calibrations.sum / calibrations.length)
@@ -475,10 +476,10 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
           collectorState = MonitorStatus.NormalStat
           instrumentOp.setState(instId, collectorState)
           val raiseStartTimerOpt = Some(purgeCalibrator)
-          context become calibrationHandler(AutoSpan, startTime, false, List.empty[ReportData],
+          context become calibrationHandler(AutoSpan, startTime, recordCalibration = false, List.empty[ReportData],
             values, endState, raiseStartTimerOpt)
         } else {
-          context become calibrationHandler(AutoSpan, startTime, false, List.empty[ReportData],
+          context become calibrationHandler(AutoSpan, startTime, recordCalibration = false, List.empty[ReportData],
             values, endState, None)
           self ! RaiseStart
         }
@@ -516,27 +517,28 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
         collectorState = endState
         instrumentOp.setState(instId, collectorState)
         resetToNormal()
-        context become normalReceive
+        context become normalReceive()
         log.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
       }
   }
 
   def resetToNormal(): Unit = {
-    tapiConfig.calibrateZeoDO map {
+    log.info("Reset to normal state")
+    tapiConfig.calibrateZeoDO foreach {
       doBit =>
-        context.parent ! WriteDO(doBit, false)
+        context.parent ! WriteDO(doBit, on = false)
     }
 
     context.parent ! ExecuteSeq(T700_STANDBY_SEQ, on = true)
   }
 
   def triggerZeroCalibration(v: Boolean): Unit = {
-    tapiConfig.calibrateZeoDO map {
+    tapiConfig.calibrateZeoDO foreach {
       doBit =>
         context.parent ! WriteDO(doBit, v)
     }
 
-    tapiConfig.calibrateZeoSeq map {
+    tapiConfig.calibrateZeoSeq foreach {
       seq =>
         if (v)
           context.parent ! ExecuteSeq(seq, v)
@@ -645,7 +647,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
   def findDataRegIdx(regValue: ModelRegValue)(addr: Int): Option[Int] = {
     val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
     if (dataReg.isEmpty) {
-      log.warning(s"$instId Cannot found Data register!")
+      log.warn(s"$instId Cannot found Data register!")
       None
     } else
       Some(dataReg.get._2)

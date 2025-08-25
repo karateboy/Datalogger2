@@ -2,6 +2,7 @@ package models
 
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.{ProtocolParam, tcp}
+import play.api.Logger
 object T201Collector extends
   TapiTxx(ModelConfig("T201", List("TNX",
     MonitorType.NH3, MonitorType.NOX,
@@ -38,6 +39,7 @@ class T201Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
   extends TapiTxxCollector(instrumentOp, monitorStatusOp,
     alarmOp, monitorTypeOp,
     calibrationOp, instrumentStatusOp)(instId, modelReg, config, host) {
+  val logger: Logger = Logger(this.getClass)
   import DataCollectManager._
   val TNX = "TNX"
   val NH3 = MonitorType.NH3
@@ -100,6 +102,7 @@ class T201Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     try {
       super.resetToNormal()
 
+      logger.info("Resetting T201 internal zero/span calibration to off")
       if (!config.skipInternalVault.contains(true)) {
         masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
         masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)

@@ -51,6 +51,7 @@ class T300Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     calibrationOp, instrumentStatusOp)(instId, modelReg, config, host){
   val CO = MonitorType.CO
 
+  val logger = play.api.Logger(this.getClass)
   import DataCollectManager._
 
   override def reportData(regValue: ModelRegValue): Option[ReportData] = {
@@ -104,6 +105,7 @@ class T300Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     try {
       super.resetToNormal()
 
+      logger.info("Reset to normal state coil 20, 21 to false")
       if (!config.skipInternalVault.contains(true)) {
         masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
         masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)

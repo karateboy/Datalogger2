@@ -2,6 +2,7 @@ package models
 
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
+import play.api.Logger
 
 object T400Collector extends TapiTxx(ModelConfig("T400", List("O3"))) {
   lazy val modelReg: ModelReg = readModelSetting
@@ -51,6 +52,7 @@ class T400Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
 
   import DataCollectManager._
 
+  val logger: Logger = Logger(this.getClass)
   override def reportData(regValue: ModelRegValue): Option[ReportData] =
     for (idx <- findDataRegIdx(regValue)(18)) yield {
       val v = regValue.inputRegs(idx)
@@ -91,6 +93,7 @@ class T400Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     try {
       super.resetToNormal()
 
+      logger.info("Resetting T400 internal zero/span calibration to off")
       if (!config.skipInternalVault.contains(true)) {
         masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
         masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 22), false)
