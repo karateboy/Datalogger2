@@ -12,7 +12,7 @@ import scala.concurrent.Future
 
 @Singleton
 class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mailerClient: MailerClient,
-                        lineNotify: LineNotify, sysConfig: SysConfig) extends AlarmDB {
+                        lineNotify: LineNotify, sysConfig: SysConfig, every8d: Every8d) extends AlarmDB {
   private val tabName = "alarms"
 
   override def getAlarmsFuture(src: String, level: Int,
@@ -81,6 +81,9 @@ class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mail
 
         for (token <- sysConfig.getLineChannelToken if token.nonEmpty)
           lineNotify.notify(token, ar.desc)
+
+        for(mobiles <- sysConfig.getSmsPhones if mobiles.nonEmpty)
+          every8d.sendSMS("警報通知", ar.desc, mobiles)
       }
     }
 
