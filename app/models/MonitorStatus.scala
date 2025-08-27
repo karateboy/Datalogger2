@@ -43,6 +43,7 @@ object MonitorStatus {
   val InvalidDataStat = "030"
   val MaintainStat = "031"
   val ExceedRangeStat = "032"
+  val LessThanMDL = "040"
 
 
   def getTagInfo(tag: String) = {

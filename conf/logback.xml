@@ -45,6 +45,7 @@
   <logger name="models.MultiCalibrator" level="INFO" />
   <logger name="models.PseudoDeviceCollector" level="INFO" />
   <logger name="models" level="INFO" />
+  <logger name="controllers" level="INFO" />
 
   <root level="WARN">
     <appender-ref ref="ASYNCFILE" />

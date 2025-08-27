@@ -12,7 +12,6 @@ import java.io._
 import java.math.MathContext
 import java.nio.file._
 import javax.inject._
-import scala.collection.JavaConversions.asScalaIterator
 import scala.collection.JavaConverters.asScalaIteratorConverter
 import scala.math.BigDecimal.RoundingMode
 
@@ -424,7 +423,8 @@ class ExcelUtility @Inject()
     for ((calibration, idx) <- calibrationList.zipWithIndex) {
       val row = sheet.createRow(3 + idx)
       val mt = calibration.monitorType
-      def setPointCell(cell: Cell, value: Option[Double], statusOpt:Option[Boolean]): Unit = {
+
+      def setPointCell(cell: Cell, value: Option[Double], statusOpt: Option[Boolean]): Unit = {
         cell.setCellValue(monitorTypeOp.format(mt, value))
         statusOpt match {
           case Some(true) =>
@@ -503,13 +503,13 @@ class ExcelUtility @Inject()
         try {
           val value = key match {
             case "時間" =>
-              try{
+              try {
                 cell.getDateCellValue
-              }catch {
+              } catch {
                 case _: Throwable =>
-                  try{
+                  try {
                     DateTime.parse(cell.getStringCellValue, DateTimeFormat.forPattern("YYYY/MM/dd HH:mm:ss")).toDate
-                  }catch {
+                  } catch {
                     case _: Throwable =>
                       DateTime.parse(cell.getStringCellValue, DateTimeFormat.forPattern("YYYY/MM/dd HH:mm")).toDate
                   }
@@ -527,5 +527,33 @@ class ExcelUtility @Inject()
       rowMap
     }
     data.toSeq
+  }
+
+  def getUpsertMDL(file: File): Seq[(String, Double)] = {
+    val wb = new XSSFWorkbook(new FileInputStream(file))
+    val sheet = wb.getSheetAt(0)
+    val rowIterator = sheet.rowIterator().asScala
+    rowIterator.next()
+    rowIterator.next()
+    rowIterator.next()
+
+    val data = rowIterator map { row: Row =>
+      val cells = row.cellIterator().asScala.toList
+      if (cells.size < 13)
+        None
+      else {
+        try{
+          val mt = cells(1).getStringCellValue
+          val value = cells(12).getNumericCellValue
+          Some((mt, value))
+        }catch {
+          case _: Throwable =>
+            None
+        }
+
+      }
+    }
+    wb.close()
+    data.flatten.toSeq
   }
 }

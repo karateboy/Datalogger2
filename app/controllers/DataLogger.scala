@@ -17,7 +17,8 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb,
                            tableType: TableType,
                            security: Security,
                            cc: ControllerComponents,
-                           assets: Assets) extends AbstractController(cc) {
+                           assets: Assets,
+                           monitorTypeDB: MonitorTypeDB) extends AbstractController(cc) {
   val logger: Logger = Logger(this.getClass)
 
   def getAlarmRules: Action[AnyContent] = security.Authenticated.async {
@@ -80,6 +81,29 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb,
           Ok(Json.obj("ok" -> true))
         }
       }
+  }
+
+  def upsertMDL: Action[MultipartFormData[play.api.libs.Files.TemporaryFile]] = security.Authenticated.async(parse.multipartFormData) {
+    implicit request =>
+      val file = request.body.file("data").get
+      val tmpFile = file.ref.path.toFile
+
+      val mdlList = excelUtility.getUpsertMDL(tmpFile)
+      logger.info(s"upsert MDL: ${mdlList.size} items")
+      def updateMdl(mt: String, mdl: Double): Unit = {
+        if (monitorTypeDB.map.contains(mt)) {
+          val newMt = monitorTypeDB.map(mt).copy(mdl = Some(mdl))
+          monitorTypeDB.upsertMonitorType(newMt)
+        } else {
+          logger.warn(s"Monitor type $mt not found")
+        }
+      }
+      mdlList.foreach({
+        case (mt, mdl) =>
+          updateMdl(s"${mt}-R", mdl)
+      })
+
+      Future.successful(Ok(Json.obj("ok" -> true)))
   }
 
   def queryData(monitorStr:String, monitorTypeStr:String, tabTypeStr: String, startNum: Long, endNum: Long): Action[AnyContent] = Action.async {

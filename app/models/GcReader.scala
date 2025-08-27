@@ -236,8 +236,16 @@ object GcReader {
           MonitorStatus.CalibratedStat
         } else if (reportDir.getName.startsWith("Q")) {
           MonitorStatus.CalibrationSampleStat
-        } else
-          MonitorStatus.NormalStat
+        } else {
+          if (monitorTypeDB.map.contains(mtName)) {
+            val mt = monitorTypeDB.map(mtName)
+            if (mt.mdl.isDefined && value < mt.mdl.get)
+              MonitorStatus.LessThanMDL
+            else
+              MonitorStatus.NormalStat
+          } else
+            MonitorStatus.NormalStat
+        }
 
         Some(MtRecord(mtName, Some(value), status))
       } catch {
@@ -274,13 +282,13 @@ object GcReader {
           }
         }
 
-        for(zeroTimeSpan <- gcMonitorConfig.zeroTime)
+        for (zeroTimeSpan <- gcMonitorConfig.zeroTime)
           if (zeroTimeSpan.within(dateTime.toLocalDateTime)) {
             logger.info(s"${dateTime.toLocalDateTime} ${mtRecord.mtName} is in zero calibration")
             mtRecord.status = MonitorStatus.ZeroCalibrationStat
           }
 
-        for(spanTimeSpan <- gcMonitorConfig.spanTime)
+        for (spanTimeSpan <- gcMonitorConfig.spanTime)
           if (spanTimeSpan.within(dateTime.toLocalDateTime)) {
             logger.info(s"${dateTime.toLocalDateTime} ${mtRecord.mtName} is in span calibration")
             mtRecord.status = MonitorStatus.SpanCalibrationStat

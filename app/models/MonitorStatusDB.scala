@@ -1,8 +1,5 @@
 package models
 
-import com.google.inject.ImplementedBy
-import models.MonitorStatus.{BelowNormalStat, CalibrationDeviation, CalibrationPoint3, CalibrationPoint4, CalibrationPoint5, CalibrationPoint6, CalibrationResume, ExceedRangeStat, InvalidDataStat, MaintainStat, NormalStat, OverNormalStat, SpanCalibrationStat, ZeroCalibrationStat, getTagInfo}
-import play.api.libs.json.Json
 import models.MonitorStatus._
 import play.api.libs.json.{Json, OWrites, Reads}
 
@@ -26,7 +23,9 @@ trait MonitorStatusDB {
     MonitorStatus(CalibrationSampleStat, "標準品"),
     MonitorStatus(InvalidDataStat, "無效數據"),
     MonitorStatus(MaintainStat, "維修、保養"),
-    MonitorStatus(ExceedRangeStat, "超過量測範圍"))
+    MonitorStatus(ExceedRangeStat, "超過量測範圍"),
+    MonitorStatus(LessThanMDL, "<MDL")
+  )
 
   var _map: Map[String, MonitorStatus] = refreshMap()
 

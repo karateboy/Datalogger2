@@ -107,6 +107,14 @@
             @change="markDirty(row.item)"
           />
         </template>
+        <template #cell(mdl)="row">
+          <b-form-input
+            v-model.number="row.item.mdl"
+            type="number"
+            size="sm"
+            @change="markDirty(row.item)"
+          />
+        </template>
         <template #cell(accumulated)="row">
           <b-form-checkbox
             v-model="row.item.accumulated"
@@ -151,6 +159,14 @@
           >
             刪除
           </b-button>
+          <b-button
+            variant="info"
+            class="mr-1"
+            @click="downloadMDL">下載MDL範本</b-button>
+          <b-button
+            variant="info"
+            class="mr-1"
+            @click="openMDLDlg">上傳MDL</b-button>
         </b-col>
       </b-row>
     </b-card>
@@ -161,6 +177,23 @@
       ok-title="確認"
       @ok="setMtThresholdConfig"
     >
+    </b-modal>
+    <b-modal
+      id="mdlUpload"
+      title="上傳MDL"
+      cancel-title="取消"
+      ok-title="確認"
+      @ok="uploadMDL"
+      :ok-disabled="!Boolean(form2.uploadFile)"
+    >
+      <b-form-file
+        v-model="form2.uploadFile"
+        :state="Boolean(form2.uploadFile)"
+        accept=".xlsx"
+        browse-text="..."
+        placeholder="選擇上傳檔案..."
+        drop-placeholder="拖曳檔案至此..."
+      ></b-form-file>
     </b-modal>
   </div>
 </template>
@@ -246,6 +279,11 @@ export default Vue.extend({
         tdClass: { 'text-center': true },
       },
       {
+        key: 'mdl',
+        label: 'MDL',
+        tdClass: { 'text-center': true },
+      },
+      {
         key: 'accumulated',
         label: '累積',
         tdClass: { 'text-center': true },
@@ -278,6 +316,12 @@ export default Vue.extend({
     const form = {
       thresholdConfig,
     };
+
+    const form2: {
+      uploadFile: Blob | undefined;
+    } = {
+      uploadFile: undefined,
+    };
     return {
       display: false,
       columns,
@@ -288,6 +332,7 @@ export default Vue.extend({
       },
       form,
       selected: Array<MonitorType>(),
+      form2
     };
   },
   async mounted() {
@@ -331,6 +376,7 @@ export default Vue.extend({
 
       if (!isNumber(mt.fixedB)) mt.fixedB = undefined;
       if (!isNumber(mt.fixedM)) mt.fixedM = undefined;
+      if(!isNumber(mt.mdl)) mt.mdl = undefined;
     },
     checkLevel(levelSeq: string | undefined): boolean {
       try {
@@ -387,6 +433,43 @@ export default Vue.extend({
         } catch (err) {
           throw new Error('Failed to delete mt');
         }
+      }
+    },
+    downloadMDL() {
+      const baseUrl =
+        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
+
+      const url = `${baseUrl}static/mdl.xlsx`;
+      window.open(url, '_blank');
+    },
+    openMDLDlg() {
+      this.$bvModal.show('mdlUpload');
+    },
+    async uploadMDL() {
+      let formData = new FormData();
+      formData.append('data', this.form2.uploadFile as Blob);
+
+      try {
+        let res = await axios.post(`/UpsertMDL`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        if (res.status === 200) {
+          this.$bvModal.msgBoxOk(`上傳成功`, {
+            headerBgVariant: 'success',
+          });
+          this.getMonitorTypes();
+        } else {
+          this.$bvModal.msgBoxOk(`上傳失敗 ${res.status} - ${res.statusText}`, {
+            headerBgVariant: 'danger',
+          });
+        }
+      } catch (err) {
+        this.$bvModal.msgBoxOk(`上傳失敗 ${err}`, {
+          headerBgVariant: 'danger',
+        });
       }
     },
   },
