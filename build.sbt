@@ -1,5 +1,5 @@
 name := """DataLogger2"""
-val mainVersion = "2.8.32"
+val mainVersion = "2.8.45"
 val distVersion = "-yl2"
 version := s"$mainVersion$distVersion"
 
@@ -43,7 +43,7 @@ libraryDependencies += "com.microsoft.sqlserver" % "mssql-jdbc_auth" % "9.4.1.x6
 libraryDependencies += "com.microsoft.sqlserver" % "mssql-jdbc_auth" % "9.4.1.x86"
 
 // https://mvnrepository.com/artifact/io.github.java-native/jssc
-libraryDependencies += "io.github.java-native" % "jssc" % "2.9.6"
+libraryDependencies += "io.github.java-native" % "jssc" % "2.10.2"
 
 // https://mvnrepository.com/artifact/org.scalikejdbc/scalikejdbc
 libraryDependencies += "org.scalikejdbc" %% "scalikejdbc" % "3.4.2"

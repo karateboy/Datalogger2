@@ -22,23 +22,23 @@ case class AqiReport(aqi: Option[Double], sub_map: Map[AqiMonitorType, AqiSubRep
 
 object AQI {
   val logger: Logger = Logger(this.getClass)
-  private final case object O3_8hr extends AqiMonitorType
+  final case object O3_8hr extends AqiMonitorType
 
   final case object O3 extends AqiMonitorType
 
-  private final case object pm25 extends AqiMonitorType
+  final case object pm25 extends AqiMonitorType
 
   final case object pm10 extends AqiMonitorType
 
-  private final case object CO_8hr extends AqiMonitorType
+  final case object CO_8hr extends AqiMonitorType
 
   final case object SO2 extends AqiMonitorType
 
-  private final case object SO2_24hr extends AqiMonitorType
+  final case object SO2_24hr extends AqiMonitorType
 
   final case object NO2 extends AqiMonitorType
 
-  private val aqiMonitorType: Seq[AqiMonitorType] = Seq(O3_8hr, O3, pm25, pm10, CO_8hr, SO2, SO2_24hr, NO2)
+  val aqiMonitorType: Seq[AqiMonitorType] = Seq(O3_8hr, O3, pm25, pm10, CO_8hr, SO2, SO2_24hr, NO2)
   val defaultMappingTypes: Seq[String] = Seq(MonitorType.O3, MonitorType.O3,
     MonitorType.PM25,
     MonitorType.PM10,

@@ -1,9 +1,9 @@
 package models
 
-import akka.actor.ActorSystem
 import com.google.inject.assistedinject.Assisted
 import models.MonitorType.{NO, NO2, NOX}
-import models.Protocol.{ProtocolParam, tcp, tcpCli}
+import models.Protocol.ProtocolParam
+import play.api.Logger
 
 object T200Collector extends TapiTxx(ModelConfig("T200",
   List(MonitorType.NOX, MonitorType.NO, MonitorType.NO2))) {
@@ -38,8 +38,6 @@ object T200Collector extends TapiTxx(ModelConfig("T200",
   override def id: String = "t200"
 
   override def description: String = "TAPI T200"
-
-  override def protocol: List[String] = List(tcp, tcpCli)
 }
 
 import javax.inject._
@@ -55,6 +53,7 @@ class T200Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
 
   import DataCollectManager._
 
+  val logger: Logger = Logger(this.getClass)
   override def reportData(regValue: ModelRegValue): Option[ReportData] =
     for {
       idxNox <- findDataRegIdx(regValue)(30)
@@ -105,6 +104,7 @@ class T200Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     try {
       super.resetToNormal()
 
+      logger.info("Resetting T200 internal zero/span calibration to off")
       if (!config.skipInternalVault.contains(true)) {
         masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
         masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)

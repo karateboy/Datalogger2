@@ -43,9 +43,32 @@ class T200CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     if (data1.isEmpty)
       throw new Exception("no data")
 
-    val data2 = List((dataInstrumentTypes(2), data0(0)._2 - data1(0)._2))
+    val data2 = List((dataInstrumentTypes(2), data0.head._2 - data1.head._2))
     data0 ++ data1 ++ data2
   }
 
   override def triggerVault(zero: Boolean, on: Boolean): Unit = {}
+
+  override def readDataRegSerial(serial: SerialComm): List[(InstrumentStatusType, Double)] = {
+    serial.port.writeBytes("T NOX\r\n".getBytes())
+    Thread.sleep(500)
+    val data0: List[(InstrumentStatusType, Double)] = serial.getLine().flatMap(line => {
+      for ((_, _, value) <- getKeyUnitValue(line)) yield
+        (dataInstrumentTypes.head, value)
+    })
+    if (data0.isEmpty)
+      throw new Exception("no data")
+
+    serial.port.writeBytes("T NO\r\n".getBytes())
+    Thread.sleep(500)
+    val data1: List[(InstrumentStatusType, Double)] = serial.getLine().flatMap(line => {
+      for ((_, _, value) <- getKeyUnitValue(line)) yield
+        (dataInstrumentTypes(1), value)
+    })
+    if (data1.isEmpty)
+      throw new Exception("no data")
+
+    val data2 = List((dataInstrumentTypes(2), data0.head._2 - data1.head._2))
+    data0 ++ data1 ++ data2
+  }
 }

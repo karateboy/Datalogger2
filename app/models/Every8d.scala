@@ -15,7 +15,7 @@ class Every8d @Inject()(config: Configuration, WSClient: WSClient) {
   for(account <- accountOpt; password <- passwordOpt)
     logger.info(s"every8d account:$account password:$password")
 
-  def sendSMS(subject:String, content:String, mobileList:List[String]): Option[Future[WSResponse]] = {
+  def sendSMS(subject:String, content:String, mobileList:Seq[String]): Option[Future[WSResponse]] = {
     for(account <- accountOpt; password <- passwordOpt) yield
       WSClient.url("https://api.e8d.tw/API21/HTTP/sendSMS.ashx")
         .post(Map(

@@ -27,9 +27,18 @@ class T400CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
     Thread.sleep(500)
     readTillTimeout(in, expectOneLine = true).flatMap(line => {
       for ((_, _, value) <- getKeyUnitValue(line)) yield
-        (dataInstrumentTypes(0), value)
+        (dataInstrumentTypes.head, value)
     })
   }
 
   override def triggerVault(zero: Boolean, on: Boolean): Unit = {}
+
+  override def readDataRegSerial(serial: SerialComm): List[(InstrumentStatusType, Double)] = {
+    serial.port.writeBytes("T O3\r\n".getBytes())
+    Thread.sleep(500)
+    serial.getLine().flatMap(line => {
+      for ((_, _, value) <- getKeyUnitValue(line)) yield
+        (dataInstrumentTypes.head, value)
+    })
+  }
 }

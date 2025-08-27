@@ -32,15 +32,6 @@ class MoxaE1212Collector @Inject()
   import DataCollectManager._
   import context.dispatcher
 
-  val resetTimer: Cancellable = {
-    import com.github.nscala_time.time.Imports._
-
-    val resetTime = DateTime.now().withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0) + 1.hour
-    val duration = new Duration(DateTime.now(), resetTime)
-    import scala.concurrent.duration._
-    context.system.scheduler.scheduleAtFixedRate(FiniteDuration(duration.getStandardSeconds, SECONDS),
-      scala.concurrent.duration.Duration(1, HOURS), self, ResetCounter)
-  }
   @volatile var cancelable: Cancellable = _
 
   self ! ConnectHost
@@ -201,6 +192,5 @@ class MoxaE1212Collector @Inject()
     if (cancelable != null)
       cancelable.cancel()
 
-    resetTimer.cancel()
   }
 }

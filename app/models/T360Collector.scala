@@ -1,9 +1,8 @@
 package models
 
-import akka.actor.ActorSystem
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.{ProtocolParam, tcp}
-import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
+import play.api.Logger
 
 object T360Collector extends TapiTxx(ModelConfig("T360", List("CO2"))) {
   lazy val modelReg = readModelSetting
@@ -42,6 +41,7 @@ class T360Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
   import DataCollectManager._
   import com.serotonin.modbus4j.locator.BaseLocator
 
+  val logger: Logger = Logger(this.getClass)
   override def reportData(regValue: ModelRegValue): Option[ReportData] =
     for (idx <- findDataRegIdx(regValue)(18)) yield {
       val v = regValue.inputRegs(idx)
@@ -80,6 +80,7 @@ class T360Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     try {
       super.resetToNormal()
 
+      logger.info("Resetting T360 internal zero/span calibration to false")
       if (!config.skipInternalVault.contains(true)) {
         masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
         masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)

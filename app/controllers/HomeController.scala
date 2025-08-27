@@ -225,6 +225,8 @@ class HomeController @Inject()(
               s"COM${inst.protocol.comPort.get}"
             case Protocol.tcpCli =>
               inst.protocol.host.getOrElse("")
+            case Protocol.serialCli =>
+              s"COM${inst.protocol.comPort.getOrElse("")}"
           }
         val calibrationTime = getCalibrationTime.map { t => t.toString("HH:mm") }
 
@@ -840,7 +842,7 @@ class HomeController @Inject()(
   }
 
   def verifySmsPhones(phones: String): Action[AnyContent] = security.Authenticated.async {
-    val f = every8d.sendSMS("測試訊息", "", phones.split(",").toList)
+    val f = every8d.sendSMS("測試訊息", "測試訊息", phones.split(",").toList)
     if (f.isEmpty)
       Future.successful(Ok(Json.obj("ok" -> true)))
     else {

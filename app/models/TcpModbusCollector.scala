@@ -33,7 +33,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
 
   val HoldingKey = "Holding"
   val ModeKey = "Mode"
-
+  resetToNormal()
   self ! ConnectHost
   val WarnKey = "Warn"
   @volatile var timerOpt: Option[Cancellable] = None
@@ -373,7 +373,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
         timer.cancel()
 
       logInstrumentError(id, s"${self.path.name}: ${ex.getMessage}. ", ex)
-      resetToNormal
+      resetToNormal()
       instrumentOp.setState(id, endState)
       collectorState = endState
       context become normalReceive

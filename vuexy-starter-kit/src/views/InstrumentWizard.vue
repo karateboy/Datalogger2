@@ -105,7 +105,8 @@
                 </validation-provider>
               </b-form-group>
             </b-col>
-            <b-col v-if="form.protocol.protocol === 'serial'" cols="12">
+            <b-col v-if="form.protocol.protocol === 'serial' ||
+              form.protocol.protocol === 'serialCli'" cols="12">
               <b-form-group
                 label="COM Port"
                 label-for="com-port"

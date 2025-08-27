@@ -1,6 +1,6 @@
 package models
 import com.google.inject.assistedinject.Assisted
-import models.Protocol.{tcp, tcpCli}
+import play.api.Logger
 object T100Collector extends TapiTxx(ModelConfig("T100", List("SO2"))) {
   lazy val modelReg: ModelReg = readModelSetting
 
@@ -34,8 +34,6 @@ object T100Collector extends TapiTxx(ModelConfig("T100", List("SO2"))) {
   override def id: String = "t100"
 
   override def description: String = "TAPI T100"
-
-  override def protocol: List[String] = List(tcp, tcpCli)
 }
 
 import javax.inject._
@@ -49,6 +47,7 @@ class T100Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     alarmOp, monitorTypeOp,
     calibrationOp, instrumentStatusOp)(instId, modelReg, config, host) {
 
+  val logger = Logger(this.getClass)
   import DataCollectManager._
   import com.serotonin.modbus4j.locator.BaseLocator
 
@@ -90,6 +89,7 @@ class T100Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     try {
       super.resetToNormal()
 
+      logger.info("Reset to normal state coil 20, 21 to false")
       if (!config.skipInternalVault.contains(true)) {
         masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
         masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)

@@ -18,7 +18,7 @@ import scala.language.implicitConversions
 
 @Singleton
 class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTargetOp: EmailTargetOp,
-                        lineNotify: LineNotify, sysConfig: SysConfig) extends AlarmDB {
+                        lineNotify: LineNotify, sysConfig: SysConfig, every8d: Every8d) extends AlarmDB {
 
   val logger: Logger = Logger(getClass)
 
@@ -81,6 +81,10 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
 
         for (token <- sysConfig.getLineChannelToken if token.nonEmpty)
           lineNotify.notify(token, ar.desc)
+
+
+        for(mobiles <- sysConfig.getSmsPhones if mobiles.nonEmpty)
+          every8d.sendSMS("警報通知", ar.desc, mobiles)
       }
     }
 

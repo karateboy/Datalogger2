@@ -1,8 +1,6 @@
 package models
-import akka.actor.ActorSystem
 import com.google.inject.assistedinject.Assisted
-import models.Protocol.{ProtocolParam, tcp, tcpCli}
-import models.mongodb.{AlarmOp, CalibrationOp, InstrumentStatusOp}
+import models.Protocol.ProtocolParam
 
 object T300Collector extends TapiTxx(ModelConfig("T300", List(MonitorType.CO))) {
   lazy val modelReg = readModelSetting
@@ -39,7 +37,6 @@ object T300Collector extends TapiTxx(ModelConfig("T300", List(MonitorType.CO))) 
 
   override def description: String = "TAPI T300"
 
-  override def protocol: List[String] = List(tcp, tcpCli)
 }
 
 import javax.inject._
@@ -54,6 +51,7 @@ class T300Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     calibrationOp, instrumentStatusOp)(instId, modelReg, config, host){
   val CO = MonitorType.CO
 
+  val logger = play.api.Logger(this.getClass)
   import DataCollectManager._
 
   override def reportData(regValue: ModelRegValue): Option[ReportData] = {
@@ -107,6 +105,7 @@ class T300Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     try {
       super.resetToNormal()
 
+      logger.info("Reset to normal state coil 20, 21 to false")
       if (!config.skipInternalVault.contains(true)) {
         masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
         masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)
