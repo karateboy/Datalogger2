@@ -351,7 +351,6 @@ object DataCollectManager {
         else {
           val mtCase = monitorTypeDB.map(mt)
           mt match {
-            /*
             case MonitorType.WIN_DIRECTION =>
               val windDir = values
               if (mtMap.contains(MonitorType.WIN_SPEED)) {
@@ -367,7 +366,7 @@ object DataCollectManager {
                     yield 1.0
 
                 directionAvg(windSpeed, values)
-              }*/
+              }
             case MonitorType.WINSPEED_MAX =>
               Some(values.max)
 
