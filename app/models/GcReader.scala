@@ -9,7 +9,7 @@ import play.api._
 import play.api.libs.ws.WSClient
 
 import java.io.File
-import java.time.{Instant, ZoneId}
+import java.time.Instant
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -389,13 +389,8 @@ private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, rec
       implicit val implicitSysConfigDB: SysConfigDB = sysConfigDB
       implicit val implicitYlUploaderConfig: YlUploaderConfig = ylUploaderConfig
       try {
-        for (gcMonitorConfig <- config.monitors) {
+        for (gcMonitorConfig <- config.monitors)
           context become handler(processInputPath(gcMonitorConfig, parser), receiveTime)
-          if (receiveTime.plusSeconds(90 * 60).isBefore(Instant.now())) {
-            val localDateTime = java.time.LocalDateTime.ofInstant(receiveTime, ZoneId.systemDefault())
-            alarmDB.log(alarmDB.src(), Alarm.Level.ERR, s"未收到quant.txt警報，最後收到檔案時間為 $localDateTime")
-          }
-        }
       } catch {
         case ex: Throwable =>
           logger.error("process InputPath failed", ex)
