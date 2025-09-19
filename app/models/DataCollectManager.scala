@@ -323,7 +323,6 @@ object DataCollectManager {
           None
         else {
           mt match {
-            /*
             case MonitorType.WIN_DIRECTION =>
               val windDir = values
               val windSpeedStatusMap = mtMap.get(MonitorType.WIN_SPEED)
@@ -336,7 +335,7 @@ object DataCollectManager {
                   for (r <- 1 to windDir.length)
                     yield 1.0
                 windAvg(windSpeed.toList, windDir)
-              }*/
+              }
             case MonitorType.WINSPEED_MAX =>
               Some(values.max)
 
