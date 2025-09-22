@@ -125,4 +125,3 @@ export interface Position {
   date?: number;
   speed?: number;
 }
-

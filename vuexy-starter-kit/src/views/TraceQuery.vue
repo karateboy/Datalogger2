@@ -7,7 +7,7 @@
             id="monitor"
             v-model="form.monitor"
             label="desc"
-            :reduce="(mt) => mt._id"
+            :reduce="mt => mt._id"
             :options="monitors"
           />
         </b-form-group>
@@ -16,7 +16,7 @@
             id="dataType"
             v-model="form.dataType"
             label="txt"
-            :reduce="(dt) => dt.id"
+            :reduce="dt => dt.id"
             :options="dataTypes"
           />
         </b-form-group>
@@ -81,10 +81,7 @@
               :position="mapCenter"
               :clickable="true"
             />
-            <GmapPolyline
-              stroke-color="red"
-              :path="trace.trace"
-            />
+            <GmapPolyline stroke-color="red" :path="trace.trace" />
             <GmapMarker
               v-for="(pos, markerIdx) in trace.trace"
               :key="`marker${markerIdx}`"
@@ -100,7 +97,7 @@
   </div>
 </template>
 <style lang="scss">
-@import "@core/scss/vue/libs/vue-select.scss";
+@import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <style scoped>
 .legend {
@@ -118,11 +115,14 @@ import { mapActions, mapGetters, mapMutations, mapState } from 'vuex';
 import { Monitor } from '@/store/monitors/types';
 import moment from 'moment';
 import axios from 'axios';
-import { faCircle, faFerry, faSailboat } from '@fortawesome/free-solid-svg-icons';
+import {
+  faCircle,
+  faFerry,
+  faSailboat,
+} from '@fortawesome/free-solid-svg-icons';
 import { Position, RecordList } from './types';
 
 const Ripple = require('vue-ripple-directive');
-
 
 interface TraceResult {
   trace: Array<Position>;
@@ -189,7 +189,7 @@ export default Vue.extend({
     },
     mapCenter(): Position {
       if (this.trace.trace.length === 0) {
-        console.info("mapCenter default is returned!",);
+        console.info('mapCenter default is returned!');
         if (this.form.monitor !== '') {
           let monitor = this.mMap.get(this.form.monitor) as Monitor;
           return {
@@ -200,7 +200,7 @@ export default Vue.extend({
       }
 
       let headPos = this.trace.trace[0];
-      console.info("mapCenter",this.trace.trace[0]);
+      console.info('mapCenter', this.trace.trace[0]);
       return { lat: headPos.lat, lng: headPos.lng };
     },
     masterShipIcon(): any {
@@ -224,14 +224,14 @@ export default Vue.extend({
 
       return {
         path: faCircle.icon[4] as string,
-        fillColor: "red",
+        fillColor: 'red',
         fillOpacity: 1,
         anchor: new google.maps.Point(
           faCircle.icon[0] / 2, // width
-          faCircle.icon[1] / 2 // height
+          faCircle.icon[1] / 2, // height
         ),
         strokeWeight: 1,
-        strokeColor: "red",
+        strokeColor: 'red',
         scale: 0.01,
       };
     },
@@ -247,7 +247,6 @@ export default Vue.extend({
     this.$gmapApiPromiseLazy().then(() => {
       this.mapLoaded = true;
     });
-
   },
   methods: {
     ...mapActions('monitors', ['fetchMonitors']),

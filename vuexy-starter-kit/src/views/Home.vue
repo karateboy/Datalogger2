@@ -2,12 +2,12 @@
   <b-row class="match-height">
     <b-col v-if="isRealtimeMeasuring" lg="9" md="12">
       <b-card
-          border-variant="primary"
-          class="text-center"
-          header="即時監測資訊"
-          header-bg-variant="primary"
-          header-class="h4 display text-center"
-          header-text-variant="white"
+        border-variant="primary"
+        class="text-center"
+        header="即時監測資訊"
+        header-bg-variant="primary"
+        header-class="h4 display text-center"
+        header-text-variant="white"
       >
         <div id="realtimeChart"></div>
       </b-card>
@@ -15,15 +15,15 @@
     <b-col v-if="isRealtimeMeasuring" class="text-center" lg="3">
       <b-card border-variant="primary" no-body>
         <b-table
-            :fields="fields"
-            :items="realTimeStatus"
-            :no-border-collapse="true"
-            :sticky-header="true"
-            head-row-variant="success"
-            head-variant="light"
-            responsive
-            small
-            style="max-height: 500px"
+          :fields="fields"
+          :items="realTimeStatus"
+          :no-border-collapse="true"
+          :sticky-header="true"
+          head-row-variant="success"
+          head-variant="light"
+          responsive
+          small
+          style="max-height: 500px"
         >
           <template #cell(index)="data">
             {{ data.index + 1 }}
@@ -32,49 +32,49 @@
       </b-card>
     </b-col>
     <b-col
-        v-if="cdxConfig.enable"
-        cols="12"
-        lg="6"
-        md="6"
-        style="max-height: 400px"
-        xl="6"
+      v-if="cdxConfig.enable"
+      cols="12"
+      lg="6"
+      md="6"
+      style="max-height: 400px"
+      xl="6"
     >
       <b-table
-          :fields="cdxUploadColumns"
-          :items="cdxUploadLogs"
-          :tbody-tr-class="rowClass"
-          responsive
-          small
-          sticky-header
-          striped
+        :fields="cdxUploadColumns"
+        :items="cdxUploadLogs"
+        :tbody-tr-class="rowClass"
+        responsive
+        small
+        sticky-header
+        striped
       />
     </b-col>
     <b-col
-        v-for="mt in userInfo.monitorTypeOfInterest"
-        :key="mt"
-        cols="12"
-        lg="4"
-        md="6"
-        xl="3"
+      v-for="mt in userInfo.monitorTypeOfInterest"
+      :key="mt"
+      cols="12"
+      lg="4"
+      md="6"
+      xl="3"
     >
       <b-card border-variant="primary">
         <div :id="`history_${mt}`"></div>
       </b-card>
     </b-col>
     <b-col
-        v-for="mt in windRoseList"
-        :key="`rose${mt}`"
-        cols="12"
-        lg="4"
-        md="6"
-        xl="3"
+      v-for="mt in windRoseList"
+      :key="`rose${mt}`"
+      cols="12"
+      lg="4"
+      md="6"
+      xl="3"
     >
       <b-card
-          :header="`${getMtName(mt)}玫瑰圖`"
-          border-variant="success"
-          header-bg-variant="success"
-          header-class="h4 display text-center"
-          header-text-variant="white"
+        :header="`${getMtName(mt)}玫瑰圖`"
+        border-variant="success"
+        header-bg-variant="success"
+        header-class="h4 display text-center"
+        header-text-variant="white"
       >
         <div :id="`rose_${mt}`">尚無資料</div>
       </b-card>
@@ -83,27 +83,27 @@
       <b-card border-variant="primary" no-body>
         <div class="map_container">
           <GmapMap
-              ref="map"
-              :center="getMapCenter()"
-              :options="mapOption"
-              :zoom="14"
-              class="map_canvas"
-              map-type-id="hybrid"
+            ref="map"
+            :center="getMapCenter()"
+            :options="mapOption"
+            :zoom="14"
+            class="map_canvas"
+            map-type-id="hybrid"
           >
             <div v-if="mapLoaded">
               <div
-                  v-for="recordList in recordLists"
-                  :key="recordList._id.monitor"
+                v-for="recordList in recordLists"
+                :key="recordList._id.monitor"
               >
                 <GmapMarker
-                    :clickable="false"
-                    :icon="getCircleIcon(recordList)"
-                    :position="getSudoMonitorPos(recordList._id.monitor)"
+                  :clickable="false"
+                  :icon="getCircleIcon(recordList)"
+                  :position="getSudoMonitorPos(recordList._id.monitor)"
                 />
                 <GmapMarker
-                    :clickable="true"
-                    :icon="getWindIcon(recordList)"
-                    :label="{
+                  :clickable="true"
+                  :icon="getWindIcon(recordList)"
+                  :label="{
                     text: `${geMtRecordValue(recordList, 'WD_SPEED')}`,
                     className:
                       'map-label bg-white rounded border border-primary',
@@ -111,8 +111,8 @@
                     fontSize: '14px',
                     fontWeight: '400',
                   }"
-                    :position="getSudoMonitorPos(recordList._id.monitor)"
-                    :title="getSudoMonitorName(recordList._id.monitor)"
+                  :position="getSudoMonitorPos(recordList._id.monitor)"
+                  :title="getSudoMonitorName(recordList._id.monitor)"
                 />
               </div>
             </div>
@@ -135,15 +135,21 @@
 </style>
 <script lang="ts">
 import Vue from 'vue';
-import {mapActions, mapGetters, mapState} from 'vuex';
+import { mapActions, mapGetters, mapState } from 'vuex';
 import axios from 'axios';
-import {CdxConfig, MonitorType, MonitorTypeStatus, MtRecord, RecordList} from './types';
+import {
+  CdxConfig,
+  MonitorType,
+  MonitorTypeStatus,
+  MtRecord,
+  RecordList,
+} from './types';
 import highcharts from 'highcharts';
 import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
 import highchartMore from 'highcharts/highcharts-more';
 import moment from 'moment';
-import {Monitor} from "@/store/monitors/types";
+import { Monitor } from '@/store/monitors/types';
 
 interface LatestMonitorData {
   monitorTypes: Array<string>;
@@ -280,7 +286,7 @@ export default Vue.extend({
     ...mapGetters('monitorTypes', ['mtMap']),
     ...mapGetters('monitors', ['mMap']),
     skin() {
-      const {skin} = useAppConfig();
+      const { skin } = useAppConfig();
       return skin;
     },
     windRoseList(): Array<string> {
@@ -292,7 +298,7 @@ export default Vue.extend({
     },
   },
   async mounted() {
-    const {skin} = useAppConfig();
+    const { skin } = useAppConfig();
     if (skin.value == 'dark') {
       darkTheme(highcharts);
     }
@@ -301,9 +307,8 @@ export default Vue.extend({
       this.mapLoaded = true;
       console.info('Google map api loaded', this.$refs.map);
       let latlng = Array<google.maps.LatLng>();
-      for(let m of this.monitors) {
-        if (m.lat && m.lng)
-          latlng.push(new google.maps.LatLng(m.lat, m.lng));
+      for (let m of this.monitors) {
+        if (m.lat && m.lng) latlng.push(new google.maps.LatLng(m.lat, m.lng));
       }
 
       let bounds = new google.maps.LatLngBounds();
@@ -497,7 +502,7 @@ export default Vue.extend({
       const now = new Date().getTime();
       const oneHourBefore = now - 60 * 60 * 1000;
       const url = `/HistoryTrend/${
-          this.activeID
+        this.activeID
       }/${mt}/${false}/min/Min/all/${oneHourBefore}/${now}`;
       const res = await axios.get(url);
       const ret: highcharts.Options = res.data;
@@ -531,8 +536,8 @@ export default Vue.extend({
         '#969696',
       ];
 
-      ret.tooltip = {valueDecimals: 2};
-      ret.legend = {enabled: true};
+      ret.tooltip = { valueDecimals: 2 };
+      ret.legend = { enabled: true };
       ret.credits = {
         enabled: false,
         href: 'http://www.wecc.com.tw/',
@@ -670,18 +675,26 @@ export default Vue.extend({
       }
     },
     getMapCenter(): any {
-      let latMax = this.monitors.map((m: Monitor) => m.lat).reduce((a: number, b: number) => Math.max(a, b), -90);
-      let latMin = this.monitors.map((m: Monitor) => m.lat).reduce((a: number, b: number) => Math.min(a, b), 90);
-      let lngMax = this.monitors.map((m: Monitor) => m.lng).reduce((a: number, b: number) => Math.max(a, b), -180);
-      let lngMin = this.monitors.map((m: Monitor) => m.lng).reduce((a: number, b: number) => Math.min(a, b), 180);
+      let latMax = this.monitors
+        .map((m: Monitor) => m.lat)
+        .reduce((a: number, b: number) => Math.max(a, b), -90);
+      let latMin = this.monitors
+        .map((m: Monitor) => m.lat)
+        .reduce((a: number, b: number) => Math.min(a, b), 90);
+      let lngMax = this.monitors
+        .map((m: Monitor) => m.lng)
+        .reduce((a: number, b: number) => Math.max(a, b), -180);
+      let lngMin = this.monitors
+        .map((m: Monitor) => m.lng)
+        .reduce((a: number, b: number) => Math.min(a, b), 180);
       if (latMax > latMin && lngMax > lngMin)
-        return {lat: (latMax + latMin) / 2, lng: (lngMax + lngMin) / 2};
+        return { lat: (latMax + latMin) / 2, lng: (lngMax + lngMin) / 2 };
 
-      return {lat: 25.12847939661864, lng: 121.73867297734043};
+      return { lat: 25.12847939661864, lng: 121.73867297734043 };
     },
     getWindIcon(recordList: RecordList) {
       let mtData = recordList.mtDataList.find(
-          mtData => mtData.mtName === 'WD_DIR',
+        mtData => mtData.mtName === 'WD_DIR',
       );
       return {
         path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
@@ -695,7 +708,7 @@ export default Vue.extend({
     },
     getCircleIcon(recordList: RecordList) {
       let mtData = recordList.mtDataList.find(
-          mtData => mtData.mtName === 'WD_DIR',
+        mtData => mtData.mtName === 'WD_DIR',
       );
       return {
         path: google.maps.SymbolPath.CIRCLE,
@@ -731,7 +744,7 @@ export default Vue.extend({
     getSudoMonitorPos(_id: string): any {
       const monitor = this.mMap.get(_id) as Monitor;
       if (monitor && monitor.lat && monitor.lng) {
-        return {lat: monitor.lat, lng: monitor.lng};
+        return { lat: monitor.lat, lng: monitor.lng };
       }
 
       console.info(`Monitor ${_id} has no lat/lng`);

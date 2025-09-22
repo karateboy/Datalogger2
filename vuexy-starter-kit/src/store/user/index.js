@@ -11,7 +11,7 @@ export default {
       isAdmin: false,
       group: '',
       monitorTypeOfInterest: [],
-      windField: false
+      windField: false,
     },
   },
   getters: {},
