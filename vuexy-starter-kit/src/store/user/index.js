@@ -11,6 +11,7 @@ export default {
       isAdmin: false,
       group: '',
       monitorTypeOfInterest: [],
+      windField: false
     },
   },
   getters: {},
@@ -21,6 +22,7 @@ export default {
       state.userInfo.isAdmin = val.isAdmin;
       state.userInfo.group = val.group;
       state.userInfo.monitorTypeOfInterest = val.monitorTypeOfInterest;
+      state.userInfo.windField = val.windField;
     },
     setLogin(state, val) {
       state.login = val;

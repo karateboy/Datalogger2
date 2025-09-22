@@ -18,6 +18,7 @@ class UserOp @Inject()(sqlServer: SqlServer) extends UserDB{
 	        [isAdmin] [bit] NOT NULL,
 	        [group] [nvarchar](50) NULL,
 	        [monitorTypeOfInterest] [nvarchar](1024) NOT NULL,
+          [windField] [bit] NULL,
         CONSTRAINT [PK_user] PRIMARY KEY CLUSTERED
         (
 	        [id] ASC
@@ -25,6 +26,12 @@ class UserOp @Inject()(sqlServer: SqlServer) extends UserDB{
       ) ON [PRIMARY]
            """.execute().apply()
       newUser(defaultUser)
+    }
+    if(!sqlServer.getColumnNames(tabName).contains("windField")) {
+      sql"""
+        ALTER TABLE [dbo].[user]
+        ADD [windField] [bit] NULL
+           """.execute().apply()
     }
   }
   init()
@@ -35,7 +42,8 @@ class UserOp @Inject()(sqlServer: SqlServer) extends UserDB{
       name = rs.string("name"),
       isAdmin = rs.boolean("isAdmin"),
       group = rs.stringOpt("group"),
-      monitorTypeOfInterest = rs.string("monitorTypeOfInterest").split(",").filter(_.nonEmpty)
+      monitorTypeOfInterest = rs.string("monitorTypeOfInterest").split(",").filter(_.nonEmpty),
+      windField = rs.booleanOpt("windField")
     )
   }
   override def newUser(user: User): Unit = {
@@ -47,14 +55,16 @@ class UserOp @Inject()(sqlServer: SqlServer) extends UserDB{
            ,[name]
            ,[isAdmin]
            ,[group]
-           ,[monitorTypeOfInterest])
+           ,[monitorTypeOfInterest]
+           ,[windField])
      VALUES
            (${user._id}
            ,${user.password}
            ,${user.name}
            ,${user.isAdmin}
            ,${user.group}
-           ,${user.monitorTypeOfInterest.mkString(",")})
+           ,${user.monitorTypeOfInterest.mkString(",")}
+           ,${user.windField})
          """.update().apply()
   }
 
@@ -76,6 +86,7 @@ class UserOp @Inject()(sqlServer: SqlServer) extends UserDB{
               ,[isAdmin] = ${user.isAdmin}
               ,[group] = ${user.group}
               ,[monitorTypeOfInterest] = ${user.monitorTypeOfInterest.mkString(",")}
+              ,[windField] = ${user.windField}
           WHERE [id] = ${user._id}
          """.update().apply()
     else
@@ -85,6 +96,7 @@ class UserOp @Inject()(sqlServer: SqlServer) extends UserDB{
               ,[isAdmin] = ${user.isAdmin}
               ,[group] = ${user.group}
               ,[monitorTypeOfInterest] = ${user.monitorTypeOfInterest.mkString(",")}
+              ,[windField] = ${user.windField}
           WHERE [id] = ${user._id}
          """.update().apply()
   }

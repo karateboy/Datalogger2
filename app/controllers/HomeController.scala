@@ -194,8 +194,11 @@ class HomeController @Inject()(
 
     val ret2 = ret.map { inst =>
       def getMonitorTypes: List[String] = {
-        val instTypeCase = instrumentTypeOp.map(inst.instType)
-        instTypeCase.driver.getMonitorTypes(inst.param)
+        if (instrumentTypeOp.map.contains(inst.instType)) {
+          val instTypeCase = instrumentTypeOp.map(inst.instType)
+          instTypeCase.driver.getMonitorTypes(inst.param)
+        } else
+          List.empty[String]
       }
 
       def getStateStr = {
@@ -206,8 +209,11 @@ class HomeController @Inject()(
       }
 
       def getCalibrationTime: Option[LocalTime] = {
-        val instTypeCase = instrumentTypeOp.map(inst.instType)
-        instTypeCase.driver.getCalibrationTime(inst.param)
+        if (instrumentTypeOp.map.contains(inst.instType)) {
+          val instTypeCase = instrumentTypeOp.map(inst.instType)
+          instTypeCase.driver.getCalibrationTime(inst.param)
+        } else
+          None
       }
 
       def getInfoClass: InstrumentInfo = {
@@ -232,7 +238,13 @@ class HomeController @Inject()(
 
         val state = getStateStr
 
-        InstrumentInfo(inst._id, instrumentTypeOp.map(inst.instType).desp, state,
+        val displayName =
+          if (instrumentTypeOp.map.contains(inst.instType))
+            instrumentTypeOp.map(inst.instType).desp
+          else
+            inst.instType
+
+        InstrumentInfo(inst._id, displayName, state,
           Protocol.map(inst.protocol.protocol), protocolParam, mtStr, calibrationTime, inst)
       }
 
