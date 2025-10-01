@@ -92,7 +92,7 @@
           >
             <div v-if="mapLoaded">
               <div
-                v-for="recordList in recordLists"
+                v-for="recordList in activeRecordList"
                 :key="recordList._id.monitor"
               >
                 <GmapMarker
@@ -296,6 +296,16 @@ export default Vue.extend({
     isRealtimeMeasuring(): boolean {
       return this.realTimeStatus.length !== 0;
     },
+    activeMonitors(): Array<Monitor> {
+      return this.monitors.filter((m:Monitor) => m._id === this.activeID);
+    },
+    activeRecordList(): Array<DisplayRecordList> {
+      return this.recordLists.filter(
+        rl => rl._id.monitor === this.activeID,
+      );
+
+
+    },
   },
   async mounted() {
     const { skin } = useAppConfig();
@@ -306,8 +316,9 @@ export default Vue.extend({
     this.$gmapApiPromiseLazy().then(() => {
       this.mapLoaded = true;
       console.info('Google map api loaded', this.$refs.map);
+      /*
       let latlng = Array<google.maps.LatLng>();
-      for (let m of this.monitors) {
+      for (let m of this.activeMonitors) {
         if (m.lat && m.lng) latlng.push(new google.maps.LatLng(m.lat, m.lng));
       }
 
@@ -316,6 +327,7 @@ export default Vue.extend({
         bounds.extend(latlng[i]);
       }
       this.$refs.map.fitBounds(bounds);
+       */
     });
 
     await this.fetchMonitors();
@@ -675,22 +687,8 @@ export default Vue.extend({
       }
     },
     getMapCenter(): any {
-      let latMax = this.monitors
-        .map((m: Monitor) => m.lat)
-        .reduce((a: number, b: number) => Math.max(a, b), -90);
-      let latMin = this.monitors
-        .map((m: Monitor) => m.lat)
-        .reduce((a: number, b: number) => Math.min(a, b), 90);
-      let lngMax = this.monitors
-        .map((m: Monitor) => m.lng)
-        .reduce((a: number, b: number) => Math.max(a, b), -180);
-      let lngMin = this.monitors
-        .map((m: Monitor) => m.lng)
-        .reduce((a: number, b: number) => Math.min(a, b), 180);
-      if (latMax > latMin && lngMax > lngMin)
-        return { lat: (latMax + latMin) / 2, lng: (lngMax + lngMin) / 2 };
 
-      return { lat: 25.12847939661864, lng: 121.73867297734043 };
+      return { lat: this.activeMonitors[0].lat, lng: this.activeMonitors[0].lng };
     },
     getWindIcon(recordList: RecordList) {
       let mtData = recordList.mtDataList.find(
