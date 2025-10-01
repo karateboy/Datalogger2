@@ -8,7 +8,7 @@ WE WILL RELEASE FUTURE UPDATES SO IN ORDER TO NOT OVERWRITE YOUR STYLES IT'S BET
 .map_container {
   position: relative;
   width: 100%;
-  padding-bottom: 100%; /* Ratio 16:9 ( 100%/16*9 = 56.25% ) */
+  padding-bottom: 50%; /* Ratio 16:9 ( 100%/16*9 = 56.25% ) */
 }
 .map_container .map_canvas {
   position: absolute;

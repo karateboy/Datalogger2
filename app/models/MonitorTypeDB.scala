@@ -166,7 +166,7 @@ trait MonitorTypeDB {
     MonitorType(_id, desp, unit, prec, rangeOrder, accumulated = Some(accumulated), acoustic = Some(acoustic))
   }
 
-  def deleteMonitorType(_id: String) = {
+  def deleteMonitorType(_id: String): Unit = {
     synchronized {
       if (map.contains(_id)) {
         val mt = map(_id)

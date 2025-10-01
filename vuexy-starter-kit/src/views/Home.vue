@@ -2,27 +2,27 @@
   <b-row class="match-height">
     <b-col v-if="isRealtimeMeasuring" lg="9" md="12">
       <b-card
+        border-variant="primary"
         class="text-center"
         header="即時監測資訊"
-        header-class="h4 display text-center"
-        border-variant="primary"
         header-bg-variant="primary"
+        header-class="h4 display text-center"
         header-text-variant="white"
       >
         <div id="realtimeChart"></div>
       </b-card>
     </b-col>
-    <b-col v-if="isRealtimeMeasuring" lg="3" class="text-center">
-      <b-card no-body border-variant="primary">
+    <b-col v-if="isRealtimeMeasuring" class="text-center" lg="3">
+      <b-card border-variant="primary" no-body>
         <b-table
           :fields="fields"
           :items="realTimeStatus"
-          small
-          head-variant="light"
-          head-row-variant="success"
-          responsive
-          :sticky-header="true"
           :no-border-collapse="true"
+          :sticky-header="true"
+          head-row-variant="success"
+          head-variant="light"
+          responsive
+          small
           style="max-height: 500px"
         >
           <template #cell(index)="data">
@@ -34,27 +34,27 @@
     <b-col
       v-if="cdxConfig.enable"
       cols="12"
-      md="6"
       lg="6"
-      xl="6"
+      md="6"
       style="max-height: 400px"
+      xl="6"
     >
       <b-table
-        small
-        striped
-        responsive
-        sticky-header
         :fields="cdxUploadColumns"
         :items="cdxUploadLogs"
         :tbody-tr-class="rowClass"
+        responsive
+        small
+        sticky-header
+        striped
       />
     </b-col>
     <b-col
       v-for="mt in userInfo.monitorTypeOfInterest"
       :key="mt"
       cols="12"
-      md="6"
       lg="4"
+      md="6"
       xl="3"
     >
       <b-card border-variant="primary">
@@ -65,18 +65,59 @@
       v-for="mt in windRoseList"
       :key="`rose${mt}`"
       cols="12"
-      md="6"
       lg="4"
+      md="6"
       xl="3"
     >
       <b-card
         :header="`${getMtName(mt)}玫瑰圖`"
-        header-class="h4 display text-center"
         border-variant="success"
         header-bg-variant="success"
+        header-class="h4 display text-center"
         header-text-variant="white"
       >
         <div :id="`rose_${mt}`">尚無資料</div>
+      </b-card>
+    </b-col>
+    <b-col v-if="userInfo.windField" cols="12">
+      <b-card border-variant="primary" no-body>
+        <div class="map_container">
+          <GmapMap
+            ref="map"
+            :center="getMapCenter()"
+            :options="mapOption"
+            :zoom="14"
+            class="map_canvas"
+            map-type-id="hybrid"
+          >
+            <div v-if="mapLoaded">
+              <div
+                v-for="recordList in activeRecordList"
+                :key="recordList._id.monitor"
+              >
+                <GmapMarker
+                  :clickable="false"
+                  :icon="getCircleIcon(recordList)"
+                  :position="getSudoMonitorPos(recordList._id.monitor)"
+                />
+                <GmapMarker
+                  :clickable="true"
+                  :icon="getWindIcon(recordList)"
+                  :label="{
+                    text: `${geMtRecordValue(recordList, 'WD_SPEED')}`,
+                    className:
+                      'map-label bg-white rounded border border-primary',
+                    color: 'black',
+                    fontSize: '14px',
+                    fontWeight: '400',
+                  }"
+                  :position="getSudoMonitorPos(recordList._id.monitor)"
+                  :title="getSudoMonitorName(recordList._id.monitor)"
+                />
+              </div>
+            </div>
+          </GmapMap>
+        </div>
       </b-card>
     </b-col>
   </b-row>
@@ -86,17 +127,38 @@
 .highcharts-container svg {
   width: 100% !important;
 }
+
+.map-label {
+  margin-top: 4.5rem !important;
+  padding: 0.2rem !important;
+}
 </style>
 <script lang="ts">
 import Vue from 'vue';
 import { mapActions, mapGetters, mapState } from 'vuex';
 import axios from 'axios';
-import { MonitorType, MonitorTypeStatus, CdxConfig } from './types';
+import {
+  CdxConfig,
+  MonitorType,
+  MonitorTypeStatus,
+  MtRecord,
+  RecordList,
+} from './types';
 import highcharts from 'highcharts';
 import darkTheme from 'highcharts/themes/dark-unica';
 import useAppConfig from '../@core/app-config/useAppConfig';
 import highchartMore from 'highcharts/highcharts-more';
 import moment from 'moment';
+import { Monitor } from '@/store/monitors/types';
+
+interface LatestMonitorData {
+  monitorTypes: Array<string>;
+  monitorData: Array<RecordList>;
+}
+
+interface DisplayRecordList extends RecordList {
+  recordMap?: Map<string, MtRecord>;
+}
 
 export default Vue.extend({
   data() {
@@ -181,6 +243,22 @@ export default Vue.extend({
       siteCounty: '',
       siteID: '',
     };
+
+    let infoWindowContent = new Map<string, string>();
+    let infoWindowPos = new Map<string, any>();
+    let infoWinOpen = new Map<string, boolean>();
+    let infoWinIndex = new Map<string, number>();
+    let mapLoaded = false;
+    let mapOption = {
+      zoomControl: true,
+      mapTypeControl: true,
+      scaleControl: true,
+      streetViewControl: true,
+      rotateControl: true,
+      fullscreenControl: true,
+    };
+    let recordLists = Array<DisplayRecordList>();
+
     return {
       maxPoints: 30,
       fields,
@@ -192,6 +270,13 @@ export default Vue.extend({
       cdxConfig,
       cdxUploadColumns,
       cdxUploadLogs: [],
+      infoWindowContent,
+      infoWindowPos,
+      infoWinOpen,
+      mapLoaded,
+      recordLists,
+      infoWinIndex,
+      mapOption,
     };
   },
   computed: {
@@ -199,17 +284,27 @@ export default Vue.extend({
     ...mapState('monitors', ['monitors', 'activeID']),
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap']),
+    ...mapGetters('monitors', ['mMap']),
     skin() {
       const { skin } = useAppConfig();
       return skin;
     },
     windRoseList(): Array<string> {
       let mtInterest = this.userInfo.monitorTypeOfInterest as Array<string>;
-      let ret = mtInterest.filter(mt => mt !== 'WD_DIR');
-      return ret;
+      return mtInterest.filter(mt => mt !== 'WD_DIR');
     },
     isRealtimeMeasuring(): boolean {
       return this.realTimeStatus.length !== 0;
+    },
+    activeMonitors(): Array<Monitor> {
+      return this.monitors.filter((m:Monitor) => m._id === this.activeID);
+    },
+    activeRecordList(): Array<DisplayRecordList> {
+      return this.recordLists.filter(
+        rl => rl._id.monitor === this.activeID,
+      );
+
+
     },
   },
   async mounted() {
@@ -218,18 +313,37 @@ export default Vue.extend({
       darkTheme(highcharts);
     }
 
+    this.$gmapApiPromiseLazy().then(() => {
+      this.mapLoaded = true;
+      console.info('Google map api loaded', this.$refs.map);
+      /*
+      let latlng = Array<google.maps.LatLng>();
+      for (let m of this.activeMonitors) {
+        if (m.lat && m.lng) latlng.push(new google.maps.LatLng(m.lat, m.lng));
+      }
+
+      let bounds = new google.maps.LatLngBounds();
+      for (let i = 0; i < latlng.length; i++) {
+        bounds.extend(latlng[i]);
+      }
+      this.$refs.map.fitBounds(bounds);
+       */
+    });
+
     await this.fetchMonitors();
     await this.getActiveID();
     await this.fetchMonitorTypes();
     await this.getUserInfo();
+    await this.getMonitorRealtimeData();
 
     const me = this;
     for (const mt of this.userInfo.monitorTypeOfInterest) this.query(mt);
-    for (const mt of me.windRoseList) me.queryWindRose(mt);
+    for (const mt of me.windRoseList) await me.queryWindRose(mt);
 
     this.mtInterestTimer = setInterval(() => {
       for (const mt of me.userInfo.monitorTypeOfInterest) me.query(mt);
       for (const mt of me.windRoseList) me.queryWindRose(mt);
+      this.getMonitorRealtimeData();
     }, 60000);
 
     await this.getCdxConfig();
@@ -244,8 +358,8 @@ export default Vue.extend({
     ...mapActions('monitors', ['fetchMonitors', 'getActiveID']),
     ...mapActions('user', ['getUserInfo']),
     async refresh(): Promise<void> {
-      this.plotLatestData();
-      this.getCdxUploadEvents();
+      await this.plotLatestData();
+      await this.getCdxUploadEvents();
     },
     async plotLatestData(): Promise<void> {
       await this.getRealtimeStatus();
@@ -571,6 +685,76 @@ export default Vue.extend({
         case 3:
           return 'table-danger';
       }
+    },
+    getMapCenter(): any {
+
+      return { lat: this.activeMonitors[0].lat, lng: this.activeMonitors[0].lng };
+    },
+    getWindIcon(recordList: RecordList) {
+      let mtData = recordList.mtDataList.find(
+        mtData => mtData.mtName === 'WD_DIR',
+      );
+      return {
+        path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+        fillColor: 'red',
+        fillOpacity: 1,
+        rotation: mtData?.value,
+        scale: 5.5,
+        strokeColor: 'white',
+        strokeWeight: 0.5,
+      };
+    },
+    getCircleIcon(recordList: RecordList) {
+      let mtData = recordList.mtDataList.find(
+        mtData => mtData.mtName === 'WD_DIR',
+      );
+      return {
+        path: google.maps.SymbolPath.CIRCLE,
+        anchor: new google.maps.Point(0, 1),
+        fillColor: 'white',
+        fillOpacity: 1,
+        rotation: mtData?.value,
+        scale: 15,
+        strokeColor: 'black',
+        strokeWeight: 1,
+      };
+    },
+    async getMonitorRealtimeData() {
+      const ret = await axios.get('/LatestMonitorData');
+      let data = ret.data as LatestMonitorData;
+      console.info('getMonitorRealtimeData()', data);
+      this.recordLists = data.monitorData;
+      for (let recordList of this.recordLists) {
+        recordList.recordMap = new Map<string, MtRecord>();
+        for (let mtData of recordList.mtDataList) {
+          recordList.recordMap.set(mtData.mtName, mtData);
+        }
+      }
+    },
+    getSudoMonitorName(_id: string): string {
+      if (this.mMap.has(_id)) {
+        let m = this.mMap.get(_id) as Monitor;
+        return m.desc;
+      }
+
+      return `${_id}`;
+    },
+    getSudoMonitorPos(_id: string): any {
+      const monitor = this.mMap.get(_id) as Monitor;
+      if (monitor && monitor.lat && monitor.lng) {
+        return { lat: monitor.lat, lng: monitor.lng };
+      }
+
+      console.info(`Monitor ${_id} has no lat/lng`);
+      return this.getMapCenter();
+    },
+    geMtRecordValue(recordList: DisplayRecordList, mt: string): string {
+      let mtRecord = recordList?.recordMap!.get(mt);
+      let mtCase = this.mtMap.get(mt) as MonitorType;
+      if (mtRecord === undefined || mtRecord.value === undefined)
+        return `N/A ${mtCase.unit}`;
+
+      return `${mtRecord.value.toFixed(mtCase.prec)} ${mtCase.unit}`;
     },
   },
 });

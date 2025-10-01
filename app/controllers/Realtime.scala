@@ -8,6 +8,7 @@ import play.api.mvc._
 
 import java.util.Date
 import javax.inject._
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -16,6 +17,7 @@ class Realtime @Inject()
  dataCollectManagerOp: DataCollectManagerOp,
  instrumentOp: InstrumentDB,
  monitorStatusOp: MonitorStatusDB,
+ monitorDB: MonitorDB,
  recordDB: RecordDB,
  sysConfigDB: SysConfigDB,
  security: Security,
@@ -140,4 +142,34 @@ class Realtime @Inject()
           }
         })
   }
+
+  case class LatestMonitorData(monitorTypes: Seq[String], monitorData: Seq[RecordList])
+
+  def getLatestMonitorData: Action[AnyContent] = security.Authenticated.async {
+    implicit val writes: OWrites[LatestMonitorData] = Json.writes[LatestMonitorData]
+    val (start, end) = (DateTime.now().minusYears(2), DateTime.now())
+
+    val monitorDailyRecordListsF = Future.sequence(for (monitor <- monitorDB.mvList) yield
+      recordDB.getRecordWithLimitFuture(recordDB.MinCollection)(start, end, 1, monitor))
+
+
+    for (monitorDailyRecordLists <- monitorDailyRecordListsF) yield {
+      val monitorTypes = Seq(MonitorType.RAIN, MonitorType.TEMP, MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION)
+      val monitorRecordLists = monitorDailyRecordLists flatMap {
+        dailyRecordList => {
+          if (dailyRecordList.isEmpty)
+            None
+          else {
+            val monitorMtData = ListBuffer.empty[MtRecord]
+            val realtimeRecordList = dailyRecordList.last
+            val _id = realtimeRecordList._id
+            realtimeRecordList.mtDataList.foreach(monitorMtData.append(_))
+            Some(RecordList(monitorMtData, _id))
+          }
+        }
+      }
+      Ok(Json.toJson(LatestMonitorData(monitorTypes, monitorRecordLists)))
+    }
+  }
+
 }

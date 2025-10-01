@@ -29,7 +29,7 @@ case class MonitorType(_id: String,
                        group: Option[String] = None,
                        mdl: Option[Double] = None) {
 
-  def addMeasuring(instrumentId: String, append: Boolean) = {
+  def addMeasuring(instrumentId: String, append: Boolean): Unit = {
     if (measuringBy.isEmpty)
       measuringBy = Some(List(instrumentId))
     else {
@@ -43,17 +43,14 @@ case class MonitorType(_id: String,
     }
   }
 
-  def stopMeasuring(instrumentId: String) = {
+  def stopMeasuring(instrumentId: String): MonitorType = {
     val newMeasuringBy =
       if (measuringBy.isEmpty)
         None
       else
         Some(measuringBy.get.filter { id => id != instrumentId })
 
-    MonitorType(_id, desp, unit,
-      prec, order, signalType, std_law, zd_law,
-      span, span_dev_law,
-      newMeasuringBy)
+    this.copy(measuringBy = newMeasuringBy)
   }
 }
 

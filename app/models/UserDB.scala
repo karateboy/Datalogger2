@@ -1,13 +1,23 @@
 package models
 
-case class User(_id: String, password: String, name: String, isAdmin: Boolean, group: Option[String], monitorTypeOfInterest: Seq[String])
+case class User(_id: String, password: String, name: String,
+                isAdmin: Boolean,
+                group: Option[String],
+                monitorTypeOfInterest: Seq[String],
+                windField: Option[Boolean])
 
 trait UserDB {
-  val defaultUser = User("sales@wecc.com.tw", "abc123", "Aragorn", true, Some(Group.PLATFORM_ADMIN), Seq.empty[String])
+  val defaultUser = User("sales@wecc.com.tw",
+    "abc123",
+    "Aragorn",
+    isAdmin = true,
+    Some(Group.PLATFORM_ADMIN),
+    Seq.empty[String],
+    windField = Some(true))
 
-  def newUser(user: User)
+  def newUser(user: User): Unit
 
-  def deleteUser(email: String)
+  def deleteUser(email: String): Unit
 
   def updateUser(user: User): Unit
 

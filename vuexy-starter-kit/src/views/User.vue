@@ -71,6 +71,12 @@
         >
         </b-form-checkbox-group>
       </b-form-group>
+      <b-form-group label="顯示風場:" label-for="windField" label-cols="3">
+        <b-form-checkbox
+          id="windField"
+          v-model="user.windField"
+        ></b-form-checkbox>
+      </b-form-group>
       <b-row>
         <b-col offset-md="3">
           <b-button
@@ -199,6 +205,7 @@ export default Vue.extend({
         user.isAdmin = self.isAdmin;
         user.group = self.group;
         user.monitorTypeOfInterest = self.monitorTypeOfInterest;
+        user.windField = self.windField;
       }
     },
     reset() {

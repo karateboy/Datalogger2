@@ -97,6 +97,7 @@ class OpenDataReceiver @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: Monito
               recordOp.ensureMonitorType(mt)
             })
             recordOp.upsertManyRecords(recordOp.HourCollection)(recordLists)
+            recordOp.upsertManyRecords(recordOp.MinCollection)(recordLists)
             true
           }
         )

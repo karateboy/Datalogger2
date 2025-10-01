@@ -8,7 +8,7 @@ import { Module } from 'vuex';
 
 const namespaced: boolean = true;
 export const state: MonitorState = {
-  monitors: [],
+  monitors: Array<Monitor>(),
   activeID: 'me',
 };
 

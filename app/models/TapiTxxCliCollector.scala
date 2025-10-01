@@ -237,6 +237,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
     } else {
       throw new IllegalArgumentException(s"Unsupported protocol: ${protocolParam.protocol}")
     }
+    setCalibrationReg(0, on = false) //exit calibration mode if in calibration mode
   }
 
   override def getDataRegList: Seq[DataReg] = dataInstrumentTypes.map(it => DataReg(monitorType = it.key, it.addr, multiplier = 1))

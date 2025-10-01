@@ -167,9 +167,9 @@ object DataCollectManager {
                 directionAvg(speeds, directions.toList)
               }
             case MonitorType.RAIN =>
-              if (mtCase.accumulated.contains(true))
-                Some(values.max)
-              else
+              if (mtCase.accumulated.contains(true)) {
+                Some(values.max - values.min)
+              } else
                 Some(values.sum)
 
             case MonitorType.PM10 =>
@@ -264,15 +264,6 @@ object DataCollectManager {
                 directionAvg(windSpeed, values)
               }
             case MonitorType.RAIN =>
-              if (mtCase.accumulated.contains(true)) {
-                val sumOfDiff = values.sliding(2).map(pair =>
-                  if (pair.last >= pair.head)
-                    pair.last - pair.head
-                  else
-                    0d
-                  ).sum
-                Some(sumOfDiff)
-              } else
                 Some(values.sum)
             case MonitorType.PM10 =>
               if (LoggerConfig.config.pm25HourAvgUseLastRecord)
