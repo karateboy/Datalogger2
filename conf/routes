@@ -107,6 +107,9 @@ DELETE        /Monitor/:id                                                      
 GET           /ActiveMonitor                                                                       controllers.HomeController.getActiveMonitorID
 PUT           /ActiveMonitor/:id                                                                   controllers.HomeController.setActiveMonitorID(id)
 
+GET           /MonitorTypeGroups                                                                   controllers.HomeController.monitorTypeGroupList
+PUT           /MonitorTypeGroup/:id                                                                controllers.HomeController.upsertMonitorTypeGroup(id)
+DELETE        /MonitorTypeGroup/:id                                                                controllers.HomeController.deleteMonitorTypeGroup(id)
 
 #GET           /Record/:monitorType/:start/:end                                                    controllers.Query.recordList(monitorType, start:Long, end:Long)
 PUT           /Record/:tabType                                                                     controllers.Query.updateRecord(tabType)
