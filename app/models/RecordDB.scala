@@ -62,7 +62,11 @@ trait RecordDB {
     }
   }
 
-  def getRecordWithLimitFuture(colName: String)(startTime: Imports.DateTime, endTime: Imports.DateTime, limit: Int, monitor: String = Monitor.activeId):
+  def getRecordWithLimitFuture(colName: String)(startTime: Imports.DateTime,
+                                                endTime: Imports.DateTime,
+                                                limit: Int,
+                                                monitor: String = Monitor.activeId,
+                                                ascending: Boolean = true):
   Future[Seq[RecordList]]
 
   def getWindRose(colName: String)(monitor: String, monitorType: String,

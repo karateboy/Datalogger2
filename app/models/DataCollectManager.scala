@@ -155,6 +155,19 @@ object DataCollectManager {
                 val speeds = List.fill(windDir.length)(1.0)
                 directionAvg(speeds, windDir.toList)
               }
+            case MonitorType.WIN_SPEED =>
+              if (mtMap.contains(MonitorType.WIN_DIRECTION)) {
+                val dirStatusMap = mtMap(MonitorType.WIN_DIRECTION)
+                val dirMostStatus = dirStatusMap.maxBy(kv => kv._2.length)
+                val dirs = dirMostStatus._2.map(_._2)
+                speedAvg(values.toList, dirs.toList)
+              } else {
+                val v = values.sum / values.length
+                if (v.isNaN)
+                  None
+                else
+                  Some(values.sum / values.length)
+              }
             case MonitorType.DIRECTION =>
               val directions = values
               if (mtMap.contains(MonitorType.SPEED)) {
@@ -261,6 +274,22 @@ object DataCollectManager {
                     yield 1.0
 
                 directionAvg(windSpeed, values)
+              }
+            case MonitorType.WIN_SPEED =>
+              if (mtMap.contains(MonitorType.WIN_DIRECTION)) {
+                val dirStatusMap = mtMap(MonitorType.WIN_DIRECTION)
+                val dirMostStatus = dirStatusMap.maxBy(kv => kv._2.length)
+                val dirs = dirMostStatus._2
+                if (isRaw)
+                  speedAvg(values.toList, dirs.flatMap(_.rawValue).toList)
+                else
+                  speedAvg(values.toList, dirs.flatMap(_.value).toList)
+              } else {
+                val v = values.sum / values.length
+                if (v.isNaN)
+                  None
+                else
+                  Some(values.sum / values.length)
               }
             case MonitorType.RAIN =>
                 Some(values.sum)

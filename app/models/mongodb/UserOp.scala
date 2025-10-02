@@ -58,19 +58,22 @@ class UserOp @Inject()(mongoDB: MongoDB) extends UserDB {
       val f = collection.replaceOne(equal("_id", user._id), user).toFuture()
       waitReadyResult(f)
     } else {
+      val windField = user.windField.getOrElse(false)
       val updates = {
         if (user.group.isEmpty)
           Updates.combine(
             Updates.set("name", user.name),
             Updates.set("isAdmin", user.isAdmin),
-            Updates.set("monitorTypeOfInterest", user.monitorTypeOfInterest)
+            Updates.set("monitorTypeOfInterest", user.monitorTypeOfInterest),
+            Updates.set("windField", windField)
           )
         else
           Updates.combine(
             Updates.set("name", user.name),
             Updates.set("isAdmin", user.isAdmin),
             Updates.set("group", user.group.get),
-            Updates.set("monitorTypeOfInterest", user.monitorTypeOfInterest)
+            Updates.set("monitorTypeOfInterest", user.monitorTypeOfInterest),
+            Updates.set("windField", windField)
           )
       }
 

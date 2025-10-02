@@ -101,6 +101,7 @@ object MonitorType {
   //Calculated types
   val DIRECTION = "DIRECTION"
   val LDN = "LDN"
+  val WS_SPEED = "WS_SPEED"
 
   val calculatedMonitorTypeEntries: Seq[(Seq[String], String, (Seq[MonitorTypeData], Date) => Option[MonitorTypeData])] =
     Seq(
@@ -116,6 +117,10 @@ object MonitorType {
             else
               MonitorTypeData(LDN, mtData.value, mtData.status)
           }
+      ),
+      (Seq(WIN_SPEED), WS_SPEED, (mtDataList, _) =>
+        for (speedData <- mtDataList.find(_.mt == WIN_SPEED)) yield
+          speedData.copy(mt = WS_SPEED)
       )
     )
 

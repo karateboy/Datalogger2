@@ -16,6 +16,7 @@ import scala.util.Success
 @Singleton
 class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
   val logger: Logger = Logger(this.getClass)
+
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
@@ -92,15 +93,27 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
     f
   }
 
-  override def getRecordWithLimitFuture(colName: String)(startTime: DateTime, endTime: DateTime, limit: Int, monitor: String = Monitor.activeId):
+  override def getRecordWithLimitFuture(colName: String)(startTime: DateTime,
+                                                         endTime: DateTime,
+                                                         limit: Int,
+                                                         monitor: String = Monitor.activeId,
+                                                         asc: Boolean = true):
   Future[Seq[RecordList]] = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
     val col = getCollection(colName)
-    val f = col.find(and(equal("_id.monitor", monitor),
-        gte("_id.time", startTime.toDate), lt("_id.time", endTime.toDate)))
-      .limit(limit).sort(ascending("_id.time")).toFuture()
+    val sort =
+      if (asc)
+        ascending("_id.time")
+      else
+        descending("_id.time")
+
+    val f =
+      col.find(and(equal("_id.monitor", monitor),
+          gte("_id.time", startTime.toDate), lt("_id.time", endTime.toDate)))
+        .limit(limit).sort(sort).toFuture()
+
     f.failed.foreach(errorHandler)
     f
   }

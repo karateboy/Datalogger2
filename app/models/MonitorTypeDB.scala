@@ -3,7 +3,7 @@ package models
 import models.MonitorType._
 import org.mongodb.scala.result.UpdateResult
 import play.api.Logger
-import play.api.libs.json.Json
+import play.api.libs.json.{Json, OWrites, Reads}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -11,10 +11,10 @@ import scala.math.BigDecimal.RoundingMode
 
 trait MonitorTypeDB {
   val logger: Logger = Logger(this.getClass)
-  implicit val configWrite = Json.writes[ThresholdConfig]
-  implicit val configRead = Json.reads[ThresholdConfig]
-  implicit val mtWrite = Json.writes[MonitorType]
-  implicit val mtRead = Json.reads[MonitorType]
+  implicit val configWrite: OWrites[ThresholdConfig] = Json.writes[ThresholdConfig]
+  implicit val configRead: Reads[ThresholdConfig] = Json.reads[ThresholdConfig]
+  implicit val mtWrite: OWrites[MonitorType] = Json.writes[MonitorType]
+  implicit val mtRead: Reads[MonitorType] = Json.reads[MonitorType]
   val defaultMonitorTypes = List(
     rangeType(SO2, "二氧化硫", "ppb", 2),
     rangeType(NOX, "氮氧化物", "ppb", 2),
@@ -35,6 +35,7 @@ trait MonitorTypeDB {
     rangeType(PM25, "PM2.5細懸浮微粒", "μg/m3", 2),
     rangeType(WIN_SPEED, "風速", "m/sec", 2),
     rangeType(WIN_DIRECTION, "風向", "degrees", 2),
+    rangeType(WS_SPEED, "風速(算術平均)", "m/sec", 2),
     rangeType(TEMP, "溫度", "℃", 2),
     rangeType(HUMID, "濕度", "%", 2),
     rangeType(PRESS, "氣壓", "hPa", 2),
@@ -58,7 +59,9 @@ trait MonitorTypeDB {
     signalType(FLOW, "採樣流量"),
     signalType("SPRAY", "灑水"))
 
-  val mtToEpaMtMap: Map[String, String] = Map(
+  private val calculatedMonitorTypes: Seq[String] = calculatedMonitorTypeEntries.map(_._2)
+
+  private val mtToEpaMtMap: Map[String, String] = Map(
     MonitorType.TEMP -> "14",
     MonitorType.CH4 -> "31",
     MonitorType.CO -> "02",
@@ -120,21 +123,26 @@ trait MonitorTypeDB {
         }
       }
 
-    val rangeList = list.filter { mt => mt.signalType == false }
-    val rangeMtvList = rangeList.map(mt => (mt._id))
+    val rangeList = list.filter { mt => !mt.signalType }
+    val rangeMtvList = rangeList.map(mt => mt._id)
     val signalList = list.filter { mt => mt.signalType }
-    val signalMvList = signalList.map(mt => (mt._id))
+    val signalMvList = signalList.map(mt => mt._id)
     mtvList = rangeMtvList
     signalMtvList = signalMvList
     map = mtPair.toMap
+
+    // ensure calculated types
+    logger.info(s"calculated mt = $calculatedMonitorTypes")
+    for (mt <- calculatedMonitorTypes)
+      ensure(mt)
   }
 
   def getList: List[MonitorType]
 
-  def ensure(id: String): Unit = {
+  def ensure(id: String): Unit =
     synchronized {
       if (!map.contains(id)) {
-        val mt = rangeType(id, id, "??", 2)
+        val mt = defaultMonitorTypes.find(_._id==id).getOrElse(rangeType(id, id, "??", 2))
         mt.measuringBy = Some(List.empty[String])
         upsertMonitorType(mt)
       } else {
@@ -145,7 +153,6 @@ trait MonitorTypeDB {
         }
       }
     }
-  }
 
   def ensure(mtCase: MonitorType): Unit = {
     synchronized {

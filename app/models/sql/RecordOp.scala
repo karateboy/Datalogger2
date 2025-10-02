@@ -173,17 +173,30 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
   }
 
   override def getRecordWithLimitFuture(colName: String)
-                                       (startTime: DateTime, endTime: DateTime, limit: Int, monitor: String): Future[Seq[RecordList]] =
+                                       (startTime: DateTime,
+                                        endTime: DateTime,
+                                        limit: Int,
+                                        monitor: String,
+                                        ascending: Boolean): Future[Seq[RecordList]] =
     Future {
       implicit val session: DBSession = AutoSession
       val tab: SQLSyntax = getTab(colName)
-      val rawRecords =
-        sql"""
-           Select Top 60 *
+      val rawRecords = {
+        if(ascending)
+          sql"""
+           Select Top $limit *
            From $tab
            Where [time] >= ${startTime.toDate} and [time] < ${endTime.toDate} and [monitor] = $monitor
-           Order by [time]
+           Order by [time] Asc
            """.map(mapper).list().apply()
+        else
+          sql"""
+           Select Top $limit *
+           From $tab
+           Where [time] >= ${startTime.toDate} and [time] < ${endTime.toDate} and [monitor] = $monitor
+           Order by [time] Desc
+           """.map(mapper).list().apply().reverse
+      }
       rawRecords
     }
 

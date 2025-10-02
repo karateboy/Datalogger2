@@ -72,6 +72,7 @@ class HomeController @Inject()(
       userParam.fold(
         error => handleJsonValidateError(error),
         param => {
+          logger.info(s"updateUser: $param")
           userOp.updateUser(param)
           Ok(Json.obj("ok" -> true))
         })
