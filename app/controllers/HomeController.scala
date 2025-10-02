@@ -32,7 +32,8 @@ class HomeController @Inject()(
                                 security: Security,
                                 cc: ControllerComponents,
                                 mailerClient: MailerClient,
-                                every8d: Every8d) extends AbstractController(cc) {
+                                every8d: Every8d,
+                                monitorTypeGroupDb: MonitorTypeGroupDb) extends AbstractController(cc) {
 
   val title = "資料擷取器"
 
@@ -1018,5 +1019,29 @@ class HomeController @Inject()(
     }
   }
 
+  def monitorTypeGroupList: Action[AnyContent] = security.Authenticated.async {
+    implicit request =>
+      implicit val writes: OWrites[MonitorTypeGroup] = Json.writes[MonitorTypeGroup]
+
+      for (ret <- monitorTypeGroupDb.getMonitorTypeGroups) yield
+        Ok(Json.toJson(ret))
+  }
+
+  def upsertMonitorTypeGroup(id: String): Action[JsValue] = security.Authenticated(parse.json) {
+    implicit request =>
+      implicit val read: Reads[MonitorTypeGroup] = Json.reads[MonitorTypeGroup]
+      val mResult = request.body.validate[MonitorTypeGroup]
+      mResult.fold(
+        error => handleJsonValidateError(error),
+        mtg => {
+          monitorTypeGroupDb.upsertMonitorTypeGroup(mtg)
+          Ok(Json.obj("ok" -> true))
+        })
+  }
+
+  def deleteMonitorTypeGroup(id: String): Action[AnyContent] = security.Authenticated.async {
+    for (ret <- monitorTypeGroupDb.deleteMonitorTypeGroup(id)) yield
+      Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
+  }
 
 }

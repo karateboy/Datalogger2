@@ -35,6 +35,9 @@
                 >顯示原始值</b-form-checkbox
               >
             </b-form-group>
+            <b-button class="bg-gradient-success m-50" v-for="mtg in monitorTypeGroups" :key="mtg._id" size="sm" @click="form.monitorTypes = mtg.mts">
+              {{ mtg.name }}
+            </b-button>
           </b-col>
           <b-col cols="6">
             <b-form-group
@@ -181,6 +184,7 @@ export default Vue.extend({
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapState('monitors', ['monitors']),
+    ...mapState('monitorTypeGroups', ['monitorTypeGroups']),
     ...mapGetters('monitorTypes', ['mtMap', 'activatedMonitorTypes']),
     ...mapGetters('monitors', ['mMap']),
     ...mapGetters('tables', ['dataTypes']),
@@ -198,6 +202,7 @@ export default Vue.extend({
     await this.fetchMonitorTypes();
     await this.fetchMonitors();
     await this.fetchTables();
+    await this.fetchMonitorTypeGroups();
 
     if (this.monitors.length !== 0) {
       this.form.monitors.push(this.monitors[0]._id);
@@ -209,6 +214,7 @@ export default Vue.extend({
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapActions('monitors', ['fetchMonitors']),
+    ...mapActions('monitorTypeGroups', ['fetchMonitorTypeGroups']),
     ...mapActions('tables', ['fetchTables']),
     ...mapMutations(['setLoading']),
     async query() {

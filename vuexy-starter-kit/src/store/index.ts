@@ -1,43 +1,45 @@
 import Vue from 'vue';
-import Vuex, { StoreOptions } from 'vuex';
+import Vuex, {StoreOptions} from 'vuex';
 
 // Modules
 import app from './app';
 import appConfig from './app-config';
 import verticalMenu from './vertical-menu';
 import monitorTypes from './monitorTypes';
-import { monitors } from './monitors';
+import {monitors} from './monitors';
+import {monitorTypeGroups} from "@/store/monitorTypeGroups";
 import user from './user';
-import { tables } from './tables';
-import { RootState } from './types';
+import {tables} from './tables';
+import {RootState} from './types';
 
 Vue.use(Vuex);
 
 const store: StoreOptions<RootState> = {
-  state: {
-    isLoading: false,
-    loadingMessage: '...',
-    login: false,
-  },
-  mutations: {
-    setLoading(state, param) {
-      const { loading, message } = param;
-      state.isLoading = loading;
-      if (message) state.loadingMessage = message;
+    state: {
+        isLoading: false,
+        loadingMessage: '...',
+        login: false,
     },
-    setLogin(state, login) {
-      state.login = login;
+    mutations: {
+        setLoading(state, param) {
+            const {loading, message} = param;
+            state.isLoading = loading;
+            if (message) state.loadingMessage = message;
+        },
+        setLogin(state, login) {
+            state.login = login;
+        },
     },
-  },
-  modules: {
-    app,
-    appConfig,
-    verticalMenu,
-    monitorTypes,
-    monitors,
-    user,
-    tables,
-  },
-  strict: process.env.DEV,
+    modules: {
+        app,
+        appConfig,
+        verticalMenu,
+        monitorTypes,
+        monitors,
+        monitorTypeGroups,
+        user,
+        tables,
+    },
+    strict: process.env.DEV,
 };
 export default new Vuex.Store<RootState>(store);
