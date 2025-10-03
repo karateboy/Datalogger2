@@ -96,7 +96,7 @@ object ModelHelper {
 
   def speedAvg(speedList: List[Double], directionList: List[Double]): Option[Double] =
     for ((sinSum, cosSum) <- getSinCosSum(speedList, directionList)) yield
-      Math.sqrt(sinSum*sinSum + cosSum*cosSum)
+      Math.sqrt(sinSum*sinSum + cosSum*cosSum)/Math.min(speedList.length, directionList.length)
 
   def speedDirectionAvg(speedList: List[Double], directionList: List[Double]): Option[(Double, Double)] = {
     if (speedList.length != directionList.length)
