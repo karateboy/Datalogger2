@@ -147,14 +147,14 @@ class Realtime @Inject()
 
   def getLatestMonitorData: Action[AnyContent] = security.Authenticated.async {
     implicit val writes: OWrites[LatestMonitorData] = Json.writes[LatestMonitorData]
-    val (start, end) = (DateTime.now().minusYears(2), DateTime.now())
+    val (start, end) = (DateTime.now().minusDays(7), DateTime.now())
 
     val monitorDailyRecordListsF = Future.sequence(for (monitor <- monitorDB.mvList) yield
-      recordDB.getRecordWithLimitFuture(recordDB.MinCollection)(start, end, 1, monitor))
+      recordDB.getRecordWithLimitFuture(recordDB.MinCollection)(start, end, 1, monitor, ascending = false))
 
 
     for (monitorDailyRecordLists <- monitorDailyRecordListsF) yield {
-      val monitorTypes = Seq(MonitorType.RAIN, MonitorType.TEMP, MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION)
+      val monitorTypes = Seq(MonitorType.WIN_SPEED, MonitorType.WIN_DIRECTION)
       val monitorRecordLists = monitorDailyRecordLists flatMap {
         dailyRecordList => {
           if (dailyRecordList.isEmpty)

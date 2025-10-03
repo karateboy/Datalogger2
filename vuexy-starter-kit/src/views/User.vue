@@ -128,6 +128,7 @@ export default Vue.extend({
       password: '',
       confirmPassword: '',
       isAdmin: false,
+      windField: false
     };
 
     this.copyUser(user);

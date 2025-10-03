@@ -156,6 +156,19 @@ object DataCollectManager {
                 val speeds = List.fill(windDir.length)(1.0)
                 directionAvg(speeds, windDir.toList)
               }
+            case MonitorType.WIN_SPEED =>
+              if (mtMap.contains(MonitorType.WIN_DIRECTION)) {
+                val dirStatusMap = mtMap(MonitorType.WIN_DIRECTION)
+                val dirMostStatus = dirStatusMap.maxBy(kv => kv._2.length)
+                val dirs = dirMostStatus._2.map(_._2)
+                speedAvg(values.toList, dirs.toList)
+              } else {
+                val v = values.sum / values.length
+                if (v.isNaN)
+                  None
+                else
+                  Some(values.sum / values.length)
+              }
             case MonitorType.DIRECTION =>
               val directions = values
               if (mtMap.contains(MonitorType.SPEED)) {
@@ -168,7 +181,15 @@ object DataCollectManager {
               }
             case MonitorType.RAIN =>
               if (mtCase.accumulated.contains(true)) {
-                Some(values.max - values.min)
+                if(values.length < 2)
+                  None
+                else{
+                  val diff = values.last - values.head
+                  if(diff < 0)
+                    None
+                  else
+                    Some(diff)
+                }
               } else
                 Some(values.sum)
 
@@ -263,8 +284,25 @@ object DataCollectManager {
 
                 directionAvg(windSpeed, values)
               }
+            case MonitorType.WIN_SPEED =>
+              if (mtMap.contains(MonitorType.WIN_DIRECTION)) {
+                val dirStatusMap = mtMap(MonitorType.WIN_DIRECTION)
+                val dirMostStatus = dirStatusMap.maxBy(kv => kv._2.length)
+                val dirs = dirMostStatus._2
+                if (isRaw)
+                  speedAvg(values.toList, dirs.flatMap(_.rawValue).toList)
+                else
+                  speedAvg(values.toList, dirs.flatMap(_.value).toList)
+              } else {
+                val v = values.sum / values.length
+                if (v.isNaN)
+                  None
+                else
+                  Some(values.sum / values.length)
+              }
             case MonitorType.RAIN =>
                 Some(values.sum)
+
             case MonitorType.PM10 =>
               if (LoggerConfig.config.pm25HourAvgUseLastRecord)
                 Some(values.last)
@@ -989,9 +1027,6 @@ class DataCollectManager @Inject()
         val f = recordOp.upsertRecord(recordOp.MinCollection)(recordList)
         f onComplete {
           case Success(_) =>
-            for(ylUploadConfig <- ylUploaderConfigOpt)
-              YlUploader.upload(WSClient)(recordList, monitorOp.map(Monitor.activeId), ylUploadConfig)
-
             self ! ForwardMin
           case Failure(exception) =>
             errorHandler(exception)

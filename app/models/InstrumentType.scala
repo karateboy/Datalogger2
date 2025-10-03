@@ -81,6 +81,7 @@ class InstrumentTypeOp @Inject()
  upsFactory: UpsDrv.Factory,
  pseudoDeviceFactory: PseudoDevice.Factory,
  pseudoDevice2Factory: PseudoDevice2.Factory,
+ PseudoDevice3Factory: PseudoDevice3.Factory,
  monitorTypeOp: MonitorTypeDB) extends InjectedActorSupport {
   val logger: Logger = Logger(this.getClass)
 
@@ -129,7 +130,8 @@ class InstrumentTypeOp @Inject()
     InstrumentType(HydreonRainGauge, hydreonRainGaugeFactory),
     InstrumentType(UpsDrv, upsFactory),
     InstrumentType(PseudoDevice, pseudoDeviceFactory),
-    InstrumentType(PseudoDevice2, pseudoDevice2Factory)
+    InstrumentType(PseudoDevice2, pseudoDevice2Factory),
+    InstrumentType(PseudoDevice3, PseudoDevice3Factory)
   )
 
   private val otherMap = otherDeviceList.map(dt => dt.id -> dt).toMap
