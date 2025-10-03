@@ -181,17 +181,18 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
     Future {
       implicit val session: DBSession = AutoSession
       val tab: SQLSyntax = getTab(colName)
+      val limitStatement = SQLSyntax.createUnsafely(s"TOP $limit *")
       val rawRecords = {
         if(ascending)
           sql"""
-           Select Top $limit *
+           Select $limitStatement
            From $tab
            Where [time] >= ${startTime.toDate} and [time] < ${endTime.toDate} and [monitor] = $monitor
            Order by [time] Asc
            """.map(mapper).list().apply()
         else
           sql"""
-           Select Top $limit *
+           Select $limitStatement
            From $tab
            Where [time] >= ${startTime.toDate} and [time] < ${endTime.toDate} and [monitor] = $monitor
            Order by [time] Desc

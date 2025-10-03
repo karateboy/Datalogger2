@@ -180,7 +180,15 @@ object DataCollectManager {
               }
             case MonitorType.RAIN =>
               if (mtCase.accumulated.contains(true)) {
-                Some(values.max - values.min)
+                if(values.length < 2)
+                  None
+                else{
+                  val diff = values.last - values.head
+                  if(diff < 0)
+                    None
+                  else
+                    Some(diff)
+                }
               } else
                 Some(values.sum)
 
@@ -293,6 +301,7 @@ object DataCollectManager {
               }
             case MonitorType.RAIN =>
                 Some(values.sum)
+
             case MonitorType.PM10 =>
               if (LoggerConfig.config.pm25HourAvgUseLastRecord)
                 Some(values.last)
