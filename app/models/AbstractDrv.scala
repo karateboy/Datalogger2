@@ -1,6 +1,7 @@
 package models
 
 import akka.actor.Actor
+import com.github.nscala_time.time.Imports
 import models.Protocol.ProtocolParam
 import play.api.Logger
 import play.api.libs.json.{JsError, Json}
@@ -14,7 +15,7 @@ abstract class AbstractDrv(_id: String, desp: String, protocols: List[String]) e
   val logger: Logger = Logger(this.getClass)
   def getDataRegList: List[DataReg]
 
-  override def verifyParam(json: String) = {
+  override def verifyParam(json: String): String = {
     val ret = Json.parse(json).validate[DeviceConfig]
     ret.fold(
       error => {
@@ -36,13 +37,10 @@ abstract class AbstractDrv(_id: String, desp: String, protocols: List[String]) e
 
   override def getMonitorTypes(param: String): List[String] = {
     val config = validateParam(param)
-    if (config.monitorTypes.isDefined)
-      config.monitorTypes.get.toList
-    else
-      List.empty[String]
+    config.monitorTypes.getOrElse(List.empty[String])
   }
 
-  override def getCalibrationTime(param: String) = {
+  override def getCalibrationTime(param: String): Option[Imports.LocalTime] = {
     val config = validateParam(param)
     config.calibrationTime
   }

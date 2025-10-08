@@ -237,7 +237,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
       resetToNormal()
       instrumentOp.setState(id, endState)
       collectorState = endState
-      context become normalPhase
+      context become normalPhase()
   }
 
   def calibrationPhase(calibrationType: CalibrationType, startTime: DateTime, recordCalibration: Boolean, calibrationReadingList: List[ReportData],
@@ -260,7 +260,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
         readRegTimer = None
         self ! ConnectHost
       }
-      context become normalPhase
+      context become normalPhase()
 
     case ReadRegister =>
       readRegHandler(recordCalibration)
@@ -276,7 +276,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
         collectorState = targetState
         instrumentOp.setState(instId, targetState)
         resetToNormal()
-        context become normalPhase
+        context become normalPhase()
       } else {
         log.info(s"During calibration ignore $targetState change.")
       }
@@ -421,7 +421,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
         instrumentOp.setState(instId, collectorState)
         resetToNormal()
         onCalibrationEnd()
-        context become normalPhase
+        context become normalPhase()
         log.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
       }
   }
@@ -438,22 +438,22 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
 
   def resetToNormal(): Unit = {
     try {
-      deviceConfig.calibrateZeoDO map {
+      deviceConfig.calibrateZeoDO foreach {
         doBit =>
-          context.parent ! WriteDO(doBit, false)
+          context.parent ! WriteDO(doBit, on = false)
       }
 
-      deviceConfig.calibrateSpanSeq map {
+      deviceConfig.calibrateSpanSeq foreach {
         seq =>
-          context.parent ! ExecuteSeq(seq, false)
+          context.parent ! ExecuteSeq(seq, on = false)
       }
 
-      context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
+      context.parent ! ExecuteSeq(T700_STANDBY_SEQ, on = true)
 
       if (!deviceConfig.skipInternalVault.contains(true)) {
         for (reg <- getCalibrationReg) {
-          setCalibrationReg(reg.zeroAddress, false)
-          setCalibrationReg(reg.spanAddress, false)
+          setCalibrationReg(reg.zeroAddress, on = false)
+          setCalibrationReg(reg.spanAddress, on = false)
         }
       }
     } catch {
@@ -476,7 +476,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
         }
 
 
-      if (deviceConfig.skipInternalVault != Some(true)) {
+      if (!deviceConfig.skipInternalVault.contains(true)) {
         for (reg <- getCalibrationReg)
           setCalibrationReg(reg.zeroAddress, v)
       }
@@ -488,18 +488,18 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
 
   def triggerSpanCalibration(v: Boolean): Unit = {
     try {
-      deviceConfig.calibrateSpanDO map {
+      deviceConfig.calibrateSpanDO foreach {
         doBit =>
           context.parent ! WriteDO(doBit, v)
       }
 
       if (v)
-        deviceConfig.calibrateSpanSeq map {
+        deviceConfig.calibrateSpanSeq foreach  {
           seq =>
             context.parent ! ExecuteSeq(seq, v)
         }
 
-      if (deviceConfig.skipInternalVault != Some(true)) {
+      if (!deviceConfig.skipInternalVault.contains(true)) {
         for (reg <- getCalibrationReg)
           setCalibrationReg(reg.spanAddress, v)
       }
@@ -613,7 +613,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
     }
 
     val monitorTypeData = optValues.flatten.map(
-      t => MonitorTypeData(t._1, t._2._2.toDouble, collectorState))
+      t => MonitorTypeData(t._1, t._2._2, collectorState))
 
     if (monitorTypeData.isEmpty)
       None

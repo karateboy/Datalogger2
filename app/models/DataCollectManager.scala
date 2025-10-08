@@ -857,7 +857,7 @@ class DataCollectManager @Inject()
         // Update monitor location
         for {lat <- fullDataList.find(_.mt == MonitorType.LAT)
              lng <- fullDataList.find(_.mt == MonitorType.LNG)
-             activeMonitor <- monitorOp.map.get(Monitor.activeId)} {
+             activeMonitor <- monitorOp.map.get(Monitor.activeId)}
           {
             monitorOp.upsertMonitor(activeMonitor.copy(lat = Some(lat.value), lng = Some(lng.value)))
           }
