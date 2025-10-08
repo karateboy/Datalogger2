@@ -1,14 +1,14 @@
 package models
 
 import org.mongodb.scala.result.DeleteResult
-import play.api.libs.json.Json
+import play.api.libs.json.{Json, OWrites, Reads}
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 trait MonitorDB {
 
-  implicit val mWrite = Json.writes[Monitor]
-  implicit val mRead = Json.reads[Monitor]
+  implicit val mWrite: OWrites[Monitor] = Json.writes[Monitor]
+  implicit val mRead: Reads[Monitor] = Json.reads[Monitor]
 
   def mvList: List[String] = mList.map(_._id)
   @volatile var map: Map[String, Monitor] = Map.empty[String, Monitor]

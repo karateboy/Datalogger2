@@ -853,6 +853,15 @@ class DataCollectManager @Inject()
             reportData.dataList(monitorTypeOp)
 
         val fullDataList = dataList ++ MonitorType.getCalculatedMonitorTypeData(dataList, now)
+
+        // Update monitor location
+        for {lat <- fullDataList.find(_.mt == MonitorType.LAT)
+             lng <- fullDataList.find(_.mt == MonitorType.LNG)
+             activeMonitor <- monitorOp.map.get(Monitor.activeId)} {
+          {
+            monitorOp.upsertMonitor(activeMonitor.copy(lat = Some(lat.value), lng = Some(lng.value)))
+          }
+
         val pairs =
           for (data <- fullDataList) yield {
             val currentMap = latestDataMap.getOrElse(data.mt, Map.empty[String, Record])
