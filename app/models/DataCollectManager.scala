@@ -874,7 +874,7 @@ class DataCollectManager @Inject()
           }
 
         context become handler(instrumentMap,
-          latestDataMap ++ pairs, (DateTime.now, instId, dataList) :: mtDataList, restartList,
+          latestDataMap ++ pairs, (DateTime.now, instId, fullDataList) :: mtDataList, restartList,
           signalTypeHandlerMap, signalDataMap, calibrationListMap,
           instrumentCalibratorMap, calibratorTimerMap, alarmRules)
       }
