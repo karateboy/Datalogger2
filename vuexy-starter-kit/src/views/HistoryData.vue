@@ -218,6 +218,12 @@ export default Vue.extend({
     ...mapActions('tables', ['fetchTables']),
     ...mapMutations(['setLoading']),
     async query() {
+      let diffHour = (this.form.range[1] - this.form.range[0]) / (1000 * 60 * 60);
+      if (this.form.dataType ==='min' && diffHour > 24 * 31) {
+        await this.$bvModal.msgBoxOk("查詢區間不可大於31天");
+        return;
+      }
+
       this.setLoading({ loading: true });
       this.display = true;
       this.rows = [];
