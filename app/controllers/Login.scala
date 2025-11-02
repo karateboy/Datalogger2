@@ -39,7 +39,7 @@ class Login @Inject()(userOp: UserDB,
         }
         val userInfo = UserInfo(user._id, user.name, userGroup, user.isAdmin)
         val group = groupOp.getGroupByID(userGroup).get
-        Ok(Json.obj("ok"->true, "userData"->UserData(user, group))).withSession(security.setUserinfo(request, userInfo))
+        Ok(Json.obj("ok"->true, "userData"->UserData(user, group))).withSession(security.setUserinfo(request, userInfo):_*)
       }else{
         val credential = request.body.validate[Credential]
         credential.fold(
@@ -62,7 +62,7 @@ class Login @Inject()(userOp: UserDB,
               }
               val userInfo = UserInfo(user._id, user.name, userGroup, user.isAdmin)
               val group = groupOp.getGroupByID(userGroup).get
-              Ok(Json.obj("ok"->true, "userData"->UserData(user, group))).withSession(security.setUserinfo(request, userInfo))
+              Ok(Json.obj("ok"->true, "userData"->UserData(user, group))).withSession(security.setUserinfo(request, userInfo):_*)
             }
           })
       }

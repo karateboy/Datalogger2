@@ -32,6 +32,7 @@ case class DisplayReport(columnNames: Seq[String], rows: Seq[RowData], statRows:
 class Report @Inject()(monitorTypeOp: MonitorTypeDB,
                        recordOp: RecordDB,
                        query: Query,
+                       groupDB: GroupDB,
                        excelUtility: ExcelUtility,
                        security: Security,
                        cc: ControllerComponents) extends AbstractController(cc) {
@@ -42,13 +43,19 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
 
   def getMonitorReport(reportTypeStr: String, startNum: Long, outputTypeStr: String): Action[AnyContent] = security.Authenticated {
     implicit request =>
+      val userInfo = security.getUserinfo(request).get
+      val group = groupDB.getGroupByID(userInfo.group).get
+
       val reportType = PeriodReport.withName(reportTypeStr)
       val outputType = OutputType.withName(outputTypeStr)
+      val mtList = if(userInfo.isAdmin)
+        monitorTypeOp.realtimeMtvList
+      else
+        monitorTypeOp.realtimeMtvList filter group.monitorTypes.contains
 
       reportType match {
         case PeriodReport.DailyReport =>
           val startDate = new DateTime(startNum).withMillisOfDay(0)
-          val mtList = monitorTypeOp.realtimeMtvList
           val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, mtList, startDate, startDate + 1.day)
           val mtTimeMap: Map[String, Map[DateTime, Record]] = periodMap.map { pair =>
             val k = pair._1
@@ -118,7 +125,6 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
 
         case PeriodReport.MonthlyReport =>
           val start = new DateTime(startNum).withMillisOfDay(0).withDayOfMonth(1)
-          val mtList = monitorTypeOp.realtimeMtvList
           val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, monitorTypeOp.activeMtvList, start, start + 1.month)
           val statMap = query.getPeriodStatReportMap(periodMap, 1.day)(start, start + 1.month)
           val overallStatMap = getOverallStatMap(statMap, 20)

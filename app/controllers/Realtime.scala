@@ -21,6 +21,7 @@ class Realtime @Inject()
  recordDB: RecordDB,
  sysConfigDB: SysConfigDB,
  security: Security,
+ groupDB: GroupDB,
  cc: ControllerComponents) extends AbstractController(cc) {
   val logger: Logger = Logger(this.getClass)
   private val overTimeLimit = 6
@@ -36,6 +37,8 @@ class Realtime @Inject()
 
   def MonitorTypeStatusList(): Action[AnyContent] = security.Authenticated.async {
     implicit request =>
+      val userInfo = security.getUserinfo(request).get
+      val group = groupDB.getGroupByID(userInfo.group).get
 
       implicit val mtsWrite: OWrites[MonitorTypeStatus] = Json.writes[MonitorTypeStatus]
 
@@ -97,7 +100,12 @@ class Realtime @Inject()
             }
           }
 
-          Ok(Json.toJson(list))
+          // filter out not allowed monitorTypes
+          val allowedList = if (userInfo.isAdmin)
+            list
+          else
+            list.filter(mtStatus => group.monitorTypes.contains(mtStatus._id))
+          Ok(Json.toJson(allowedList))
         }
 
       result

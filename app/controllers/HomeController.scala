@@ -498,6 +498,7 @@ class HomeController @Inject()(
       val userInfo = security.getUserinfo(request).get
       val group = groupOp.getGroupByID(userInfo.group).get
 
+      logger.debug(s"${userInfo}")
       val mtList = if (userInfo.isAdmin)
         monitorTypeOp.mtvList map monitorTypeOp.map
       else

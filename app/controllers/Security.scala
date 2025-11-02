@@ -1,6 +1,6 @@
 package controllers
 
-import models.Group
+import play.api.Logger
 import play.api.mvc.Security._
 import play.api.mvc._
 
@@ -15,36 +15,26 @@ class Security @Inject()(cc: ControllerComponents, implicit val ec: ExecutionCon
   val adminKey = "Admin"
   val groupKey = "Group"
 
+  val logger: Logger = Logger(this.getClass)
 
   def getUserinfo(request: RequestHeader): Option[UserInfo] = {
-    val userInfo =
-      for {
-        id <- request.session.get(idKey)
-        admin <- request.session.get(adminKey)
-        name <- request.session.get(nameKey)
-        group <- request.session.get(groupKey)
-      } yield
-        UserInfo(id, name, group, admin.toBoolean)
-
-    Some(userInfo.getOrElse(UserInfo("sales@wecc.com.tw", "Aragorn", Group.PLATFORM_ADMIN, isAdmin = true)))
+    logger.debug(s"session = ${request.session}")
+    for {
+      id <- request.session.get(idKey)
+      admin <- request.session.get(adminKey)
+      name <- request.session.get(nameKey)
+      group <- request.session.get(groupKey)
+    } yield
+      UserInfo(id, name, group, admin.toBoolean)
   }
 
-  //def invokeBlock[A](request: Request[A], block: (AuthenticatedRequest[A]) => Future[Result]) = {
-  //  AuthenticatedBuilder(getUserinfo _, onUnauthorized)
-  //})
 
-  //def isAuthenticated(f: => String => Request[AnyContent] => Result) = {
-  //  Authenticated(getUserinfo, onUnauthorized) { user =>
-  //    Action(request => f(user)(request))
-  //  }
-  // }
-
-  def setUserinfo[A](request: Request[A], userInfo: UserInfo): (String, String) = {
-      request.session +
-      idKey -> userInfo.id +
-      adminKey -> userInfo.isAdmin.toString +
-      nameKey -> userInfo.name +
-      groupKey -> userInfo.group
+  def setUserinfo[A](request: Request[A], userInfo: UserInfo) = {
+    logger.debug(s"setUserinfo $userInfo")
+    List(idKey -> userInfo.id,
+      adminKey -> userInfo.isAdmin.toString,
+      nameKey -> userInfo.name,
+      groupKey -> userInfo.group)
   }
 
   def getUserInfo[A]()(implicit request: Request[A]): Option[UserInfo] = {
