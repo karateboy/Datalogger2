@@ -157,19 +157,30 @@ export default Vue.extend({
     },
     handleReport(report: DisplayReport) {
       this.columns.splice(0, this.columns.length);
-      if (this.form.reportType === 'daily') {
-        this.columns.push({
-          key: 'time',
-          label: '時間',
-          sortable: true,
-        });
-      } else {
-        this.columns.push({
-          key: 'time',
-          label: '日期',
-          sortable: true,
-        });
+      switch (this.form.reportType) {
+        case 'daily':
+          this.columns.push({
+            key: 'time',
+            label: '時間',
+            sortable: true,
+          });
+          break;
+        case 'monthly':
+          this.columns.push({
+            key: 'time',
+            label: '日期',
+            sortable: true,
+          });
+          break;
+        case 'yearly':
+          this.columns.push({
+            key: 'time',
+            label: '月份',
+            sortable: true,
+          });
+          break;
       }
+
       for (let i = 0; i < report.columnNames.length; i++) {
         this.columns.push({
           key: `cellData[${i}].v`,

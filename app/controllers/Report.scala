@@ -261,13 +261,14 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
           val columnNames = mtList map {
             monitorTypeOp.map(_).desp
           }
-          val monthlyReport = DisplayReport(columnNames, monthRow, statRows)
+          val yearlyReport = DisplayReport(columnNames, monthRow, statRows)
           if (outputType == OutputType.html)
-            Ok(Json.toJson(monthlyReport))
+            Ok(Json.toJson(yearlyReport))
           else {
             val (title, excelFile) =
               ("年報" + yearStart.toString("YYYY"),
-                excelUtility.exportDisplayReport(s"${yearStart.toString("YYYY年")}監測年報 ", monthlyReport))
+                excelUtility.exportDisplayReport(s"${yearStart.toString("YYYY年")}監測年報 ",
+                  yearlyReport, monthlyReport = false))
 
             Ok.sendFile(excelFile, fileName = _ =>
               Some(s"$title.xlsx"),

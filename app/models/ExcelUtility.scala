@@ -254,7 +254,7 @@ class ExcelUtility @Inject()
     finishExcel(reportFilePath, pkg, wb)
   }
 
-  def exportDisplayReport(title: String, displayReport: DisplayReport) = {
+  def exportDisplayReport(title: String, displayReport: DisplayReport, monthlyReport:Boolean = true) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("monthlyReport.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
     val format = wb.createDataFormat()
@@ -270,6 +270,11 @@ class ExcelUtility @Inject()
     sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, displayReport.columnNames.size))
     titleRow.getCell(0).setCellValue(title)
 
+    val rowUnit = if(monthlyReport)
+      "日期"
+    else
+      "月份"
+
     def setValue(cell: Cell, v: String): Unit = {
       try {
         val d = BigDecimal(v, MathContext.DECIMAL32)
@@ -281,15 +286,19 @@ class ExcelUtility @Inject()
     }
 
     val headerRow = sheet.getRow(2)
+    headerRow.getCell(0).setCellValue(rowUnit)
     for ((mtName, mtIdx) <- displayReport.columnNames.zipWithIndex) {
       val headerCell = headerRow.createCell(mtIdx + 1)
       headerCell.setCellValue(mtName)
       headerCell.setCellStyle(statusStyle(0))
-      for (rowIdx <- 0 to displayReport.rows.size - 1) {
+      for (rowIdx <- displayReport.rows.indices) {
         val row = sheet.getRow(3 + rowIdx)
         val dateTime = new DateTime(displayReport.rows(rowIdx).date)
         val dateTimeCell = row.createCell(0)
-        dateTimeCell.setCellValue(dateTime.toString("M/dd"))
+        if(monthlyReport)
+          dateTimeCell.setCellValue(dateTime.toString("M/dd"))
+        else
+          dateTimeCell.setCellValue(dateTime.toString("M"))
         dateTimeCell.setCellStyle(statusStyle(0))
         val cell = row.createCell(mtIdx + 1)
         val mtHrData = displayReport.rows(rowIdx).cellData(mtIdx)
