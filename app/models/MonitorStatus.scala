@@ -107,7 +107,7 @@ object MonitorStatus {
 
   def isValid(s: String) = {
     val tagInfo = getTagInfo(s)
-    val VALID_STATS = List(NormalStat, OverNormalStat, BelowNormalStat).map(getTagInfo)
+    val VALID_STATS = List(NormalStat, OverNormalStat, BelowNormalStat, LessThanMDL).map(getTagInfo)
 
     tagInfo.statusType match {
       case StatusType.Internal =>

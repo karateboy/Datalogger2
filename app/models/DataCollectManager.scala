@@ -1027,6 +1027,9 @@ class DataCollectManager @Inject()
         val f = recordOp.upsertRecord(recordOp.MinCollection)(recordList)
         f onComplete {
           case Success(_) =>
+            for(ylUploadConfig <- ylUploaderConfigOpt)
+              YlUploader.upload(WSClient)(recordList, monitorOp.map(Monitor.activeId), ylUploadConfig)
+
             self ! ForwardMin
           case Failure(exception) =>
             errorHandler(exception)
