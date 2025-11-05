@@ -48,7 +48,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
 
       val reportType = PeriodReport.withName(reportTypeStr)
       val outputType = OutputType.withName(outputTypeStr)
-      val mtList = if(userInfo.isAdmin)
+      val mtList = if (userInfo.isAdmin)
         monitorTypeOp.realtimeMtvList
       else
         monitorTypeOp.realtimeMtvList filter group.monitorTypes.contains
@@ -191,16 +191,90 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
           }
 
         case PeriodReport.YearlyReport =>
-          val start = new DateTime(startNum)
-          val startDate = start.withMillisOfDay(0).withDayOfMonth(1).withMonthOfYear(1)
-          val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, monitorTypeOp.activeMtvList, startDate, startDate + 1.year)
-          val statMap = query.getPeriodStatReportMap(periodMap, 1.month)(start, start + 1.year)
-          val overallStatMap = getOverallStatMap(statMap, 12)
-          Ok("")
+          val rawStart = new DateTime(startNum)
+          val yearStart = rawStart.withMillisOfDay(0).withDayOfMonth(1).withMonthOfYear(1)
+          val monthReportMap = scala.collection.mutable.Map.empty[DateTime, Map[String, Stat]]
 
-        //case PeriodReport.MonthlyReport =>
-        //val nDays = monthlyReport.typeArray(0).dataList.length
-        //("月報", "")
+          for (m <- scala.collection.immutable.Range.inclusive(0, 11)) {
+            val monthStart = yearStart + m.month
+            val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, monitorTypeOp.activeMtvList, monthStart, monthStart + 1.month)
+            val statMap = query.getPeriodStatReportMap(periodMap, 1.day)(monthStart, monthStart + 1.month)
+            val overallStatMap = getOverallStatMap(statMap, 20)
+            monthReportMap.update(monthStart, overallStatMap)
+          }
+
+          def getAccumulationRow(name: String, accumulator: List[Double] => Option[Double]) = {
+            val accData =
+              for (mt <- mtList) yield {
+                val mtStats = monthReportMap.values.flatMap(_(mt).avg).toList
+                val acc = accumulator(mtStats)
+                CellData(monitorTypeOp.format(mt, acc), Seq.empty[String])
+              }
+            StatRow(name, accData)
+          }
+
+          val avgRow = getAccumulationRow("平均",
+            data => if (data.nonEmpty)
+              Some(data.sum / data.length)
+            else
+              None)
+
+          val maxRow = getAccumulationRow("最大",
+            data => if (data.nonEmpty)
+              Some(data.max)
+            else
+              None)
+
+          val minRow = getAccumulationRow("最小",
+            data => if (data.nonEmpty)
+              Some(data.min)
+            else
+              None)
+
+          val effectiveRow = {
+            val accData =
+              for (mt <- mtList) yield {
+                val mtStats = monthReportMap.values.map(_(mt).isEffective).toList
+                val rate = Some(mtStats.count(v => v).toDouble * 100 / mtStats.length)
+                CellData(monitorTypeOp.format(mt, rate), Seq.empty[String])
+              }
+            StatRow("有效率(%)", accData)
+          }
+
+          val statRows = Seq(avgRow, maxRow, minRow, effectiveRow)
+
+
+          val monthRow =
+            for (recordTime <- getPeriods(yearStart, yearStart + 1.year, 1.month)) yield {
+              val mtData =
+                for (mt <- mtList) yield {
+                  val status = if (monthReportMap(recordTime)(mt).isEffective)
+                    MonitorStatus.NormalStat
+                  else
+                    MonitorStatus.InvalidDataStat
+
+                  CellData(monitorTypeOp.format(mt, monthReportMap(recordTime)(mt).avg),
+                    MonitorStatus.getCssClassStr(status), Some(status))
+                }
+              RowData(recordTime.getMillis, mtData)
+            }
+          val columnNames = mtList map {
+            monitorTypeOp.map(_).desp
+          }
+          val monthlyReport = DisplayReport(columnNames, monthRow, statRows)
+          if (outputType == OutputType.html)
+            Ok(Json.toJson(monthlyReport))
+          else {
+            val (title, excelFile) =
+              ("年報" + yearStart.toString("YYYY"),
+                excelUtility.exportDisplayReport(s"${yearStart.toString("YYYY年")}監測年報 ", monthlyReport))
+
+            Ok.sendFile(excelFile, fileName = _ =>
+              Some(s"$title.xlsx"),
+              onClose = () => {
+                Files.deleteIfExists(excelFile.toPath)
+              })
+          }
       }
   }
 

@@ -5,31 +5,31 @@
         <b-row>
           <b-col cols="6">
             <b-form-group
-              label="報表種類"
-              label-for="reportType"
-              label-cols-md="3"
+                label="報表種類"
+                label-for="reportType"
+                label-cols-md="3"
             >
               <v-select
-                id="reportType"
-                v-model="form.reportType"
-                label="txt"
-                :reduce="dt => dt.id"
-                :options="reportTypes"
+                  id="reportType"
+                  v-model="form.reportType"
+                  label="txt"
+                  :reduce="dt => dt.id"
+                  :options="reportTypes"
               />
             </b-form-group>
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="查詢日期"
-              label-for="dataRange"
-              label-cols-md="3"
+                label="查詢日期"
+                label-for="dataRange"
+                label-cols-md="3"
             >
               <date-picker
-                id="dataRange"
-                v-model="form.date"
-                :type="pickerType"
-                value-type="timestamp"
-                :show-second="false"
+                  id="dataRange"
+                  v-model="form.date"
+                  :type="pickerType"
+                  value-type="timestamp"
+                  :show-second="false"
               />
             </b-form-group>
           </b-col>
@@ -38,28 +38,28 @@
           <!-- submit and reset -->
           <b-col offset-md="3">
             <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              type="submit"
-              variant="primary"
-              class="mr-1"
-              @click="query"
+                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                type="submit"
+                variant="primary"
+                class="mr-1"
+                @click="query"
             >
               查詢
             </b-button>
             <b-button
-              v-ripple.400="'rgba(186, 191, 199, 0.15)'"
-              type="reset"
-              class="mr-1"
-              variant="outline-secondary"
+                v-ripple.400="'rgba(186, 191, 199, 0.15)'"
+                type="reset"
+                class="mr-1"
+                variant="outline-secondary"
             >
               取消
             </b-button>
             <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              type="submit"
-              variant="primary"
-              class="mr-1"
-              @click="downloadReport"
+                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                type="submit"
+                variant="primary"
+                class="mr-1"
+                @click="downloadReport"
             >
               下載Excel
             </b-button>
@@ -70,12 +70,12 @@
     <b-card v-show="display">
       <div>
         <b-table
-          responsive
-          striped
-          hover
-          :fields="columns"
-          :items="rows"
-          bordered
+            responsive
+            striped
+            hover
+            :fields="columns"
+            :items="rows"
+            bordered
         >
           <template #custom-foot>
             <b-tr v-for="stat in statRows" :key="stat.name">
@@ -95,16 +95,19 @@ import Vue from 'vue';
 import DatePicker from 'vue2-datepicker';
 import 'vue2-datepicker/index.css';
 import 'vue2-datepicker/locale/zh-tw';
-const Ripple = require('vue-ripple-directive');
-import { DisplayReport, RowData } from './types';
+import {DisplayReport, RowData} from './types';
 import moment from 'moment';
 import axios from 'axios';
+
+const Ripple = require('vue-ripple-directive');
+
 const excel = require('../libs/excel');
 const _ = require('lodash');
 
 interface RowDataReport extends RowData {
   time?: string;
 }
+
 export default Vue.extend({
   components: {
     DatePicker,
@@ -117,8 +120,9 @@ export default Vue.extend({
     return {
       display: false,
       reportTypes: [
-        { id: 'daily', txt: '日報' },
-        { id: 'monthly', txt: '月報' },
+        {id: 'daily', txt: '日報'},
+        {id: 'monthly', txt: '月報'},
+        {id: 'yearly', txt: '年報'},
       ],
       columns: Array<any>(),
       statRows: Array<any>(),
@@ -132,7 +136,8 @@ export default Vue.extend({
   computed: {
     pickerType() {
       if (this.form.reportType === 'daily') return 'date';
-      return 'month';
+      if (this.form.reportType === 'monthly') return 'month';
+      return 'year';
     },
   },
   methods: {
@@ -144,7 +149,7 @@ export default Vue.extend({
     },
     downloadReport() {
       const baseUrl =
-        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
+          process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
 
       const url = `${baseUrl}Excel/monitorReport/${this.form.reportType}/${this.form.date}`;
 
@@ -175,17 +180,24 @@ export default Vue.extend({
       }
       for (const r of report.rows) {
         const row = r as RowDataReport;
-        row.time =
-          this.form.reportType === 'daily'
-            ? moment(row.date).format('HH:mm')
-            : moment(row.date).format('MM/DD');
+        switch (this.form.reportType) {
+          case 'daily':
+            row.time = moment(row.date).format('HH:mm');
+            break;
+          case 'monthly':
+            row.time = moment(row.date).format('MM/DD');
+            break;
+          case 'yearly':
+            row.time = moment(row.date).format('MM');
+            break;
+        }
       }
       this.rows = report.rows;
       this.statRows = report.statRows;
     },
     cellDataTd(i: number) {
       return (_value: any, _key: any, item: any) =>
-        item.cellData[i].cellClassName;
+          item.cellData[i].cellClassName;
     },
     exportExcel() {
       const title = this.columns.map(e => e.label);
@@ -197,11 +209,11 @@ export default Vue.extend({
         }
       }
       let filename =
-        this.form.reportType === 'daily'
-          ? `${moment(this.form.date).format('ll')}日報`
-          : `${moment(this.form.date).year()}年${
-              moment(this.form.date).month() + 1
-            }月報`;
+          this.form.reportType === 'daily'
+              ? `${moment(this.form.date).format('ll')}日報`
+              : `${moment(this.form.date).year()}年${
+                  moment(this.form.date).month() + 1
+              }月報`;
 
       const params = {
         title,
