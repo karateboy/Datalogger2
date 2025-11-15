@@ -8,7 +8,6 @@ import models.ModelHelper._
 import models.MultiCalibrator.TriggerVault
 import models.Protocol.ProtocolParam
 import models.TapiTxx.T700_STANDBY_SEQ
-import play.api._
 
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -77,7 +76,10 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
           BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), addr, DataType.FOUR_BYTE_FLOAT)
         else
           BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), addr, DataType.FOUR_BYTE_FLOAT_SWAPPED)
-        masterOpt.get.getValue(locator)
+
+        for (master <- masterOpt)
+          master.getValue(locator)
+
         true
       } catch {
         case ex: Throwable =>
@@ -90,7 +92,9 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     def probeHoldingReg(addr: Int, desc: String): Boolean = {
       try {
         val locator = BaseLocator.holdingRegister(deviceConfig.slaveID.getOrElse(1), addr, DataType.FOUR_BYTE_FLOAT)
-        masterOpt.get.getValue(locator)
+        for (master <- masterOpt)
+          master.getValue(locator)
+
         true
       } catch {
         case _: Throwable =>
@@ -151,7 +155,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     inputRegStatusType ++ holdingRegStatusType ++ modeRegStatusType ++ warnRegStatusType
   }
 
-  def readReg(statusTypeList: List[InstrumentStatusType]) = {
+  def readReg(statusTypeList: List[InstrumentStatusType]): ModelRegValue = {
     import com.serotonin.modbus4j.BatchRead
     val batch = new BatchRead[Integer]
 
@@ -226,7 +230,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
           connected = true
         } catch {
           case ex: Exception =>
-            log.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
+            log.error(s"$instId:$desc=>${ex.getMessage}", ex)
             if (connected)
               alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"${ex.getMessage}")
 
@@ -334,13 +338,13 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
   }
 
   def triggerVault(zero: Boolean, on: Boolean): Unit = {
-    for (reg <- modelReg.calibrationReg) {
-      val locator = if(zero)
+    for (reg <- modelReg.calibrationReg; master <- masterOpt) {
+      val locator = if (zero)
         BaseLocator.coilStatus(deviceConfig.slaveID.getOrElse(1), reg.zeroAddress)
       else
         BaseLocator.coilStatus(deviceConfig.slaveID.getOrElse(1), reg.spanAddress)
-      for(master <- masterOpt)
-        master.setValue(locator, on)
+
+      master.setValue(locator, on)
     }
   }
 
@@ -355,10 +359,10 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
 
     if (!calibrationType.zero &&
       deviceConfig.calibratorPurgeTime.isDefined && deviceConfig.calibratorPurgeTime.get != 0) {
-      context become calibration(calibrationType, DateTime.now, false, List.empty[ReportData],
+      context become calibration(calibrationType, DateTime.now, recordCalibration = false, List.empty[ReportData],
         List.empty[(String, Double)], endState, Some(purgeCalibrator))
     } else {
-      context become calibration(calibrationType, DateTime.now, false, List.empty[ReportData],
+      context become calibration(calibrationType, DateTime.now, recordCalibration = false, List.empty[ReportData],
         List.empty[(String, Double)], endState, None)
       self ! RaiseStart
     }
@@ -376,7 +380,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
       resetToNormal()
       instrumentOp.setState(id, endState)
       collectorState = endState
-      context become normalReceive
+      context become normalReceive()
   }
 
   def calibration(calibrationType: CalibrationType, startTime: DateTime, recordCalibration: Boolean, calibrationReadingList: List[ReportData],
@@ -398,8 +402,8 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
 
         collectorState = targetState
         instrumentOp.setState(instId, targetState)
-        resetToNormal
-        context become normalReceive
+        resetToNormal()
+        context become normalReceive()
       } else {
         log.info(s"During calibration ignore $targetState state change")
       }
@@ -439,7 +443,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
         for (holdTime <- deviceConfig.holdTime) yield
           context.system.scheduler.scheduleOnce(Duration(holdTime, SECONDS), self, DownStart)
       }
-      context become calibration(calibrationType, startTime, true, calibrationReadingList,
+      context become calibration(calibrationType, startTime, recordCalibration = true, calibrationReadingList,
         zeroReading, endState, calibrationTimer)
     }
 
@@ -448,7 +452,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
       import scala.concurrent.duration._
 
       if (calibrationType.auto && calibrationType.zero) {
-        context become calibration(calibrationType, startTime, false, calibrationReadingList,
+        context become calibration(calibrationType, startTime, recordCalibration = false, calibrationReadingList,
           zeroReading, endState, None)
         self ! CalibrateEnd
       } else {
@@ -457,7 +461,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
         val calibrationTimerOpt =
           for (downTime <- deviceConfig.downTime) yield
             context.system.scheduler.scheduleOnce(FiniteDuration(downTime, SECONDS), self, CalibrateEnd)
-        context become calibration(calibrationType, startTime, false, calibrationReadingList,
+        context become calibration(calibrationType, startTime, recordCalibration = false, calibrationReadingList,
           zeroReading, endState, calibrationTimerOpt)
       }
 
@@ -504,10 +508,10 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
             if (deviceConfig.calibratorPurgeTime.isDefined) {
               collectorState = MonitorStatus.NormalStat
               instrumentOp.setState(instId, collectorState)
-              context become calibration(AutoSpan, startTime, false, List.empty[ReportData],
-                values, endState, Some(purgeCalibrator))
+              context become calibration(AutoSpan, startTime, recordCalibration = false, List.empty[ReportData],
+                values, endState, Some(purgeCalibrator()))
             } else {
-              context become calibration(AutoSpan, startTime, false, List.empty[ReportData],
+              context become calibration(AutoSpan, startTime, recordCalibration = false, List.empty[ReportData],
                 values, endState, None)
               self ! RaiseStart
             }
@@ -543,8 +547,8 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
             log.info("All monitorTypes are calibrated.")
             collectorState = endState
             instrumentOp.setState(instId, collectorState)
-            resetToNormal
-            context become normalReceive
+            resetToNormal()
+            context become normalReceive()
             log.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
           }
         }
@@ -553,12 +557,12 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
 
   def resetToNormal(): Unit = {
     try {
-      deviceConfig.calibrateZeoDO map {
+      deviceConfig.calibrateZeoDO foreach {
         doBit =>
-          context.parent ! WriteDO(doBit, false)
+          context.parent ! WriteDO(doBit, on = false)
       }
 
-      deviceConfig.calibrateSpanSeq map {
+      deviceConfig.calibrateSpanSeq foreach {
         seq =>
           context.parent ! ExecuteSeq(seq, on = false)
       }
@@ -566,10 +570,10 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
       context.parent ! ExecuteSeq(T700_STANDBY_SEQ, on = true)
 
       if (!deviceConfig.skipInternalVault.contains(true)) {
-        for (reg <- modelReg.calibrationReg) {
-          masterOpt.get.setValue(BaseLocator.coilStatus(
+        for (reg <- modelReg.calibrationReg; master <- masterOpt) {
+          master.setValue(BaseLocator.coilStatus(
             deviceConfig.slaveID.getOrElse(1), reg.zeroAddress), false)
-          masterOpt.get.setValue(BaseLocator.coilStatus(
+          master.setValue(BaseLocator.coilStatus(
             deviceConfig.slaveID.getOrElse(1), reg.spanAddress), false)
         }
       }
@@ -581,40 +585,40 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
 
   def triggerZeroCalibration(v: Boolean): Unit = {
 
-    deviceConfig.calibrateZeoDO map {
+    deviceConfig.calibrateZeoDO foreach {
       doBit =>
         context.parent ! WriteDO(doBit, v)
     }
 
-    deviceConfig.calibrateZeoSeq map {
+    deviceConfig.calibrateZeoSeq foreach {
       seq =>
         context.parent ! ExecuteSeq(seq, v)
 
     }
 
     if (!deviceConfig.skipInternalVault.contains(true)) {
-      for (reg <- modelReg.calibrationReg) {
+      for (reg <- modelReg.calibrationReg; master <- masterOpt) {
         val locator = BaseLocator.coilStatus(deviceConfig.slaveID.getOrElse(1), reg.zeroAddress)
-        masterOpt.get.setValue(locator, v)
+        master.setValue(locator, v)
       }
     }
   }
 
-  def triggerSpanCalibration(v: Boolean) {
-    deviceConfig.calibrateSpanDO map {
+  def triggerSpanCalibration(v: Boolean): Unit = {
+    deviceConfig.calibrateSpanDO foreach {
       doBit =>
         context.parent ! WriteDO(doBit, v)
     }
 
-    deviceConfig.calibrateSpanSeq map {
+    deviceConfig.calibrateSpanSeq foreach {
       seq =>
         context.parent ! ExecuteSeq(seq, v)
     }
 
     if (!deviceConfig.skipInternalVault.contains(true)) {
-      for (reg <- modelReg.calibrationReg) {
+      for (reg <- modelReg.calibrationReg; master <- masterOpt) {
         val locator = BaseLocator.coilStatus(deviceConfig.slaveID.getOrElse(1), reg.spanAddress)
-        masterOpt.get.setValue(locator, v)
+        master.setValue(locator, v)
       }
     }
   }
@@ -739,7 +743,8 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     if (timerOpt.isDefined)
       timerOpt.get.cancel()
 
-    if (masterOpt.isDefined)
-      masterOpt.get.destroy()
+    for (master <- masterOpt)
+      master.destroy()
+
   }
 }
