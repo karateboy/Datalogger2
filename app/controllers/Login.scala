@@ -37,8 +37,8 @@ class Login @Inject()(userOp: UserDB,
               Group.PLATFORM_USER
           })
         }
-        val userInfo = UserInfo(user._id, user.name, userGroup, user.isAdmin)
         val group = groupOp.getGroupByID(userGroup).get
+        val userInfo = UserInfo(user._id, user.name, userGroup, group.admin)
         Ok(Json.obj("ok"->true, "userData"->UserData(user, group))).withSession(security.setUserinfo(request, userInfo):_*)
       }else{
         val credential = request.body.validate[Credential]
@@ -60,8 +60,8 @@ class Login @Inject()(userOp: UserDB,
                     Group.PLATFORM_USER
                 })
               }
-              val userInfo = UserInfo(user._id, user.name, userGroup, user.isAdmin)
               val group = groupOp.getGroupByID(userGroup).get
+              val userInfo = UserInfo(user._id, user.name, userGroup, group.admin)
               Ok(Json.obj("ok"->true, "userData"->UserData(user, group))).withSession(security.setUserinfo(request, userInfo):_*)
             }
           })

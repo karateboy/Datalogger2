@@ -15,6 +15,7 @@ import scala.language.implicitConversions
 
 object ModelHelper {
   val logger: Logger = Logger(this.getClass)
+
   implicit def getSqlTimestamp(t: DateTime): Timestamp = {
     new java.sql.Timestamp(t.getMillis)
   }
@@ -91,12 +92,30 @@ object ModelHelper {
   }
 
   def directionAvg(speedList: Seq[Double], directionList: Seq[Double]): Option[Double] =
-    for((sinSum, cosSum) <- getSinCosSum(speedList, directionList)) yield
+    for ((sinSum, cosSum) <- getSinCosSum(speedList, directionList)) yield
       directionAvg(sinSum, cosSum)
 
-  def speedAvg(speedList: List[Double], directionList: List[Double]): Option[Double] =
+  private def getValidSpeedDir(speedList: Seq[Option[Double]], directionList: Seq[Option[Double]]) = {
+    val zip = speedList.zip(directionList).flatMap(pair => {
+      for (x <- pair._1; y <- pair._2) yield
+        (x, y)
+    })
+    (zip.map(_._1), zip.map(_._2))
+  }
+
+  def directionOptAvg(speedList: Seq[Option[Double]], directionList: Seq[Option[Double]]): Option[Double] = {
+    val (speed, dir) = getValidSpeedDir(speedList, directionList)
+    directionAvg(speed, dir)
+  }
+
+  def speedAvg(speedList: Seq[Double], directionList: Seq[Double]): Option[Double] =
     for ((sinSum, cosSum) <- getSinCosSum(speedList, directionList)) yield
-      Math.sqrt(sinSum*sinSum + cosSum*cosSum)/Math.min(speedList.length, directionList.length)
+      Math.sqrt(sinSum * sinSum + cosSum * cosSum) / Math.min(speedList.length, directionList.length)
+
+  def speedOptAvg(speedList: Seq[Option[Double]], directionList: Seq[Option[Double]]): Option[Double] = {
+    val (speed, dir) = getValidSpeedDir(speedList, directionList)
+    speedAvg(speed, dir)
+  }
 
   def speedDirectionAvg(speedList: List[Double], directionList: List[Double]): Option[(Double, Double)] = {
     if (speedList.length != directionList.length)
@@ -106,7 +125,7 @@ object ModelHelper {
     if (speedDirections.nonEmpty) {
       val sinSum = speedDirections.map(v => v._1 * Math.sin(Math.toRadians(v._2))).sum
       val cosSum = speedDirections.map(v => v._1 * Math.cos(Math.toRadians(v._2))).sum
-      Some((directionAvg(sinSum, cosSum), Math.sqrt(sinSum*sinSum + cosSum*cosSum)))
+      Some((directionAvg(sinSum, cosSum), Math.sqrt(sinSum * sinSum + cosSum * cosSum)))
     } else
       None
   }

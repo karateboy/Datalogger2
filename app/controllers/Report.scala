@@ -283,59 +283,68 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
     statMap.map { pair =>
       val mt = pair._1
       val dateMap = pair._2
+      val dates = dateMap.keys.toList
       val values = dateMap.values.filter(_.valid).toList
       val total = dateMap.values.size
       val count = values.size
       val overCount = values.map {
         _.overCount
       }.sum
-      val max = if (values.nonEmpty)
-        values.map {
-          _.avg
-        }.max
-      else
-        None
-      val min = if (values.nonEmpty)
-        values.map {
-          _.avg
-        }.min
-      else
-        None
-      val avg =
-        if (mt != MonitorType.WIN_DIRECTION) {
-          if (total == 0 || count == 0)
-            None
-          else {
-            val sum = values.flatMap(_.avg).sum
-            Some(sum / count)
-          }
-        } else {
-          val winSpeedMap = statMap(MonitorType.WIN_SPEED)
-          val dates = dateMap.keys.toList
-          val windDir = dates.map {
-            dateMap
-          }
-          val windSpeed = dates.map {
-            winSpeedMap
-          }
 
-          def windAvg1(): Option[Double] = {
-            val windRecord = windSpeed.zip(windDir).filter(w => w._1.avg.isDefined && w._2.avg.isDefined)
-            if (windRecord.isEmpty)
+      val max =
+        if (values.nonEmpty)
+          values.map {
+            _.avg
+          }.max
+        else
+          None
+
+      val min =
+        if (values.nonEmpty)
+          values.map {
+            _.avg
+          }.min
+        else
+          None
+
+      val avg =
+        mt match {
+          case MonitorType.WIN_DIRECTION =>
+            val windDir = values.flatMap(_.avg)
+            if (statMap.contains(MonitorType.WIN_SPEED)) {
+              val windSpeedMap = statMap(MonitorType.WIN_SPEED)
+              val windSpeed = dates flatMap {
+                windSpeedMap.get
+              }
+              directionOptAvg(windSpeed.map(_.avg), values.map(_.avg))
+            } else { //assume wind speed is all equal
+              val windSpeed =
+                for (r <- 1 to windDir.length)
+                  yield Some(1.0)
+
+              directionOptAvg(windSpeed, values.map(_.avg))
+            }
+          case MonitorType.WIN_SPEED =>
+            if (statMap.contains(MonitorType.WIN_DIRECTION)) {
+              val winDirMap = statMap(MonitorType.WIN_DIRECTION)
+              val windDir = dates flatMap {
+                winDirMap.get
+              }
+              speedOptAvg(values.map(_.avg), windDir.map(_.avg))
+            } else
+              None
+
+          case MonitorType.RAIN =>
+            Some(values.flatMap(_.avg).sum)
+
+          case _ =>
+            if (total == 0 || count == 0)
               None
             else {
-              val wind_sin = windRecord.map {
-                v => v._1.avg.get * Math.sin(Math.toRadians(v._2.avg.get))
-              }.sum
-
-              val wind_cos = windRecord.map(v => v._1.avg.get * Math.cos(Math.toRadians(v._2.avg.get))).sum
-              Some(directionAvg(wind_sin, wind_cos))
+              val sum = values.flatMap(_.avg).sum
+              Some(sum / count)
             }
-          }
-
-          windAvg1()
         }
-
       mt -> Stat(
         avg = avg,
         min = min,

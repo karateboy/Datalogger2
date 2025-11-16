@@ -3,7 +3,7 @@ package controllers
 import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import controllers.Highchart._
-import models.ModelHelper.directionAvg
+import models.ModelHelper.directionOptAvg
 import models._
 import play.api._
 import play.api.libs.json._
@@ -114,23 +114,25 @@ class Query @Inject()(recordOp: RecordDB,
         val sum = values.sum
         val count = values.length
         val total = new Duration(period_start, period_start + period).getStandardHours.toInt
-        val overCount = if (monitorTypeOp.map(mt).std_law.isDefined) {
-          values.count {
-            _ > monitorTypeOp.map(mt).std_law.get
-          }
-        } else
-          0
+        val overCount =
+          if (monitorTypeOp.map(mt).std_law.isDefined) {
+            values.count {
+              _ > monitorTypeOp.map(mt).std_law.get
+            }
+          } else
+            0
 
         val avg = if (mt == MonitorType.WIN_DIRECTION) {
           val windDir = records
           val windSpeed = periodSlice(recordListMap(MonitorType.WIN_SPEED), period_start, period_start + period)
-          directionAvg(windSpeed.flatMap(_.value), windDir.flatMap(_.value))
+          directionOptAvg(windSpeed.map(_.value), windDir.map(_.value))
         } else {
           if (count != 0)
             Some(sum / count)
           else
             None
         }
+
         Stat(
           avg = avg,
           min = Some(min),
@@ -1121,13 +1123,14 @@ class Query @Inject()(recordOp: RecordDB,
             (time.getMillis, aqi)
           }
 
-          def getAqiSub(mt:AqiMonitorType)={
+          def getAqiSub(mt: AqiMonitorType) = {
             timeSeq.map { t =>
               val time = t._1
               val aqi = monitorAqiMap(m).get(time).flatMap(_.sub_map.get(mt).flatMap(_.aqi))
               (time.getMillis, aqi)
             }
           }
+
           Seq(
             seqData(s"${monitorOp.map(m).desc} AQI", aqiMain),
             seqData(s"${monitorOp.map(m).desc} O3", getAqiSub(AQI.O3)),
@@ -1150,7 +1153,9 @@ class Query @Inject()(recordOp: RecordDB,
           seriesFlatten)
 
         if (outputType == OutputType.excel) {
-          val precision = Array.fill(chart.series.size){0}
+          val precision = Array.fill(chart.series.size) {
+            0
+          }
           val excelFile = excelUtility.exportChartData(chart, precision, showSec = false)
           Ok.sendFile(excelFile, fileName = _ =>
             Some("AQI查詢.xlsx"),

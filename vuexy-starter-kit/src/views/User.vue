@@ -51,9 +51,6 @@
           aria-describedby="password-feedback"
         ></b-input>
       </b-form-group>
-      <b-form-group label="管理者:" label-for="admin" label-cols="3">
-        <b-form-checkbox id="admin" v-model="user.isAdmin"></b-form-checkbox>
-      </b-form-group>
       <b-form-group label="群組:" label-for="group" label-cols="3">
         <v-select
           id="group"
