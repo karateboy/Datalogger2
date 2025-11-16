@@ -23,7 +23,6 @@ class T100CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   override def readDataReg(in: BufferedReader, out: OutputStream): List[(InstrumentStatusType, Double)] = {
     out.write("T SO2\r\n".getBytes())
-    Thread.sleep(500)
     readTillTimeout(in, expectOneLine = true).flatMap(line => {
       for ((_, _, value) <- getKeyUnitValue(line)) yield
         (dataInstrumentTypes.head, value)
@@ -32,7 +31,6 @@ class T100CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
 
   override def readDataRegSerial(serial: SerialComm): List[(InstrumentStatusType, Double)] = {
     serial.port.writeBytes("T SO2\r\n".getBytes())
-    Thread.sleep(500)
     serial.getLine().flatMap(line => {
       for ((_, _, value) <- getKeyUnitValue(line)) yield
         (dataInstrumentTypes.head, value)
