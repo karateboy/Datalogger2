@@ -3,7 +3,7 @@ package controllers
 import com.github.nscala_time.time.Imports
 import com.github.nscala_time.time.Imports._
 import controllers.Highchart._
-import models.ModelHelper.directionOptAvg
+import models.ModelHelper.{directionOptAvg, speedOptAvg}
 import models._
 import play.api._
 import play.api.libs.json._
@@ -122,16 +122,36 @@ class Query @Inject()(recordOp: RecordDB,
           } else
             0
 
-        val avg = if (mt == MonitorType.WIN_DIRECTION) {
-          val windDir = records
-          val windSpeed = periodSlice(recordListMap(MonitorType.WIN_SPEED), period_start, period_start + period)
-          directionOptAvg(windSpeed.map(_.value), windDir.map(_.value))
-        } else {
-          if (count != 0)
-            Some(sum / count)
-          else
-            None
-        }
+        val avg =
+          mt match {
+            case MonitorType.WIN_DIRECTION =>
+              val windDir = records
+              val windSpeed = periodSlice(recordListMap(MonitorType.WIN_SPEED), period_start, period_start + period)
+              directionOptAvg(windSpeed.map(_.value), windDir.map(_.value))
+
+            case MonitorType.WIN_SPEED =>
+              val windSpeed = records
+              val windDir = periodSlice(recordListMap(MonitorType.WIN_DIRECTION), period_start, period_start + period)
+              speedOptAvg(windSpeed.map(_.value), windDir.map(_.value))
+
+            case MonitorType.RAIN =>
+              Some(values.sum)
+
+            case _ =>
+              val mtCase = monitorTypeOp.map(mt)
+              if (mtCase.acoustic.contains(true)) {
+                val noNanValues = values.filter(v => !v.isNaN)
+                if (noNanValues.isEmpty)
+                  None
+                else
+                  Some(10 * Math.log10(noNanValues.map(v => Math.pow(10, v / 10)).sum / noNanValues.size))
+              } else {
+                if (count != 0)
+                  Some(sum / count)
+                else
+                  None
+              }
+          }
 
         Stat(
           avg = avg,
