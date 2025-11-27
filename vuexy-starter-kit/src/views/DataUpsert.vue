@@ -3,6 +3,9 @@
     <b-form @submit.prevent>
       <b-row>
         <b-col>
+          <b-toast id="example-toast" title="BootstrapVue" static no-auto-hide>
+            Hello, world! This is a toast message.
+          </b-toast>
           <b-form-file
             v-model="form.uploadFile"
             :state="Boolean(form.uploadFile)"
@@ -10,20 +13,14 @@
             browse-text="..."
             placeholder="選擇上傳檔案..."
             drop-placeholder="拖曳檔案至此..."
+            v-b-tooltip
+            title="分鐘資料Excel表格"
           ></b-form-file>
         </b-col>
       </b-row>
       <b-row>
         <!-- submit and reset -->
         <b-col offset-md="3" class="pt-2">
-          <b-button
-            v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-            variant="primary"
-            class="mr-1"
-            @click="downloadTemplate"
-          >
-            下載範本
-          </b-button>
           <b-button
             v-ripple.400="'rgba(255, 255, 255, 0.15)'"
             variant="primary"
@@ -62,15 +59,8 @@ export default Vue.extend({
   computed: {},
   methods: {
     ...mapMutations(['setLoading']),
-    downloadTemplate() {
-      const baseUrl =
-        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
-
-      const url = `${baseUrl}UpsertData/template`;
-      window.open(url);
-    },
     async upload() {
-      var formData = new FormData();
+      let formData = new FormData();
       formData.append('data', this.form.uploadFile as Blob);
       this.setLoading({ loading: true, message: '資料上傳中' });
       try {

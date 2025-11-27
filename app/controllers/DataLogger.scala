@@ -6,7 +6,6 @@ import play.api.Logger
 import play.api.libs.json._
 import play.api.mvc._
 
-import java.util.Date
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -59,30 +58,18 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb,
       val file = request.body.file("data").get
       val tmpFile = file.ref.path.toFile
 
-      val dataMaps = excelUtility.getUpsertMinData(tmpFile)
-      if (dataMaps.isEmpty) {
+      val minRecordLists = excelUtility.getUpsertMinData(tmpFile)
+      if (minRecordLists.isEmpty) {
         Future.successful(BadRequest(Json.obj("ok" -> false, "msg" -> "No data")))
       } else {
-        val recordLists = dataMaps flatMap { dataMap =>
-          if(dataMap.contains("時間") && dataMap("時間").asInstanceOf[Date] != null) {
-            val time = dataMap("時間").asInstanceOf[Date]
-            val id = RecordListID(time, Monitor.activeId)
-            val mtData = (dataMap - "時間") map {
-              case (k, v) =>
-                val value = v.asInstanceOf[Double]
-                MtRecord(k, Option(value), MonitorStatus.NormalStat)
-            }
-            Some(RecordList(mtData.toList, id))
-          } else
-             None
-        }
-        for (_ <- recordDB.upsertManyRecords(recordDB.MinCollection)(recordLists)) yield {
+        logger.info(s"upsert minData #=${minRecordLists.size}")
+        for (_ <- recordDB.upsertManyRecords(recordDB.MinCollection)(minRecordLists)) yield {
           Ok(Json.obj("ok" -> true))
         }
       }
   }
 
-  def queryData(monitorStr:String, monitorTypeStr:String, tabTypeStr: String, startNum: Long, endNum: Long): Action[AnyContent] = Action.async {
+  def queryData(monitorStr: String, monitorTypeStr: String, tabTypeStr: String, startNum: Long, endNum: Long): Action[AnyContent] = Action.async {
     val monitors = monitorStr.split(':')
     val monitorTypes = monitorTypeStr.split(':')
     val tabType = tableType.withName(tabTypeStr)
@@ -99,8 +86,8 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb,
     implicit val recordListIDwrite: OWrites[RecordListID] = Json.writes[RecordListID]
     implicit val mtDataWrite: OWrites[MtRecord] = Json.writes[MtRecord]
     implicit val recordListWrite: OWrites[RecordList] = Json.writes[RecordList]
-    for(result<-resultFuture) yield {
-      result.foreach(rs=>rs.mtDataList=rs.mtDataList.filter(mtData=>monitorTypes.contains(mtData.mtName)))
+    for (result <- resultFuture) yield {
+      result.foreach(rs => rs.mtDataList = rs.mtDataList.filter(mtData => monitorTypes.contains(mtData.mtName)))
       Ok(Json.toJson(result))
     }
   }

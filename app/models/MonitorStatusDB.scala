@@ -1,7 +1,6 @@
 package models
 
-import com.google.inject.ImplementedBy
-import models.MonitorStatus.{BelowNormalStat, CalibrationDeviation, CalibrationPoint3, CalibrationPoint4, CalibrationPoint5, CalibrationPoint6, CalibrationResume, ExceedRangeStat, InvalidDataStat, MaintainStat, NormalStat, OverNormalStat, SpanCalibrationStat, ZeroCalibrationStat, getTagInfo}
+import models.MonitorStatus._
 import play.api.libs.json.Json
 
 trait MonitorStatusDB {
@@ -24,11 +23,12 @@ trait MonitorStatusDB {
     MonitorStatus(MaintainStat, "維修、保養"),
     MonitorStatus(ExceedRangeStat, "超過量測範圍"))
 
-  var _map: Map[String, MonitorStatus] = refreshMap
+  val _map: Map[String, MonitorStatus] = refreshMap()
 
-  protected def refreshMap(): Map[String, MonitorStatus] = {
-    _map = Map(msList.map { s => s.info.toString() -> s }: _*)
-    _map
+  val nameStatusMap: Map[String, String] = _map.map(pair => pair._2.desp -> pair._1)
+
+  private def refreshMap(): Map[String, MonitorStatus] = {
+    Map(msList.map { s => s.info.toString() -> s }: _*)
   }
 
   def msList: Seq[MonitorStatus]

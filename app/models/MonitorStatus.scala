@@ -17,7 +17,7 @@ case class MonitorStatus(_id: String, desp: String) {
 }
 
 case class TagInfo(statusType: StatusType.Value, auditRule: Option[Char], id: String) {
-  override def toString = {
+  override def toString: String = {
     if ((statusType != StatusType.Internal)
       && auditRule.isDefined)
       auditRule.get + id

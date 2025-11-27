@@ -7,6 +7,7 @@ import org.apache.poi.openxml4j.opc._
 import org.apache.poi.ss.usermodel._
 import org.apache.poi.ss.util.CellRangeAddress
 import org.apache.poi.xssf.usermodel._
+import play.api.Logger
 
 import java.io._
 import java.math.MathContext
@@ -17,7 +18,11 @@ import scala.math.BigDecimal.RoundingMode
 
 @Singleton
 class ExcelUtility @Inject()
-(environment: play.api.Environment, monitorTypeOp: MonitorTypeDB, monitorStatusOp: MonitorStatusDB) {
+(environment: play.api.Environment,
+ monitorOp: MonitorDB,
+ monitorTypeOp: MonitorTypeDB,
+ monitorStatusOp: MonitorStatusDB) {
+  val logger: Logger = Logger(this.getClass)
   val docRoot = environment.rootPath + "/report_template/"
 
   def exportChartData(chart: HighchartData, monitorTypes: Array[String], showSec: Boolean): File = {
@@ -254,7 +259,7 @@ class ExcelUtility @Inject()
     finishExcel(reportFilePath, pkg, wb)
   }
 
-  def exportDisplayReport(title: String, displayReport: DisplayReport, monthlyReport:Boolean = true) = {
+  def exportDisplayReport(title: String, displayReport: DisplayReport, monthlyReport: Boolean = true) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("monthlyReport.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
     val format = wb.createDataFormat()
@@ -270,7 +275,7 @@ class ExcelUtility @Inject()
     sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, displayReport.columnNames.size))
     titleRow.getCell(0).setCellValue(title)
 
-    val rowUnit = if(monthlyReport)
+    val rowUnit = if (monthlyReport)
       "日期"
     else
       "月份"
@@ -295,7 +300,7 @@ class ExcelUtility @Inject()
         val row = sheet.getRow(3 + rowIdx)
         val dateTime = new DateTime(displayReport.rows(rowIdx).date)
         val dateTimeCell = row.createCell(0)
-        if(monthlyReport)
+        if (monthlyReport)
           dateTimeCell.setCellValue(dateTime.toString("M/dd"))
         else
           dateTimeCell.setCellValue(dateTime.toString("M"))
@@ -432,7 +437,8 @@ class ExcelUtility @Inject()
     for ((calibration, idx) <- calibrationList.zipWithIndex) {
       val row = sheet.createRow(3 + idx)
       val mt = calibration.monitorType
-      def setPointCell(cell: Cell, value: Option[Double], statusOpt:Option[Boolean]): Unit = {
+
+      def setPointCell(cell: Cell, value: Option[Double], statusOpt: Option[Boolean]): Unit = {
         cell.setCellValue(monitorTypeOp.format(mt, value))
         statusOpt match {
           case Some(true) =>
@@ -495,45 +501,61 @@ class ExcelUtility @Inject()
     finishExcel(reportFilePath, pkg, wb)
   }
 
-  def getUpsertMinData(file: File): Seq[Map[String, Any]] = {
+  def getUpsertMinData(file: File): List[RecordList] = {
     val wb = new XSSFWorkbook(new FileInputStream(file))
     val sheet = wb.getSheetAt(0)
     val rowIterator = sheet.rowIterator().asScala
-    rowIterator.next()
-    rowIterator.next()
-    val header = rowIterator.next().cellIterator().asScala.map { cell =>
+    val headerList = rowIterator.next().cellIterator().asScala.map { cell =>
       cell.getStringCellValue
     }.toSeq
 
-    val data = rowIterator map { row: Row =>
-      val cells = row.cellIterator().asScala.toList
-      val rowMap = header.zip(cells).flatMap { case (key, cell) =>
-        try {
-          val value = key match {
-            case "時間" =>
-              try{
-                cell.getDateCellValue
-              }catch {
-                case _: Throwable =>
-                  try{
-                    DateTime.parse(cell.getStringCellValue, DateTimeFormat.forPattern("YYYY/MM/dd HH:mm:ss")).toDate
-                  }catch {
-                    case _: Throwable =>
-                      DateTime.parse(cell.getStringCellValue, DateTimeFormat.forPattern("YYYY/MM/dd HH:mm")).toDate
-                  }
-              }
+    case class MonitorMtPos(m: String, mt: String, pos: Int)
+    val monitorTypePosList = headerList.zipWithIndex.flatMap {
+      headerIdx =>
+        val (header, idx) = headerIdx
+        header match {
+          case "時間" => None
+          case "狀態碼" => None
+          case _ =>
+            val tokens = header.split("_")
+            Some(MonitorMtPos(tokens.head, tokens.last, idx))
+        }
+    }
 
-            case _ =>
-              cell.getNumericCellValue
+    rowIterator flatMap  { row: Row =>
+      val cells = row.cellIterator().asScala.toArray
+      val time = try {
+        cells.head.getDateCellValue
+      } catch {
+        case _: Throwable =>
+          try {
+            DateTime.parse(cells.head.getStringCellValue, DateTimeFormat.forPattern("YYYY/MM/dd HH:mm:ss")).toDate
+          } catch {
+            case _: Throwable =>
+              DateTime.parse(cells.head.getStringCellValue, DateTimeFormat.forPattern("YYYY/MM/dd HH:mm")).toDate
           }
-          Some(key -> value)
+      }
+      val map = scala.collection.mutable.Map.empty[String, RecordList]
+      monitorTypePosList.foreach(info => {
+        val monitorId = monitorOp.nameIdMap.getOrElse(info.m, Monitor.activeId)
+        val recordList = map.getOrElseUpdate(info.m, RecordList.apply(Seq.empty[MtRecord], RecordListID(time, monitorId)))
+        val value = try {
+          Some(cells(info.pos).getNumericCellValue)
         } catch {
           case _: Throwable =>
             None
         }
-      }.toMap
-      rowMap
+        val status = try {
+          monitorStatusOp.nameStatusMap.getOrElse(cells(info.pos).getStringCellValue, MonitorStatus.NormalStat)
+        } catch {
+          case _: Throwable =>
+            MonitorStatus.NormalStat
+        }
+
+        recordList.mtDataList = recordList.mtDataList :+ MtRecord(info.mt, value, status)
+      })
+
+      map.values.toList
     }
-    data.toSeq
-  }
+  }.toList
 }

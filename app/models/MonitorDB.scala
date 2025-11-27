@@ -12,7 +12,7 @@ trait MonitorDB {
 
   def mvList: List[String] = mList.map(_._id)
   @volatile var map: Map[String, Monitor] = Map.empty[String, Monitor]
-
+  def nameIdMap: Map[String, String] = map.map(pair=>pair._2.desc->pair._2._id)
 
   def ensure(_id: String): Unit = synchronized{
     if (!map.contains(_id)) {
