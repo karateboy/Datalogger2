@@ -127,6 +127,10 @@ export default [
                 route: 'monitor-type-group',
             },
             {
+                title: '狀態碼管理',
+                route: 'monitor-status-config',
+            },
+            {
                 title: '多點校正管理',
                 route: 'calibration-config',
             },

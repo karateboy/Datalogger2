@@ -391,6 +391,24 @@ const router = new VueRouter({
             },
         },
         {
+            path: '/monitor-status-config',
+            name: 'monitor-status-config',
+            component: () => import('@/views/MonitorStatusConfig.vue'),
+            meta: {
+                pageTitle: '狀態碼管理',
+                breadcrumb: [
+                    {
+                        text: '系統管理',
+                        active: true,
+                    },
+                    {
+                        text: '狀態碼管理',
+                        active: true,
+                    },
+                ],
+            },
+        },
+        {
             path: '/monitor-type-group',
             name: 'monitor-type-group',
             component: () => import('@/views/MonitorTypeGroup.vue'),

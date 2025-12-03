@@ -1,10 +1,13 @@
 package models
 
+import play.api.libs.json.{Json, OWrites, Reads}
+
 object StatusType extends Enumeration {
   val Internal: Value = Value("0")
   val Auto: Value = Value("A")
   val ManualInvalid: Value = Value("M")
   val ManualValid: Value = Value("m")
+
   def map = Map(Internal -> "系統",
     Auto -> "自動註記",
     ManualInvalid -> "人工註記:無效資料",
@@ -12,7 +15,7 @@ object StatusType extends Enumeration {
   )
 }
 
-case class MonitorStatus(_id: String, name: String, priority: Int = 1) {
+case class MonitorStatus(_id: String, name: String, priority: Int) {
   val info: TagInfo = MonitorStatus.getTagInfo(_id)
 }
 
@@ -40,7 +43,8 @@ object MonitorStatus {
   val CalibrationPoint6 = "027"
   val InvalidDataStat = "030"
   val MaintainStat = "031"
-  val ExceedRangeStat = "032"
+  val DataLost = "040"
+  val NotActivated = "00"
 
   def getTagInfo(tag: String): TagInfo = {
     val id = tag.substring(1)
@@ -90,7 +94,7 @@ object MonitorStatus {
       else
         "normal"
 
-    if(statClass != "")
+    if (statClass != "")
       Seq(statClass, fgClass)
     else
       Seq(fgClass)
@@ -114,7 +118,7 @@ object MonitorStatus {
         else
           false
       case StatusType.ManualValid =>
-          true
+        true
       case StatusType.ManualInvalid =>
         false
     }
@@ -122,7 +126,7 @@ object MonitorStatus {
 
   def isCalibration(s: String): Boolean = {
     val CALIBRATION_STATS = List(ZeroCalibrationStat, SpanCalibrationStat,
-      CalibrationDeviation,CalibrationResume,
+      CalibrationDeviation, CalibrationResume,
       CalibrationPoint3, CalibrationPoint4, CalibrationPoint5, CalibrationPoint6).map(getTagInfo)
 
     CALIBRATION_STATS.contains(getTagInfo(s))
@@ -132,11 +136,16 @@ object MonitorStatus {
     getTagInfo(MaintainStat) == getTagInfo(s)
   }
 
-  def isManual(s:String): Boolean = {
+  def isManual(s: String): Boolean = {
     getTagInfo(s).statusType == StatusType.ManualInvalid || getTagInfo(s).statusType == StatusType.ManualInvalid
   }
+
   def isError(s: String): Boolean = {
     !(isValid(s) || isCalibration(s) || isMaintenance(s))
   }
+
+  implicit val reads: Reads[MonitorStatus] = Json.reads[MonitorStatus]
+  implicit val writes: OWrites[MonitorStatus] = Json.writes[MonitorStatus]
+
 }
 

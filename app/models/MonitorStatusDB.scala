@@ -6,27 +6,25 @@ import play.api.libs.json.{Json, OWrites, Reads}
 trait MonitorStatusDB {
   implicit val reads: Reads[MonitorStatus] = Json.reads[MonitorStatus]
   implicit val writes: OWrites[MonitorStatus] = Json.writes[MonitorStatus]
-  private var prioritySeed = 0
-  private def MonitorStatusFactory(_id:String, name:String) : MonitorStatus = {
-    prioritySeed = prioritySeed + 1
-    MonitorStatus(_id, name, prioritySeed)
-  }
+
+  val InternalPriorityMax = 100
 
   val defaultStatus = List(
-    MonitorStatusFactory(NormalStat, "正常"),
-    MonitorStatusFactory(OverNormalStat, "超過預設高值"),
-    MonitorStatusFactory(BelowNormalStat, "低於預設低值"),
-    MonitorStatusFactory(ZeroCalibrationStat, "零點偏移校正"),
-    MonitorStatusFactory(SpanCalibrationStat, "全幅偏移校正"),
-    MonitorStatusFactory(CalibrationDeviation, "校正偏移"),
-    MonitorStatusFactory(CalibrationResume, "校正恢復"),
-    MonitorStatusFactory(CalibrationPoint3, "校正點3校正"),
-    MonitorStatusFactory(CalibrationPoint4, "校正點4校正"),
-    MonitorStatusFactory(CalibrationPoint5, "校正點5校正"),
-    MonitorStatusFactory(CalibrationPoint6, "校正點6校正"),
-    MonitorStatusFactory(InvalidDataStat, "無效數據"),
-    MonitorStatusFactory(MaintainStat, "維修、保養"),
-    MonitorStatusFactory(ExceedRangeStat, "超過量測範圍"))
+    MonitorStatus(NormalStat, "正常", 11),
+    MonitorStatus(OverNormalStat, "超於偵測極限", 9),
+    MonitorStatus(BelowNormalStat, "低於偵測極限", 10),
+    MonitorStatus(ZeroCalibrationStat, "零點校正", 5),
+    MonitorStatus(SpanCalibrationStat, "全幅校正", 6),
+    MonitorStatus(CalibrationDeviation, "校正偏移", InternalPriorityMax),
+    MonitorStatus(CalibrationResume, "校正恢復", InternalPriorityMax),
+    MonitorStatus(CalibrationPoint3, "校正點3校正", InternalPriorityMax),
+    MonitorStatus(CalibrationPoint4, "校正點4校正", InternalPriorityMax),
+    MonitorStatus(CalibrationPoint5, "校正點5校正", InternalPriorityMax),
+    MonitorStatus(CalibrationPoint6, "校正點6校正", InternalPriorityMax),
+    MonitorStatus(InvalidDataStat, "無效數據", 7),
+    MonitorStatus(MaintainStat, "維修保養", 3),
+    MonitorStatus(DataLost, "斷線", 8),
+    MonitorStatus(NotActivated, "儀器未啟用", 1))
 
   val _map: Map[String, MonitorStatus] = refreshMap()
 
@@ -44,13 +42,13 @@ trait MonitorStatusDB {
       tagInfo.statusType match {
         case StatusType.Auto =>
           val ruleId = tagInfo.auditRule.get.toLower
-          MonitorStatus(key, s"自動註記:${ruleId}")
+          MonitorStatus(key, s"自動註記:$ruleId", InternalPriorityMax)
         case StatusType.ManualInvalid =>
-          MonitorStatus(key, StatusType.map(StatusType.ManualInvalid))
+          MonitorStatus(key, StatusType.map(StatusType.ManualInvalid), InternalPriorityMax)
         case StatusType.ManualValid =>
-          MonitorStatus(key, StatusType.map(StatusType.ManualValid))
+          MonitorStatus(key, StatusType.map(StatusType.ManualValid), InternalPriorityMax)
         case StatusType.Internal =>
-          MonitorStatus(key, "未知:" + key)
+          MonitorStatus(key, "未知:" + key, InternalPriorityMax)
       }
     })
   }

@@ -26,6 +26,7 @@ class HomeController @Inject()(
                                 sysConfig: SysConfigDB,
                                 recordDB: RecordDB,
                                 calibrationConfigDB: CalibrationConfigDB,
+                                monitorStatusDB: MonitorStatusDB,
                                 lineNotify: LineNotify,
                                 @Named("dataCollectManager") manager: ActorRef,
                                 tableType: TableType,
@@ -1020,6 +1021,12 @@ class HomeController @Inject()(
       } else
         BadRequest("No such calibration config")
     }
+  }
+
+  def monitorStatusList: Action[AnyContent] = security.Authenticated {
+    import MonitorStatus._
+    val monitorStatusList = monitorStatusDB.msList.sortBy(_.priority)
+    Ok(Json.toJson(monitorStatusList))
   }
 
   def monitorTypeGroupList: Action[AnyContent] = security.Authenticated.async {
