@@ -173,7 +173,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
         collectorState = state
         instrumentOp.setState(instId, collectorState)
       }
-      log.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
+      log.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
 
     case AutoCalibration(instId) =>
       executeCalibration(AutoZero)
@@ -280,7 +280,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
       } else {
         log.info(s"During calibration ignore $targetState change.")
       }
-      log.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
+      log.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
 
     case RaiseStart =>
       collectorState =
@@ -422,7 +422,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
         resetToNormal()
         onCalibrationEnd()
         context become normalPhase()
-        log.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
+        log.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
       }
   }
 

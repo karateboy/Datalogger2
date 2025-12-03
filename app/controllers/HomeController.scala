@@ -205,7 +205,7 @@ class HomeController @Inject()(
 
       def getStateStr = {
         if (inst.active) {
-          monitorStatusOp.map(inst.state).desp
+          monitorStatusOp.map(inst.state).name
         } else
           "停用"
       }
@@ -454,7 +454,8 @@ class HomeController @Inject()(
         if (userInfo.isAdmin)
           monitorOp.mvList map { m => monitorOp.map(m) }
         else
-          for (m <- group.monitors if monitorOp.map.contains(m)) yield
+          for (m <- monitorOp.mvList
+               if group.monitors.contains(m) || m == Monitor.activeId) yield
             monitorOp.map(m)
 
       // Make active monitor first

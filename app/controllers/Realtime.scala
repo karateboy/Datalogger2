@@ -77,34 +77,36 @@ class Realtime @Inject()
                 val duration = new Duration(record.time, DateTime.now())
                 val (overInternal, overLaw) = monitorTypeOp.overStd(mt, record.value)
                 val status = if (duration.getStandardSeconds <= overTimeLimit)
-                  monitorStatusOp.map(record.status).desp
+                  monitorStatusOp.map(record.status).name
                 else
                   instrumentStatus()
 
                 MonitorTypeStatus(_id = mCase._id, desp = mCase.desp, monitorTypeOp.format(mt, record.value),
                   mCase.unit, measuringByStr,
                   status,
-                  MonitorStatus.getCssClassStr(record.status, overInternal, overLaw), mCase.order)
+                  MonitorStatus.getCssClassStr(record.status, overInternal, overLaw),
+                  monitorStatusOp.map(record.status).priority * 100 + mCase.order)
               } else {
                 if (instrumentStatus == "停用")
                   MonitorTypeStatus(_id = mCase._id, mCase.desp, monitorTypeOp.format(mt, None),
                     mCase.unit, measuringByStr,
                     instrumentStatus(),
-                    Seq("stop_status"), mCase.order)
+                    Seq("stop_status"), 10000)
                 else
                   MonitorTypeStatus(_id = mCase._id, mCase.desp, monitorTypeOp.format(mt, None),
                     mCase.unit, measuringByStr,
                     instrumentStatus(),
-                    Seq("disconnect_status"), mCase.order)
+                    Seq("disconnect_status"), -1)
               }
             }
           }
 
           // filter out not allowed monitorTypes
           val allowedList = if (userInfo.isAdmin)
-            list
+            list.sortBy(_.order)
           else
-            list.filter(mtStatus => group.monitorTypes.contains(mtStatus._id))
+            list.filter(mtStatus => group.monitorTypes.contains(mtStatus._id)).sortBy(_.order)
+
           Ok(Json.toJson(allowedList))
         }
 
@@ -113,7 +115,7 @@ class Realtime @Inject()
 
   case class RealtimeAQI(date: Date, aqi: AqiExplainReport)
 
-  def getRealtimeAQI: Action[AnyContent] = security.Authenticated.async {
+  def getRealtimeAQI: Action[AnyContent] = Action.async {
     val lastHour = DateTime.now().minusHours(1).withMinuteOfHour(0)
       .withSecondOfMinute(0).withMillisOfSecond(0)
     for (ret <- AQI.getMonitorRealtimeAQI(Monitor.activeId, lastHour)(recordDB)) yield {

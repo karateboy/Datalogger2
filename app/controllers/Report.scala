@@ -324,6 +324,22 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
 
               directionOptAvg(windSpeed, values.map(_.avg))
             }
+          case MonitorType.WD10 =>
+            val windDir = values.flatMap(_.avg)
+            if (statMap.contains(MonitorType.WS10)) {
+              val windSpeedMap = statMap(MonitorType.WS10)
+              val windSpeed = dates flatMap {
+                windSpeedMap.get
+              }
+              directionOptAvg(windSpeed.map(_.avg), values.map(_.avg))
+            } else { //assume wind speed is all equal
+              val windSpeed =
+                for (r <- 1 to windDir.length)
+                  yield Some(1.0)
+
+              directionOptAvg(windSpeed, values.map(_.avg))
+            }
+
           case MonitorType.WIN_SPEED =>
             if (statMap.contains(MonitorType.WIN_DIRECTION)) {
               val winDirMap = statMap(MonitorType.WIN_DIRECTION)

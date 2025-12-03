@@ -129,6 +129,11 @@ class Query @Inject()(recordOp: RecordDB,
               val windSpeed = periodSlice(recordListMap(MonitorType.WIN_SPEED), period_start, period_start + period)
               directionOptAvg(windSpeed.map(_.value), windDir.map(_.value))
 
+            case MonitorType.WD10 =>
+              val windDir = records
+              val windSpeed = periodSlice(recordListMap(MonitorType.WD10), period_start, period_start + period)
+              directionOptAvg(windSpeed.map(_.value), windDir.map(_.value))
+
             case MonitorType.WIN_SPEED =>
               val windSpeed = records
               val windDir = periodSlice(recordListMap(MonitorType.WIN_DIRECTION), period_start, period_start + period)
@@ -586,7 +591,7 @@ class Query @Inject()(recordOp: RecordDB,
   }
 
   def historyData(monitorStr: String, monitorTypeStr: String, tabTypeStr: String, includeRaw: Boolean,
-                  startNum: Long, endNum: Long): Action[AnyContent] = security.Authenticated.async {
+                  startNum: Long, endNum: Long): Action[AnyContent] = Action.async {
     implicit request =>
       val monitors = monitorStr.split(":")
       val monitorTypes = monitorTypeStr.split(':')

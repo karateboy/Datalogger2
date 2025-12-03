@@ -231,7 +231,7 @@ class VerewaF701Collector @Inject()
       }.failed.foreach(errorHandler)
 
     case SetState(id, state) =>
-      logger.info(s"SetState(${monitorStatusOp.map(state).desp})")
+      logger.info(s"SetState(${monitorStatusOp.map(state).name})")
       collectorStatus = state
       instrumentOp.setState(id, state)
   }

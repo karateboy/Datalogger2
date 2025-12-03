@@ -102,7 +102,13 @@ object MonitorType {
   val DIRECTION = "DIRECTION"
   val LDN = "LDN"
   val WS_SPEED = "WS_SPEED"
+  val WS10 = "WS10"
+  val WD10 = "WD10"
 
+
+  /*
+  * GeneratingFunction(required MonitorTypes, generated MonitorType, rawData)
+  * */
   val calculatedMonitorTypeEntries: Seq[(Seq[String], String, (Seq[MonitorTypeData], Date) => Option[MonitorTypeData])] =
     Seq(
       (Seq(LEQA), LDN, (mtDataList, now) =>
@@ -121,7 +127,15 @@ object MonitorType {
       (Seq(WIN_SPEED), WS_SPEED, (mtDataList, _) =>
         for (speedData <- mtDataList.find(_.mt == WIN_SPEED)) yield
           speedData.copy(mt = WS_SPEED)
-      )
+      ),
+      (Seq(WIN_SPEED), WS10, (mtDataList, _) =>
+        for (speedData <- mtDataList.find(_.mt == WIN_SPEED)) yield
+          speedData.copy(mt = WS10)
+      ),
+      (Seq(WIN_DIRECTION), WD10, (mtDataList, _) =>
+        for (speedData <- mtDataList.find(_.mt == WIN_DIRECTION)) yield
+          speedData.copy(mt = WD10)
+      ),
     )
 
   def getCalculatedMonitorTypeData(mtDateList: Seq[MonitorTypeData], now: Date): Seq[MonitorTypeData] =

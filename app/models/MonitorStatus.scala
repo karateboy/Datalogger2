@@ -1,10 +1,10 @@
 package models
 
 object StatusType extends Enumeration {
-  val Internal = Value("0")
-  val Auto = Value("A")
-  val ManualInvalid = Value("M")
-  val ManualValid = Value("m")
+  val Internal: Value = Value("0")
+  val Auto: Value = Value("A")
+  val ManualInvalid: Value = Value("M")
+  val ManualValid: Value = Value("m")
   def map = Map(Internal -> "系統",
     Auto -> "自動註記",
     ManualInvalid -> "人工註記:無效資料",
@@ -12,7 +12,7 @@ object StatusType extends Enumeration {
   )
 }
 
-case class MonitorStatus(_id: String, desp: String) {
+case class MonitorStatus(_id: String, name: String, priority: Int = 1) {
   val info: TagInfo = MonitorStatus.getTagInfo(_id)
 }
 
@@ -42,7 +42,7 @@ object MonitorStatus {
   val MaintainStat = "031"
   val ExceedRangeStat = "032"
 
-  def getTagInfo(tag: String) = {
+  def getTagInfo(tag: String): TagInfo = {
     val id = tag.substring(1)
     val t = tag.charAt(0)
     t match {
@@ -60,7 +60,7 @@ object MonitorStatus {
     }
   }
 
-  def getCssClassStr(tag: String, overInternal: Boolean = false, overLaw: Boolean = false) = {
+  def getCssClassStr(tag: String, overInternal: Boolean = false, overLaw: Boolean = false): Seq[String] = {
     val info = getTagInfo(tag)
     val statClass =
       info.statusType match {
@@ -96,12 +96,12 @@ object MonitorStatus {
       Seq(fgClass)
   }
 
-  def switchTagToInternal(tag: String) = {
+  def switchTagToInternal(tag: String): String = {
     val info = getTagInfo(tag)
     '0' + info.id
   }
 
-  def isValid(s: String) = {
+  def isValid(s: String): Boolean = {
     val tagInfo = getTagInfo(s)
     val VALID_STATS = List(NormalStat, OverNormalStat, BelowNormalStat).map(getTagInfo)
 

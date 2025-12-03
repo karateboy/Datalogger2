@@ -300,7 +300,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
         collectorState = state
         instrumentOp.setState(instId, collectorState)
       }
-      log.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
+      log.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
 
     case AutoCalibration(instId) =>
       executeCalibration(AutoZero)
@@ -378,7 +378,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
         context become normalReceive()
       }
 
-      log.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
+      log.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
 
     case RaiseStart =>
       collectorState =
@@ -520,7 +520,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
         instrumentOp.setState(instId, collectorState)
         resetToNormal()
         context become normalReceive()
-        log.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
+        log.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
       }
   }
 

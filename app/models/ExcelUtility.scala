@@ -121,7 +121,7 @@ class ExcelUtility @Inject()
                 val tagInfo = MonitorStatus.getTagInfo(status)
                 val statusCell = thisRow.createCell(2 * colIdx + 2)
                 val monitorStatus = monitorStatusOp.map(status)
-                statusCell.setCellValue(monitorStatus.desp)
+                statusCell.setCellValue(monitorStatus.name)
                 if (MonitorStatus.isCalibration(status)) {
                   cell.setCellStyle(calibrationStyle)
                   statusCell.setCellStyle(calibrationStyle)

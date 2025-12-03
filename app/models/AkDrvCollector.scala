@@ -177,7 +177,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
         collectorState = state
         instrumentOp.setState(instId, collectorState)
       }
-      logger.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
+      logger.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
 
     case AutoCalibration(instId) =>
 

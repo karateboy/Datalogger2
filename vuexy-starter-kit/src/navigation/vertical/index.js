@@ -96,6 +96,13 @@ export default [
         ],
     },
     {
+        title: '維護操作',
+        icon: 'ActivityIcon',
+        route: 'instrument-maintenance',
+        action: 'set',
+        resource: 'Maintenance',
+    },
+    {
         title: '系統管理',
         icon: 'SettingsIcon',
         children: [

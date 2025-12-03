@@ -180,11 +180,11 @@ object DataCollectManager {
               }
             case MonitorType.RAIN =>
               if (mtCase.accumulated.contains(true)) {
-                if(values.length < 2)
+                if (values.length < 2)
                   None
-                else{
+                else {
                   val diff = values.last - values.head
-                  if(diff < 0)
+                  if (diff < 0)
                     None
                   else
                     Some(diff)
@@ -283,6 +283,22 @@ object DataCollectManager {
 
                 directionAvg(windSpeed, values)
               }
+            case MonitorType.WD10 =>
+              val windDir = values.take(10)
+              if (mtMap.contains(MonitorType.WIN_SPEED)) {
+                val windSpeedMostStatus = mtMap(MonitorType.WIN_SPEED).maxBy(kv => kv._2.length)
+                val windSpeed = windSpeedMostStatus._2.take(10)
+                if (isRaw)
+                  directionAvg(windSpeed.flatMap(_.rawValue), values)
+                else
+                  directionAvg(windSpeed.flatMap(_.value), values)
+              } else { //assume wind speed is all equal
+                val windSpeed =
+                  for (r <- 1 to windDir.length)
+                    yield 1.0
+
+                directionAvg(windSpeed, values)
+              }
             case MonitorType.WIN_SPEED =>
               if (mtMap.contains(MonitorType.WIN_DIRECTION)) {
                 val dirStatusMap = mtMap(MonitorType.WIN_DIRECTION)
@@ -299,8 +315,16 @@ object DataCollectManager {
                 else
                   Some(values.sum / values.length)
               }
+            case MonitorType.WS10=>
+              val v10 = values.take(10)
+              val v = v10.sum / v10.length
+              if (v.isNaN)
+                None
+              else
+                Some(v10.sum / v10.length)
+
             case MonitorType.RAIN =>
-                Some(values.sum)
+              Some(values.sum)
 
             case MonitorType.PM10 =>
               if (LoggerConfig.config.pm25HourAvgUseLastRecord)
@@ -857,10 +881,9 @@ class DataCollectManager @Inject()
         // Update monitor location
         for {lat <- fullDataList.find(_.mt == MonitorType.LAT)
              lng <- fullDataList.find(_.mt == MonitorType.LNG)
-             activeMonitor <- monitorOp.map.get(Monitor.activeId)}
-          {
-            monitorOp.upsertMonitor(activeMonitor.copy(lat = Some(lat.value), lng = Some(lng.value)))
-          }
+             activeMonitor <- monitorOp.map.get(Monitor.activeId)} {
+          monitorOp.upsertMonitor(activeMonitor.copy(lat = Some(lat.value), lng = Some(lng.value)))
+        }
 
         val pairs =
           for (data <- fullDataList) yield {
@@ -1022,7 +1045,7 @@ class DataCollectManager @Inject()
         val recordList = RecordList.factory(current.minusMinutes(1), minuteMtAvgList.toList, Monitor.activeId)
         // Alarm check
         val alarms = alarmRuleDb.checkAlarm(tableType.min, recordList, alarmRules)(monitorOp, monitorTypeOp, alarmOp)
-        alarms.foreach(ar=>alarmOp.log(ar.src, ar.level, ar.desc, 0))
+        alarms.foreach(ar => alarmOp.log(ar.src, ar.level, ar.desc, 0))
 
         val f = recordOp.upsertRecord(recordOp.MinCollection)(recordList)
         f onComplete {

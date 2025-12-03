@@ -318,7 +318,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
         collectorState = state
         instrumentOp.setState(instId, collectorState)
       }
-      log.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
+      log.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
 
     case AutoCalibration(instId) =>
       executeCalibration(AutoZero)
@@ -407,7 +407,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
       } else {
         log.info(s"During calibration ignore $targetState state change")
       }
-      log.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
+      log.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
 
     case RaiseStart =>
       collectorState =
@@ -549,7 +549,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
             instrumentOp.setState(instId, collectorState)
             resetToNormal()
             context become normalReceive()
-            log.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
+            log.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
           }
         }
       }
