@@ -44,7 +44,7 @@ object MonitorStatus {
   val InvalidDataStat = "030"
   val MaintainStat = "031"
   val DataLost = "040"
-  val NotActivated = "00"
+  val NotActivated = "000"
 
   def getTagInfo(tag: String): TagInfo = {
     val id = tag.substring(1)
