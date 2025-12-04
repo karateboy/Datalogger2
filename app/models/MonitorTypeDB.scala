@@ -54,7 +54,7 @@ trait MonitorTypeDB {
     rangeType(LEQZ, "LeqZ", "dB", 2, accumulated = true),
     rangeType(LDN, "LDN", "dB", 2, accumulated = true),
     rangeType(WD10, "前10分風向向量平均", "degrees", 2),
-    rangeType(WS10, "前10分風速資料做算術平均", "m/sec", 2),
+    rangeType(WS10, "前10分風速算術平均", "m/sec", 2),
     /////////////////////////////////////////////////////
     signalType(DOOR, "門禁"),
     signalType(SMOKE, "煙霧"),
