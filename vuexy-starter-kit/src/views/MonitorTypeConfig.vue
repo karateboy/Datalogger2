@@ -291,19 +291,24 @@ export default Vue.extend({
     };
   },
   async mounted() {
-    this.getMonitorTypes();
+    await this.getMonitorTypes();
     await this.getSignalTypes();
   },
   methods: {
-    getMonitorTypes() {
-      axios.get('/MonitorType').then(res => {
-        this.monitorTypes = res.data;
-        for (const mt of this.monitorTypes) {
-          if (mt.levels !== undefined) {
-            mt.levelSeq = mt.levels.join(',');
+    async getMonitorTypes() {
+      try{
+        let res = await axios.get('/MonitorType');
+        if(res.status === 200){
+          this.monitorTypes = res.data;
+          for (const mt of this.monitorTypes) {
+            if (mt.levels !== undefined) {
+              mt.levelSeq = mt.levels.join(',');
+            }
           }
         }
-      });
+      }catch(error){
+        console.log(error);
+      }
     },
     async getSignalTypes() {
       try {

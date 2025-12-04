@@ -93,7 +93,6 @@ GET           /Excel/MonthlyHourReport/:monitorType/:reportDate                 
 
 #JSON
 GET           /MonitorType                                                                         controllers.HomeController.monitorTypeList
-GET           /MonitorType/activated                                                               controllers.HomeController.activatedMonitorTypes
 POST          /MonitorType                                                                         controllers.HomeController.upsertMonitorType
 PUT           /MonitorType                                                                         controllers.HomeController.upsertMonitorType
 DELETE        /MonitorType/:id                                                                     controllers.HomeController.deleteMonitorType(id)

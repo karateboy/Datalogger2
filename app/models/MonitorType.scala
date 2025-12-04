@@ -34,7 +34,7 @@ case class MonitorType(_id: String,
       val current = measuringBy.get
       if (!current.contains(instrumentId)) {
         if (append)
-          measuringBy = Some(current :+ (instrumentId))
+          measuringBy = Some(current :+ instrumentId)
         else
           measuringBy = Some(current.+:(instrumentId))
       }

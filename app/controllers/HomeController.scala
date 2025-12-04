@@ -165,6 +165,7 @@ class HomeController @Inject()(
             dataCollectManagerOp.stopCollect(newInstrument._id)
             val f = monitorTypeOp.stopMeasuring(newInstrument._id)
             val f2 = f.map(_ => instrumentOp.upsertInstrument(newInstrument))
+            /*
             val mtList = instType.driver.getMonitorTypes(instParam)
             val f3 = f2.map {
               _ =>
@@ -172,8 +173,8 @@ class HomeController @Inject()(
                   for (mt <- monitorTypeOp.populateCalculatedTypes(mtList)) yield
                     monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog, recordDB)
                 }
-            }
-            f3.map {
+            }*/
+            f2.map {
               _ =>
                 if (newInstrument.active)
                   dataCollectManagerOp.startCollect(newInstrument)
@@ -509,19 +510,6 @@ class HomeController @Inject()(
       Ok(Json.toJson(mtList.sortBy(_.order)))
   }
 
-  def activatedMonitorTypes: Action[AnyContent] = security.Authenticated {
-    implicit request =>
-      val userInfo = security.getUserinfo(request).get
-      val group = groupOp.getGroupByID(userInfo.group).get
-
-      val mtList = if (userInfo.isAdmin)
-        monitorTypeOp.activeMtvList map monitorTypeOp.map
-      else
-        monitorTypeOp.activeMtvList.filter(group.monitorTypes.contains) map monitorTypeOp.map
-
-      Ok(Json.toJson(mtList.sortBy(_.order)))
-  }
-
   def upsertMonitorType: Action[JsValue] = security.Authenticated.async(parse.json) {
     implicit request =>
       val mtResult = request.body.validate[MonitorType]
@@ -566,7 +554,7 @@ class HomeController @Inject()(
     for {
       monitor <- monitors
       hour <- query.getPeriods(start, end, 1.hour)} {
-      dataCollectManagerOp.recalculateHourData(monitor, hour)(monitorTypeOp.activeMtvList, monitorTypeOp)
+      dataCollectManagerOp.recalculateHourData(monitor, hour)(monitorTypeOp.measuredMonitorTypes, monitorTypeOp)
     }
 
     Ok(Json.obj("ok" -> true))

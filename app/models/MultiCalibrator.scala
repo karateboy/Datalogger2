@@ -179,13 +179,13 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
             case 1 =>
               MonitorStatus.SpanCalibrationStat
             case 2 =>
-              MonitorStatus.CalibrationPoint3
+              MonitorStatus.SpanCalibrationStat
             case 3 =>
-              MonitorStatus.CalibrationPoint4
+              MonitorStatus.SpanCalibrationStat
             case 4 =>
-              MonitorStatus.CalibrationPoint5
+              MonitorStatus.SpanCalibrationStat
             case 5 =>
-              MonitorStatus.CalibrationPoint6
+              MonitorStatus.SpanCalibrationStat
             case 6 =>
               MonitorStatus.CalibrationResume
           }

@@ -194,13 +194,13 @@ trait MonitorTypeDB {
 
   def allMtvList: List[String] = mtvList ++ signalMtvList
 
-  def activeMtvList: List[String] = mtvList.filter { mt => map(mt).measuringBy.isDefined }
+  def measuredMonitorTypes: List[String] = mtvList.filter { mt => map(mt).measuringBy.isDefined }
 
   def addMeasuring(mt: String, instrumentId: String, append: Boolean, recordDB: RecordDB): Future[UpdateResult] = {
     recordDB.ensureMonitorType(mt)
     synchronized {
       if (!map.contains(mt)) {
-        val mtCase = rangeType(mt, mt, "??", 2)
+        val mtCase = defaultMonitorTypes.find(_._id==mt).getOrElse(rangeType(mt, mt, "??", 2))
         mtCase.addMeasuring(instrumentId, append)
         upsertMonitorType(mtCase)
       } else {

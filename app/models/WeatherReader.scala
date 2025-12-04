@@ -159,7 +159,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
         val end = new DateTime(Date.from(dataEnd.atZone(ZoneId.systemDefault()).toInstant))
 
         for (current <- getHourBetween(start, end))
-          dataCollectManagerOp.recalculateHourData(Monitor.activeId, current)(monitorTypeOp.activeMtvList, monitorTypeOp)
+          dataCollectManagerOp.recalculateHourData(Monitor.activeId, current)(monitorTypeOp.measuredMonitorTypes, monitorTypeOp)
       }
     } finally {
       src.close()
