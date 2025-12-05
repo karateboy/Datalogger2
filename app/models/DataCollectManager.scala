@@ -121,7 +121,7 @@ object DataCollectManager {
                                  alwaysValid: Boolean)
                                 (calibrationMap: CalibrationListMap, target: DateTime): immutable.Iterable[MtRecord] = {
     for {
-      (mt, statusMap) <- mtMap
+      (mt, statusMap) <- mtMap if !MonitorType.IsCalculated(mt)
       total = statusMap.map {
         _._2.size
       }.sum if total != 0
@@ -170,6 +170,7 @@ object DataCollectManager {
                 else
                   Some(values.sum / values.length)
               }
+
             case MonitorType.DIRECTION =>
               val directions = values
               if (mtMap.contains(MonitorType.SPEED)) {
@@ -715,7 +716,7 @@ class DataCollectManager @Inject()(config: Configuration,
         val instType = instrumentTypeOp.map(inst.instType)
         val collector = instrumentTypeOp.start(inst.instType, inst._id, inst.protocol, inst.param)
         val monitorTypes = instType.driver.getMonitorTypes(inst.param)
-        for (mt <- monitorTypeOp.populateCalculatedTypes(monitorTypes)) yield
+        for (mt <- MonitorType.populateCalculatedTypes(monitorTypes)) yield
           monitorTypeOp.addMeasuring(mt, inst._id, instType.analog, recordOp)
 
         val calibrateTimeOpt = instType.driver.getCalibrationTime(inst.param)
@@ -985,11 +986,11 @@ class DataCollectManager @Inject()(config: Configuration,
       def updateMinData(current: DateTime, calibrationMap: CalibrationListMap): Future[UpdateResult] = {
         val mtMap = mutable.Map.empty[String, mutable.Map[String, ListBuffer[(String, DateTime, Double)]]]
 
-        val currentData = mtDataList.takeWhile(d => d._1 >= current)
-        val minDataList = mtDataList.drop(currentData.length)
+        val nextMinData = mtDataList.takeWhile(d => d._1 >= current)
+        val thisMinData = mtDataList.drop(nextMinData.length)
 
         for {
-          dl <- minDataList
+          dl <- thisMinData
           instrumentId = dl._2
           data <- dl._3
         } {
@@ -1037,9 +1038,12 @@ class DataCollectManager @Inject()(config: Configuration,
         if (LoggerConfig.config.storeSecondData)
           flushSecData(priorityMtMap)
 
-        val mtRecords = calculateMinAvgMap(monitorTypeOp,
+        val rawMtRecords = calculateMinAvgMap(monitorTypeOp,
           priorityMtMap,
           alwaysValid = false)(calibrationMap, current.minusMinutes(1)).toList
+
+        val calculatedMtRecords = MonitorType.getCalculatedMtRecord(rawMtRecords, current)
+        val mtRecords = rawMtRecords ++ calculatedMtRecords
 
         checkMinDataAlarm(mtRecords)
 
@@ -1048,6 +1052,10 @@ class DataCollectManager @Inject()(config: Configuration,
           if (mtRecord.mtName == MonitorType.RAIN)
             hourAccumulateRain = Some(hourAccumulateRain.getOrElse(0d) + mtRecord.value.getOrElse(0d))
         })
+
+        context become handler(instrumentMap,
+          latestDataMap, nextMinData, restartList, signalTypeHandlerMap, signalDataMap, calibrationListMap,
+          instrumentCalibratorMap, calibratorTimerMap, alarmRules)
 
         val recordList = RecordList.factory(current.minusMinutes(1), mtRecords, Monitor.activeId)
 

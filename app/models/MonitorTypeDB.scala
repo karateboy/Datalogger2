@@ -61,7 +61,6 @@ trait MonitorTypeDB {
     signalType(FLOW, "採樣流量"),
     signalType("SPRAY", "灑水"))
 
-  private val calculatedMonitorTypes: Seq[String] = calculatedMonitorTypeEntries.map(_._2)
 
   private val mtToEpaMtMap: Map[String, String] = Map(
     MonitorType.TEMP -> "14",
@@ -134,7 +133,6 @@ trait MonitorTypeDB {
     map = mtPair.toMap
 
     // ensure calculated types
-    logger.info(s"calculated mt = $calculatedMonitorTypes")
     for (mt <- calculatedMonitorTypes)
       ensure(mt)
   }
@@ -309,14 +307,4 @@ trait MonitorTypeDB {
     MtRecord(mt, value, status, rawValue = rawValue)
   }
 
-
-  def populateCalculatedTypes(mtList:Seq[String]): Seq[String] = {
-    val calculatedMtvList: Seq[String] = calculatedMonitorTypeEntries.flatMap(pair=>
-      if(pair._1.forall(mtList.contains))
-        Seq(pair._2)
-      else
-        Seq.empty[String]
-    )
-    mtList ++ calculatedMtvList
-  }
 }
