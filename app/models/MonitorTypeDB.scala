@@ -88,6 +88,8 @@ trait MonitorTypeDB {
   @volatile var map = Map.empty[String, MonitorType]
   private var diValueMap = Map.empty[String, Boolean]
 
+  def nameIdMap: Map[String, String] = map map { pair => pair._2.desp -> pair._1 }
+
   def signalType(_id: String, desp: String): MonitorType = {
     signalOrder += 1
     MonitorType(_id, desp, "N/A", 0, signalOrder, signalType = true)

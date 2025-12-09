@@ -3,6 +3,7 @@ package models.mongodb
 import com.github.nscala_time.time.Imports.DateTime
 import models.ModelHelper.{errorHandler, waitReadyResult}
 import models._
+import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.result.{InsertManyResult, UpdateResult}
 import org.mongodb.scala.{BulkWriteResult, FindObservable, MongoCollection}
 import play.api.Logger
@@ -145,14 +146,14 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
   private def getCollection(colName: String): MongoCollection[RecordList] = mongodb.database.getCollection[RecordList](colName).withCodecRegistry(codecRegistry)
 
   override def upsertManyRecords(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult] = {
-    /*
-    val pullUpdates: Seq[UpdateOneModel[Nothing]] =
+
+    val pullUpdates =
       for (record <- records) yield {
-        val mtDataPullUdates: Seq[Bson] = record.mtDataList.map(mtr => Updates.pullByFilter(Document("mtDataList" -> Document("mtName" -> mtr.mtName))))
-        val updates = Updates.combine(mtDataPullUdates: _*)
+        val mtDataPullUpdates = record.mtDataList.map(mtr => Updates.pullByFilter(Document("mtDataList" -> Document("mtName" -> mtr.mtName))))
+        val updates = Updates.combine(mtDataPullUpdates: _*)
         UpdateOneModel(Filters.equal("_id", RecordListID(record._id.time, record._id.monitor)), updates, UpdateOptions().upsert(true))
       }
-    */
+
     val setUpdates = for (record <- records) yield {
       val updates =
         Updates.addEachToSet("mtDataList", record.mtDataList: _*)
@@ -161,7 +162,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
     }
 
     val collection = getCollection(colName)
-    val f = collection.bulkWrite(setUpdates, BulkWriteOptions().ordered(true)).toFuture()
+    val f = collection.bulkWrite(pullUpdates ++ setUpdates, BulkWriteOptions().ordered(true)).toFuture()
     f.failed.foreach(errorHandler)
     f
   }

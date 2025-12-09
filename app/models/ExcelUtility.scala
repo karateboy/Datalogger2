@@ -509,7 +509,7 @@ class ExcelUtility @Inject()
       cell.getStringCellValue
     }.toSeq
 
-    case class MonitorMtPos(m: String, mt: String, pos: Int)
+    case class MonitorMtPos(mName: String, mtName: String, pos: Int)
     val monitorTypePosList = headerList.zipWithIndex.flatMap {
       headerIdx =>
         val (header, idx) = headerIdx
@@ -522,7 +522,7 @@ class ExcelUtility @Inject()
         }
     }
 
-    rowIterator flatMap  { row: Row =>
+    def rowHandler(row: Row) = {
       val cells = row.cellIterator().asScala.toArray
       val time = try {
         cells.head.getDateCellValue
@@ -537,8 +537,8 @@ class ExcelUtility @Inject()
       }
       val map = scala.collection.mutable.Map.empty[String, RecordList]
       monitorTypePosList.foreach(info => {
-        val monitorId = monitorOp.nameIdMap.getOrElse(info.m, Monitor.activeId)
-        val recordList = map.getOrElseUpdate(info.m, RecordList.apply(Seq.empty[MtRecord], RecordListID(time, monitorId)))
+        val monitorId = monitorOp.nameIdMap.getOrElse(info.mName, Monitor.activeId)
+        val recordList = map.getOrElseUpdate(info.mName, RecordList.apply(Seq.empty[MtRecord], RecordListID(time, monitorId)))
         val value = try {
           Some(cells(info.pos).getNumericCellValue)
         } catch {
@@ -546,16 +546,31 @@ class ExcelUtility @Inject()
             None
         }
         val status = try {
-          monitorStatusOp.nameStatusMap.getOrElse(cells(info.pos).getStringCellValue, MonitorStatus.NormalStat)
+          val statusStr = cells(info.pos+1).getStringCellValue
+          if(monitorStatusOp._map.contains(statusStr))
+            monitorStatusOp._map(statusStr)._id
+          else{
+            monitorStatusOp.nameStatusMap.getOrElse(statusStr, MonitorStatus.NormalStat)
+          }
         } catch {
           case _: Throwable =>
             MonitorStatus.NormalStat
         }
 
-        recordList.mtDataList = recordList.mtDataList :+ MtRecord(info.mt, value, status)
+        for (mt <- monitorTypeOp.nameIdMap.get(info.mtName))
+          recordList.mtDataList = recordList.mtDataList :+ MtRecord(mt, value, status)
       })
-
       map.values.toList
+    }
+
+    rowIterator flatMap { row: Row =>
+      try{
+        rowHandler(row)
+      }catch{
+        case ex:Throwable=>
+          logger.error("skip row", ex)
+          List.empty[RecordList]
+      }
     }
   }.toList
 }

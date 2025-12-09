@@ -63,6 +63,9 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb,
         Future.successful(BadRequest(Json.obj("ok" -> false, "msg" -> "No data")))
       } else {
         logger.info(s"upsert minData #=${minRecordLists.size}")
+        if(minRecordLists.nonEmpty)
+          logger.info("1st record=>" + minRecordLists.head.toString)
+
         for (_ <- recordDB.upsertManyRecords(recordDB.MinCollection)(minRecordLists)) yield {
           Ok(Json.obj("ok" -> true))
         }
