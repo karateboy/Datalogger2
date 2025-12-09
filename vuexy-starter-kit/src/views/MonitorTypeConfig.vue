@@ -11,6 +11,8 @@
         selected-variant="info"
         bordered
         sticky-header
+        :per-page="10"
+        :current-page="currentPage"
         style="max-height: 650px"
         @row-selected="onMtSelected"
       >
@@ -124,6 +126,16 @@
           />
         </template>
       </b-table>
+      <b-pagination
+          v-model="currentPage"
+          :total-rows="monitorTypes.length"
+          :per-page="10"
+          first-text="⏮"
+          prev-text="⏪"
+          next-text="⏩"
+          last-text="⏭"
+          class="mt-4"
+      ></b-pagination>
       <b-row>
         <b-col>
           <b-button
@@ -288,6 +300,7 @@ export default Vue.extend({
       },
       form,
       selected: Array<MonitorType>(),
+      currentPage: 1
     };
   },
   async mounted() {

@@ -49,7 +49,7 @@ class Realtime @Inject()
         } yield {
           val list = {
             for {
-              mt <- monitorTypeOp.realtimeMtvList.sortBy(monitorTypeOp.map(_).order)
+              mt <- monitorTypeOp.measuringList.sortBy(monitorTypeOp.map(_).order)
               recordOpt = dataMap.get(mt)
             } yield {
               val mCase = monitorTypeOp.map(mt)

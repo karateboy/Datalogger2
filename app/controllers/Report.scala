@@ -49,9 +49,9 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
       val reportType = PeriodReport.withName(reportTypeStr)
       val outputType = OutputType.withName(outputTypeStr)
       val mtList = if (userInfo.isAdmin)
-        monitorTypeOp.realtimeMtvList
+        monitorTypeOp.measuringList
       else
-        monitorTypeOp.realtimeMtvList filter group.monitorTypes.contains
+        monitorTypeOp.measuringList filter group.monitorTypes.contains
 
       reportType match {
         case PeriodReport.DailyReport =>
@@ -125,7 +125,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
 
         case PeriodReport.MonthlyReport =>
           val start = new DateTime(startNum).withMillisOfDay(0).withDayOfMonth(1)
-          val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, monitorTypeOp.measuredMonitorTypes, start, start + 1.month)
+          val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, monitorTypeOp.measuredList, start, start + 1.month)
           val statMap = query.getPeriodStatReportMap(periodMap, 1.day)(start, start + 1.month)
           val overallStatMap = getOverallStatMap(statMap, 20)
           val avgRow = {
@@ -197,7 +197,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
 
           for (m <- scala.collection.immutable.Range.inclusive(0, 11)) {
             val monthStart = yearStart + m.month
-            val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, monitorTypeOp.measuredMonitorTypes, monthStart, monthStart + 1.month)
+            val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, monitorTypeOp.measuredList, monthStart, monthStart + 1.month)
             val statMap = query.getPeriodStatReportMap(periodMap, 1.day)(monthStart, monthStart + 1.month)
             val overallStatMap = getOverallStatMap(statMap, 20)
             monthReportMap.update(monthStart, overallStatMap)

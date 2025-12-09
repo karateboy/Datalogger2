@@ -503,9 +503,9 @@ class HomeController @Inject()(
 
       logger.debug(s"${userInfo}")
       val mtList = if (userInfo.isAdmin)
-        monitorTypeOp.mtvList map monitorTypeOp.map
+        monitorTypeOp.rangeList map monitorTypeOp.map
       else
-        monitorTypeOp.mtvList.filter(group.monitorTypes.contains) map monitorTypeOp.map
+        monitorTypeOp.rangeList.filter(group.monitorTypes.contains) map monitorTypeOp.map
 
       Ok(Json.toJson(mtList.sortBy(_.order)))
   }
@@ -529,7 +529,7 @@ class HomeController @Inject()(
   }
 
   def signalTypeList: Action[AnyContent] = security.Authenticated {
-    val mtList = monitorTypeOp.signalMtvList map monitorTypeOp.map
+    val mtList = monitorTypeOp.signalList map monitorTypeOp.map
     Ok(Json.toJson(mtList))
   }
 
@@ -554,7 +554,7 @@ class HomeController @Inject()(
     for {
       monitor <- monitors
       hour <- query.getPeriods(start, end, 1.hour)} {
-      dataCollectManagerOp.recalculateHourData(monitor, hour)(monitorTypeOp.measuredMonitorTypes, monitorTypeOp)
+      dataCollectManagerOp.recalculateHourData(monitor, hour)(monitorTypeOp.measuredList, monitorTypeOp)
     }
 
     Ok(Json.obj("ok" -> true))
