@@ -11,7 +11,7 @@ trait MonitorStatusDB {
 
   val defaultStatus = List(
     MonitorStatus(NormalStat, "正常", 11),
-    MonitorStatus(OverNormalStat, "超於偵測極限", 9),
+    MonitorStatus(OverNormalStat, "高於偵測極限", 9),
     MonitorStatus(BelowNormalStat, "低於偵測極限", 10),
     MonitorStatus(ZeroCalibrationStat, "零點校正", 5),
     MonitorStatus(SpanCalibrationStat, "全幅校正", 6),

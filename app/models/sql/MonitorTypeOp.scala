@@ -42,6 +42,8 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
                 ,[fixedM] = ${mt.fixedM}
                 ,[fixedB] = ${mt.fixedB}
                 ,[overLawSignalType] = ${mt.overLawSignalType}
+                ,[rangeMin] = ${mt.rangeMin}
+                ,[rangeMax] = ${mt.rangeMax}
             WHERE [id] = ${mt._id}
           IF(@@ROWCOUNT = 0)
             BEGIN
@@ -64,7 +66,9 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
            ,[accumulated]
            ,[fixedM]
            ,[fixedB]
-           ,[overLawSignalType])
+           ,[overLawSignalType]
+           ,[rangeMin]
+           ,[rangeMax])
           VALUES
               (${mt._id}
                 ,${mt.desp}
@@ -84,7 +88,9 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
                 ,${mt.accumulated}
                 ,${mt.fixedM}
                 ,${mt.fixedB}
-                ,${mt.overLawSignalType})
+                ,${mt.overLawSignalType}
+                ,${mt.rangeMin}
+                ,${mt.rangeMax})
             END
          """.update().apply()
     UpdateResult.acknowledged(ret, ret, null)
@@ -119,7 +125,9 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
       accumulated = rs.booleanOpt("accumulated"),
       fixedM = rs.doubleOpt("fixedM"),
       fixedB = rs.doubleOpt("fixedB"),
-      overLawSignalType = rs.stringOpt("overLawSignalType"))
+      overLawSignalType = rs.stringOpt("overLawSignalType"),
+      rangeMin = rs.doubleOpt("rangeMin"),
+      rangeMax = rs.doubleOpt("rangeMax"))
   }
 
   override def deleteItemFuture(_id: String): Unit = {
@@ -153,6 +161,8 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
             [fixedM] [float] NULL,
             [fixedB] [float] NULL,
             [overLawSignalType] [nvarchar](50),
+            [rangeMin] [float] NULL,
+            [rangeMax] [float] NULL,
         CONSTRAINT [PK_monitorType] PRIMARY KEY CLUSTERED
         (
 	        [id] ASC
@@ -180,6 +190,20 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
       sql"""
           Alter Table monitorType
           Add [overLawSignalType] [nvarchar](50);
+         """.execute().apply()
+    }
+
+    if(!sqlServer.getColumnNames(tabName).contains("rangeMin")){
+      sql"""
+          Alter Table monitorType
+          Add [rangeMin] float;
+         """.execute().apply()
+    }
+
+    if(!sqlServer.getColumnNames(tabName).contains("rangeMax")){
+      sql"""
+          Alter Table monitorType
+          Add [rangeMax] float;
          """.execute().apply()
     }
 

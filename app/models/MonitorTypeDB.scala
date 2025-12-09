@@ -15,7 +15,7 @@ trait MonitorTypeDB {
   implicit val configRead: Reads[ThresholdConfig] = Json.reads[ThresholdConfig]
   implicit val mtWrite: OWrites[MonitorType] = Json.writes[MonitorType]
   implicit val mtRead: Reads[MonitorType] = Json.reads[MonitorType]
-  val defaultMonitorTypes = List(
+  val defaultMonitorTypes: List[MonitorType] = List(
     rangeType(SO2, "二氧化硫", "ppb", 2),
     rangeType(NOX, "氮氧化物", "ppb", 2),
     rangeType(NO2, "二氧化氮", "ppb", 2),

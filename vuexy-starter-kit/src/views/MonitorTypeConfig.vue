@@ -19,6 +19,20 @@
         <template #cell(desp)="row">
           <b-form-input v-model="row.item.desp" @change="markDirty(row.item)" />
         </template>
+        <template #cell(rangeMin)="row">
+          <b-form-input
+              v-model.number="row.item.rangeMin"
+              size="sm"
+              @change="markDirty(row.item)"
+          />
+        </template>
+        <template #cell(rangeMax)="row">
+          <b-form-input
+              v-model.number="row.item.rangeMax"
+              size="sm"
+              @change="markDirty(row.item)"
+          />
+        </template>
         <template #cell(unit)="row">
           <b-form-input
             v-model="row.item.unit"
@@ -43,13 +57,6 @@
         <template #cell(std_law)="row">
           <b-form-input
             v-model.number="row.item.std_law"
-            size="sm"
-            @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(thresholdConfig)="row">
-          <b-form-input
-            v-model.number="row.item.thresholdConfig.elapseTime"
             size="sm"
             @change="markDirty(row.item)"
           />
@@ -166,14 +173,6 @@
         </b-col>
       </b-row>
     </b-card>
-    <b-modal
-      id="thresholdConfig"
-      title="高值處理設定"
-      cancel-title="取消"
-      ok-title="確認"
-      @ok="setMtThresholdConfig"
-    >
-    </b-modal>
   </div>
 </template>
 <style lang="scss">
@@ -183,7 +182,7 @@
 import Vue from 'vue';
 const Ripple = require('vue-ripple-directive');
 import axios from 'axios';
-import { MonitorType, ThresholdConfig } from './types';
+import { MonitorType } from './types';
 import { isNumber } from 'highcharts';
 
 interface EditMonitorType extends MonitorType {
@@ -209,6 +208,14 @@ export default Vue.extend({
       {
         key: 'desp',
         label: '名稱',
+      },
+      {
+        key: 'rangeMin',
+        label: '偵測最小',
+      },
+      {
+        key: 'rangeMax',
+        label: '偵測最大',
       },
       {
         key: 'unit',
@@ -349,6 +356,8 @@ export default Vue.extend({
 
       if (!isNumber(mt.fixedB)) mt.fixedB = undefined;
       if (!isNumber(mt.fixedM)) mt.fixedM = undefined;
+      if(!isNumber(mt.rangeMax)) mt.rangeMax = undefined;
+      if(!isNumber(mt.rangeMin)) mt.rangeMin = undefined;
     },
     checkLevel(levelSeq: string | undefined): boolean {
       try {
@@ -382,10 +391,6 @@ export default Vue.extend({
     },
     markDirty(item: any) {
       item.dirty = true;
-    },
-    setMtThresholdConfig() {
-      this.editingMt.thresholdConfig = this.form.thresholdConfig;
-      this.markDirty(this.editingMt);
     },
     onMtSelected(items: Array<MonitorType>) {
       this.selected = items;

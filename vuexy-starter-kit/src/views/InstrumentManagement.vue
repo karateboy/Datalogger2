@@ -266,8 +266,8 @@ export default Vue.extend({
             variant: 'danger',
           },
         });
-        this.getInstList();
       }
+      this.getInstList();
     },
     async toggleActivateState() {
       try {

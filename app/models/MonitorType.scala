@@ -25,7 +25,9 @@ case class MonitorType(_id: String,
                        accumulated: Option[Boolean] = None,
                        fixedM: Option[Double] = None,
                        fixedB: Option[Double] = None,
-                       overLawSignalType: Option[String] = None) {
+                       overLawSignalType: Option[String] = None,
+                       rangeMin: Option[Double] = None,
+                       rangeMax: Option[Double] = None) {
 
   def addMeasuring(instrumentId: String, append: Boolean): Unit = {
     if (measuringBy.isEmpty)

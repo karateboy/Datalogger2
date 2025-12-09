@@ -31,6 +31,24 @@
               切換維修
             </b-button>
             <b-button
+                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                variant="primary"
+                class="mr-1"
+                :disabled="selected.length === 0"
+                @click="toggleState('023')"
+            >
+              切換查核
+            </b-button>
+            <b-button
+                v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                variant="primary"
+                class="mr-1"
+                :disabled="selected.length === 0"
+                @click="toggleState('022')"
+            >
+              切換氣象及粒狀物校正
+            </b-button>
+            <b-button
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
               variant="primary"
               class="mr-1"
@@ -83,7 +101,7 @@ export default Vue.extend({
     Ripple,
   },
   data() {
-    const instList = [];
+    let instList = [];
     const fields = [
       {
         key: 'selected',
@@ -195,8 +213,8 @@ export default Vue.extend({
             variant: 'danger',
           },
         });
-        this.getInstList();
       }
+      this.getInstList();
     },
     async toggleActivateState() {
       try {
@@ -218,6 +236,17 @@ export default Vue.extend({
       } catch (err) {
         console.error(`${err}`);
         this.showResult(false);
+      }
+    },
+    async toggleState(state) {
+      try{
+        const res = await axios.put(
+            `/ToggleInstrumentState/${this.selected[0]._id}/${state}`,
+            {},
+        );
+        this.showResult(res.data.ok);
+      }catch(err) {
+        console.error(err);
       }
     },
     async toggleMaintenanceMode() {
@@ -274,15 +303,16 @@ export default Vue.extend({
           throw Error(err);
         });
     },
-    getInstList() {
-      axios
-        .get('/InstrumentInfos')
-        .then(res => {
+    async getInstList() {
+      try{
+        let res = await axios.get('/InstrumentInfos');
+        if(res.status === 200) {
           this.instList = res.data;
-        })
-        .catch(err => {
-          throw new Error(err);
-        });
+          console.info('getInstList', this.instList);
+        }
+      }catch(err) {
+        console.error(err);
+      }
     },
     onInstSelected(items) {
       this.selected = items;

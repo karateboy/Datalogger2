@@ -359,6 +359,33 @@ class HomeController @Inject()(
     Ok(Json.obj("ok" -> true))
   }
 
+  //toggleInstrumentState(ids, state)
+  def toggleInstrumentState(instruments: String, state: String): Action[AnyContent] = security.Authenticated {
+    val ids = instruments.split(",")
+    try {
+      ids.foreach(id => {
+        instrumentOp.getInstrument(id).map { inst =>
+          val newState =
+            if (inst.state == state)
+              MonitorStatus.NormalStat
+            else {
+              if (monitorStatusOp._map.contains(state))
+                state
+              else
+                MonitorStatus.NormalStat
+            }
+
+          dataCollectManagerOp.setInstrumentState(id, newState)
+        }
+      })
+      Ok(Json.obj("ok" -> true))
+    } catch {
+      case ex: Throwable =>
+        logger.error(s"toggleInstrumentState ids=$instruments state=$state", ex)
+        Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
+    }
+  }
+
   def calibrateInstrument(instruments: String, zeroCalibrationStr: String): Action[AnyContent] = security.Authenticated {
     val ids = instruments.split(",")
     val zeroCalibration = zeroCalibrationStr.toBoolean

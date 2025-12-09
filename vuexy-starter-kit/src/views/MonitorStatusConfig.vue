@@ -14,19 +14,7 @@
         style="max-height: 650px"
         @row-selected="onMsSelected"
       >
-
       </b-table>
-      <b-row>
-        <b-col>
-          <b-button
-            variant="primary"
-            class="mr-1 bg-gradient-primary"
-            @click="save"
-          >
-            儲存
-          </b-button>
-        </b-col>
-      </b-row>
     </b-card>
   </div>
 </template>
@@ -90,12 +78,6 @@ export default Vue.extend({
       }catch(error){
         console.log(error);
       }
-    },
-    markDirty(item: EditMonitorStatus) {
-      item.dirty = true;
-    },
-    onMtSelected(items: Array<MonitorStatus>) {
-      this.selected = items;
     },
   },
 });
