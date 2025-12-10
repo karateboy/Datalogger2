@@ -143,6 +143,15 @@ object ModelHelper {
     buf.toList
   }
 
+  def getNextTime(period: Int): DateTime = {
+    val now = DateTime.now()
+    val nextMin = (now.getMinuteOfHour / period + 1) * period
+    val hour = (now.getHourOfDay + (nextMin / 60)) % 24
+    val nextDay = (now.getHourOfDay + (nextMin / 60)) / 24
+
+    now.withHourOfDay(hour).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0) + nextDay.day
+  }
+
   def getHourBetween(start: DateTime, end: DateTime): List[DateTime] = {
     import scala.collection.mutable.ListBuffer
 

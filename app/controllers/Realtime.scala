@@ -64,7 +64,7 @@ class Realtime @Inject()
                     val instruments: List[Instrument] =
                       measuringBy.flatMap(instrumentMap.get)
 
-                    if (instruments.exists(inst => !inst.active))
+                    if (instruments.forall(inst => !inst.active))
                       "停用"
                     else
                       "斷線"

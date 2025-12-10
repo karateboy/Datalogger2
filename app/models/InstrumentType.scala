@@ -57,6 +57,10 @@ class InstrumentTypeOp @Inject()
  mqtt2Factory: MqttCollector2.Factory,
  baseline9000Factory: Baseline9000Collector.Factory,
  horiba370Factory: Horiba370Collector.Factory,
+ horibaApnaFactory: HoribaApnaCollector.Factory,
+ horibaApsaFactory: HoribaApsaCollector.Factory,
+ horibaApoaFactory: HoribaApoaCollector.Factory,
+ horibaApmaFactory: HoribaApmaCollector.Factory,
  gpsFactory: GpsCollector.Factory,
  t100Factory: T100Collector.Factory, t200Factory: T200Collector.Factory, t201Factory: T201Collector.Factory,
  t300Factory: T300Collector.Factory, t360Factory: T360Collector.Factory, t400Factory: T400Collector.Factory,
@@ -105,6 +109,10 @@ class InstrumentTypeOp @Inject()
     InstrumentType(Baseline9000Collector, baseline9000Factory),
     InstrumentType(GpsCollector, gpsFactory),
     InstrumentType(Horiba370Collector, horiba370Factory),
+    InstrumentType(HoribaApnaCollector, horibaApnaFactory),
+    InstrumentType(HoribaApsaCollector, horibaApsaFactory),
+    InstrumentType(HoribaApoaCollector, horibaApoaFactory),
+    InstrumentType(HoribaApmaCollector, horibaApmaFactory),
     InstrumentType(moxaE1240Drv, moxaE1240Factory),
     InstrumentType(moxaE1212Drv, moxaE1212Factory),
     InstrumentType(MqttCollector2, mqtt2Factory),
@@ -145,7 +153,7 @@ class InstrumentTypeOp @Inject()
   }
 
   def start(instType: String, id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext): ActorRef = {
-    val actorName = s"${instType}_${count}"
+    val actorName = s"${instType}_$count"
     logger.info(s"$actorName is created.")
     count += 1
 

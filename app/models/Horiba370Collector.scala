@@ -8,26 +8,28 @@ import models.Protocol.{ProtocolParam, tcp}
 import play.api._
 import play.api.libs.json.{JsError, Json, OWrites, Reads}
 import akka.io._
+import models.MonitorType.{CH4, NMHC, THC}
 
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 
-case class Horiba370Config(calibrationTime: Option[LocalTime],
-                           raiseTime: Option[Int], downTime: Option[Int], holdTime: Option[Int],
-                           calibrateZeoSeq: Option[String], calibrateSpanSeq: Option[String],
-                           calibratorPurgeSeq: Option[String], calibratorPurgeTime: Option[Int],
-                           calibrateZeoDO: Option[Int], calibrateSpanDO: Option[Int], skipInternalVault: Option[Boolean])
+case class HoribaConfig(calibrationTime: Option[LocalTime],
+                        raiseTime: Option[Int], downTime: Option[Int], holdTime: Option[Int],
+                        calibrateZeoSeq: Option[String], calibrateSpanSeq: Option[String],
+                        calibratorPurgeSeq: Option[String], calibratorPurgeTime: Option[Int],
+                        calibrateZeoDO: Option[Int], calibrateSpanDO: Option[Int], skipInternalVault: Option[Boolean])
 
 object Horiba370Collector extends DriverOps {
   val logger: Logger = Logger(this.getClass)
-  val FlameStatus = "FlameStatus"
+  private val FlameStatus = "FlameStatus"
   val Press = "Press"
   val Flow = "Flow"
   val Temp = "Temp"
   val InstrumentStatusTypeList: List[InstrumentStatusType] = List(
     InstrumentStatusType(FlameStatus, 10, "Flame Status", "0:Extinguishing/1:Ignition sequence/2:Ignition"),
-    InstrumentStatusType(Press + 0, 37, "Presssure 0", "kPa"),
-    InstrumentStatusType(Press + 1, 37, "Presssure 1", "kPa"),
-    InstrumentStatusType(Press + 2, 37, "Presssure 2", "kPa"),
+    InstrumentStatusType(Press + 0, 37, "Pressure 0", "kPa"),
+    InstrumentStatusType(Press + 1, 37, "Pressure 1", "kPa"),
+    InstrumentStatusType(Press + 2, 37, "Pressure 2", "kPa"),
     InstrumentStatusType(Flow + 0, 38, "Flow 0", "L/min"),
     InstrumentStatusType(Flow + 1, 38, "Flow 0", "L/min"),
     InstrumentStatusType(Flow + 2, 38, "Flow 0", "L/min"),
@@ -50,29 +52,13 @@ object Horiba370Collector extends DriverOps {
     InstrumentStatusType(Temp + 9, 39, "Temperature 9", "C"))
 
   import ModelHelper._
-  implicit val cfgRead: Reads[Horiba370Config] = Json.reads[Horiba370Config]
-  implicit val cfgWrite: OWrites[Horiba370Config] = Json.writes[Horiba370Config]
+  implicit val cfgRead: Reads[HoribaConfig] = Json.reads[HoribaConfig]
+  implicit val cfgWrite: OWrites[HoribaConfig] = Json.writes[HoribaConfig]
 
-  private def getNextLoggingStatusTime = {
-    import com.github.nscala_time.time.Imports._
-    def getNextTime(period: Int) = {
-      val now = DateTime.now()
-      val nextMin = (now.getMinuteOfHour / period + 1) * period
-      val hour = (now.getHourOfDay + (nextMin / 60)) % 24
-      val nextDay = (now.getHourOfDay + (nextMin / 60)) / 24
-
-      now.withHourOfDay(hour).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0) + nextDay.day
-    }
-
-    // suppose every 10 min
-    val period = 30
-    val nextTime = getNextTime(period)
-    //logger.debug(s"$instId next logging time= $nextTime")
-    nextTime
-  }
+  private def getNextLoggingStatusTime = getNextTime(30)
 
   override def verifyParam(json: String): String = {
-    val ret = Json.parse(json).validate[Horiba370Config]
+    val ret = Json.parse(json).validate[HoribaConfig]
     ret.fold(
       error => {
         logger.error(JsError.toJson(error).toString())
@@ -83,9 +69,7 @@ object Horiba370Collector extends DriverOps {
       })
   }
 
-  override def getMonitorTypes(param: String): List[String] = {
-    List("CH4", "NMHC", "THC")
-  }
+  override def getMonitorTypes(param: String): List[String] = List(CH4, NMHC, THC)
 
 
   import Protocol.ProtocolParam
@@ -96,8 +80,8 @@ object Horiba370Collector extends DriverOps {
     config.calibrationTime
   }
 
-  def validateParam(json: String): Horiba370Config = {
-    val ret = Json.parse(json).validate[Horiba370Config]
+  def validateParam(json: String): HoribaConfig = {
+    val ret = Json.parse(json).validate[HoribaConfig]
     ret.fold(
       error => {
         logger.error(JsError.toJson(error).toString())
@@ -120,7 +104,7 @@ object Horiba370Collector extends DriverOps {
   override def protocol: List[String] = List(tcp)
 
   trait Factory {
-    def apply(id: String, protocol: ProtocolParam, param: Horiba370Config): Actor
+    def apply(id: String, protocol: ProtocolParam, param: HoribaConfig): Actor
   }
 
   case object ReadData
@@ -133,7 +117,7 @@ import javax.inject._
 class Horiba370Collector @Inject()
 (instrumentOp: InstrumentDB, instrumentStatusOp: InstrumentStatusDB,
  calibrationOp: CalibrationDB, monitorTypeOp: MonitorTypeDB)
-(@Assisted id: String, @Assisted protocol: ProtocolParam, @Assisted config: Horiba370Config) extends Actor {
+(@Assisted id: String, @Assisted protocol: ProtocolParam, @Assisted config: HoribaConfig) extends Actor {
   val logger: Logger = Logger(this.getClass)
   import Horiba370Collector._
   import TapiTxx._
@@ -145,13 +129,10 @@ class Horiba370Collector @Inject()
   logger.info(s"Horiba370Collector created $id:${protocol} ${config}")
   val timer: Cancellable = context.system.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS), Duration(2, SECONDS), self, ReadData)
   private val statusTimer = context.system.scheduler.scheduleAtFixedRate(FiniteDuration(30, SECONDS), Duration(1, MINUTES), self, CheckStatus)
-  val mtCH4 = "CH4"
-  val mtNMHC = "NMHC"
-  val mtTHC = "THC"
 
   @volatile var (collectorState, instrumentStatusTypesOpt) = {
     val instrument = instrumentOp.getInstrument(id)
-    val inst = instrument(0)
+    val inst = instrument.head
     (inst.state, inst.statusType)
   }
   if (instrumentStatusTypesOpt.isEmpty) {
@@ -207,9 +188,9 @@ class Horiba370Collector @Inject()
         val ch4Value = result(2).substring(5).toDouble
         val nmhcValue = result(3).substring(5).toDouble
         val thcValue = result(4).substring(5).toDouble
-        val ch4 = MonitorTypeData(mtCH4, ch4Value, collectorState)
-        val nmhc = MonitorTypeData(mtNMHC, nmhcValue, collectorState)
-        val thc = MonitorTypeData(mtTHC, thcValue, collectorState)
+        val ch4 = MonitorTypeData(CH4, ch4Value, collectorState)
+        val nmhc = MonitorTypeData(NMHC, nmhcValue, collectorState)
+        val thc = MonitorTypeData(THC, thcValue, collectorState)
 
         if (calibrateRecordStart)
           self ! ReportData(List(ch4, nmhc, thc))
@@ -252,13 +233,13 @@ class Horiba370Collector @Inject()
     }
   }
 
-  def receive = {
+  def receive: Receive = {
     case UdpConnected.Connected =>
       logger.info("UDP connected...")
-      context become connectionReady(sender())(false)
+      context become connectionReady(sender())(calibrateRecordStart = false)
   }
 
-  def reqData(connection: ActorRef) = {
+  private def reqData(connection: ActorRef): Unit = {
     val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
       'R', '0', '0', '1', 0x2)
     val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b)
@@ -273,7 +254,7 @@ class Horiba370Collector @Inject()
 
   IO(UdpConnected) ! UdpConnected.Connect(self, new InetSocketAddress(protocol.host.get, 53700))
 
-  def reqFlameStatus(connection: ActorRef) = {
+  private def reqFlameStatus(connection: ActorRef): Unit = {
     val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
       'R', '0', '1', '0', 0x2)
     val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
@@ -282,7 +263,7 @@ class Horiba370Collector @Inject()
     connection ! UdpConnected.Send(ByteString(reqFrame))
   }
 
-  def reqPressure(connection: ActorRef) = {
+  private def reqPressure(connection: ActorRef): Unit = {
     val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
       'R', '0', '3', '7', 0x2)
     val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
@@ -291,7 +272,7 @@ class Horiba370Collector @Inject()
     connection ! UdpConnected.Send(ByteString(reqFrame))
   }
 
-  def reqFlow(connection: ActorRef) = {
+  private def reqFlow(connection: ActorRef): Unit = {
     val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
       'R', '0', '3', '8', 0x2)
     val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
@@ -300,7 +281,7 @@ class Horiba370Collector @Inject()
     connection ! UdpConnected.Send(ByteString(reqFrame))
   }
 
-  def reqZeroCalibration(connection: ActorRef) = {
+  private def reqZeroCalibration(connection: ActorRef): Unit = {
     reqZero(connection)
 
     //    val componentNo = if (mt == mtCH4)
@@ -319,7 +300,7 @@ class Horiba370Collector @Inject()
     //    connection ! UdpConnected.Send(ByteString(reqFrame))
   }
 
-  def reqSpanCalibration(connection: ActorRef) = {
+  private def reqSpanCalibration(connection: ActorRef): Unit = {
     reqSpan(connection)
 
     //    val componentNo = if (mt == mtCH4)
@@ -338,7 +319,7 @@ class Horiba370Collector @Inject()
     //    connection ! UdpConnected.Send(ByteString(reqFrame))
   }
 
-  def reqNormal(connection: ActorRef) = {
+  private def reqNormal(connection: ActorRef): Unit = {
     val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
       'A', '0', '2', '4', 0x2, '0')
     val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
@@ -347,7 +328,7 @@ class Horiba370Collector @Inject()
     connection ! UdpConnected.Send(ByteString(reqFrame))
   }
 
-  def reqZero(connection: ActorRef) = {
+  private def reqZero(connection: ActorRef): Unit = {
     val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
       'A', '0', '2', '4', 0x2, '1')
     val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
@@ -356,7 +337,7 @@ class Horiba370Collector @Inject()
     connection ! UdpConnected.Send(ByteString(reqFrame))
   }
 
-  def reqSpan(connection: ActorRef) = {
+  private def reqSpan(connection: ActorRef): Unit = {
     val reqCmd = Array[Byte](0x1, '0', '2', '0', '2', '0', '0',
       'A', '0', '2', '4', 0x2, '2')
     val FCS = reqCmd.foldLeft(0x0)((a, b) => a ^ b.toByte)
@@ -365,7 +346,7 @@ class Horiba370Collector @Inject()
     connection ! UdpConnected.Send(ByteString(reqFrame))
   }
 
-  def setupSpanRaiseStartTimer(connection: ActorRef) {
+  private def setupSpanRaiseStartTimer(connection: ActorRef): Unit = {
     raiseStartTimerOpt =
       if (config.calibratorPurgeTime.isDefined && config.calibratorPurgeTime.get != 0) {
         collectorState = MonitorStatus.NormalStat
@@ -377,9 +358,9 @@ class Horiba370Collector @Inject()
         Some(system.scheduler.scheduleOnce(Duration(1, SECONDS), self, RaiseStart))
   }
 
-  def purgeCalibrator() = {
+  def purgeCalibrator(): Cancellable = {
     import scala.concurrent.duration._
-    def triggerCalibratorPurge(v: Boolean) {
+    def triggerCalibratorPurge(v: Boolean): Unit = {
       try {
         if (v && config.calibratorPurgeSeq.isDefined)
           context.parent ! ExecuteSeq(config.calibratorPurgeSeq.get, v)
@@ -397,7 +378,7 @@ class Horiba370Collector @Inject()
     system.scheduler.scheduleOnce(Duration(purgeTime + 1, SECONDS), self, RaiseStart)
   }
 
-  def connectionReady(connection: ActorRef)(implicit calibrateRecordStart: Boolean): Receive = {
+  private def connectionReady(connection: ActorRef)(implicit calibrateRecordStart: Boolean): Receive = {
 
     case UdpConnected.Received(data) =>
       processResponse(data)
@@ -435,7 +416,7 @@ class Horiba370Collector @Inject()
       collectorState = MonitorStatus.ZeroCalibrationStat
       instrumentOp.setState(id, collectorState)
       context become calibrationHandler(connection, AutoZero,
-        com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData],
+        com.github.nscala_time.time.Imports.DateTime.now, recording = false, List.empty[MonitorTypeData],
         Map.empty[String, Option[Double]])
       self ! RaiseStart
 
@@ -444,14 +425,14 @@ class Horiba370Collector @Inject()
       collectorState = MonitorStatus.ZeroCalibrationStat
       instrumentOp.setState(id, collectorState)
       context become calibrationHandler(connection, ManualZero,
-        com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData],
+        com.github.nscala_time.time.Imports.DateTime.now, recording = false, List.empty[MonitorTypeData],
         Map.empty[String, Option[Double]])
       self ! RaiseStart
 
     case ManualSpanCalibration(instId) =>
       assert(instId == id)
       context become calibrationHandler(connection, ManualSpan,
-        com.github.nscala_time.time.Imports.DateTime.now, false, List.empty[MonitorTypeData],
+        com.github.nscala_time.time.Imports.DateTime.now, recording = false, List.empty[MonitorTypeData],
         Map.empty[String, Option[Double]])
 
       setupSpanRaiseStartTimer(connection)
@@ -537,8 +518,7 @@ class Horiba370Collector @Inject()
       }
 
     case CalibrateEnd =>
-      import scala.collection.mutable.Map
-      val mtValueMap = Map.empty[String, List[Double]]
+      val mtValueMap = mutable.Map.empty[String, List[Double]]
       for {
         record <- calibrationDataList
       } {
@@ -550,7 +530,7 @@ class Horiba370Collector @Inject()
         mt_values =>
           val mt = mt_values._1
           val values = mt_values._2
-          val avg = if (values.length == 0)
+          val avg = if (values.isEmpty)
             None
           else
             Some(values.sum / values.length)
@@ -559,7 +539,7 @@ class Horiba370Collector @Inject()
 
       if (calibrationType.auto && calibrationType.zero) {
         logger.info(s"zero calibration end.")
-        context become calibrationHandler(connection, AutoSpan, startTime, false, List.empty[MonitorTypeData], mtAvgMap.toMap)
+        context become calibrationHandler(connection, AutoSpan, startTime, recording = false, List.empty[MonitorTypeData], mtAvgMap.toMap)
 
         setupSpanRaiseStartTimer(connection)
       } else {
@@ -606,8 +586,8 @@ class Horiba370Collector @Inject()
             calibrateTimerOpt map {
               timer => timer.cancel()
             }
-            context.parent ! ExecuteSeq(T700_STANDBY_SEQ, true)
-            context become connectionReady(connection)(false)
+            context.parent ! ExecuteSeq(T700_STANDBY_SEQ, on = true)
+            context become connectionReady(connection)(calibrateRecordStart = false)
           } else {
             logger.info(s"Ignore setState $state during calibration")
           }
@@ -615,7 +595,7 @@ class Horiba370Collector @Inject()
       }
   }
 
-  override def postStop() = {
+  override def postStop(): Unit = {
     timer.cancel()
     statusTimer.cancel()
   }
