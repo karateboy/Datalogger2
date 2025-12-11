@@ -116,32 +116,25 @@ object DataCollectManager {
       effectiveRatio = ratio
   }
 
-  private def calculateMinAvgMap(monitorTypeDB: MonitorTypeDB,
-                                 mtList: Seq[String],
-                                 mtMap: mutable.Map[String, mutable.Map[String, ListBuffer[(DateTime, Double)]]],
-                                 alwaysValid: Boolean)
-                                (calibrationMap: CalibrationListMap, target: DateTime): mutable.Iterable[MtRecord] = {
-    for {
-      (mt, statusMap) <- mtMap if !MonitorType.IsCalculated(mt)
-      total = statusMap.map {
-        _._2.size
-      }.sum if total != 0
-    } yield {
-      val minuteRawAvg: (Option[Double], String) = {
-        val totalSize = statusMap map {
-          _._2.length
-        } sum
-        val statusValues = {
-          val kv = statusMap.maxBy(kv => kv._2.length)
-          if (!alwaysValid && kv._1 == MonitorStatus.NormalStat &&
-            (statusMap(kv._1).size < totalSize * effectiveRatio)) {
-            //return most status except normal
-            val noNormalStatusMap = statusMap - kv._1
-            noNormalStatusMap.maxBy(kv => kv._2.length)
-          } else
-            kv
-        }
-        val values = statusValues._2.map(_._2)
+  private def calculateMinAvgMap(mtList: Seq[String],
+                                 mtStatusMap: mutable.Map[String, mutable.Map[String, ListBuffer[(DateTime, Double)]]],
+                                 monitorTypeDB: MonitorTypeDB,
+                                 monitorStatusDB: MonitorStatusDB)
+                                (calibrationMap: CalibrationListMap, target: DateTime) = {
+    //For data loss mt, fill in data loss record
+    mtList.foreach(mt => {
+      val statusMap = mtStatusMap.getOrElseUpdate(mt, mutable.Map.empty[String, ListBuffer[(DateTime, Double)]])
+      if (statusMap.isEmpty)
+        statusMap.update(MonitorStatus.DataLost, ListBuffer.empty)
+    })
+
+    // Generate MtRecord by status priority
+    for (mt <- mtList if !MonitorType.IsCalculated(mt)) yield {
+      val statusMap = mtStatusMap(mt)
+      val status = statusMap.keys.toList.maxBy(status => monitorStatusDB._map(status).priority)
+
+      val minuteRawAvg: Option[Double] = {
+        val values = statusMap(status).map(_._2)
         val avgOpt = if (values.isEmpty)
           None
         else {
@@ -149,8 +142,8 @@ object DataCollectManager {
           mt match {
             case MonitorType.WIN_DIRECTION =>
               val windDir = values
-              if (mtMap.contains(MonitorType.WIN_SPEED)) {
-                val speedStatusMap = mtMap(MonitorType.WIN_SPEED)
+              if (mtStatusMap.contains(MonitorType.WIN_SPEED)) {
+                val speedStatusMap = mtStatusMap(MonitorType.WIN_SPEED)
                 val speedMostStatus = speedStatusMap.maxBy(kv => kv._2.length)
                 val speeds = speedMostStatus._2.map(_._2)
                 directionAvg(speeds.toList, windDir.toList)
@@ -159,8 +152,8 @@ object DataCollectManager {
                 directionAvg(speeds, windDir.toList)
               }
             case MonitorType.WIN_SPEED =>
-              if (mtMap.contains(MonitorType.WIN_DIRECTION)) {
-                val dirStatusMap = mtMap(MonitorType.WIN_DIRECTION)
+              if (mtStatusMap.contains(MonitorType.WIN_DIRECTION)) {
+                val dirStatusMap = mtStatusMap(MonitorType.WIN_DIRECTION)
                 val dirMostStatus = dirStatusMap.maxBy(kv => kv._2.length)
                 val dirs = dirMostStatus._2.map(_._2)
                 speedAvg(values.toList, dirs.toList)
@@ -174,8 +167,8 @@ object DataCollectManager {
 
             case MonitorType.DIRECTION =>
               val directions = values
-              if (mtMap.contains(MonitorType.SPEED)) {
-                val speedMostStatus = mtMap(MonitorType.SPEED).maxBy(kv => kv._2.length)
+              if (mtStatusMap.contains(MonitorType.SPEED)) {
+                val speedMostStatus = mtStatusMap(MonitorType.SPEED).maxBy(kv => kv._2.length)
                 val speeds = speedMostStatus._2.map(_._2)
                 directionAvg(speeds.toList, directions.toList)
               } else { //assume wind speed is all equal
@@ -226,18 +219,16 @@ object DataCollectManager {
         }
 
         try {
-          val roundedAvg =
-            for (avg <- avgOpt) yield
-              BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
-          (roundedAvg, statusValues._1)
+          for (avg <- avgOpt) yield
+            BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
         } catch {
           case _: Throwable =>
-            (None, statusValues._1)
+            None
         }
       }
 
       val (mOpt, bOpt) = findTargetCalibrationMB(calibrationMap, mt, target).getOrElse((None, None))
-      monitorTypeDB.getMinMtRecordByRawValue(mt, minuteRawAvg._1, minuteRawAvg._2)(mOpt, bOpt)
+      monitorTypeDB.getMinMtRecordByRawValue(mt, minuteRawAvg, status)(mOpt, bOpt)
     }
   }
 
@@ -379,149 +370,12 @@ object DataCollectManager {
   private var hourAccumulateRain: Option[Double] = None
 }
 
-
-@Singleton
-class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef,
-                                     instrumentOp: InstrumentDB,
-                                     recordOp: RecordDB,
-                                     alarmDb: AlarmDB,
-                                     monitorDB: MonitorDB,
-                                     monitorTypeDb: MonitorTypeDB,
-                                     sysConfigDB: SysConfigDB,
-                                     alarmRuleDb: AlarmRuleDb,
-                                     cdxUploader: CdxUploader,
-                                     newTaipeiOpenData: NewTaipeiOpenData,
-                                     tableType: TableType)() {
-  val logger: Logger = Logger(this.getClass)
-
-  import DataCollectManager._
-
-  def startCollect(inst: Instrument): Unit = {
-    manager ! StartInstrument(inst)
-  }
-
-  def startCollect(id: String): Unit = {
-    val instList = instrumentOp.getInstrument(id)
-    instList.foreach { inst => manager ! StartInstrument(inst) }
-  }
-
-  def stopCollect(id: String): Unit = {
-    manager ! StopInstrument(id)
-  }
-
-  def setInstrumentState(id: String, state: String): Unit = {
-    manager ! SetState(id, state)
-  }
-
-  def autoCalibration(id: String): Unit = {
-    manager ! AutoCalibration(id)
-  }
-
-  def zeroCalibration(id: String): Unit = {
-    manager ! ManualZeroCalibration(id)
-  }
-
-  def spanCalibration(id: String): Unit = {
-    manager ! ManualSpanCalibration(id)
-  }
-
-  def writeTargetDO(id: String, bit: Int, on: Boolean): Unit = {
-    manager ! WriteTargetDO(id, bit, on)
-  }
-
-  def executeSeq(seqName: String, on: Boolean): Unit = {
-    manager ! ExecuteSeq(seqName, on)
-  }
-
-  def getLatestData: Future[Map[String, Record]] = {
-    import akka.pattern.ask
-    import akka.util.Timeout
-
-    import scala.concurrent.duration._
-    implicit val timeout: Timeout = Timeout(Duration(3, SECONDS))
-
-    val f = manager ? GetLatestData
-    f.mapTo[Map[String, Record]]
-  }
-
-  def getLatestSignal: Future[Map[String, Boolean]] = {
-    import akka.pattern.ask
-    import akka.util.Timeout
-
-    import scala.concurrent.duration._
-    implicit val timeout: Timeout = Timeout(Duration(3, SECONDS))
-
-    val f = manager ? GetLatestSignal
-    f.mapTo[Map[String, Boolean]]
-  }
-
-  def writeSignal(mtId: String, bit: Boolean): Unit = {
-    manager ! WriteSignal(mtId, bit)
-  }
-
-  def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean = false)
-                         (mtList: Seq[String], monitorTypeDB: MonitorTypeDB): Future[UpdateResult] = {
-    val ret =
-      for (recordMap <- recordOp.getMtRecordMapFuture(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current);
-           alarmRules <- alarmRuleDb.getRulesAsync) yield {
-        val mtMap = mutable.Map.empty[String, mutable.Map[String, ListBuffer[MtRecord]]]
-
-        for {
-          (mt, mtRecordList) <- recordMap
-          mtRecord <- mtRecordList
-        } {
-          val statusMap = mtMap.getOrElseUpdate(mt, mutable.Map.empty[String, ListBuffer[MtRecord]])
-          val tagInfo = MonitorStatus.getTagInfo(mtRecord.status)
-          val status = tagInfo.statusType match {
-            case StatusType.ManualValid =>
-              MonitorStatus.NormalStat
-            case _ =>
-              mtRecord.status
-          }
-
-          val lb = statusMap.getOrElseUpdate(status, ListBuffer.empty[MtRecord])
-
-          for (v <- mtRecord.value if !v.isNaN)
-            lb.append(mtRecord)
-        }
-
-        val mtDataList = calculateHourAvgMap(mtMap, alwaysValid, monitorTypeDB)
-        val recordList = RecordList.factory(current.minusHours(1), mtDataList.toSeq, monitor)
-        // Alarm check
-        val alarms = alarmRuleDb.checkAlarm(tableType.hour, recordList, alarmRules)(monitorDB, monitorTypeDb, alarmDb)
-        alarms.foreach(alarmDb.log)
-
-        val f = recordOp.upsertRecord(recordOp.HourCollection)(recordList)
-        if (forward) {
-          f onComplete {
-            case Success(_) =>
-              manager ! ForwardHour
-              for {cdxConfig <- sysConfigDB.getCdxConfig if monitor == Monitor.activeId
-                   cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes} {
-                cdxUploader.upload(recordList = recordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
-                newTaipeiOpenData.upload(recordList, cdxMtConfigs)
-              }
-
-            case Failure(exception) =>
-              logger.error("failed", exception)
-          }
-        }
-
-        f
-      }
-    ret.flatMap(x => x)
-  }
-
-  def resetReaders(): Unit = {
-    manager ! ReaderReset
-  }
-}
-
 @Singleton
 class DataCollectManager @Inject()(config: Configuration,
                                    recordOp: RecordDB,
                                    monitorTypeOp: MonitorTypeDB,
                                    monitorOp: MonitorDB,
+                                   monitorStatusDB: MonitorStatusDB,
                                    dataCollectManagerOp: DataCollectManagerOp,
                                    instrumentTypeOp: InstrumentTypeOp,
                                    alarmOp: AlarmDB,
@@ -678,7 +532,6 @@ class DataCollectManager @Inject()(config: Configuration,
       for (forwardManager <- forwardManagerOpt)
         forwardManager ! ForwardMin
 
-
     case fhr: ForwardHourRecord =>
       for (forwardManager <- forwardManagerOpt)
         forwardManager ! fhr
@@ -686,7 +539,6 @@ class DataCollectManager @Inject()(config: Configuration,
     case fmr: ForwardMinRecord =>
       for (forwardManager <- forwardManagerOpt)
         forwardManager ! fmr
-
 
     case ReloadAlarmRule =>
       val f = alarmRuleDb.getRulesAsync
@@ -786,6 +638,7 @@ class DataCollectManager @Inject()(config: Configuration,
             instrumentCalibratorMap, calibratorTimerMap, alarmRules)
         }
       }
+
     case SetupMultiCalibrationTimer(config) =>
       for (calibrationTimer <- getCalibrationTimer(config)) {
         context become handler(instrumentMap,
@@ -813,11 +666,9 @@ class DataCollectManager @Inject()(config: Configuration,
       for (instId <- calibrationConfig.instrumentIds) {
         newCalibratorMap += instId -> CalibratorState(calibrator, MonitorStatus.ZeroCalibrationStat)
       }
-
       // Always cancel the timer first
-      for (timer <- calibratorTimerMap.get(calibrationConfig._id)) {
+      for (timer <- calibratorTimerMap.get(calibrationConfig._id))
         timer.cancel()
-      }
 
       var newCalibratorTimerMap = calibratorTimerMap
       for (timer <- getCalibrationTimer(calibrationConfig))
@@ -830,9 +681,8 @@ class DataCollectManager @Inject()(config: Configuration,
 
     case UpdateMultiCalibratorState(calibrationConfig: CalibrationConfig, state: String) =>
       var newCalibratorMap = instrumentCalibratorMap
-      for (instId <- calibrationConfig.instrumentIds) {
+      for (instId <- calibrationConfig.instrumentIds)
         newCalibratorMap += instId -> CalibratorState(instrumentCalibratorMap(instId).calibrator, state)
-      }
 
       context become handler(instrumentMap,
         latestDataMap, mtDataList, restartList,
@@ -840,9 +690,8 @@ class DataCollectManager @Inject()(config: Configuration,
         calibrationListMap, newCalibratorMap, calibratorTimerMap, alarmRules)
 
     case StopMultiCalibration(config) =>
-      for (calibratorState <- instrumentCalibratorMap.get(config.instrumentIds.head)) {
+      for (calibratorState <- instrumentCalibratorMap.get(config.instrumentIds.head))
         calibratorState.calibrator ! StopMultiCalibration(config)
-      }
 
       context become handler(instrumentMap,
         latestDataMap, mtDataList, restartList,
@@ -881,14 +730,29 @@ class DataCollectManager @Inject()(config: Configuration,
           } else
             reportData.dataList(monitorTypeOp)
 
-        val fullDataList = dataList ++ MonitorType.getCalculatedMonitorTypeData(dataList, now)
+        // Check for monitor type range
+        val rangeCheckedDataList =
+          dataList map {
+            mtd =>
+              if (mtd.status == MonitorStatus.NormalStat) {
+                val mtCase = monitorTypeOp.map(mtd.mt)
+                if(mtd.value < mtCase.rangeMin.getOrElse(Double.MinValue))
+                  mtd.copy(status = MonitorStatus.BelowNormalStat)
+                else if(mtd.value > mtCase.rangeMax.getOrElse(Double.MaxValue))
+                  mtd.copy(status = MonitorStatus.OverNormalStat)
+                else
+                  mtd
+              } else
+                mtd
+          }
+
+        val fullDataList = rangeCheckedDataList ++ MonitorType.getCalculatedMonitorTypeData(dataList, now)
 
         // Update monitor location
         for {lat <- fullDataList.find(_.mt == MonitorType.LAT)
              lng <- fullDataList.find(_.mt == MonitorType.LNG)
-             activeMonitor <- monitorOp.map.get(Monitor.activeId)} {
+             activeMonitor <- monitorOp.map.get(Monitor.activeId)}
           monitorOp.upsertMonitor(activeMonitor.copy(lat = Some(lat.value), lng = Some(lng.value)))
-        }
 
         val pairs =
           for (data <- fullDataList) yield {
@@ -918,7 +782,6 @@ class DataCollectManager @Inject()(config: Configuration,
       }
 
       def flushSecData(recordMap: mutable.Map[String, mutable.Map[String, ListBuffer[(DateTime, Double)]]]): Unit = {
-
         if (recordMap.nonEmpty) {
           val secRecordMap = mutable.Map.empty[DateTime, ListBuffer[(String, (Double, String))]]
           for {
@@ -984,10 +847,8 @@ class DataCollectManager @Inject()(config: Configuration,
         }
       }
 
-
       def updateMinData(current: DateTime, calibrationMap: CalibrationListMap): Future[UpdateResult] = {
-        val nextMinData = mtDataList.takeWhile(d => d._1 >= current)
-        val thisMinData = mtDataList.drop(nextMinData.length)
+        val (nextMinData, thisMinData) = mtDataList.span(mtData => mtData._1 >= current)
 
         val mtStatusMap = mutable.Map.empty[String, mutable.Map[String, ListBuffer[(String, DateTime, Double)]]]
         for {
@@ -1012,9 +873,9 @@ class DataCollectManager @Inject()(config: Configuration,
               val (status, measuringData) = pair
               val instDataList = instrumentList map { id => measuringData.filter(data => data._1 == id) }
               val nonEmptyInstData = instDataList.filter(_.nonEmpty)
-              if(nonEmptyInstData.nonEmpty) {
-                val targetData = nonEmptyInstData.head map { data => (data._2, data._3)}
-                Some(status->targetData)
+              if (nonEmptyInstData.nonEmpty) {
+                val targetData = nonEmptyInstData.head map { data => (data._2, data._3) }
+                Some(status -> targetData)
               } else
                 None
             }
@@ -1025,16 +886,17 @@ class DataCollectManager @Inject()(config: Configuration,
         val priorityMtStatusMap = mtStatusMap map (
           pair => {
             val (mt, statusInstMap) = pair
-            mt->filterInstrumentData(statusInstMap, monitorTypeOp.map(mt).measuringBy.getOrElse(Seq.empty[String]))
+            mt -> filterInstrumentData(statusInstMap, monitorTypeOp.map(mt).measuringBy.getOrElse(Seq.empty[String]))
           })
 
         if (LoggerConfig.config.storeSecondData)
           flushSecData(priorityMtStatusMap)
 
-        val rawMtRecords = calculateMinAvgMap(monitorTypeOp,
+        val rawMtRecords = calculateMinAvgMap(
           monitorTypeOp.nonCalculatedMeasuringList,
           priorityMtStatusMap,
-          alwaysValid = false)(calibrationMap, current.minusMinutes(1)).toList
+          monitorTypeOp,
+          monitorStatusDB)(calibrationMap, current.minusMinutes(1)).toList
 
         val calculatedMtRecords = MonitorType.getCalculatedMtRecord(rawMtRecords, current)
         val mtRecords = rawMtRecords ++ calculatedMtRecords

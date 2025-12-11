@@ -9,7 +9,7 @@ trait MonitorStatusDB {
 
   val InternalPriorityMax = 100
 
-  val defaultStatus = List(
+  val defaultStatus: List[MonitorStatus] = List(
     MonitorStatus(NormalStat, "正常", 11),
     MonitorStatus(OverNormalStat, "高於偵測極限", 9),
     MonitorStatus(BelowNormalStat, "低於偵測極限", 10),
