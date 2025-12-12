@@ -69,6 +69,8 @@ class PicarroG2307Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
   @volatile var outOpt: Option[OutputStream] = None
   @volatile var inOpt: Option[BufferedReader] = None
 
+  override val logger: Logger = Logger(this.getClass)
+
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = predefinedIST
 
   override val readPeriod: Int = 1

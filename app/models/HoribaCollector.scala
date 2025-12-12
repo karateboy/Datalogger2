@@ -56,7 +56,6 @@ object HoribaCollector
   implicit val cfgWrite: OWrites[HoribaConfig] = Json.writes[HoribaConfig]
 
   case object ReadData
-  case object CheckStatus
 }
 abstract class HoribaCollector @Inject()
 (instrumentOp: InstrumentDB, instrumentStatusOp: InstrumentStatusDB,
@@ -64,7 +63,6 @@ abstract class HoribaCollector @Inject()
 (@Assisted id: String,
  @Assisted protocol: ProtocolParam,
  @Assisted config: HoribaConfig) extends Actor {
-  val logger: Logger = Logger(this.getClass)
   import DataCollectManager._
   import HoribaCollector._
   import models.TapiTxxCollector._
@@ -77,6 +75,7 @@ abstract class HoribaCollector @Inject()
   val name:String
   val mtList:List[String]
   val RECEIVE_ID:Byte
+  val logger: Logger
 
   logger.info(s"HoribaCollector ($name) created $id:$protocol $config")
   val timer: Cancellable = context.system.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS), Duration(2, SECONDS), self, ReadData)
@@ -151,15 +150,15 @@ abstract class HoribaCollector @Inject()
         context.parent ! ReportData(mtd)
 
       case "A024" =>
-        logger.info(s"$name Response from line change (A024)")
+        logger.info(s"Response from line change (A024)")
         logger.info(prmStr)
 
       case "A029" =>
-        logger.info(s"$name Response from user zero (A029)")
+        logger.info(s" Response from user zero (A029)")
         logger.info(prmStr)
 
       case "A030" =>
-        logger.info(s"$name Response from user span (A030)")
+        logger.info(s" Response from user span (A030)")
         logger.info(prmStr)
 
       case "R010" =>
@@ -190,7 +189,7 @@ abstract class HoribaCollector @Inject()
 
   def receive: Receive = {
     case UdpConnected.Connected =>
-      logger.debug(s"$name UDP connected...")
+      logger.debug(s"UDP connected...")
       context become connectionReady(sender())(calibrateRecordStart = false)
   }
 
@@ -328,7 +327,7 @@ abstract class HoribaCollector @Inject()
     }
 
     val purgeTime = config.calibratorPurgeTime.get
-    logger.info(s"$name Purge calibrator. Delay start of calibration $purgeTime seconds")
+    logger.info(s"Purge calibrator. Delay start of calibration $purgeTime seconds")
     triggerCalibratorPurge(true)
     system.scheduler.scheduleOnce(Duration(purgeTime + 1, SECONDS), self, RaiseStart)
   }
@@ -431,7 +430,7 @@ abstract class HoribaCollector @Inject()
 
           instrumentOp.setState(id, collectorState)
 
-          logger.info(s"$name $calibrationType RaiseStart")
+          logger.info(s"$calibrationType RaiseStart")
 
           if (calibrationType.zero) {
             for (seqNo <- config.calibrateZeoSeq)
@@ -503,12 +502,12 @@ abstract class HoribaCollector @Inject()
       }
 
       if (calibrationType.auto && calibrationType.zero) {
-        logger.info(s"$name zero calibration end.")
+        logger.info(s"zero calibration end.")
         context become calibrationHandler(connection, AutoSpan, startTime, recording = false, List.empty[MonitorTypeData], mtAvgMap.toMap)
 
         setupSpanRaiseStartTimer(connection)
       } else {
-        logger.info(s"$name calibration end.")
+        logger.info(s"calibration end.")
         val monitorTypes = mtAvgMap.keySet.toList
         val calibrationList =
           if (calibrationType.auto) {
@@ -554,7 +553,7 @@ abstract class HoribaCollector @Inject()
             context.parent ! ExecuteSeq(T700_STANDBY_SEQ, on = true)
             context become connectionReady(connection)(calibrateRecordStart = false)
           } else {
-            logger.info(s"$name Ignore setState $state during calibration")
+            logger.info(s"Ignore setState $state during calibration")
           }
         }
       }

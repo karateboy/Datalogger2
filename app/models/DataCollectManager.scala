@@ -111,6 +111,8 @@ object DataCollectManager {
 
   private case object UpdateHourAccumulatedRain
 
+  case object CheckStatus
+
   private def updateEffectiveRatio(sysConfig: SysConfigDB): Unit = {
     for (ratio <- sysConfig.getEffectiveRatio)
       effectiveRatio = ratio
