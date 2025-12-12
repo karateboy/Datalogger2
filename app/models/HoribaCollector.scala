@@ -3,15 +3,22 @@ package models
 import akka.actor.{Actor, ActorRef, Cancellable}
 import akka.io.{IO, UdpConnected}
 import akka.util.ByteString
-import com.github.nscala_time.time.Imports.DateTime
+import com.github.nscala_time.time.Imports.{DateTime, LocalTime}
 import com.google.inject.assistedinject.Assisted
 import models.ModelHelper._
+import models.MultiCalibrator.TriggerVault
 import models.Protocol.ProtocolParam
 import play.api._
 import play.api.libs.json._
 
 import javax.inject.Inject
 import scala.collection.mutable
+
+case class HoribaConfig(calibrationTime: Option[LocalTime],
+                        raiseTime: Option[Int], downTime: Option[Int], holdTime: Option[Int],
+                        calibrateZeoSeq: Option[String], calibrateSpanSeq: Option[String],
+                        calibratorPurgeSeq: Option[String], calibratorPurgeTime: Option[Int],
+                        calibrateZeoDO: Option[Int], calibrateSpanDO: Option[Int], skipInternalVault: Option[Boolean])
 
 object HoribaCollector
 {
@@ -144,15 +151,15 @@ abstract class HoribaCollector @Inject()
         context.parent ! ReportData(mtd)
 
       case "A024" =>
-        logger.info("Response from line change (A024)")
+        logger.info(s"$name Response from line change (A024)")
         logger.info(prmStr)
 
       case "A029" =>
-        logger.info("Response from user zero (A029)")
+        logger.info(s"$name Response from user zero (A029)")
         logger.info(prmStr)
 
       case "A030" =>
-        logger.info("Response from user span (A030)")
+        logger.info(s"$name Response from user span (A030)")
         logger.info(prmStr)
 
       case "R010" =>
@@ -183,7 +190,7 @@ abstract class HoribaCollector @Inject()
 
   def receive: Receive = {
     case UdpConnected.Connected =>
-      logger.info("UDP connected...")
+      logger.debug(s"$name UDP connected...")
       context become connectionReady(sender())(calibrateRecordStart = false)
   }
 
@@ -321,7 +328,7 @@ abstract class HoribaCollector @Inject()
     }
 
     val purgeTime = config.calibratorPurgeTime.get
-    logger.info(s"Purge calibrator. Delay start of calibration $purgeTime seconds")
+    logger.info(s"$name Purge calibrator. Delay start of calibration $purgeTime seconds")
     triggerCalibratorPurge(true)
     system.scheduler.scheduleOnce(Duration(purgeTime + 1, SECONDS), self, RaiseStart)
   }
@@ -384,6 +391,16 @@ abstract class HoribaCollector @Inject()
         Map.empty[String, Option[Double]])
 
       setupSpanRaiseStartTimer(connection)
+
+    case TriggerVault(zero, value)=>
+      if(value){
+        if(zero)
+          reqZeroCalibration(connection)
+        else
+          reqSpanCalibration(connection)
+      }else
+        reqNormal(connection)
+
   }
 
   private def calibrationHandler(connection: ActorRef, calibrationType: CalibrationType,
@@ -414,7 +431,7 @@ abstract class HoribaCollector @Inject()
 
           instrumentOp.setState(id, collectorState)
 
-          logger.info(s"${calibrationType} RaiseStart")
+          logger.info(s"$name $calibrationType RaiseStart")
 
           if (calibrationType.zero) {
             for (seqNo <- config.calibrateZeoSeq)
@@ -486,12 +503,12 @@ abstract class HoribaCollector @Inject()
       }
 
       if (calibrationType.auto && calibrationType.zero) {
-        logger.info(s"zero calibration end.")
+        logger.info(s"$name zero calibration end.")
         context become calibrationHandler(connection, AutoSpan, startTime, recording = false, List.empty[MonitorTypeData], mtAvgMap.toMap)
 
         setupSpanRaiseStartTimer(connection)
       } else {
-        logger.info(s"calibration end.")
+        logger.info(s"$name calibration end.")
         val monitorTypes = mtAvgMap.keySet.toList
         val calibrationList =
           if (calibrationType.auto) {
@@ -537,7 +554,7 @@ abstract class HoribaCollector @Inject()
             context.parent ! ExecuteSeq(T700_STANDBY_SEQ, on = true)
             context become connectionReady(connection)(calibrateRecordStart = false)
           } else {
-            logger.info(s"Ignore setState $state during calibration")
+            logger.info(s"$name Ignore setState $state during calibration")
           }
         }
       }
