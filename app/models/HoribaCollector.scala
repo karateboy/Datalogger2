@@ -4,7 +4,6 @@ import akka.actor.{Actor, ActorRef, Cancellable}
 import akka.io.{IO, UdpConnected}
 import akka.util.ByteString
 import com.github.nscala_time.time.Imports.{DateTime, LocalTime}
-import com.google.inject.assistedinject.Assisted
 import models.ModelHelper._
 import models.MultiCalibrator.TriggerVault
 import models.Protocol.ProtocolParam
@@ -20,8 +19,7 @@ case class HoribaConfig(calibrationTime: Option[LocalTime],
                         calibratorPurgeSeq: Option[String], calibratorPurgeTime: Option[Int],
                         calibrateZeoDO: Option[Int], calibrateSpanDO: Option[Int], skipInternalVault: Option[Boolean])
 
-object HoribaCollector
-{
+object HoribaCollector {
   private val FlameStatus = "FlameStatus"
   val Press = "Press"
   val Flow = "Flow"
@@ -57,25 +55,26 @@ object HoribaCollector
 
   case object ReadData
 }
+
 abstract class HoribaCollector @Inject()
 (instrumentOp: InstrumentDB, instrumentStatusOp: InstrumentStatusDB,
  calibrationOp: CalibrationDB, monitorTypeOp: MonitorTypeDB)
-(@Assisted id: String,
- @Assisted protocol: ProtocolParam,
- @Assisted config: HoribaConfig) extends Actor {
+(id: String,
+ protocol: ProtocolParam,
+ config: HoribaConfig,
+ name: String,
+ mtList: List[String],
+ RECEIVE_ID: Byte,
+ logger: Logger) extends Actor {
+
   import DataCollectManager._
   import HoribaCollector._
-  import models.TapiTxxCollector._
   import TapiTxx._
+  import context.dispatcher
+  import models.TapiTxxCollector._
 
   import scala.concurrent.duration._
   import scala.concurrent.{Future, blocking}
-  import context.dispatcher
-
-  val name:String
-  val mtList:List[String]
-  val RECEIVE_ID:Byte
-  val logger: Logger
 
   logger.info(s"HoribaCollector ($name) created $id:$protocol $config")
   val timer: Cancellable = context.system.scheduler.scheduleAtFixedRate(FiniteDuration(1, SECONDS), Duration(2, SECONDS), self, ReadData)
@@ -136,10 +135,10 @@ abstract class HoribaCollector @Inject()
       case "R001" =>
         val result = prmStr.split(",")
 
-        val mtd = mtList.zipWithIndex.map{
-          pair=> {
+        val mtd = mtList.zipWithIndex.map {
+          pair => {
             val (mt, idx) = pair
-            val value = result(2+idx).substring(5).toDouble
+            val value = result(2 + idx).substring(5).toDouble
             MonitorTypeData(mt, value, collectorState)
           }
         }
@@ -163,7 +162,7 @@ abstract class HoribaCollector @Inject()
 
       case "R010" =>
         val result = prmStr.split(",")
-        if(result.length >= 2){
+        if (result.length >= 2) {
           val value = result(1).toDouble
           statusMap += (FlameStatus -> value)
         }
@@ -391,13 +390,13 @@ abstract class HoribaCollector @Inject()
 
       setupSpanRaiseStartTimer(connection)
 
-    case TriggerVault(zero, value)=>
-      if(value){
-        if(zero)
+    case TriggerVault(zero, value) =>
+      if (value) {
+        if (zero)
           reqZeroCalibration(connection)
         else
           reqSpanCalibration(connection)
-      }else
+      } else
         reqNormal(connection)
 
   }
@@ -450,7 +449,7 @@ abstract class HoribaCollector @Inject()
         }
       }
 
-    case reportData:ReportData =>
+    case reportData: ReportData =>
       if (recording) {
         val data = reportData.dataList(monitorTypeOp)
         context become calibrationHandler(connection, calibrationType, startTime, recording,

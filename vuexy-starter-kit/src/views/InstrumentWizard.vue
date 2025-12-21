@@ -1,16 +1,16 @@
 <template>
   <div>
     <form-wizard
-      color="#7367F0"
-      :title="null"
-      :subtitle="null"
-      layout="vertical"
-      finish-button-text="確認"
-      back-button-text="向前"
-      next-button-text="向後"
-      class="wizard-vertical vertical-steps steps-transparent"
-      @on-change="onStepChange"
-      @on-complete="formSubmitted"
+        color="#7367F0"
+        :title="null"
+        :subtitle="null"
+        layout="vertical"
+        finish-button-text="確認"
+        back-button-text="向前"
+        next-button-text="向後"
+        class="wizard-vertical vertical-steps steps-transparent"
+        @on-change="onStepChange"
+        @on-complete="formSubmitted"
     >
       <!-- account datails tab -->
       <tab-content title="儀器種類" :before-change="validateInstType">
@@ -18,21 +18,21 @@
           <b-row>
             <b-col cols="12">
               <b-form-group
-                label="儀器種類"
-                label-for="instrumentType"
-                label-cols-md="3"
+                  label="儀器種類"
+                  label-for="instrumentType"
+                  label-cols-md="3"
               >
                 <validation-provider
-                  v-slot="{ errors }"
-                  name="儀器種類"
-                  rules="required"
+                    v-slot="{ errors }"
+                    name="儀器種類"
+                    rules="required"
                 >
                   <v-select
-                    id="instrumentType"
-                    v-model="form.instType"
-                    label="desp"
-                    :reduce="inst => inst.id"
-                    :options="instrumentTypes"
+                      id="instrumentType"
+                      v-model="form.instType"
+                      label="desp"
+                      :reduce="inst => inst.id"
+                      :options="instrumentTypes"
                   />
                   <small class="text-danger">{{ errors[0] }}</small>
                 </validation-provider>
@@ -40,16 +40,16 @@
             </b-col>
             <b-col cols="12">
               <b-form-group
-                label="儀器ID"
-                label-for="inst-id"
-                label-cols-md="3"
+                  label="儀器ID"
+                  label-for="inst-id"
+                  label-cols-md="3"
               >
                 <validation-provider
-                  v-slot="{ errors }"
-                  name="儀器ID"
-                  rules="required"
+                    v-slot="{ errors }"
+                    name="儀器ID"
+                    rules="required"
                 >
-                  <b-form-input id="inst-id" v-model="form._id" />
+                  <b-form-input id="inst-id" v-model="form._id"/>
                   <small class="text-danger">{{ errors[0] }}</small>
                 </validation-provider>
               </b-form-group>
@@ -64,81 +64,81 @@
           <b-row>
             <b-col cols="12">
               <b-form-group
-                label="通訊協定"
-                label-for="protocol"
-                label-cols-md="3"
+                  label="通訊協定"
+                  label-for="protocol"
+                  label-cols-md="3"
               >
                 <validation-provider
-                  v-slot="{ errors }"
-                  name="通訊協定"
-                  rules="required"
+                    v-slot="{ errors }"
+                    name="通訊協定"
+                    rules="required"
                 >
                   <v-select
-                    v-model="form.protocol.protocol"
-                    label="desp"
-                    :reduce="p => p.id"
-                    :options="getProtocolOptions()"
+                      v-model="form.protocol.protocol"
+                      label="desp"
+                      :reduce="p => p.id"
+                      :options="getProtocolOptions()"
                   />
                   <small class="text-danger">{{ errors[0] }}</small>
                 </validation-provider>
               </b-form-group>
             </b-col>
             <b-col
-              v-if="
+                v-if="
                 form.protocol.protocol === 'tcp' ||
                 form.protocol.protocol === 'tcpCli'
               "
-              cols="12"
+                cols="12"
             >
               <b-form-group label="網址" label-for="host" label-cols-md="3">
                 <validation-provider
-                  v-slot="{ errors }"
-                  name="網址"
-                  rules="required"
+                    v-slot="{ errors }"
+                    name="網址"
+                    rules="required"
                 >
                   <b-form-input
-                    id="host"
-                    v-model="form.protocol.host"
-                    placeholder="localhost"
+                      id="host"
+                      v-model="form.protocol.host"
+                      placeholder="localhost"
                   />
                   <small class="text-danger">{{ errors[0] }}</small>
                 </validation-provider>
               </b-form-group>
             </b-col>
             <b-col
-              v-if="
+                v-if="
                 form.protocol.protocol === 'serial' ||
                 form.protocol.protocol === 'serialCli'
               "
-              cols="12"
+                cols="12"
             >
               <b-form-group
-                label="COM Port"
-                label-for="com-port"
-                label-cols-md="3"
+                  label="COM Port"
+                  label-for="com-port"
+                  label-cols-md="3"
               >
                 <validation-provider
-                  v-slot="{ errors }"
-                  name="通訊埠"
-                  rules="required"
+                    v-slot="{ errors }"
+                    name="通訊埠"
+                    rules="required"
                 >
                   <b-form-spinbutton
-                    v-model="form.protocol.comPort"
-                    min="1"
-                    max="100"
+                      v-model="form.protocol.comPort"
+                      min="1"
+                      max="100"
                   ></b-form-spinbutton>
                   <small class="text-danger">{{ errors[0] }}</small>
                 </validation-provider>
               </b-form-group>
               <b-form-group label="Speed" label-for="speed" label-cols-md="3">
                 <validation-provider
-                  v-slot="{ errors }"
-                  name="速度"
-                  rules="required"
+                    v-slot="{ errors }"
+                    name="速度"
+                    rules="required"
                 >
                   <b-form-select
-                    v-model="form.protocol.speed"
-                    :options="serialSpeed"
+                      v-model="form.protocol.speed"
+                      :options="serialSpeed"
                   >
                   </b-form-select>
                   <small class="text-danger">{{ errors[0] }}</small>
@@ -151,91 +151,97 @@
 
       <!-- address -->
       <tab-content
-        v-if="hasDetailConfig"
-        title="細部設定"
-        :lazy="true"
-        :before-change="validateDetailConfig"
+          v-if="hasDetailConfig"
+          title="細部設定"
+          :lazy="true"
+          :before-change="validateDetailConfig"
       >
         <validation-observer ref="detailConfigRules">
           <tapi-config-page
-            v-if="isCalibratable"
-            :inst-type="form.instType"
-            :param-str="form.param"
-            @param-changed="onParamChange"
+              v-if="isCalibratable"
+              :inst-type="form.instType"
+              :param-str="form.param"
+              @param-changed="onParamChange"
+          />
+          <HoribaConfigPage
+              v-else-if="isHoriba"
+              :inst-type="form.instType"
+              :param-str="form.param"
+              @param-changed="onParamChange"
           />
           <adam-6017-config-page
-            v-else-if="is8ChAnalogInput"
-            :param-str="form.param"
-            :has-addr="analogInputHasAddr"
-            @param-changed="onParamChange"
+              v-else-if="is8ChAnalogInput"
+              :param-str="form.param"
+              :has-addr="analogInputHasAddr"
+              @param-changed="onParamChange"
           />
           <mqtt-config-page
-            v-else-if="isMqtt"
-            :param-str="form.param"
-            @param-changed="onParamChange"
+              v-else-if="isMqtt"
+              :param-str="form.param"
+              @param-changed="onParamChange"
           />
           <mqtt2-config-page
-            v-else-if="isMqtt2"
-            :param-str="form.param"
-            @param-changed="onParamChange"
+              v-else-if="isMqtt2"
+              :param-str="form.param"
+              @param-changed="onParamChange"
           />
           <adam-6066-config-page
-            v-else-if="isAdam6066"
-            :param-str="form.param"
-            @param-changed="onParamChange"
+              v-else-if="isAdam6066"
+              :param-str="form.param"
+              @param-changed="onParamChange"
           ></adam-6066-config-page>
           <theta-config-page
-            v-else-if="isTheta"
-            :param-str="form.param"
-            @param-changed="onParamChange"
+              v-else-if="isTheta"
+              :param-str="form.param"
+              @param-changed="onParamChange"
           />
           <sabio-config
-            v-else-if="form.instType === 'sabio4010'"
-            :param-str="form.param"
-            @param-changed="onParamChange"
+              v-else-if="form.instType === 'sabio4010'"
+              :param-str="form.param"
+              @param-changed="onParamChange"
           />
           <duo-config2
-            v-else-if="form.instType === 'duo'"
-            :host="form.protocol.host"
-            :param-str="form.param"
-            :loading="loadingDetailedConfig"
-            @param-changed="onParamChange"
+              v-else-if="form.instType === 'duo'"
+              :host="form.protocol.host"
+              :param-str="form.param"
+              :loading="loadingDetailedConfig"
+              @param-changed="onParamChange"
           />
           <ak-config-page
-            v-else-if="isAkInstrument"
-            :param-str="form.param"
-            @param-changed="onParamChange"
+              v-else-if="isAkInstrument"
+              :param-str="form.param"
+              @param-changed="onParamChange"
           ></ak-config-page>
           <adam-4000-config-page
-            v-else-if="form.instType === 'adam4000'"
-            :param-str="form.param"
-            @param-changed="onParamChange"
+              v-else-if="form.instType === 'adam4000'"
+              :param-str="form.param"
+              @param-changed="onParamChange"
           />
           <moxa-e-1212-config-page
-            v-else-if="form.instType === 'moxaE1212'"
-            :param-str="form.param"
-            @param-changed="onParamChange"
+              v-else-if="form.instType === 'moxaE1212'"
+              :param-str="form.param"
+              @param-changed="onParamChange"
           >
           </moxa-e-1212-config-page>
           <moxa-e-1240-config-page
-            v-else-if="form.instType === 'moxaE1240'"
-            :param-str="form.param"
-            @param-changed="onParamChange"
+              v-else-if="form.instType === 'moxaE1240'"
+              :param-str="form.param"
+              @param-changed="onParamChange"
           />
           <verewa-config
-            v-else-if="form.instType === 'VEREWA_F701'"
-            :param-str="form.param"
-            @param-changed="onParamChange"
+              v-else-if="form.instType === 'VEREWA_F701'"
+              :param-str="form.param"
+              @param-changed="onParamChange"
           />
           <met-one1020-config
-            v-else-if="form.instType === 'MetOne1020'"
-            :param-str="form.param"
-            @param-changed="onParamChange"
+              v-else-if="form.instType === 'MetOne1020'"
+              :param-str="form.param"
+              @param-changed="onParamChange"
           />
           <gps-config
-            v-else-if="form.instType === 'gps'"
-            :param-str="form.param"
-            @param-changed="onParamChange"
+              v-else-if="form.instType === 'gps'"
+              :param-str="form.param"
+              @param-changed="onParamChange"
           />
           <div v-else>TBD {{ form.instType }}</div>
         </validation-observer>
@@ -246,9 +252,9 @@
         <h3>儀器設定摘要</h3>
         <p>
           <b-form-textarea
-            rows="10"
-            readonly
-            :value="instrumentSummary"
+              rows="10"
+              readonly
+              :value="instrumentSummary"
           ></b-form-textarea>
         </p>
       </tab-content>
@@ -258,10 +264,11 @@
 
 <script lang="ts">
 import axios from 'axios';
-import Vue, { PropType } from 'vue';
-import { ValidationObserver } from 'vee-validate';
+import Vue, {PropType} from 'vue';
+import {ValidationObserver} from 'vee-validate';
 import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
 import TapiConfigPage from './TapiConfigPage.vue';
+import HoribaConfigPage from "@/views/HoribaConfigPage.vue";
 import Adam6017ConfigPage from './Adam6017ConfigPage.vue';
 import MqttConfigPage from './MqttConfigPage.vue';
 import Mqtt2ConfigPage from './Mqtt2ConfigPage.vue';
@@ -269,7 +276,7 @@ import Adam6066ConfigPage from './Adam6066ConfigPage.vue';
 import ThetaConfigPage from './ThetaConfigPage.vue';
 import SabioConfig from './SabioConfig.vue';
 import DuoConfig2 from './DuoConfig2.vue';
-import { TextStrValue } from './types';
+import {TextStrValue} from './types';
 import AkConfigPage from './AkConfigPage.vue';
 import Adam4000ConfigPage from './Adam4000ConfigPage.vue';
 import MoxaE1212ConfigPage from './Moxa1212ConfigPage.vue';
@@ -310,6 +317,7 @@ export default Vue.extend({
   components: {
     ValidationObserver,
     TapiConfigPage,
+    HoribaConfigPage,
     Adam6017ConfigPage,
     MqttConfigPage,
     Mqtt2ConfigPage,
@@ -420,11 +428,6 @@ export default Vue.extend({
         't400',
         't700',
         'baseline9000',
-        'horiba370',
-        'HoribaAPNA1',
-        'HoribaAPSA4',
-        'HoribaAPOA',
-        'HoribaAPMA',
         'picarroG2401',
         'picarroG2131i',
         'picarroG2307',
@@ -435,6 +438,19 @@ export default Vue.extend({
         if (this.form.instType === t) return true;
       }
       return this.form.instType.startsWith('TcpModbus.');
+    },
+    isHoriba(): boolean {
+      const types = [
+        'horiba370',
+        'HoribaAPNA1',
+        'HoribaAPSA4',
+        'HoribaAPOA',
+        'HoribaAPMA',
+      ];
+      for (const t of types) {
+        if (this.form.instType === t) return true;
+      }
+      return false;
     },
     isAkInstrument(): boolean {
       return this.form.instType.startsWith('AkProtocol.');
@@ -523,7 +539,7 @@ export default Vue.extend({
     getInstrumentDesc(): string {
       if (this.instTypeMap.get(this.form.instType)) {
         let info = this.instTypeMap.get(
-          this.form.instType,
+            this.form.instType,
         ) as InstrumentTypeInfo;
         return info.desp;
       } else return '';

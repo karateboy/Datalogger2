@@ -8,6 +8,7 @@ import play.api.libs.json.{JsError, Json}
 
 object HoribaApmaCollector extends DriverOps {
   val logger: Logger = Logger(this.getClass)
+
   import HoribaCollector._
 
   override def verifyParam(json: String): String = {
@@ -68,10 +69,14 @@ class HoribaApmaCollector @Inject()
 (instrumentOp: InstrumentDB, instrumentStatusOp: InstrumentStatusDB,
  calibrationOp: CalibrationDB, monitorTypeOp: MonitorTypeDB)
 (@Assisted id: String, @Assisted protocol: ProtocolParam, @Assisted config: HoribaConfig) extends
-  HoribaCollector(instrumentOp, instrumentStatusOp, calibrationOp, monitorTypeOp)(id, protocol, config) {
-
-  override val name: String = "CO"
-  override val mtList: List[String] = List(MonitorType.CO)
-  override val RECEIVE_ID: Byte = '3'.toByte
-  override val logger: Logger = Logger(this.getClass)
-}
+  HoribaCollector(instrumentOp,
+    instrumentStatusOp,
+    calibrationOp,
+    monitorTypeOp)(
+    id = id,
+    protocol = protocol,
+    config = config,
+    name = "CO",
+    mtList = List(MonitorType.CO),
+    RECEIVE_ID = '3'.toByte,
+    logger = Logger(HoribaApmaCollector.getClass))

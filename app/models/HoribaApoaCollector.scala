@@ -68,10 +68,11 @@ class HoribaApoaCollector @Inject()
 (instrumentOp: InstrumentDB, instrumentStatusOp: InstrumentStatusDB,
  calibrationOp: CalibrationDB, monitorTypeOp: MonitorTypeDB)
 (@Assisted id: String, @Assisted protocol: ProtocolParam, @Assisted config: HoribaConfig) extends
-  HoribaCollector(instrumentOp, instrumentStatusOp, calibrationOp, monitorTypeOp)(id, protocol, config) {
-
-  override val name: String = "O3"
-  override val mtList: List[String] = List(MonitorType.O3)
-  override val RECEIVE_ID: Byte = '5'.toByte
-  override val logger: Logger = Logger(this.getClass)
-}
+  HoribaCollector(instrumentOp, instrumentStatusOp, calibrationOp, monitorTypeOp)(
+    id = id,
+    protocol = protocol,
+    config = config,
+    name = "O3",
+    mtList = List(MonitorType.O3),
+    RECEIVE_ID = '5'.toByte,
+    logger = Logger(HoribaApoaCollector.getClass))

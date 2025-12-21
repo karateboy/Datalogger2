@@ -69,10 +69,14 @@ class Horiba370Collector @Inject()
 (instrumentOp: InstrumentDB, instrumentStatusOp: InstrumentStatusDB,
  calibrationOp: CalibrationDB, monitorTypeOp: MonitorTypeDB)
 (@Assisted id: String, @Assisted protocol: ProtocolParam, @Assisted config: HoribaConfig) extends
-  HoribaCollector(instrumentOp, instrumentStatusOp, calibrationOp, monitorTypeOp)(id, protocol, config) {
-
-  override val name: String = "CH4/NMHC/THC"
-  override val mtList: List[String] = List(MonitorType.CH4, MonitorType.NMHC, MonitorType.THC)
-  override val RECEIVE_ID: Byte = '2'.toByte
-  override val logger: Logger = Logger(this.getClass)
-}
+  HoribaCollector(instrumentOp,
+    instrumentStatusOp,
+    calibrationOp,
+    monitorTypeOp)(
+    id = id,
+    protocol = protocol,
+    config = config,
+    name = "CH4/NMHC/THC",
+    mtList = List(MonitorType.CH4, MonitorType.NMHC, MonitorType.THC),
+    RECEIVE_ID = '2'.toByte,
+    logger = Logger(Horiba370Collector.getClass))

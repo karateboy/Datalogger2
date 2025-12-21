@@ -1,22 +1,5 @@
 <template>
   <b-form @change="onChange">
-    <b-row>
-      <b-col cols="12">
-        <validation-provider
-          v-slot="{ errors }"
-          name="Slave ID"
-          rules="required"
-        >
-          <b-form-group label="Slave ID" label-for="slave-id" label-cols-md="3">
-            <b-form-input
-              v-model.number="paramObj.slaveID"
-              type="number"
-            ></b-form-input>
-            <small class="text-danger">{{ errors[0] }}</small>
-          </b-form-group>
-        </validation-provider>
-      </b-col>
-    </b-row>
     <b-row v-if="instType !== 't700'">
       <b-col cols="12">
         <b-form-group
@@ -82,27 +65,6 @@
           label-cols-md="3"
         >
           <b-form-input v-model="paramObj.calibrateSpanSeq"></b-form-input>
-        </b-form-group>
-      </b-col>
-      <b-col cols="12">
-        <b-form-group
-          label="校正器清空時間(秒):"
-          label-for="downTime"
-          label-cols-md="3"
-        >
-          <b-form-input
-            v-model.number="paramObj.calibratorPurgeTime"
-            type="number"
-          ></b-form-input>
-        </b-form-group>
-      </b-col>
-      <b-col cols="12">
-        <b-form-group
-          label="校正器清空執行Sequence:"
-          label-for="downTime"
-          label-cols-md="3"
-        >
-          <b-form-input v-model="paramObj.calibratorPurgeSeq"></b-form-input>
         </b-form-group>
       </b-col>
       <b-col cols="12">

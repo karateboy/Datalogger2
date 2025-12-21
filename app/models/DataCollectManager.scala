@@ -738,9 +738,9 @@ class DataCollectManager @Inject()(config: Configuration,
             mtd =>
               if (mtd.status == MonitorStatus.NormalStat) {
                 val mtCase = monitorTypeOp.map(mtd.mt)
-                if(mtd.value < mtCase.rangeMin.getOrElse(Double.MinValue))
+                if (mtd.value < mtCase.rangeMin.getOrElse(Double.MinValue))
                   mtd.copy(status = MonitorStatus.BelowNormalStat)
-                else if(mtd.value > mtCase.rangeMax.getOrElse(Double.MaxValue))
+                else if (mtd.value > mtCase.rangeMax.getOrElse(Double.MaxValue))
                   mtd.copy(status = MonitorStatus.OverNormalStat)
                 else
                   mtd
@@ -884,19 +884,19 @@ class DataCollectManager @Inject()(config: Configuration,
           }
         }
 
-        // Filter out low priority instrument data
-        val priorityMtStatusMap = mtStatusMap map (
+        // Filter out redundant mt dat
+        val msStatusMapNoRedundant = mtStatusMap map (
           pair => {
             val (mt, statusInstMap) = pair
             mt -> filterInstrumentData(statusInstMap, monitorTypeOp.map(mt).measuringBy.getOrElse(Seq.empty[String]))
           })
 
         if (LoggerConfig.config.storeSecondData)
-          flushSecData(priorityMtStatusMap)
+          flushSecData(msStatusMapNoRedundant)
 
         val rawMtRecords = calculateMinAvgMap(
           monitorTypeOp.nonCalculatedMeasuringList,
-          priorityMtStatusMap,
+          msStatusMapNoRedundant,
           monitorTypeOp,
           monitorStatusDB)(calibrationMap, current.minusMinutes(1)).toList
 
@@ -1054,52 +1054,52 @@ class DataCollectManager @Inject()(config: Configuration,
       sender() ! resultMap
 
     case GetLatestData =>
+      val latestMtRecordMap = mutable.Map.empty[String, Record]
       //Filter out older than 10 second
-      val latestMtRecordMap: Map[String, Record] =
-        latestDataMap.flatMap { kv =>
-          val (mt, instRecordMap) = kv
-          val timeout = if (mt == MonitorType.LAT || mt == MonitorType.LNG)
-            1.minute
-          else
-            10.second
+      latestDataMap.foreach({ kv =>
+        val (mt, instRecordMap) = kv
+        val timeout = if (mt == MonitorType.LAT || mt == MonitorType.LNG)
+          1.minute
+        else
+          10.second
 
-          val filteredRecordMap = instRecordMap.filter {
-            kv =>
-              val r = kv._2
-              r.time >= DateTime.now() - timeout
-          }
-
-          if (monitorTypeOp.map(mt).measuringBy.isEmpty)
-            logger.warn(s"$mt has not measuring instrument!")
-
-          monitorTypeOp.map(mt).measuringBy flatMap {
-            measuringList => {
-              val records = measuringList flatMap { instID => filteredRecordMap.get(instID) }
-              if (records.nonEmpty)
-                Some(mt -> records.head)
-              else
-                None
-            }
-          }
+        val filteredRecordMap = instRecordMap.filter {
+          kv =>
+            val r = kv._2
+            r.time >= DateTime.now() - timeout
         }
 
+        if (monitorTypeOp.map(mt).measuringBy.isEmpty)
+          logger.warn(s"$mt has not measuring instrument!")
 
-      if (!latestMtRecordMap.contains(MonitorType.RAIN))
-        sender ! latestMtRecordMap
-      else {
-        // Substitute RAIN raw record with hourAccumulated record
-        val map =
-          latestMtRecordMap.map {
-            kv =>
-              if (kv._1 != MonitorType.RAIN)
-                kv
-              else {
-                val rawRecord = kv._2
-                MonitorType.RAIN -> rawRecord.copy(value = hourAccumulateRain)
-              }
-          }
-        sender ! map
+        for {measuringList <- monitorTypeOp.map(mt).measuringBy
+             records = measuringList flatMap { instID => filteredRecordMap.get(instID) } if records.nonEmpty
+             } {
+          latestMtRecordMap.update(mt, records.head)
+        }
+      })
+
+      for {mt <- monitorTypeOp.measuringList if !latestMtRecordMap.contains(mt)
+           measuringList <- monitorTypeOp.map(mt).measuringBy
+           } {
+
+        // Add Not Activated Record if applied
+        if (measuringList.forall(inst => !instrumentMap.contains(inst)))
+          latestMtRecordMap.update(mt, Record(DateTime.now, None, MonitorStatus.NotActivated, Monitor.activeId))
+
+        // Add Data lost status
+        if (!latestMtRecordMap.contains(mt))
+          latestMtRecordMap.update(mt, Record(DateTime.now, None, MonitorStatus.DataLost, Monitor.activeId))
       }
+
+      if (latestMtRecordMap.contains(MonitorType.RAIN)) {
+        // Substitute RAIN raw record with hourAccumulated record
+        val rawRecord = latestMtRecordMap(MonitorType.RAIN)
+        MonitorType.RAIN -> rawRecord.copy(value = hourAccumulateRain)
+        latestMtRecordMap.update(MonitorType.RAIN, rawRecord.copy(value = hourAccumulateRain))
+      }
+
+      sender ! latestMtRecordMap
 
     case AddSignalTypeHandler(mtId, signalHandler) =>
       var handlerMap = signalTypeHandlerMap.getOrElse(mtId, Map.empty[ActorRef, Boolean => Unit])

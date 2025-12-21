@@ -66,7 +66,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! ExecuteSeq(seqName, on)
   }
 
-  def getLatestData: Future[Map[String, Record]] = {
+  def getLatestData: Future[mutable.Map[String, Record]] = {
     import akka.pattern.ask
     import akka.util.Timeout
 
@@ -74,7 +74,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     implicit val timeout: Timeout = Timeout(Duration(3, SECONDS))
 
     val f = manager ? GetLatestData
-    f.mapTo[Map[String, Record]]
+    f.mapTo[mutable.Map[String, Record]]
   }
 
   def getLatestSignal: Future[Map[String, Boolean]] = {

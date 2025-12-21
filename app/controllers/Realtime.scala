@@ -58,7 +58,7 @@ class Realtime @Inject()
                   instrumentList.mkString(",")
               }.getOrElse("??")
 
-              def instrumentStatus() = {
+              def instrumentStatus(): String = {
                 val ret =
                   for (measuringBy <- mCase.measuringBy) yield {
                     val instruments: List[Instrument] =

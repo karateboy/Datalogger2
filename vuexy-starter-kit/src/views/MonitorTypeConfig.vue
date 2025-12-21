@@ -211,11 +211,11 @@ export default Vue.extend({
       },
       {
         key: 'rangeMin',
-        label: '偵測最小',
+        label: '偵測下限',
       },
       {
         key: 'rangeMax',
-        label: '偵測最大',
+        label: '偵測上限',
       },
       {
         key: 'unit',
