@@ -8,7 +8,7 @@ import play.api.Logger
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, blocking}
-object Tca08Collector extends AbstractDrv(_id = "tca08", desp = "Total Carbon Analyzer TCA08",
+object Tca08Collector extends AbstractDrv(_id = "tca08", name = "Total Carbon Analyzer TCA08",
   protocols = List(Protocol.serial)) {
   private val predefinedIST: List[InstrumentStatusType] = List(
     InstrumentStatusType(key = "TCconc", addr = 0, desc = "TC mass divided by a volume of sampled air", ""),

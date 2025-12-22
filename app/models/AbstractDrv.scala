@@ -10,7 +10,7 @@ object AbstractDrv {
 
 }
 
-abstract class AbstractDrv(_id: String, desp: String, protocols: List[String]) extends DriverOps {
+abstract class AbstractDrv(_id: String, name: String, protocols: List[String]) extends DriverOps {
   import DeviceConfig._
   val logger: Logger = Logger(this.getClass)
   def getDataRegList: List[DataReg]
@@ -59,7 +59,8 @@ abstract class AbstractDrv(_id: String, desp: String, protocols: List[String]) e
 
   override def id: String = _id
 
-  override def description: String = desp
+  override def description: String = name
 
   override def protocol: List[String] = protocols
+
 }

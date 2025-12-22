@@ -10,7 +10,7 @@ import play.api.libs.json.Json
 import javax.inject.Inject
 import scala.concurrent.{Future, blocking}
 
-object HydreonRainGauge extends AbstractDrv(_id = "HydreonRainGauge", desp = "Hydreon Rain Gauge RG-15",
+object HydreonRainGauge extends AbstractDrv(_id = "HydreonRainGauge", name = "Hydreon Rain Gauge RG-15",
   protocols = List(Protocol.serial)) {
   val instrumentStatusKeyList = List(
     InstrumentStatusType(key = MonitorType.RAIN, addr = 1, desc = "Rain", "mm"))

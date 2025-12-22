@@ -32,7 +32,7 @@ object DeviceConfig{
   implicit val cfgWrites: OWrites[DeviceConfig] = Json.writes[DeviceConfig]
 }
 
-case class DataReg(monitorType: String, address: Int, multiplier: Float)
+case class DataReg(monitorType: String, address: Int, multiplier: Float = 1.0f)
 
 case class CalibrationReg(zeroAddress: Int, spanAddress: Int)
 

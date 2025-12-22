@@ -194,6 +194,8 @@ object ModelHelper {
   implicit val localTimeWrites: Writes[LocalTime] = new Writes[LocalTime] {
     override def writes(o: LocalTime): JsValue = JsString(o.toString())
   }
+
+  def getChecksum(buffer:Array[Byte]): Byte = buffer.foldLeft(0: Byte)((a, b) => (a ^ b).toByte)
 }
 
 object EnumUtils {

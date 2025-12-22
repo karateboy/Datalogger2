@@ -11,7 +11,7 @@ import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, blocking}
 
-object PicarroG2307 extends AbstractDrv(_id = "picarroG2307", desp = "Picarro G2307",
+object PicarroG2307 extends AbstractDrv(_id = "picarroG2307", name = "Picarro G2307",
   protocols = List(Protocol.tcp)) {
   override val logger: Logger = Logger(this.getClass)
   val predefinedIST = List(

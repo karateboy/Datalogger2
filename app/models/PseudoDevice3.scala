@@ -9,7 +9,7 @@ import play.api.Logger
 import javax.inject.Inject
 import scala.concurrent.Future
 
-object PseudoDevice3 extends AbstractDrv(_id = "PseudoDevice3", desp = "Pseudo Device 3 - Wind Speed, Direction",
+object PseudoDevice3 extends AbstractDrv(_id = "PseudoDevice3", name = "Pseudo Device 3 - Wind Speed, Direction",
   protocols = List(Protocol.tcp)) {
 
   private val predefinedIST: List[InstrumentStatusType] =

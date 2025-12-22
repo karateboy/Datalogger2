@@ -10,7 +10,7 @@ import play.api.Logger
 import javax.inject.Inject
 import scala.concurrent.Future
 
-object UpsDrv extends AbstractDrv(_id = "Ups", desp = "Ups 1 Series",
+object UpsDrv extends AbstractDrv(_id = "Ups", name = "Ups 1 Series",
   protocols = List(Protocol.serial)) {
 
   val predefinedIST = List.empty[InstrumentStatusType]

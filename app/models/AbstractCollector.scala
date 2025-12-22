@@ -38,11 +38,11 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
   val logger: Logger
 
   self ! ConnectHost
-  @volatile var readRegTimer: Option[Cancellable] = None
+  @volatile private var readRegTimer: Option[Cancellable] = None
   @volatile var (collectorState: String, instrumentStatusTypesOpt) = {
     val instList = instrumentOp.getInstrument(instId)
     if (instList.nonEmpty) {
-      val inst: Instrument = instList(0)
+      val inst: Instrument = instList.head
       (inst.state, inst.statusType)
     } else
       (MonitorStatus.NormalStat, None)
@@ -130,10 +130,10 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
               }
             }
             import scala.concurrent.duration._
-            readRegTimer = Some(context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
+            readRegTimer = Some(context.system.scheduler.scheduleOnce(FiniteDuration(3, SECONDS), self, ReadRegister))
           } catch {
             case ex: Exception =>
-              logger.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
+              logger.error(s"$instId:$desc=>${ex.getMessage}", ex)
               alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
@@ -162,13 +162,13 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
       }
       logger.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
 
-    case AutoCalibration(instId) =>
+    case AutoCalibration(_) =>
       executeCalibration(AutoZero)
 
-    case ManualZeroCalibration(instId) =>
+    case ManualZeroCalibration(_) =>
       executeCalibration(ManualZero)
 
-    case ManualSpanCalibration(instId) =>
+    case ManualSpanCalibration(_) =>
       executeCalibration(ManualSpan)
 
     case ExecuteSeq(seq, on) =>
@@ -198,10 +198,10 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
         if (!calibrationType.zero &&
           deviceConfig.calibratorPurgeTime.getOrElse(0) != 0) {
           val timer = Some(purgeCalibrator())
-          context become calibrationPhase(calibrationType, DateTime.now, false, List.empty[ReportData],
+          context become calibrationPhase(calibrationType, DateTime.now, recordCalibration = false, List.empty[ReportData],
             List.empty[(String, Double)], endState, timer)
         } else {
-          context become calibrationPhase(calibrationType, DateTime.now, false, List.empty[ReportData],
+          context become calibrationPhase(calibrationType, DateTime.now, recordCalibration = false, List.empty[ReportData],
             List.empty[(String, Double)], endState, None)
           val delay = getDelayAfterCalibrationStart
           if(delay != 0)
@@ -227,9 +227,9 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
       context become normalPhase()
   }
 
-  def calibrationPhase(calibrationType: CalibrationType, startTime: DateTime, recordCalibration: Boolean, calibrationReadingList: List[ReportData],
-                       zeroReading: List[(String, Double)],
-                       endState: String, calibrationTimerOpt: Option[Cancellable]): Receive = {
+  private def calibrationPhase(calibrationType: CalibrationType, startTime: DateTime, recordCalibration: Boolean, calibrationReadingList: List[ReportData],
+                               zeroReading: List[(String, Double)],
+                               endState: String, calibrationTimerOpt: Option[Cancellable]): Receive = {
     case ConnectHost =>
       logger.error("unexpected ConnectHost msg")
 

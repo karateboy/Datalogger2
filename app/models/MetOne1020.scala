@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets
 import javax.inject.Inject
 import scala.concurrent.{Future, blocking}
 
-object MetOne1020 extends AbstractDrv(_id = "MetOne1020", desp = "MetOne 1020",
+object MetOne1020 extends AbstractDrv(_id = "MetOne1020", name = "MetOne 1020",
   protocols = List(Protocol.serial, Protocol.tcp)) {
   override val logger: Logger = Logger(this.getClass)
   val instrumentStatusKeyList: List[InstrumentStatusType] = List(
