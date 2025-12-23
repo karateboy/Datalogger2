@@ -480,6 +480,8 @@ abstract class HoribaCollector @Inject()
           system.scheduler.scheduleOnce(Duration(downTime, SECONDS), self, CalibrateEnd)
       }
 
+      reqNormal(connection)
+
     case CalibrateEnd =>
       val mtValueMap = mutable.Map.empty[String, List[Double]]
       for {
