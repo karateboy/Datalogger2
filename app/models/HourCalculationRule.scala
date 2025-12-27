@@ -14,10 +14,10 @@ object HourCalculationRule {
   val logger = Logger(this.getClass)
 
   private val LastMinValue = 1
-  private val SeparateMinAvg = 2
+  private val DesignatedMinAvg = 2
 
   val defaultRules: List[HourCalculationRule] = List(
-    HourCalculationRule("BTEX (00:40+00:55+01:10+01:25)/4", Seq.empty[String], 2, SeparateMinAvg),
+    HourCalculationRule("BTEX (00:40+00:55+01:10+01:25)/4", Seq.empty[String], 2, DesignatedMinAvg),
     HourCalculationRule("611/811 1:59分鐘值", Seq.empty[String], 2, LastMinValue)
   )
 
@@ -33,10 +33,10 @@ object HourCalculationRule {
     }
   }
 
-  def updateRules(newRules:List[HourCalculationRule]): Unit =
+  def updateRules(newRules: List[HourCalculationRule]): Unit =
     rules = newRules
 
-  private def lastMinValueRuleHandler(rule: HourCalculationRule, recordMap: Map[String, Seq[Record]]): Seq[MtRecord] = {
+  private def getLastMinValue(rule: HourCalculationRule, recordMap: Map[String, Seq[Record]]): Seq[MtRecord] = {
     rule.monitorTypes map {
       mt =>
         val records = recordMap.getOrElse(mt, Seq.empty[Record])
@@ -49,15 +49,27 @@ object HourCalculationRule {
     }
   }
 
-  private def separateMinAvgRuleHandler(rule: HourCalculationRule, recordMap: Map[String, Seq[Record]]): Seq[MtRecord] = {
+  private def getDesignatedValueAvg(rule: HourCalculationRule, current: DateTime, recordMap: Map[String, Seq[Record]]): Seq[MtRecord] = {
+    val start = current.minusHours(rule.delay)
     rule.monitorTypes map {
       mt =>
         val records = recordMap.getOrElse(mt, Seq.empty[Record])
         if (records.nonEmpty) {
-          val filteredRecords = records.filter(r => true)
+          val filteredRecords = records.filter(r => {
+            //00:40, 00:55, 01:10, 01:25
+            r.time == start.plusMinutes(40) ||
+              r.time == start.plusMinutes(55) ||
+              r.time == start.plusHours(1).plusMinutes(10) ||
+              r.time == start.plusHours(1).plusMinutes(25)
+          })
           val values = filteredRecords flatMap (_.value)
+          // Count occurrences of each string
+          val counts = filteredRecords.groupBy(_.status).mapValues(_.size)
+          // Find the string with the maximum count
+          val (status, _) = counts.maxBy(_._2)
+
           if (values.nonEmpty)
-            MtRecord(mt, Some(values.sum / values.length), MonitorStatus.NormalStat)
+            MtRecord(mt, Some(values.sum / values.length), status)
           else
             MtRecord(mt, None, MonitorStatus.DataLost)
         } else {
@@ -85,9 +97,9 @@ object HourCalculationRule {
               try {
                 rule.hourRule match {
                   case LastMinValue =>
-                    lastMinValueRuleHandler(rule, recordMap)
-                  case SeparateMinAvg =>
-                    separateMinAvgRuleHandler(rule, recordMap)
+                    getLastMinValue(rule, recordMap)
+                  case DesignatedMinAvg =>
+                    getDesignatedValueAvg(rule, recordMap)
                   case x =>
                     logger.warn(s"Unknown rule type $x")
                     Seq.empty[MtRecord]
