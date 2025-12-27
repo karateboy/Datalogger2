@@ -99,7 +99,7 @@ object HourCalculationRule {
                   case LastMinValue =>
                     getLastMinValue(rule, recordMap)
                   case DesignatedMinAvg =>
-                    getDesignatedValueAvg(rule, recordMap)
+                    getDesignatedValueAvg(rule, current, recordMap)
                   case x =>
                     logger.warn(s"Unknown rule type $x")
                     Seq.empty[MtRecord]
