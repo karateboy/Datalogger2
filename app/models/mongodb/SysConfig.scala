@@ -2,7 +2,7 @@ package models.mongodb
 
 import models.CdxUploader.{CdxConfig, CdxMonitorType}
 import models.ModelHelper.{errorHandler, waitReadyResult}
-import models.{AQI, CdxUploader, Monitor, SysConfigDB}
+import models._
 import org.mongodb.scala.bson.{BsonDateTime, BsonNumber, BsonString, BsonValue, Document}
 import org.mongodb.scala.model.{Filters, ReplaceOptions}
 import org.mongodb.scala.result.UpdateResult
@@ -11,7 +11,6 @@ import play.api.libs.json.Json
 import java.time.Instant
 import java.util.Date
 import javax.inject.{Inject, Singleton}
-import scala.collection.JavaConverters._
 import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -33,17 +32,18 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     CDX_CONFIG -> Document(valueKey -> Json.toJson(CdxUploader.defaultConfig).toString()),
     CDX_MONITOR_TYPES -> Document(valueKey -> Json.toJson(CdxUploader.defaultMonitorTypes).toString()),
     ACTIVE_MONITOR_ID -> Document(valueKey -> Monitor.activeId),
-    AQI_MONITOR_TYPES -> Document(valueKey ->AQI.defaultMappingTypes),
+    AQI_MONITOR_TYPES -> Document(valueKey -> AQI.defaultMappingTypes),
     EPA_LAST_RECORD_TIME -> Document(valueKey -> Date.from(Instant.parse("2022-01-01T00:00:00.000Z"))),
     LINE_TOKEN -> Document(valueKey -> ""),
     SMS_PHONES -> Document(valueKey -> ""),
     LINE_CHANNEL_TOKEN -> Document(valueKey -> ""),
-    LINE_CHANNEL_GROUP_ID -> Document(valueKey -> "")
+    LINE_CHANNEL_GROUP_ID -> Document(valueKey -> ""),
+    HourCalculationRule -> Document(valueKey -> Json.toJson(HourCalculationRule.defaultRules).toString())
   )
 
   override def getSpectrumLastParseTime: Future[Instant] = getInstant(SpectrumLastParseTime)()
 
-  init
+  init()
 
   override def setSpectrumLastParseTime(dt: Instant): Future[UpdateResult] = setInstant(SpectrumLastParseTime)(dt)
 
@@ -104,7 +104,7 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
 
   private def set(_id: String, v: Seq[String]) = upsert(_id, Document(valueKey -> v))
 
-  override def getCdxConfig(): Future[CdxConfig] = get(CDX_CONFIG).map {
+  override def getCdxConfig: Future[CdxConfig] = get(CDX_CONFIG).map {
     value =>
       Json.parse(value.asString().getValue).validate[CdxConfig].asOpt.getOrElse(CdxUploader.defaultConfig)
   }
@@ -121,7 +121,7 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
   override def setCdxConfig(config: CdxConfig): Future[UpdateResult] =
     set(CDX_CONFIG, BsonString(Json.toJson(config).toString()))
 
-  override def getCdxMonitorTypes(): Future[Seq[CdxUploader.CdxMonitorType]] = get(CDX_MONITOR_TYPES).map {
+  override def getCdxMonitorTypes: Future[Seq[CdxUploader.CdxMonitorType]] = get(CDX_MONITOR_TYPES).map {
     value =>
       Json.parse(value.asString().getValue).validate[Seq[CdxMonitorType]].asOpt.getOrElse(CdxUploader.defaultMonitorTypes)
   }
@@ -146,6 +146,7 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
   override def getAqiMonitorTypes: Future[Seq[String]] =
     for (v <- get(AQI_MONITOR_TYPES)) yield
       v.asArray().toSeq.map(_.asString().getValue)
+
   override def setAqiMonitorTypes(monitorTypes: Seq[String]): Future[UpdateResult] =
     set(AQI_MONITOR_TYPES, monitorTypes)
 
@@ -174,4 +175,12 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
 
   override def setLineChannelGroupId(groupId: Seq[String]): Future[UpdateResult] =
     set(LINE_CHANNEL_GROUP_ID, BsonString(groupId.mkString(",")))
+
+  override def getHourCalculationRules(): Future[Seq[HourCalculationRule]] = get(HOUR_CALCULATION_RULES).map {
+    value =>
+      Json.parse(value.asString().getValue).validate[Seq[HourCalculationRule]].asOpt.getOrElse(HourCalculationRule.defaultRules)
+  }
+
+  override def setHourCalculationRules(rules: Seq[HourCalculationRule]): Future[UpdateResult] =
+    set(HOUR_CALCULATION_RULES, BsonString(Json.toJson(rules).toString()))
 }

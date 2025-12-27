@@ -578,11 +578,9 @@ class HomeController @Inject()(
 
     logger.info(s"Recalculate Hour from $start to $end")
 
-    for {
-      monitor <- monitors
-      hour <- query.getPeriods(start, end, 1.hour)} {
-      dataCollectManagerOp.recalculateHourData(monitor, hour)(monitorTypeOp.measuredList, monitorTypeOp)
-    }
+    for {monitor <- monitors
+         hour <- query.getPeriods(start, end, 1.hour)}
+      dataCollectManagerOp.recalculateHourData(monitor, hour, checkAlarm = false)
 
     Ok(Json.obj("ok" -> true))
   }
@@ -1069,4 +1067,20 @@ class HomeController @Inject()(
       Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
   }
 
+  def getHourCalculationRules: Action[AnyContent] = security.Authenticated.async {
+    for (rules <- sysConfig.getHourCalculationRules) yield
+      Ok(Json.toJson(rules))
+  }
+
+  def setHourCalculationRules(): Action[JsValue] = security.Authenticated(parse.json) {
+    implicit request =>
+      val ret = request.body.validate[Seq[HourCalculationRule]]
+      ret.fold(
+        error => handleJsonValidateError(error),
+        rules => {
+          HourCalculationRule.updateRules(rules.toList)
+          sysConfig.setHourCalculationRules(rules)
+          Ok(Json.obj("ok" -> true))
+        })
+  }
 }

@@ -217,6 +217,35 @@
         </b-row>
       </b-form>
     </b-card>
+    <b-card title="小時值特殊計算規則">
+      <b-table :items="hourCalculationRules" :fields="hourCalculationRuleFields" bordered fixed>
+        <template #thead-top>
+          <b-tr>
+            <b-td colspan="3">
+              <b-button
+                  variant="gradient-primary"
+                  class="mr-1"
+                  @click="saveHourCalculationRules"
+              >
+                儲存規則
+              </b-button>
+            </b-td>
+          </b-tr>
+        </template>
+        <template #cell(monitorTypes)="row">
+          <v-select
+              id="monitorType"
+              v-model="row.item.monitorTypes"
+              label="desp"
+              :reduce="mt => mt._id"
+              :options="monitorTypes"
+              :close-on-select="false"
+              multiple
+          />
+        </template>
+      </b-table>
+      <br />
+    </b-card>
     <b-card title="異常通報">
       <b-table fixed :items="emails" :fields="fields" bordered>
         <template #thead-top>
@@ -381,6 +410,12 @@ interface EmailTarget {
 const emailRegx =
   /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 
+interface HourCalculationRule {
+  name:string;
+  monitorTypes:Array<string>;
+  delay:number;
+  hourRule:number;
+}
 export default Vue.extend({
   directives: {
     Ripple,
@@ -400,6 +435,21 @@ export default Vue.extend({
     ];
 
     let splitYear = moment().year() - 2;
+    let hourCalculationRules: HourCalculationRule[] = Array<HourCalculationRule>();
+    const hourCalculationRuleFields = [
+      {
+        key: 'name',
+        label: '名稱',
+      },
+      {
+        key: 'delay',
+        label: '延遲計算小時',
+      },
+      {
+        key: 'monitorTypes',
+        label: '測項',
+      },
+    ];
     return {
       form: {
         effectiveRatio: 0.75,
@@ -414,6 +464,8 @@ export default Vue.extend({
       lineChannelGroupId: '',
       smsPhones: '',
       lineChannelToken: '',
+      hourCalculationRules,
+      hourCalculationRuleFields
     };
   },
   computed: {
@@ -435,6 +487,7 @@ export default Vue.extend({
     await this.getSmsPhones();
     await this.getLineChannelToken();
     await this.getLineChannelGroupId();
+    await this.getHourCalculationRules();
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
@@ -626,6 +679,24 @@ export default Vue.extend({
             value: this.lineChannelGroupId,
           },
         );
+        if (res.status === 200) {
+          await this.$bvModal.msgBoxOk('成功');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    async getHourCalculationRules() {
+      try {
+        const res = await axios.get('/SystemConfig/HourCalculationRules');
+        this.hourCalculationRules = res.data;
+      } catch (err) {
+        throw new Error('failed to get HourCalculationRules!');
+      }
+    },
+    async saveHourCalculationRules() {
+      try {
+        const res = await axios.put('/SystemConfig/HourCalculationRules', this.hourCalculationRules);
         if (res.status === 200) {
           await this.$bvModal.msgBoxOk('成功');
         }

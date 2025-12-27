@@ -393,6 +393,7 @@ class DataCollectManager @Inject()(config: Configuration,
 
   logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
   DataCollectManager.updateEffectiveRatio(sysConfig)
+  HourCalculationRule.init(sysConfig)
 
   for (aqiMonitorTypes <- sysConfig.getAqiMonitorTypes)
     AQI.updateAqiTypeMapping(aqiMonitorTypes)
@@ -940,10 +941,9 @@ class DataCollectManager @Inject()(config: Configuration,
               // reset hourAccumulatedRain to zero
               hourAccumulateRain = Some(0)
 
-              for (m <- monitorOp.mvList) {
-                dataCollectManagerOp.recalculateHourData(monitor = m,
-                  current = current)(monitorTypeOp.measuredList, monitorTypeOp)
-              }
+              for (m <- monitorOp.mvList)
+                dataCollectManagerOp.recalculateHourData(monitor = m, current = current)
+
               self ! CheckInstruments
             }
           case Failure(exception) =>

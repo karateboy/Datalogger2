@@ -150,6 +150,8 @@ POST          /SystemConfig/LineChannelGroupId                                  
 GET           /SystemConfig/LineChannelGroupId                                                     controllers.HomeController.getLineChannelGroupId
 POST          /SystemConfig/LineChannelGroupId/Verify                                              controllers.HomeController.verifyLineChannelGroupId
 POST          /SystemConfig/SplitTable                                                             controllers.HomeController.splitTable
+GET           /SystemConfig/HourCalculationRules                                                   controllers.HomeController.getHourCalculationRules
+PUT           /SystemConfig/HourCalculationRules                                                   controllers.HomeController.setHourCalculationRules
 
 #Rules
 GET           /SpikeRules                                                                          controllers.RuleController.getSpikeRules

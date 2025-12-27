@@ -123,7 +123,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
 
 
           for (current <- getPeriods(start, end, Period.hours(1)))
-            dataCollectManagerOp.recalculateHourData(Monitor.activeId, current)(monitorTypeOp.measuredList, monitorTypeOp)
+            dataCollectManagerOp.recalculateHourData(Monitor.activeId, current)
         }
       }
       f.failed.foreach(errorHandler)

@@ -2,7 +2,7 @@ package models.sql
 
 import com.mongodb.client.result.UpdateResult
 import models.CdxUploader.{CdxConfig, CdxMonitorType}
-import models.{AQI, CdxUploader, Monitor, SysConfigDB}
+import models._
 import play.api.libs.json.Json
 import scalikejdbc._
 
@@ -17,7 +17,7 @@ import scala.concurrent.Future
 class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
   val tabName = "sysConfig"
 
-  override def getSpectrumLastParseTime(): Future[Instant] = Future {
+  override def getSpectrumLastParseTime: Future[Instant] = Future {
     val valueOpt = get(SpectrumLastParseTime)
     val ret =
       for (value <- valueOpt) yield
@@ -32,7 +32,7 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
 
   init()
 
-  override def getWeatherLastParseTime(): Future[Instant] = Future {
+  override def getWeatherLastParseTime: Future[Instant] = Future {
     val valueOpt = get(WeatherLastParseTime)
     val ret =
       for (value <- valueOpt) yield
@@ -45,7 +45,7 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
     UpdateResult.acknowledged(ret, ret, null)
   }
 
-  override def getWeatherSkipLine(): Future[Int] = Future {
+  override def getWeatherSkipLine: Future[Int] = Future {
     val valueOpt = get(WeatherSkipLine)
     val ret =
       for (value <- valueOpt) yield
@@ -58,7 +58,7 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
     UpdateResult.acknowledged(ret, ret, null)
   }
 
-  override def getEffectiveRatio(): Future[Double] = Future {
+  override def getEffectiveRatio: Future[Double] = Future {
     val valueOpt = get(EffectiveRatio)
     val ret =
       for (value <- valueOpt) yield
@@ -71,7 +71,7 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
     UpdateResult.acknowledged(ret, ret, null)
   }
 
-  override def getAlertEmailTarget(): Future[Seq[String]] = Future {
+  override def getAlertEmailTarget: Future[Seq[String]] = Future {
     val valueOpt = get(AlertEmailTarget)
     val ret =
       for (value <- valueOpt) yield
@@ -84,7 +84,7 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
     UpdateResult.acknowledged(ret, ret, null)
   }
 
-  override def getCdxConfig(): Future[CdxUploader.CdxConfig] = Future {
+  override def getCdxConfig: Future[CdxUploader.CdxConfig] = Future {
     val valueOpt = get(CDX_CONFIG)
     val ret =
       for (value <- valueOpt) yield
@@ -109,7 +109,7 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
     UpdateResult.acknowledged(ret, ret, null)
   }
 
-  override def getCdxMonitorTypes(): Future[Seq[CdxUploader.CdxMonitorType]] = Future {
+  override def getCdxMonitorTypes: Future[Seq[CdxUploader.CdxMonitorType]] = Future {
     val valueOpt = get(CDX_MONITOR_TYPES)
     val ret =
       for (value <- valueOpt) yield
@@ -157,7 +157,7 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
 
   case class Value(v: String, blob: Option[Blob])
 
-  override def getActiveMonitorId(): Future[String] = Future {
+  override def getActiveMonitorId: Future[String] = Future {
     val valueOpt = get(ACTIVE_MONITOR_ID)
     val ret =
       for (value <- valueOpt) yield
@@ -178,7 +178,7 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
   }
 
   private def setBoolean(key: String)(v: Boolean): Future[UpdateResult] = Future {
-    val ret = set(key, v.toString())
+    val ret = set(key, v.toString)
     UpdateResult.acknowledged(ret, ret, null)
   }
 
@@ -212,7 +212,7 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
 
   override def setEpaLastRecordTime(v: Date): Future[UpdateResult] = setDate(EPA_LAST_RECORD_TIME)(v)
 
-  override def getLineToken: Future[String] =  Future {
+  override def getLineToken: Future[String] = Future {
     val valueOpt = get(LINE_TOKEN)
     val ret =
       for (value <- valueOpt) yield
@@ -262,6 +262,18 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
 
   override def setLineChannelGroupId(groupId: Seq[String]): Future[UpdateResult] = Future {
     val ret = set(LINE_CHANNEL_GROUP_ID, groupId.mkString(","))
+    UpdateResult.acknowledged(ret, ret, null)
+  }
+
+  override def getHourCalculationRules: Future[Seq[HourCalculationRule]] = Future {
+    val valueOpt = get(HOUR_CALCULATION_RULES)
+    val ret = valueOpt flatMap (value => Json.parse(value.v).validate[Seq[HourCalculationRule]].asOpt)
+
+    ret.getOrElse(HourCalculationRule.defaultRules)
+  }
+
+  override def setHourCalculationRules(rules: Seq[HourCalculationRule]): Future[UpdateResult] = Future {
+    val ret = set(HOUR_CALCULATION_RULES, Json.toJson(rules).toString())
     UpdateResult.acknowledged(ret, ret, null)
   }
 }

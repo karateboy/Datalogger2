@@ -1,18 +1,17 @@
 package models
 
 import akka.actor.ActorRef
-import com.github.nscala_time.time.Imports.DateTime
+import com.github.nscala_time.time.Imports.{DateTime, _}
 import models.ForwardManager.ForwardHour
-import org.mongodb.scala.result.UpdateResult
 import play.api.Logger
 
 import javax.inject.{Inject, Named, Singleton}
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
-import com.github.nscala_time.time.Imports._
-import scala.concurrent.ExecutionContext.Implicits.global
+
 @Singleton
 class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: ActorRef,
                                      instrumentOp: InstrumentDB,
@@ -92,57 +91,61 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! WriteSignal(mtId, bit)
   }
 
-  def recalculateHourData(monitor: String, current: DateTime, forward: Boolean = true, alwaysValid: Boolean = false)
-                         (mtList: Seq[String], monitorTypeDB: MonitorTypeDB): Future[UpdateResult] = {
-    val ret =
-      for (recordMap <- recordOp.getMtRecordMapFuture(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current);
-           alarmRules <- alarmRuleDb.getRulesAsync) yield {
-        val mtMap = mutable.Map.empty[String, mutable.Map[String, ListBuffer[MtRecord]]]
+  def recalculateHourData(monitor: String,
+                          current: DateTime,
+                          checkAlarm: Boolean = true,
+                          forward: Boolean = true,
+                          alwaysValid: Boolean = false): Future[Unit] = {
+    val mtList = monitorTypeDb.measuredList
+    for (recordMap <- recordOp.getMtRecordMapFuture(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current);
+         alarmRules <- alarmRuleDb.getRulesAsync) yield {
+      val mtMap = mutable.Map.empty[String, mutable.Map[String, ListBuffer[MtRecord]]]
 
-        for {
-          (mt, mtRecordList) <- recordMap
-          mtRecord <- mtRecordList
-        } {
-          val statusMap = mtMap.getOrElseUpdate(mt, mutable.Map.empty[String, ListBuffer[MtRecord]])
-          val tagInfo = MonitorStatus.getTagInfo(mtRecord.status)
-          val status = tagInfo.statusType match {
-            case StatusType.ManualValid =>
-              MonitorStatus.NormalStat
-            case _ =>
-              mtRecord.status
-          }
-
-          val lb = statusMap.getOrElseUpdate(status, ListBuffer.empty[MtRecord])
-
-          for (v <- mtRecord.value if !v.isNaN)
-            lb.append(mtRecord)
+      for ((mt, mtRecordList) <- recordMap; mtRecord <- mtRecordList) {
+        val statusMap = mtMap.getOrElseUpdate(mt, mutable.Map.empty[String, ListBuffer[MtRecord]])
+        val tagInfo = MonitorStatus.getTagInfo(mtRecord.status)
+        val status = tagInfo.statusType match {
+          case StatusType.ManualValid =>
+            MonitorStatus.NormalStat
+          case _ =>
+            mtRecord.status
         }
 
-        val mtDataList = calculateHourAvgMap(mtMap, alwaysValid, monitorTypeDB)
-        val recordList = RecordList.factory(current.minusHours(1).toDate, mtDataList.toSeq, monitor)
-        // Alarm check
-        val alarms = alarmRuleDb.checkAlarm(tableType.hour, recordList, alarmRules)(monitorDB, monitorTypeDb, alarmDb)
-        alarms.foreach(alarmDb.log)
+        val lb = statusMap.getOrElseUpdate(status, ListBuffer.empty[MtRecord])
 
-        val f = recordOp.upsertRecord(recordOp.HourCollection)(recordList)
+        for (v <- mtRecord.value if !v.isNaN)
+          lb.append(mtRecord)
+      }
+
+      val mtDataList = calculateHourAvgMap(mtMap, alwaysValid, monitorTypeDb)
+      val defaultHourRecordList = RecordList.factory(current.minusHours(1).toDate, mtDataList.toSeq, monitor)
+      val hourRecordListsFuture = HourCalculationRule.calculateHourRecord(monitor, current, recordOp)
+      for (ruleHourRecordLists <- hourRecordListsFuture) {
+        val hourRecordLists = ruleHourRecordLists :+ defaultHourRecordList
+
+        // Check alarm
+        if (checkAlarm) {
+          val alarms = alarmRuleDb.checkAlarm(tableType.hour, defaultHourRecordList, alarmRules)(monitorDB, monitorTypeDb, alarmDb)
+          alarms.foreach(alarmDb.log)
+        }
+
+        val f = recordOp.upsertManyRecords(recordOp.HourCollection)(hourRecordLists)
         if (forward) {
           f onComplete {
             case Success(_) =>
               manager ! ForwardHour
               for {cdxConfig <- sysConfigDB.getCdxConfig if monitor == Monitor.activeId
                    cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes} {
-                cdxUploader.upload(recordList = recordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
-                newTaipeiOpenData.upload(recordList, cdxMtConfigs)
+                cdxUploader.upload(recordList = defaultHourRecordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
+                newTaipeiOpenData.upload(defaultHourRecordList, cdxMtConfigs)
               }
 
             case Failure(exception) =>
               logger.error("failed", exception)
           }
         }
-
-        f
       }
-    ret.flatMap(x => x)
+    }
   }
 
   def resetReaders(): Unit = {
