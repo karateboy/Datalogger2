@@ -64,17 +64,21 @@ object HourCalculationRule {
           })
           val values = filteredRecords flatMap (_.value)
           // Count occurrences of each string
-          val counts = filteredRecords.groupBy(_.status).mapValues(_.size)
+          val statusCount = filteredRecords.groupBy(_.status).mapValues(_.size)
           // Find the string with the maximum count
-          val (status, _) = counts.maxBy(_._2)
+          val (status, count) = statusCount.maxBy(_._2)
 
-          if (values.nonEmpty)
-            MtRecord(mt, Some(values.sum / values.length), status)
+          val avg = if (count != 0)
+            Some(values.sum / values.length)
           else
-            MtRecord(mt, None, MonitorStatus.DataLost)
-        } else {
+            None
+
+          if (values.nonEmpty && count >= 3)
+            MtRecord(mt, avg, status)
+          else
+            MtRecord(mt, avg, MonitorStatus.DataLost)
+        } else
           MtRecord(mt, None, MonitorStatus.DataLost)
-        }
     }
   }
 
