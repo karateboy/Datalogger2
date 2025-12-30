@@ -38,7 +38,6 @@ object MonitorStatus {
   val CalibrationDeviation = "022"
   val Auditing = "023"
   val CalibrationResume = "026"
-  val CalibrationPoint6 = "027"
   val CalibratedStat = "029"
   val CalibrationSampleStat = "028"
   val InvalidDataStat = "030"
@@ -138,8 +137,7 @@ object MonitorStatus {
   }
 
   def isSpanCalibration(s: String): Boolean = {
-    val CALIBRATION_STATS = List(SpanCalibrationStat,
-      CalibrationPoint3, CalibrationPoint4, CalibrationPoint5, CalibrationPoint6).map(getTagInfo)
+    val CALIBRATION_STATS = List(SpanCalibrationStat).map(getTagInfo)
 
     CALIBRATION_STATS.contains(getTagInfo(s))
   }
