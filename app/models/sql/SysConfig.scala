@@ -144,7 +144,7 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
       sql"""
         CREATE TABLE [dbo].[sysConfig](
 	      [id] [nvarchar](50) NOT NULL,
-	      [value] [nvarchar](1024) NOT NULL,
+        [value] [nvarchar](max) NOT NULL,
 	      [blob] [varbinary](max) NULL,
       CONSTRAINT [PK_sysConfig] PRIMARY KEY CLUSTERED
       (
