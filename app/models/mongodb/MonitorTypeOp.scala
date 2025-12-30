@@ -1,7 +1,7 @@
 package models.mongodb
 
 import models.ModelHelper.{errorHandler, waitReadyResult}
-import models.{AlarmDB, MonitorType, MonitorTypeDB, ThresholdConfig}
+import models.{AlarmDB, MonitorType, MonitorTypeDB, MonitorTypeMore}
 import org.bson.codecs.configuration.CodecRegistry
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.conversions.Bson
@@ -26,7 +26,7 @@ class MonitorTypeOp @Inject()(mongodb: MongoDB, alarmDB: AlarmDB) extends Monito
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
   import org.mongodb.scala.bson.codecs.Macros._
 
-  lazy val codecRegistry: CodecRegistry = fromRegistries(fromProviders(classOf[MonitorType], classOf[ThresholdConfig]), DEFAULT_CODEC_REGISTRY)
+  lazy val codecRegistry: CodecRegistry = fromRegistries(fromProviders(classOf[MonitorType], classOf[MonitorTypeMore]), DEFAULT_CODEC_REGISTRY)
   lazy val colName = "monitorTypes"
   lazy val collection: MongoCollection[MonitorType] = mongodb.database.getCollection[MonitorType](colName).withCodecRegistry(codecRegistry)
 

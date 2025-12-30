@@ -5,8 +5,8 @@ import models.DataCollectManager.MonitorTypeData
 import java.time.ZoneId
 import java.util.Date
 
-case class ThresholdConfig(elapseTime: Int)
-
+case class MonitorTypeMore(rangeMin: Option[Double] = None,
+                           rangeMax: Option[Double] = None)
 case class MonitorType(_id: String,
                        desp: String,
                        unit: String,
@@ -26,8 +26,7 @@ case class MonitorType(_id: String,
                        fixedM: Option[Double] = None,
                        fixedB: Option[Double] = None,
                        overLawSignalType: Option[String] = None,
-                       rangeMin: Option[Double] = None,
-                       rangeMax: Option[Double] = None) {
+                       more: MonitorTypeMore = MonitorTypeMore()) {
 
   def addMeasuring(instrumentId: String, append: Boolean): Unit = {
     if (measuringBy.isEmpty)

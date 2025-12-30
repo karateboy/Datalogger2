@@ -41,6 +41,11 @@ export interface ThresholdConfig {
   elapseTime: number;
 }
 
+export interface MonitorTypeMore {
+  rangeMin?: number;
+  rangeMax?: number;
+}
+
 export interface MonitorType {
   _id: string;
   desp: string;
@@ -63,8 +68,7 @@ export interface MonitorType {
   fixedM?: number;
   fixedB?: number;
   overLawSignalType?: string;
-  rangeMin?: number;
-  rangeMax?: number;
+  more: MonitorTypeMore;
 }
 
 export interface CellData {
