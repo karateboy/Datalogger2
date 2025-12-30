@@ -21,6 +21,7 @@ class Realtime @Inject()
  recordDB: RecordDB,
  sysConfigDB: SysConfigDB,
  security: Security,
+ groupDB: GroupDB,
  cc: ControllerComponents) extends AbstractController(cc) {
   val logger: Logger = Logger(this.getClass)
   private val overTimeLimit = 6
@@ -36,6 +37,8 @@ class Realtime @Inject()
 
   def MonitorTypeStatusList(): Action[AnyContent] = security.Authenticated.async {
     implicit request =>
+      val userInfo = security.getUserinfo(request).get
+      val group = groupDB.getGroupByID(userInfo.group).get
 
       implicit val mtsWrite: OWrites[MonitorTypeStatus] = Json.writes[MonitorTypeStatus]
 
@@ -46,7 +49,7 @@ class Realtime @Inject()
         } yield {
           val list = {
             for {
-              mt <- monitorTypeOp.realtimeMtvList.sortBy(monitorTypeOp.map(_).order)
+              mt <- monitorTypeOp.measuringList.sortBy(monitorTypeOp.map(_).order)
               recordOpt = dataMap.get(mt)
             } yield {
               val mCase = monitorTypeOp.map(mt)
@@ -55,13 +58,13 @@ class Realtime @Inject()
                   instrumentList.mkString(",")
               }.getOrElse("??")
 
-              def instrumentStatus() = {
+              def instrumentStatus(): String = {
                 val ret =
                   for (measuringBy <- mCase.measuringBy) yield {
                     val instruments: List[Instrument] =
                       measuringBy.flatMap(instrumentMap.get)
 
-                    if (instruments.exists(inst => !inst.active))
+                    if (instruments.forall(inst => !inst.active))
                       "停用"
                     else
                       "斷線"
@@ -74,30 +77,37 @@ class Realtime @Inject()
                 val duration = new Duration(record.time, DateTime.now())
                 val (overInternal, overLaw) = monitorTypeOp.overStd(mt, record.value)
                 val status = if (duration.getStandardSeconds <= overTimeLimit)
-                  monitorStatusOp.map(record.status).desp
+                  monitorStatusOp.map(record.status).name
                 else
                   instrumentStatus()
 
                 MonitorTypeStatus(_id = mCase._id, desp = mCase.desp, monitorTypeOp.format(mt, record.value),
                   mCase.unit, measuringByStr,
                   status,
-                  MonitorStatus.getCssClassStr(record.status, overInternal, overLaw), mCase.order)
+                  MonitorStatus.getCssClassStr(record.status, overInternal, overLaw),
+                  monitorStatusOp.map(record.status).priority * 100 + mCase.order)
               } else {
                 if (instrumentStatus == "停用")
                   MonitorTypeStatus(_id = mCase._id, mCase.desp, monitorTypeOp.format(mt, None),
                     mCase.unit, measuringByStr,
                     instrumentStatus(),
-                    Seq("stop_status"), mCase.order)
+                    Seq("stop_status"), 10000)
                 else
                   MonitorTypeStatus(_id = mCase._id, mCase.desp, monitorTypeOp.format(mt, None),
                     mCase.unit, measuringByStr,
                     instrumentStatus(),
-                    Seq("disconnect_status"), mCase.order)
+                    Seq("disconnect_status"), -1)
               }
             }
           }
 
-          Ok(Json.toJson(list))
+          // filter out not allowed monitorTypes
+          val allowedList = if (userInfo.isAdmin)
+            list.sortBy(_.order)
+          else
+            list.filter(mtStatus => group.monitorTypes.contains(mtStatus._id)).sortBy(_.order)
+
+          Ok(Json.toJson(allowedList))
         }
 
       result
@@ -105,7 +115,7 @@ class Realtime @Inject()
 
   case class RealtimeAQI(date: Date, aqi: AqiExplainReport)
 
-  def getRealtimeAQI: Action[AnyContent] = security.Authenticated.async {
+  def getRealtimeAQI: Action[AnyContent] = Action.async {
     val lastHour = DateTime.now().minusHours(1).withMinuteOfHour(0)
       .withSecondOfMinute(0).withMillisOfSecond(0)
     for (ret <- AQI.getMonitorRealtimeAQI(Monitor.activeId, lastHour)(recordDB)) yield {

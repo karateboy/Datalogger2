@@ -26,6 +26,7 @@ trait SysConfigDB {
   val SMS_PHONES = "SmsPhones"
   val LINE_CHANNEL_TOKEN = "LineChannelToken"
   val LINE_CHANNEL_GROUP_ID = "LineChannelGroupId"
+  val HOUR_CALCULATION_RULES = "HourCalculationRules"
 
   def getSpectrumLastParseTime: Future[Instant]
 
@@ -91,4 +92,8 @@ trait SysConfigDB {
   def getLineChannelGroupId: Future[Seq[String]]
 
   def setLineChannelGroupId(groupId: Seq[String]): Future[UpdateResult]
+
+  def getHourCalculationRules: Future[Seq[HourCalculationRule]]
+
+  def setHourCalculationRules(rules:Seq[HourCalculationRule]): Future[UpdateResult]
 }

@@ -251,6 +251,20 @@ const router = new VueRouter({
             },
         },
         {
+            path: '/instrument-maintenance',
+            name: 'instrument-maintenance',
+            component: () => import('@/views/InstrumentMaintenance.vue'),
+            meta: {
+                pageTitle: '維護操作',
+                breadcrumb: [
+                    {
+                        text: '維護操作',
+                        active: true,
+                    },
+                ],
+            },
+        },
+        {
             path: '/instrument-management',
             name: 'instrument-management',
             component: () => import('@/views/InstrumentManagement.vue'),
@@ -371,6 +385,24 @@ const router = new VueRouter({
                     },
                     {
                         text: '測項管理',
+                        active: true,
+                    },
+                ],
+            },
+        },
+        {
+            path: '/monitor-status-config',
+            name: 'monitor-status-config',
+            component: () => import('@/views/MonitorStatusConfig.vue'),
+            meta: {
+                pageTitle: '狀態碼管理',
+                breadcrumb: [
+                    {
+                        text: '系統管理',
+                        active: true,
+                    },
+                    {
+                        text: '狀態碼管理',
                         active: true,
                     },
                 ],

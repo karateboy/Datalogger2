@@ -35,7 +35,8 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
                                          (instId: String,
                                           modelReg: ModelReg,
                                           tapiConfig: TapiConfig,
-                                          host: String) extends Actor{
+                                          host: String) extends Actor {
+
   import DataCollectManager._
   import context.dispatcher
 
@@ -299,7 +300,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
         collectorState = state
         instrumentOp.setState(instId, collectorState)
       }
-      log.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
+      log.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
 
     case AutoCalibration(instId) =>
       executeCalibration(AutoZero)
@@ -319,6 +320,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
   }
 
   def triggerVault(zero: Boolean, on: Boolean): Unit
+
   // Only for T700
   def executeSeq(seq: String, on: Boolean): Unit = {}
 
@@ -376,7 +378,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
         context become normalReceive()
       }
 
-      log.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
+      log.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
 
     case RaiseStart =>
       collectorState =
@@ -445,7 +447,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
       }.failed.foreach(calibrationErrorHandler(instId, timerOpt, endState))
 
     case rd: ReportData =>
-      if(recordCalibration)
+      if (recordCalibration)
         context become calibrationHandler(calibrationType, startTime, recordCalibration, rd :: calibrationReadingList,
           zeroReading, endState, timerOpt)
 
@@ -518,7 +520,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
         instrumentOp.setState(instId, collectorState)
         resetToNormal()
         context become normalReceive()
-        log.info(s"$self => ${monitorStatusOp.map(collectorState).desp}")
+        log.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
       }
   }
 
@@ -654,10 +656,10 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
   }
 
   override def postStop(): Unit = {
-    if (timerOpt.isDefined)
-      timerOpt.get.cancel()
+    for (timer <- timerOpt)
+      timer.cancel()
 
-    if (masterOpt.isDefined)
-      masterOpt.get.destroy()
+    for (master <- masterOpt)
+      master.destroy()
   }
 }

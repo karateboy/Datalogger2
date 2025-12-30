@@ -134,7 +134,14 @@ export default Vue.extend({
         },
       },
       {
-        text: '設定警報',
+        text: '維護操作',
+        value: {
+          action: 'set',
+          subject: 'Maintenance',
+        },
+      },
+      {
+        text: '系統管理',
         value: {
           action: 'set',
           subject: 'Alarm',
@@ -150,7 +157,7 @@ export default Vue.extend({
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
-    ...mapState('monitors', ['monitors']),
+    ...mapState('monitors', ['monitors', 'activeID']),
     btnTitle(): string {
       if (this.isNew) return '新增';
       return '更新';
@@ -174,18 +181,18 @@ export default Vue.extend({
     monitorTypeOptions(): Array<TextStrValue> {
       const ret = Array<TextStrValue>();
 
-      let monitorTyes: Array<any> = this.monitorTypes;
+      let monitorTypes: Array<any> = this.monitorTypes;
       if (this.group.parent) {
         const parentGroup = this.groupList.find((group, index) => {
           return group._id === this.group.parent;
         }) as Group;
 
-        monitorTyes = this.monitorTypes.filter((mt: any) => {
+        monitorTypes = this.monitorTypes.filter((mt: any) => {
           return parentGroup.monitorTypes.indexOf(mt._id) !== -1;
         });
       }
 
-      for (const mt of monitorTyes) ret.push({ text: mt.desp, value: mt._id });
+      for (const mt of monitorTypes) ret.push({ text: mt.desp, value: mt._id });
 
       return ret;
     },
@@ -207,6 +214,12 @@ export default Vue.extend({
         group.name = self.name;
         group.admin = self.admin;
         group.monitors = self.monitors;
+
+        console.info('group',group);
+        console.info('activeID',this.activeID);
+        if(group.monitors.indexOf(this.activeID) === -1)
+          { group.monitors.push(this.activeID); }
+
         group.monitorTypes = self.monitorTypes;
         group.abilities = self.abilities;
         group.parent = self.parent;
@@ -214,6 +227,7 @@ export default Vue.extend({
     },
     reset() {
       this.copyProp(this.group);
+      this.$emit('updated');
     },
     async getGroupList() {
       const res = await axios.get('/Groups');

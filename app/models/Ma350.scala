@@ -9,7 +9,7 @@ import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, blocking}
 
-object Ma350Drv extends AbstractDrv(_id = "MA350", desp = "microAeth MA350",
+object Ma350Drv extends AbstractDrv(_id = "MA350", name = "microAeth MA350",
   protocols = List(Protocol.serial)) {
   override val logger: Logger = Logger(this.getClass)
   // tape position,flow total,UV BCc,Blue BCc,Green BCc,Red BCc, IR BCc

@@ -11,7 +11,7 @@ import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, blocking}
 
-object PicarroG2401 extends AbstractDrv(_id = "picarroG2401", desp = "Picarro G2401",
+object PicarroG2401 extends AbstractDrv(_id = "picarroG2401", name = "Picarro G2401",
   protocols = List(Protocol.tcp)) {
   val predefinedIST = List(
     InstrumentStatusType(key = "CavityPressure", addr = 0, desc = "Cavity Pressure", ""),

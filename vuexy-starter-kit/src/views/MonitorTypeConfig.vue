@@ -11,11 +11,27 @@
         selected-variant="info"
         bordered
         sticky-header
+        :per-page="10"
+        :current-page="currentPage"
         style="max-height: 650px"
         @row-selected="onMtSelected"
       >
         <template #cell(desp)="row">
           <b-form-input v-model="row.item.desp" @change="markDirty(row.item)" />
+        </template>
+        <template #cell(rangeMin)="row">
+          <b-form-input
+              v-model.number="row.item.rangeMin"
+              size="sm"
+              @change="markDirty(row.item)"
+          />
+        </template>
+        <template #cell(rangeMax)="row">
+          <b-form-input
+              v-model.number="row.item.rangeMax"
+              size="sm"
+              @change="markDirty(row.item)"
+          />
         </template>
         <template #cell(unit)="row">
           <b-form-input
@@ -41,13 +57,6 @@
         <template #cell(std_law)="row">
           <b-form-input
             v-model.number="row.item.std_law"
-            size="sm"
-            @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(thresholdConfig)="row">
-          <b-form-input
-            v-model.number="row.item.thresholdConfig.elapseTime"
             size="sm"
             @change="markDirty(row.item)"
           />
@@ -132,6 +141,16 @@
           />
         </template>
       </b-table>
+      <b-pagination
+          v-model="currentPage"
+          :total-rows="monitorTypes.length"
+          :per-page="10"
+          first-text="⏮"
+          prev-text="⏪"
+          next-text="⏩"
+          last-text="⏭"
+          class="mt-4"
+      ></b-pagination>
       <b-row>
         <b-col>
           <b-button
@@ -204,7 +223,7 @@
 import Vue from 'vue';
 const Ripple = require('vue-ripple-directive');
 import axios from 'axios';
-import { MonitorType, ThresholdConfig } from './types';
+import { MonitorType } from './types';
 import { isNumber } from 'highcharts';
 
 interface EditMonitorType extends MonitorType {
@@ -230,6 +249,14 @@ export default Vue.extend({
       {
         key: 'desp',
         label: '名稱',
+      },
+      {
+        key: 'rangeMin',
+        label: '偵測下限',
+      },
+      {
+        key: 'rangeMax',
+        label: '偵測上限',
       },
       {
         key: 'unit',
@@ -332,23 +359,29 @@ export default Vue.extend({
       },
       form,
       selected: Array<MonitorType>(),
+      currentPage: 1,
       form2
     };
   },
   async mounted() {
-    this.getMonitorTypes();
+    await this.getMonitorTypes();
     await this.getSignalTypes();
   },
   methods: {
-    getMonitorTypes() {
-      axios.get('/MonitorType').then(res => {
-        this.monitorTypes = res.data;
-        for (const mt of this.monitorTypes) {
-          if (mt.levels !== undefined) {
-            mt.levelSeq = mt.levels.join(',');
+    async getMonitorTypes() {
+      try{
+        let res = await axios.get('/MonitorType');
+        if(res.status === 200){
+          this.monitorTypes = res.data;
+          for (const mt of this.monitorTypes) {
+            if (mt.levels !== undefined) {
+              mt.levelSeq = mt.levels.join(',');
+            }
           }
         }
-      });
+      }catch(error){
+        console.log(error);
+      }
     },
     async getSignalTypes() {
       try {
@@ -377,6 +410,8 @@ export default Vue.extend({
       if (!isNumber(mt.fixedB)) mt.fixedB = undefined;
       if (!isNumber(mt.fixedM)) mt.fixedM = undefined;
       if(!isNumber(mt.mdl)) mt.mdl = undefined;
+      if(!isNumber(mt.rangeMax)) mt.rangeMax = undefined;
+      if(!isNumber(mt.rangeMin)) mt.rangeMin = undefined;
     },
     checkLevel(levelSeq: string | undefined): boolean {
       try {
@@ -410,10 +445,6 @@ export default Vue.extend({
     },
     markDirty(item: any) {
       item.dirty = true;
-    },
-    setMtThresholdConfig() {
-      this.editingMt.thresholdConfig = this.form.thresholdConfig;
-      this.markDirty(this.editingMt);
     },
     onMtSelected(items: Array<MonitorType>) {
       this.selected = items;

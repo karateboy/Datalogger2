@@ -81,7 +81,8 @@ class T700Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
       lastSeqNo = seq
       try {
         val locator = BaseLocator.coilStatus(config.slaveID, seq)
-        masterOpt.get.setValue(locator, on)
+        for (master <- masterOpt)
+          master.setValue(locator, on)
       } catch {
         case ex: Exception =>
           ModelHelper.logException(ex)

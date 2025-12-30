@@ -96,6 +96,13 @@ export default [
         ],
     },
     {
+        title: '維護操作',
+        icon: 'ActivityIcon',
+        route: 'instrument-maintenance',
+        action: 'set',
+        resource: 'Maintenance',
+    },
+    {
         title: '系統管理',
         icon: 'SettingsIcon',
         children: [
@@ -118,6 +125,10 @@ export default [
             {
                 title: '測項群組管理',
                 route: 'monitor-type-group',
+            },
+            {
+                title: '狀態碼管理',
+                route: 'monitor-status-config',
             },
             {
                 title: '多點校正管理',

@@ -11,7 +11,7 @@ import play.api.libs.json.Json
 import javax.inject.Inject
 import scala.concurrent.{Future, blocking}
 
-object EcoPhysics88P extends AbstractDrv(_id = "EcoPhysics88P", desp = "Eco Physics 88P",
+object EcoPhysics88P extends AbstractDrv(_id = "EcoPhysics88P", name = "Eco Physics 88P",
   protocols = List(Protocol.serial)) {
   override val logger: Logger = Logger(this.getClass)
   val instrumentStatusKeyList = List(

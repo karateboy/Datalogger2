@@ -44,6 +44,8 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
                 ,[overLawSignalType] = ${mt.overLawSignalType}
                 ,[group] = ${mt.group}
                 ,[mdl] = ${mt.mdl}
+                ,[rangeMin] = ${mt.rangeMin}
+                ,[rangeMax] = ${mt.rangeMax}
             WHERE [id] = ${mt._id}
           IF(@@ROWCOUNT = 0)
             BEGIN
@@ -69,7 +71,8 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
            ,[overLawSignalType]
            ,[group]
            ,[mdl]
-           )
+           ,[rangeMin]
+           ,[rangeMax])
           VALUES
               (${mt._id}
                 ,${mt.desp}
@@ -91,7 +94,9 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
                 ,${mt.fixedB}
                 ,${mt.overLawSignalType}
                 ,${mt.group}
-                ,${mt.mdl})
+                ,${mt.mdl}
+                ,${mt.rangeMin}
+                ,${mt.rangeMax})
             END
          """.update().apply()
     UpdateResult.acknowledged(ret, ret, null)
@@ -128,7 +133,9 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
       fixedB = rs.doubleOpt("fixedB"),
       overLawSignalType = rs.stringOpt("overLawSignalType"),
       group = rs.stringOpt("group"),
-      mdl = rs.doubleOpt("mdl"))
+      mdl = rs.doubleOpt("mdl"),
+      rangeMin = rs.doubleOpt("rangeMin"),
+      rangeMax = rs.doubleOpt("rangeMax"))
   }
 
   override def deleteItemFuture(_id: String): Unit = {
@@ -164,6 +171,8 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
             [overLawSignalType] [nvarchar](50),
             [group] [nvarchar](50),
             [mdl] [float] NULL,
+            [rangeMin] [float] NULL,
+            [rangeMax] [float] NULL,
         CONSTRAINT [PK_monitorType] PRIMARY KEY CLUSTERED
         (
 	        [id] ASC
@@ -205,6 +214,20 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
       sql"""
           Alter Table monitorType
           Add [mdl] float;
+         """.execute().apply()
+    }
+
+    if(!sqlServer.getColumnNames(tabName).contains("rangeMin")){
+      sql"""
+          Alter Table monitorType
+          Add [rangeMin] float;
+         """.execute().apply()
+    }
+
+    if(!sqlServer.getColumnNames(tabName).contains("rangeMax")){
+      sql"""
+          Alter Table monitorType
+          Add [rangeMax] float;
          """.execute().apply()
     }
 

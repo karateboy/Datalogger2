@@ -32,6 +32,7 @@ case class DisplayReport(columnNames: Seq[String], rows: Seq[RowData], statRows:
 class Report @Inject()(monitorTypeOp: MonitorTypeDB,
                        recordOp: RecordDB,
                        query: Query,
+                       groupDB: GroupDB,
                        excelUtility: ExcelUtility,
                        security: Security,
                        cc: ControllerComponents) extends AbstractController(cc) {
@@ -42,13 +43,19 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
 
   def getMonitorReport(reportTypeStr: String, startNum: Long, outputTypeStr: String): Action[AnyContent] = security.Authenticated {
     implicit request =>
+      val userInfo = security.getUserinfo(request).get
+      val group = groupDB.getGroupByID(userInfo.group).get
+
       val reportType = PeriodReport.withName(reportTypeStr)
       val outputType = OutputType.withName(outputTypeStr)
+      val mtList = if (userInfo.isAdmin)
+        monitorTypeOp.measuringList
+      else
+        monitorTypeOp.measuringList filter group.monitorTypes.contains
 
       reportType match {
         case PeriodReport.DailyReport =>
           val startDate = new DateTime(startNum).withMillisOfDay(0)
-          val mtList = monitorTypeOp.realtimeMtvList
           val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, mtList, startDate, startDate + 1.day)
           val mtTimeMap: Map[String, Map[DateTime, Record]] = periodMap.map { pair =>
             val k = pair._1
@@ -118,8 +125,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
 
         case PeriodReport.MonthlyReport =>
           val start = new DateTime(startNum).withMillisOfDay(0).withDayOfMonth(1)
-          val mtList = monitorTypeOp.realtimeMtvList
-          val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, monitorTypeOp.activeMtvList, start, start + 1.month)
+          val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, monitorTypeOp.measuredList, start, start + 1.month)
           val statMap = query.getPeriodStatReportMap(periodMap, 1.day)(start, start + 1.month)
           val overallStatMap = getOverallStatMap(statMap, 20)
           val avgRow = {
@@ -185,16 +191,91 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
           }
 
         case PeriodReport.YearlyReport =>
-          val start = new DateTime(startNum)
-          val startDate = start.withMillisOfDay(0).withDayOfMonth(1).withMonthOfYear(1)
-          val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, monitorTypeOp.activeMtvList, startDate, startDate + 1.year)
-          val statMap = query.getPeriodStatReportMap(periodMap, 1.month)(start, start + 1.year)
-          val overallStatMap = getOverallStatMap(statMap, 12)
-          Ok("")
+          val rawStart = new DateTime(startNum)
+          val yearStart = rawStart.withMillisOfDay(0).withDayOfMonth(1).withMonthOfYear(1)
+          val monthReportMap = scala.collection.mutable.Map.empty[DateTime, Map[String, Stat]]
 
-        //case PeriodReport.MonthlyReport =>
-        //val nDays = monthlyReport.typeArray(0).dataList.length
-        //("月報", "")
+          for (m <- scala.collection.immutable.Range.inclusive(0, 11)) {
+            val monthStart = yearStart + m.month
+            val periodMap = recordOp.getRecordMap(recordOp.HourCollection)(Monitor.activeId, monitorTypeOp.measuredList, monthStart, monthStart + 1.month)
+            val statMap = query.getPeriodStatReportMap(periodMap, 1.day)(monthStart, monthStart + 1.month)
+            val overallStatMap = getOverallStatMap(statMap, 20)
+            monthReportMap.update(monthStart, overallStatMap)
+          }
+
+          def getAccumulationRow(name: String, accumulator: List[Double] => Option[Double]) = {
+            val accData =
+              for (mt <- mtList) yield {
+                val mtStats = monthReportMap.values.flatMap(_(mt).avg).toList
+                val acc = accumulator(mtStats)
+                CellData(monitorTypeOp.format(mt, acc), Seq.empty[String])
+              }
+            StatRow(name, accData)
+          }
+
+          val avgRow = getAccumulationRow("平均",
+            data => if (data.nonEmpty)
+              Some(data.sum / data.length)
+            else
+              None)
+
+          val maxRow = getAccumulationRow("最大",
+            data => if (data.nonEmpty)
+              Some(data.max)
+            else
+              None)
+
+          val minRow = getAccumulationRow("最小",
+            data => if (data.nonEmpty)
+              Some(data.min)
+            else
+              None)
+
+          val effectiveRow = {
+            val accData =
+              for (mt <- mtList) yield {
+                val mtStats = monthReportMap.values.map(_(mt).isEffective).toList
+                val rate = Some(mtStats.count(v => v).toDouble * 100 / mtStats.length)
+                CellData(monitorTypeOp.format(mt, rate), Seq.empty[String])
+              }
+            StatRow("有效率(%)", accData)
+          }
+
+          val statRows = Seq(avgRow, maxRow, minRow, effectiveRow)
+
+
+          val monthRow =
+            for (recordTime <- getPeriods(yearStart, yearStart + 1.year, 1.month)) yield {
+              val mtData =
+                for (mt <- mtList) yield {
+                  val status = if (monthReportMap(recordTime)(mt).isEffective)
+                    MonitorStatus.NormalStat
+                  else
+                    MonitorStatus.InvalidDataStat
+
+                  CellData(monitorTypeOp.format(mt, monthReportMap(recordTime)(mt).avg),
+                    MonitorStatus.getCssClassStr(status), Some(status))
+                }
+              RowData(recordTime.getMillis, mtData)
+            }
+          val columnNames = mtList map {
+            monitorTypeOp.map(_).desp
+          }
+          val yearlyReport = DisplayReport(columnNames, monthRow, statRows)
+          if (outputType == OutputType.html)
+            Ok(Json.toJson(yearlyReport))
+          else {
+            val (title, excelFile) =
+              ("年報" + yearStart.toString("YYYY"),
+                excelUtility.exportDisplayReport(s"${yearStart.toString("YYYY年")}監測年報 ",
+                  yearlyReport, monthlyReport = false))
+
+            Ok.sendFile(excelFile, fileName = _ =>
+              Some(s"$title.xlsx"),
+              onClose = () => {
+                Files.deleteIfExists(excelFile.toPath)
+              })
+          }
       }
   }
 
@@ -202,59 +283,84 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
     statMap.map { pair =>
       val mt = pair._1
       val dateMap = pair._2
+      val dates = dateMap.keys.toList
       val values = dateMap.values.filter(_.valid).toList
       val total = dateMap.values.size
       val count = values.size
       val overCount = values.map {
         _.overCount
       }.sum
-      val max = if (values.nonEmpty)
-        values.map {
-          _.avg
-        }.max
-      else
-        None
-      val min = if (values.nonEmpty)
-        values.map {
-          _.avg
-        }.min
-      else
-        None
-      val avg =
-        if (mt != MonitorType.WIN_DIRECTION) {
-          if (total == 0 || count == 0)
-            None
-          else {
-            val sum = values.flatMap(_.avg).sum
-            Some(sum / count)
-          }
-        } else {
-          val winSpeedMap = statMap(MonitorType.WIN_SPEED)
-          val dates = dateMap.keys.toList
-          val windDir = dates.map {
-            dateMap
-          }
-          val windSpeed = dates.map {
-            winSpeedMap
-          }
 
-          def windAvg1(): Option[Double] = {
-            val windRecord = windSpeed.zip(windDir).filter(w => w._1.avg.isDefined && w._2.avg.isDefined)
-            if (windRecord.isEmpty)
+      val max =
+        if (values.nonEmpty)
+          values.map {
+            _.avg
+          }.max
+        else
+          None
+
+      val min =
+        if (values.nonEmpty)
+          values.map {
+            _.avg
+          }.min
+        else
+          None
+
+      val avg =
+        mt match {
+          case MonitorType.WIN_DIRECTION =>
+            val windDir = values.flatMap(_.avg)
+            if (statMap.contains(MonitorType.WIN_SPEED)) {
+              val windSpeedMap = statMap(MonitorType.WIN_SPEED)
+              val windSpeed = dates flatMap {
+                windSpeedMap.get
+              }
+              directionOptAvg(windSpeed.map(_.avg), values.map(_.avg))
+            } else { //assume wind speed is all equal
+              val windSpeed =
+                for (r <- 1 to windDir.length)
+                  yield Some(1.0)
+
+              directionOptAvg(windSpeed, values.map(_.avg))
+            }
+          case MonitorType.WD10 =>
+            val windDir = values.flatMap(_.avg)
+            if (statMap.contains(MonitorType.WS10)) {
+              val windSpeedMap = statMap(MonitorType.WS10)
+              val windSpeed = dates flatMap {
+                windSpeedMap.get
+              }
+              directionOptAvg(windSpeed.map(_.avg), values.map(_.avg))
+            } else { //assume wind speed is all equal
+              val windSpeed =
+                for (r <- 1 to windDir.length)
+                  yield Some(1.0)
+
+              directionOptAvg(windSpeed, values.map(_.avg))
+            }
+
+          case MonitorType.WIN_SPEED =>
+            if (statMap.contains(MonitorType.WIN_DIRECTION)) {
+              val winDirMap = statMap(MonitorType.WIN_DIRECTION)
+              val windDir = dates flatMap {
+                winDirMap.get
+              }
+              speedOptAvg(values.map(_.avg), windDir.map(_.avg))
+            } else
+              None
+
+          case MonitorType.RAIN =>
+            Some(values.flatMap(_.avg).sum)
+
+          case _ =>
+            if (total == 0 || count == 0)
               None
             else {
-              val wind_sin = windRecord.map {
-                v => v._1.avg.get * Math.sin(Math.toRadians(v._2.avg.get))
-              }.sum
-
-              val wind_cos = windRecord.map(v => v._1.avg.get * Math.cos(Math.toRadians(v._2.avg.get))).sum
-              Some(directionAvg(wind_sin, wind_cos))
+              val sum = values.flatMap(_.avg).sum
+              Some(sum / count)
             }
-          }
-
-          windAvg1()
         }
-
       mt -> Stat(
         avg = avg,
         min = min,

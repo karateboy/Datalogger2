@@ -15,7 +15,7 @@ trait MonitorTypeDB {
   implicit val configRead: Reads[ThresholdConfig] = Json.reads[ThresholdConfig]
   implicit val mtWrite: OWrites[MonitorType] = Json.writes[MonitorType]
   implicit val mtRead: Reads[MonitorType] = Json.reads[MonitorType]
-  val defaultMonitorTypes = List(
+  val defaultMonitorTypes: List[MonitorType] = List(
     rangeType(SO2, "二氧化硫", "ppb", 2),
     rangeType(NOX, "氮氧化物", "ppb", 2),
     rangeType(NO2, "二氧化氮", "ppb", 2),
@@ -53,15 +53,16 @@ trait MonitorTypeDB {
     rangeType(LEQA, "LeqA", "dB", 2, accumulated = true),
     rangeType(LEQZ, "LeqZ", "dB", 2, accumulated = true),
     rangeType(LDN, "LDN", "dB", 2, accumulated = true),
+    rangeType(WD10, "前10分風向向量平均", "degrees", 2),
+    rangeType(WS10, "前10分風速算術平均", "m/sec", 2),
     /////////////////////////////////////////////////////
     signalType(DOOR, "門禁"),
     signalType(SMOKE, "煙霧"),
     signalType(FLOW, "採樣流量"),
     signalType("SPRAY", "灑水"))
 
-  private val calculatedMonitorTypes: Seq[String] = calculatedMonitorTypeEntries.map(_._2)
 
-  private val mtToEpaMtMap: Map[String, String] = Map(
+  private val mtEpaIdMap: Map[String, String] = Map(
     MonitorType.TEMP -> "14",
     MonitorType.CH4 -> "31",
     MonitorType.CO -> "02",
@@ -80,21 +81,22 @@ trait MonitorTypeDB {
     MonitorType.WIN_DIRECTION -> "11",
     MonitorType.WIN_SPEED -> "10")
 
-  val epaToMtMap: Map[Int, String] = mtToEpaMtMap.map(pair => pair._2.toInt -> pair._1)
-  val epaMonitorTypes: List[String] = mtToEpaMtMap.keys.toList
+  val epaToMtMap: Map[Int, String] = mtEpaIdMap.map(pair => pair._2.toInt -> pair._1)
 
-  @volatile var mtvList = List.empty[String]
-  @volatile var signalMtvList = List.empty[String]
+  @volatile var rangeList = List.empty[String]
+  @volatile var signalList = List.empty[String]
   @volatile var map = Map.empty[String, MonitorType]
-  @volatile var diValueMap = Map.empty[String, Boolean]
+  private var diValueMap = Map.empty[String, Boolean]
+
+  def nameIdMap: Map[String, String] = map map { pair => pair._2.desp -> pair._1 }
 
   def signalType(_id: String, desp: String): MonitorType = {
     signalOrder += 1
-    MonitorType(_id, desp, "N/A", 0, signalOrder, true)
+    MonitorType(_id, desp, "N/A", 0, signalOrder, signalType = true)
   }
 
   def logDiMonitorType(alarmDB: AlarmDB, mt: String, v: Boolean): Unit = {
-    if (!signalMtvList.contains(mt))
+    if (!signalList.contains(mt))
       logger.warn(s"${mt} is not DI monitor type!")
 
     val previousValue = diValueMap.getOrElse(mt, !v)
@@ -109,30 +111,15 @@ trait MonitorTypeDB {
   }
 
   protected def refreshMtv(): Unit = {
-    val list = getList.sortBy {
+    val mtListFromDb = getList.sortBy {
       _.order
     }
-    val mtPair =
-      for (mt <- list) yield {
-        try {
-          val mtv = mt._id
-          mtv -> mt
-        } catch {
-          case _: NoSuchElementException =>
-            mt._id -> mt
-        }
-      }
 
-    val rangeList = list.filter { mt => !mt.signalType }
-    val rangeMtvList = rangeList.map(mt => mt._id)
-    val signalList = list.filter { mt => mt.signalType }
-    val signalMvList = signalList.map(mt => mt._id)
-    mtvList = rangeMtvList
-    signalMtvList = signalMvList
-    map = mtPair.toMap
+    map = (mtListFromDb map { mt => mt._id -> mt }).toMap
+    rangeList = mtListFromDb.filter { mt => !mt.signalType } map (mt => mt._id)
+    signalList = mtListFromDb.filter { mt => mt.signalType } map (mt => mt._id)
 
     // ensure calculated types
-    logger.info(s"calculated mt = $calculatedMonitorTypes")
     for (mt <- calculatedMonitorTypes)
       ensure(mt)
   }
@@ -142,7 +129,7 @@ trait MonitorTypeDB {
   def ensure(id: String): Unit =
     synchronized {
       if (!map.contains(id)) {
-        val mt = defaultMonitorTypes.find(_._id==id).getOrElse(rangeType(id, id, "??", 2))
+        val mt = defaultMonitorTypes.find(_._id == id).getOrElse(rangeType(id, id, "??", 2))
         mt.measuringBy = Some(List.empty[String])
         upsertMonitorType(mt)
       } else {
@@ -179,9 +166,9 @@ trait MonitorTypeDB {
         val mt = map(_id)
         map = map - _id
         if (mt.signalType)
-          signalMtvList = signalMtvList.filter(p => p != _id)
+          signalList = signalList.filter(p => p != _id)
         else
-          mtvList = mtvList.filter(p => p != _id)
+          rangeList = rangeList.filter(p => p != _id)
 
         deleteItemFuture(_id)
       }
@@ -190,15 +177,22 @@ trait MonitorTypeDB {
 
   def deleteItemFuture(_id: String): Unit
 
-  def allMtvList: List[String] = mtvList ++ signalMtvList
+  def allMtvList: List[String] = rangeList ++ signalList
 
-  def activeMtvList: List[String] = mtvList.filter { mt => map(mt).measuringBy.isDefined }
+  def measuredList: List[String] = rangeList.filter { mt => map(mt).measuringBy.isDefined }
+
+  // Realtime measuring monitorTypes exclude calculated monitorTypes
+  def measuringList: List[String] = rangeList.filter { mt =>
+    map(mt).measuringBy.getOrElse(Seq.empty[String]).nonEmpty
+  }
+
+  def nonCalculatedMeasuringList: List[String] = measuringList.filter(!IsCalculated(_))
 
   def addMeasuring(mt: String, instrumentId: String, append: Boolean, recordDB: RecordDB): Future[UpdateResult] = {
     recordDB.ensureMonitorType(mt)
     synchronized {
       if (!map.contains(mt)) {
-        val mtCase = rangeType(mt, mt, "??", 2)
+        val mtCase = defaultMonitorTypes.find(_._id == mt).getOrElse(rangeType(mt, mt, "??", 2))
         mtCase.addMeasuring(instrumentId, append)
         upsertMonitorType(mtCase)
       } else {
@@ -213,11 +207,11 @@ trait MonitorTypeDB {
     synchronized {
       map = map + (mt._id -> mt)
       if (mt.signalType) {
-        if (!signalMtvList.contains(mt._id))
-          signalMtvList = signalMtvList :+ mt._id
+        if (!signalList.contains(mt._id))
+          signalList = signalList :+ mt._id
       } else {
-        if (!mtvList.contains(mt._id))
-          mtvList = mtvList :+ mt._id
+        if (!rangeList.contains(mt._id))
+          rangeList = rangeList :+ mt._id
       }
 
       upsertItemFuture(mt)
@@ -227,7 +221,7 @@ trait MonitorTypeDB {
   protected def upsertItemFuture(mt: MonitorType): Future[UpdateResult]
 
   def stopMeasuring(instrumentId: String): Future[Seq[UpdateResult]] = {
-    val mtSet = realtimeMtvList.toSet ++ signalMtvList.toSet
+    val mtSet = measuringList.toSet ++ signalList.toSet
     val allF: Seq[Future[UpdateResult]] =
       for {mt <- mtSet.toSeq
            instrumentList <- map(mt).measuringBy if instrumentList.contains(instrumentId)
@@ -237,11 +231,6 @@ trait MonitorTypeDB {
         upsertItemFuture(newMt)
       }
     Future.sequence(allF)
-  }
-
-  def realtimeMtvList: List[String] = mtvList.filter { mt =>
-    val measuringBy = map(mt).measuringBy
-    measuringBy.isDefined && measuringBy.get.nonEmpty
   }
 
   def format(mt: String, v: Option[Double], precisionOpt: Option[Int] = None): String = {
@@ -307,14 +296,4 @@ trait MonitorTypeDB {
     MtRecord(mt, value, status, rawValue = rawValue)
   }
 
-
-  def populateCalculatedTypes(mtList:Seq[String]): Seq[String] = {
-    val calculatedMtvList: Seq[String] = calculatedMonitorTypeEntries.flatMap(pair=>
-      if(pair._1.forall(mtList.contains))
-        Seq(pair._2)
-      else
-        Seq.empty[String]
-    )
-    mtList ++ calculatedMtvList
-  }
 }

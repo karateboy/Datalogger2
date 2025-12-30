@@ -11,7 +11,7 @@ import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, blocking}
 
-object PicarroG2307 extends AbstractDrv(_id = "picarroG2307", desp = "Picarro G2307",
+object PicarroG2307 extends AbstractDrv(_id = "picarroG2307", name = "Picarro G2307",
   protocols = List(Protocol.tcp)) {
   override val logger: Logger = Logger(this.getClass)
   val predefinedIST = List(
@@ -68,6 +68,8 @@ class PicarroG2307Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
   @volatile var socketOpt: Option[Socket] = None
   @volatile var outOpt: Option[OutputStream] = None
   @volatile var inOpt: Option[BufferedReader] = None
+
+  override val logger: Logger = Logger(this.getClass)
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = predefinedIST
 

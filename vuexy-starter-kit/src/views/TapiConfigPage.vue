@@ -44,7 +44,7 @@
       </b-col>
       <b-col cols="12">
         <b-form-group
-          label="全幅持續時間(秒)"
+          label="校正讀取時間(秒)"
           label-for="holdTime"
           label-cols-md="3"
         >

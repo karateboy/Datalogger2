@@ -1,4 +1,5 @@
 package models
+
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
 
@@ -10,7 +11,7 @@ object T300Collector extends TapiTxx(ModelConfig("T300", List(MonitorType.CO))) 
   var vCO: Option[Double] = None
 
   trait Factory {
-    def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, host:String): Actor
+    def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, host: String): Actor
   }
 
   trait CliFactory {
@@ -20,11 +21,11 @@ object T300Collector extends TapiTxx(ModelConfig("T300", List(MonitorType.CO))) 
               @Assisted("protocolParam") protocol: ProtocolParam): Actor
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor ={
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt: Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Factory])
     val f2 = f.asInstanceOf[Factory]
     val driverParam = validateParam(param)
-    if(protocol.protocol == Protocol.tcp)
+    if (protocol.protocol == Protocol.tcp)
       f2(id, modelReg, driverParam, protocol.host.get)
     else {
       assert(fOpt.get.isInstanceOf[CliFactory])
@@ -45,13 +46,14 @@ class T300Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
                               alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
                               calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                              (@Assisted("instId") instId: String, @Assisted modelReg: ModelReg,
-                              @Assisted config: TapiConfig, @Assisted host:String)
+                              @Assisted config: TapiConfig, @Assisted host: String)
   extends TapiTxxCollector(instrumentOp, monitorStatusOp,
     alarmOp, monitorTypeOp,
-    calibrationOp, instrumentStatusOp)(instId, modelReg, config, host){
+    calibrationOp, instrumentStatusOp)(instId, modelReg, config, host) {
   val CO = MonitorType.CO
 
   val logger = play.api.Logger(this.getClass)
+
   import DataCollectManager._
 
   override def reportData(regValue: ModelRegValue): Option[ReportData] = {
@@ -79,7 +81,8 @@ class T300Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
 
       if (!config.skipInternalVault.contains(true)) {
         val locator = BaseLocator.coilStatus(config.slaveID, 20)
-        masterOpt.get.setValue(locator, v)
+        for (master <- masterOpt)
+          master.setValue(locator, v)
       }
     } catch {
       case ex: Exception =>
@@ -93,7 +96,8 @@ class T300Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
 
       if (!config.skipInternalVault.contains(true)) {
         val locator = BaseLocator.coilStatus(config.slaveID, 21)
-        masterOpt.get.setValue(locator, v)
+        for (master <- masterOpt)
+          master.setValue(locator, v)
       }
     } catch {
       case ex: Exception =>
@@ -107,8 +111,10 @@ class T300Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
 
       logger.info("Reset to normal state coil 20, 21 to false")
       if (!config.skipInternalVault.contains(true)) {
-        masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
-        masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)
+        for (master <- masterOpt) {
+          master.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
+          master.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)
+        }
       }
     } catch {
       case ex: Exception =>
@@ -119,6 +125,7 @@ class T300Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
   override def triggerVault(zero: Boolean, on: Boolean): Unit = {
     val addr = if (zero) 20 else 21
     val locator = BaseLocator.coilStatus(config.slaveID, addr)
-    masterOpt.get.setValue(locator, on)
+    for (master <- masterOpt)
+      master.setValue(locator, on)
   }
 } 

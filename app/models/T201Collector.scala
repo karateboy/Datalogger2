@@ -3,6 +3,7 @@ package models
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.{ProtocolParam, tcp}
 import play.api.Logger
+
 object T201Collector extends
   TapiTxx(ModelConfig("T201", List("TNX",
     MonitorType.NH3, MonitorType.NOX,
@@ -12,10 +13,10 @@ object T201Collector extends
   import akka.actor._
 
   trait Factory {
-    def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, host:String): Actor
+    def apply(@Assisted("instId") instId: String, modelReg: ModelReg, config: TapiConfig, host: String): Actor
   }
 
-  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt:Option[AnyRef]): Actor = {
+  override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt: Option[AnyRef]): Actor = {
     assert(f.isInstanceOf[Factory])
     val f2 = f.asInstanceOf[Factory]
     val driverParam = validateParam(param)
@@ -35,12 +36,14 @@ class T201Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
                               alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
                               calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                              (@Assisted("instId") instId: String, @Assisted modelReg: ModelReg,
-                              @Assisted config: TapiConfig, @Assisted host:String)
+                              @Assisted config: TapiConfig, @Assisted host: String)
   extends TapiTxxCollector(instrumentOp, monitorStatusOp,
     alarmOp, monitorTypeOp,
     calibrationOp, instrumentStatusOp)(instId, modelReg, config, host) {
   val logger: Logger = Logger(this.getClass)
+
   import DataCollectManager._
+
   val TNX = "TNX"
   val NH3 = MonitorType.NH3
   val NO = MonitorType.NO
@@ -76,7 +79,8 @@ class T201Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
 
       if (!config.skipInternalVault.contains(true)) {
         val locator = BaseLocator.coilStatus(config.slaveID, 20)
-        masterOpt.get.setValue(locator, v)
+        for (master <- masterOpt)
+          master.setValue(locator, v)
       }
     } catch {
       case ex: Exception =>
@@ -90,7 +94,8 @@ class T201Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
 
       if (!config.skipInternalVault.contains(true)) {
         val locator = BaseLocator.coilStatus(config.slaveID, 21)
-        masterOpt.get.setValue(locator, v)
+        for (master <- masterOpt)
+          master.setValue(locator, v)
       }
     } catch {
       case ex: Exception =>
@@ -104,8 +109,10 @@ class T201Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
 
       logger.info("Resetting T201 internal zero/span calibration to off")
       if (!config.skipInternalVault.contains(true)) {
-        masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
-        masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)
+        for (master <- masterOpt) {
+          master.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
+          master.setValue(BaseLocator.coilStatus(config.slaveID, 21), false)
+        }
       }
     } catch {
       case ex: Exception =>
@@ -116,6 +123,7 @@ class T201Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
   override def triggerVault(zero: Boolean, on: Boolean): Unit = {
     val addr = if (zero) 20 else 21
     val locator = BaseLocator.coilStatus(config.slaveID, addr)
-    masterOpt.get.setValue(locator, on)
+    for (master <- masterOpt)
+      master.setValue(locator, on)
   }
 } 

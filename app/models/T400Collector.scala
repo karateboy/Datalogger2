@@ -53,6 +53,7 @@ class T400Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
   import DataCollectManager._
 
   val logger: Logger = Logger(this.getClass)
+
   override def reportData(regValue: ModelRegValue): Option[ReportData] =
     for (idx <- findDataRegIdx(regValue)(18)) yield {
       val v = regValue.inputRegs(idx)
@@ -67,7 +68,8 @@ class T400Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
 
       if (!config.skipInternalVault.contains(true)) {
         val locator = BaseLocator.coilStatus(config.slaveID, 20)
-        masterOpt.get.setValue(locator, v)
+        for (master <- masterOpt)
+          master.setValue(locator, v)
       }
     } catch {
       case ex: Exception =>
@@ -81,7 +83,8 @@ class T400Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
 
       if (!config.skipInternalVault.contains(true)) {
         val locator = BaseLocator.coilStatus(config.slaveID, 22)
-        masterOpt.get.setValue(locator, v)
+        for (master <- masterOpt)
+          master.setValue(locator, v)
       }
     } catch {
       case ex: Exception =>
@@ -95,8 +98,10 @@ class T400Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
 
       logger.info("Resetting T400 internal zero/span calibration to off")
       if (!config.skipInternalVault.contains(true)) {
-        masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
-        masterOpt.get.setValue(BaseLocator.coilStatus(config.slaveID, 22), false)
+        for (master <- masterOpt) {
+          master.setValue(BaseLocator.coilStatus(config.slaveID, 20), false)
+          master.setValue(BaseLocator.coilStatus(config.slaveID, 22), false)
+        }
       }
     } catch {
       case ex: Exception =>
@@ -107,6 +112,7 @@ class T400Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
   override def triggerVault(zero: Boolean, on: Boolean): Unit = {
     val addr = if (zero) 20 else 22
     val locator = BaseLocator.coilStatus(config.slaveID, addr)
-    masterOpt.get.setValue(locator, on)
+    for (master <- masterOpt)
+      master.setValue(locator, on)
   }
 }

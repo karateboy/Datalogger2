@@ -45,6 +45,7 @@
     <logger name="models.MultiCalibrator" level="INFO"/>
     <logger name="models.PseudoDeviceCollector" level="INFO"/>
     <logger name="models.NewTaipeiOpenData" level="INFO"/>
+    <!-- <logger name="models.EcotechS40Collector" level="DEBUG"/> -->
     <logger name="models" level="INFO"/>
     <logger name="controllers" level="INFO"/>
 

@@ -64,6 +64,8 @@ export interface MonitorType {
   fixedB?: number;
   overLawSignalType?: string;
   mdl?: number;
+  rangeMin?: number;
+  rangeMax?: number;
 }
 
 export interface CellData {

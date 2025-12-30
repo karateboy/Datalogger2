@@ -1,8 +1,9 @@
 // .prettierrc.js
 
 module.exports = {
-  semi: true,
+  semi: false,
   singleQuote: true,
   arrowParens: 'avoid',
   trailingComma: 'all',
+  endOfLine: "lf"
 };

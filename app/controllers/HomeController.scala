@@ -26,6 +26,7 @@ class HomeController @Inject()(
                                 sysConfig: SysConfigDB,
                                 recordDB: RecordDB,
                                 calibrationConfigDB: CalibrationConfigDB,
+                                monitorStatusDB: MonitorStatusDB,
                                 lineNotify: LineNotify,
                                 @Named("dataCollectManager") manager: ActorRef,
                                 tableType: TableType,
@@ -164,6 +165,7 @@ class HomeController @Inject()(
             dataCollectManagerOp.stopCollect(newInstrument._id)
             val f = monitorTypeOp.stopMeasuring(newInstrument._id)
             val f2 = f.map(_ => instrumentOp.upsertInstrument(newInstrument))
+            /*
             val mtList = instType.driver.getMonitorTypes(instParam)
             val f3 = f2.map {
               _ =>
@@ -171,8 +173,8 @@ class HomeController @Inject()(
                   for (mt <- monitorTypeOp.populateCalculatedTypes(mtList)) yield
                     monitorTypeOp.addMeasuring(mt, newInstrument._id, instType.analog, recordDB)
                 }
-            }
-            f3.map {
+            }*/
+            f2.map {
               _ =>
                 if (newInstrument.active)
                   dataCollectManagerOp.startCollect(newInstrument)
@@ -205,7 +207,7 @@ class HomeController @Inject()(
 
       def getStateStr = {
         if (inst.active) {
-          monitorStatusOp.map(inst.state).desp
+          monitorStatusOp.map(inst.state).name
         } else
           "停用"
       }
@@ -357,6 +359,33 @@ class HomeController @Inject()(
     Ok(Json.obj("ok" -> true))
   }
 
+  //toggleInstrumentState(ids, state)
+  def toggleInstrumentState(instruments: String, state: String): Action[AnyContent] = security.Authenticated {
+    val ids = instruments.split(",")
+    try {
+      ids.foreach(id => {
+        instrumentOp.getInstrument(id).map { inst =>
+          val newState =
+            if (inst.state == state)
+              MonitorStatus.NormalStat
+            else {
+              if (monitorStatusOp._map.contains(state))
+                state
+              else
+                MonitorStatus.NormalStat
+            }
+
+          dataCollectManagerOp.setInstrumentState(id, newState)
+        }
+      })
+      Ok(Json.obj("ok" -> true))
+    } catch {
+      case ex: Throwable =>
+        logger.error(s"toggleInstrumentState ids=$instruments state=$state", ex)
+        Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
+    }
+  }
+
   def calibrateInstrument(instruments: String, zeroCalibrationStr: String): Action[AnyContent] = security.Authenticated {
     val ids = instruments.split(",")
     val zeroCalibration = zeroCalibrationStr.toBoolean
@@ -454,7 +483,8 @@ class HomeController @Inject()(
         if (userInfo.isAdmin)
           monitorOp.mvList map { m => monitorOp.map(m) }
         else
-          for (m <- group.monitors if monitorOp.map.contains(m)) yield
+          for (m <- monitorOp.mvList
+               if group.monitors.contains(m) || m == Monitor.activeId) yield
             monitorOp.map(m)
 
       // Make active monitor first
@@ -498,10 +528,11 @@ class HomeController @Inject()(
       val userInfo = security.getUserinfo(request).get
       val group = groupOp.getGroupByID(userInfo.group).get
 
+      logger.debug(s"${userInfo}")
       val mtList = if (userInfo.isAdmin)
-        monitorTypeOp.mtvList map monitorTypeOp.map
+        monitorTypeOp.rangeList map monitorTypeOp.map
       else
-        monitorTypeOp.mtvList.filter(group.monitorTypes.contains) map monitorTypeOp.map
+        monitorTypeOp.rangeList.filter(group.monitorTypes.contains) map monitorTypeOp.map
 
       // populate group
       val groupedMtList = mtList.map { mt =>
@@ -512,19 +543,6 @@ class HomeController @Inject()(
         else
           mt.copy(group = Some("Others"))
       }
-
-      Ok(Json.toJson(groupedMtList.sortBy(_.order)))
-  }
-
-  def activatedMonitorTypes: Action[AnyContent] = security.Authenticated {
-    implicit request =>
-      val userInfo = security.getUserinfo(request).get
-      val group = groupOp.getGroupByID(userInfo.group).get
-
-      val mtList = if (userInfo.isAdmin)
-        monitorTypeOp.activeMtvList map monitorTypeOp.map
-      else
-        monitorTypeOp.activeMtvList.filter(group.monitorTypes.contains) map monitorTypeOp.map
 
       Ok(Json.toJson(mtList.sortBy(_.order)))
   }
@@ -548,7 +566,7 @@ class HomeController @Inject()(
   }
 
   def signalTypeList: Action[AnyContent] = security.Authenticated {
-    val mtList = monitorTypeOp.signalMtvList map monitorTypeOp.map
+    val mtList = monitorTypeOp.signalList map monitorTypeOp.map
     Ok(Json.toJson(mtList))
   }
 
@@ -570,11 +588,9 @@ class HomeController @Inject()(
 
     logger.info(s"Recalculate Hour from $start to $end")
 
-    for {
-      monitor <- monitors
-      hour <- query.getPeriods(start, end, 1.hour)} {
-      dataCollectManagerOp.recalculateHourData(monitor, hour)(monitorTypeOp.activeMtvList, monitorTypeOp)
-    }
+    for {monitor <- monitors
+         hour <- query.getPeriods(start, end, 1.hour)}
+      dataCollectManagerOp.recalculateHourData(monitor, hour, checkAlarm = false)
 
     Ok(Json.obj("ok" -> true))
   }
@@ -1030,6 +1046,12 @@ class HomeController @Inject()(
     }
   }
 
+  def monitorStatusList: Action[AnyContent] = security.Authenticated {
+    import MonitorStatus._
+    val monitorStatusList = monitorStatusDB.msList.sortBy(_.priority)
+    Ok(Json.toJson(monitorStatusList))
+  }
+
   def monitorTypeGroupList: Action[AnyContent] = security.Authenticated.async {
     implicit request =>
       implicit val writes: OWrites[MonitorTypeGroup] = Json.writes[MonitorTypeGroup]
@@ -1055,4 +1077,20 @@ class HomeController @Inject()(
       Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
   }
 
+  def getHourCalculationRules: Action[AnyContent] = security.Authenticated.async {
+    for (rules <- sysConfig.getHourCalculationRules) yield
+      Ok(Json.toJson(rules))
+  }
+
+  def setHourCalculationRules(): Action[JsValue] = security.Authenticated(parse.json) {
+    implicit request =>
+      val ret = request.body.validate[Seq[HourCalculationRule]]
+      ret.fold(
+        error => handleJsonValidateError(error),
+        rules => {
+          HourCalculationRule.updateRules(rules.toList)
+          sysConfig.setHourCalculationRules(rules)
+          Ok(Json.obj("ok" -> true))
+        })
+  }
 }

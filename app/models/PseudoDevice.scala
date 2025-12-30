@@ -4,11 +4,12 @@ import akka.actor.Actor
 import com.github.nscala_time.time.Imports.LocalTime
 import com.google.inject.assistedinject.Assisted
 import models.Protocol.ProtocolParam
+import play.api.Logger
 
 import javax.inject.Inject
 import scala.concurrent.Future
 
-object PseudoDevice extends AbstractDrv(_id = "PseudoDevice", desp = "Pseudo Device - NO, NO2, NOX equal to 法規值",
+object PseudoDevice extends AbstractDrv(_id = "PseudoDevice", name = "Pseudo Device - NO, NO2, NOX equal to 法規值",
   protocols = List(Protocol.tcp)) {
 
   val predefinedIST: List[InstrumentStatusType] =
@@ -102,7 +103,7 @@ class PseudoDeviceCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
         List.empty[(InstrumentStatusType, Boolean)]))
     })
 
-  override def connectHost: Unit = {}
+  override def connectHost(): Unit = {}
 
   override def getDataRegList: Seq[DataReg] = PseudoDevice.getDataRegList
 
@@ -124,11 +125,12 @@ class PseudoDeviceCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
   }
 
   override def triggerVault(zero: Boolean, on: Boolean): Unit = {
-    log.info(s"Pseudo triggerVault zero=$zero on=$on")
+    logger.info(s"Pseudo triggerVault zero=$zero on=$on")
     if (zero)
       setCalibrationReg(0, on)
     else
       setCalibrationReg(1, on)
-
   }
+
+  override val logger: Logger = Logger(this.getClass)
 }

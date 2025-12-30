@@ -53,10 +53,8 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
           }
         }
 
-        Thread.sleep(1500)
-
         if (protocolParam.protocol == Protocol.tcpCli) {
-          val resp = readTillTimeout(in)
+          val resp = readTillTimeout(in, timeout = 1500)
 
           val ret =
             for {line <- resp} yield {
@@ -109,8 +107,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
             val statusList =
               if (full) {
                 out.write("T LIST\r\n".getBytes)
-                Thread.sleep(1500)
-                getReg(readTillTimeout(in))
+                getReg(readTillTimeout(in, timeout = 1500))
               } else
                 List.empty[(InstrumentStatusType, Double)]
 
@@ -174,7 +171,8 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
     }
   }
 
-  def readTillTimeout(in: BufferedReader, expectOneLine: Boolean = false): List[String] = {
+  def readTillTimeout(in: BufferedReader, expectOneLine: Boolean = false, timeout:Int = 1000): List[String] = {
+    Thread.sleep(timeout)
     var resp = List.empty[String]
     var line = ""
     try {
