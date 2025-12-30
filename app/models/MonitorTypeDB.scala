@@ -11,8 +11,8 @@ import scala.math.BigDecimal.RoundingMode
 
 trait MonitorTypeDB {
   val logger: Logger = Logger(this.getClass)
-  implicit val configWrite: OWrites[ThresholdConfig] = Json.writes[ThresholdConfig]
-  implicit val configRead: Reads[ThresholdConfig] = Json.reads[ThresholdConfig]
+  implicit val mtmWrite: OWrites[MonitorTypeMore] = Json.writes[MonitorTypeMore]
+  implicit val mtmRead: Reads[MonitorTypeMore] = Json.reads[MonitorTypeMore]
   implicit val mtWrite: OWrites[MonitorType] = Json.writes[MonitorType]
   implicit val mtRead: Reads[MonitorType] = Json.reads[MonitorType]
   val defaultMonitorTypes: List[MonitorType] = List(

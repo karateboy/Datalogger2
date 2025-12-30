@@ -19,16 +19,16 @@
         <template #cell(desp)="row">
           <b-form-input v-model="row.item.desp" @change="markDirty(row.item)" />
         </template>
-        <template #cell(rangeMin)="row">
+        <template #cell(more.rangeMin)="row">
           <b-form-input
-              v-model.number="row.item.rangeMin"
+              v-model.number="row.item.more.rangeMin"
               size="sm"
               @change="markDirty(row.item)"
           />
         </template>
-        <template #cell(rangeMax)="row">
+        <template #cell(more.rangeMax)="row">
           <b-form-input
-              v-model.number="row.item.rangeMax"
+              v-model.number="row.item.more.rangeMax"
               size="sm"
               @change="markDirty(row.item)"
           />
@@ -251,11 +251,11 @@ export default Vue.extend({
         label: '名稱',
       },
       {
-        key: 'rangeMin',
+        key: 'more.rangeMin',
         label: '偵測下限',
       },
       {
-        key: 'rangeMax',
+        key: 'more.rangeMax',
         label: '偵測上限',
       },
       {

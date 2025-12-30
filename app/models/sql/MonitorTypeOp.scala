@@ -2,7 +2,7 @@ package models.sql
 
 import com.mongodb.client.result.UpdateResult
 import models.ModelHelper.waitReadyResult
-import models.{AlarmDB, MonitorType, MonitorTypeDB}
+import models.{AlarmDB, MonitorType, MonitorTypeDB, MonitorTypeMore}
 import play.api.Logger
 import scalikejdbc._
 
@@ -44,8 +44,8 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
                 ,[overLawSignalType] = ${mt.overLawSignalType}
                 ,[group] = ${mt.group}
                 ,[mdl] = ${mt.mdl}
-                ,[rangeMin] = ${mt.rangeMin}
-                ,[rangeMax] = ${mt.rangeMax}
+                ,[rangeMin] = ${mt.more.rangeMin}
+                ,[rangeMax] = ${mt.more.rangeMax}
             WHERE [id] = ${mt._id}
           IF(@@ROWCOUNT = 0)
             BEGIN
@@ -95,8 +95,8 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
                 ,${mt.overLawSignalType}
                 ,${mt.group}
                 ,${mt.mdl}
-                ,${mt.rangeMin}
-                ,${mt.rangeMax})
+                ,${mt.more.rangeMin}
+                ,${mt.more.rangeMax})
             END
          """.update().apply()
     UpdateResult.acknowledged(ret, ret, null)
@@ -113,6 +113,9 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
   private def mapper(rs: WrappedResultSet): MonitorType = {
     val measuringBy = rs.stringOpt("measuringBy").map(_.split(",").filter(_.nonEmpty).toList)
     val levels = rs.stringOpt("levels").map(_.split(",").filter(_.nonEmpty).toSeq.map(_.toDouble))
+    val more = MonitorTypeMore(rangeMin = rs.doubleOpt("rangeMin"),
+      rangeMax = rs.doubleOpt("rangeMax"))
+
     MonitorType(_id = rs.string("id"),
       desp = rs.string("desp"),
       unit = rs.string("unit"),
@@ -134,8 +137,7 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
       overLawSignalType = rs.stringOpt("overLawSignalType"),
       group = rs.stringOpt("group"),
       mdl = rs.doubleOpt("mdl"),
-      rangeMin = rs.doubleOpt("rangeMin"),
-      rangeMax = rs.doubleOpt("rangeMax"))
+      more = more)
   }
 
   override def deleteItemFuture(_id: String): Unit = {
