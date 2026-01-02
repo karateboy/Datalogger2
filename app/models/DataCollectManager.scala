@@ -223,7 +223,7 @@ object DataCollectManager {
 
         try {
           for (avg <- avgOpt) yield
-            BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
+            BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_UP).doubleValue()
         } catch {
           case _: Throwable =>
             None
@@ -356,11 +356,11 @@ object DataCollectManager {
 
       val roundedAvg =
         for (avg <- hourAccumulator(mtRecords.flatMap(_.value), isRaw = false)) yield
-          BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
+          BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_UP).doubleValue()
 
       val roundedRawAvg: Option[Double] =
         for (avg <- hourAccumulator(mtRecords.flatMap(_.rawValue), isRaw = true)) yield
-          BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
+          BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_UP).doubleValue()
 
       MtRecord(mt, roundedAvg, status, rawValue = roundedRawAvg)
     }
@@ -748,9 +748,9 @@ class DataCollectManager @Inject()(config: Configuration,
             mtd =>
               if (mtd.status == MonitorStatus.NormalStat) {
                 val mtCase = monitorTypeOp.map(mtd.mt)
-                if (mtd.value < mtCase.more.rangeMin.getOrElse(Double.MinValue))
+                if (mtd.value < mtCase.more.getOrElse(MonitorTypeMore()).rangeMin.getOrElse(Double.MinValue))
                   mtd.copy(status = MonitorStatus.BelowNormalStat)
-                else if (mtd.value > mtCase.more.rangeMax.getOrElse(Double.MaxValue))
+                else if (mtd.value > mtCase.more.getOrElse(MonitorTypeMore()).rangeMax.getOrElse(Double.MaxValue))
                   mtd.copy(status = MonitorStatus.OverNormalStat)
                 else
                   mtd

@@ -69,7 +69,7 @@ export interface MonitorType {
   fixedM?: number;
   fixedB?: number;
   overLawSignalType?: string;
-  more: MonitorTypeMore;
+  more?: MonitorTypeMore;
 }
 
 export interface CellData {
