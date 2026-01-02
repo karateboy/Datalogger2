@@ -1,7 +1,7 @@
 package models.mongodb
 
 import models.ModelHelper.{errorHandler, waitReadyResult}
-import models.{AlarmDB, MonitorType, MonitorTypeDB, MonitorTypeMore}
+import models.{MonitorType, MonitorTypeDB, MonitorTypeMore}
 import org.bson.codecs.configuration.CodecRegistry
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.conversions.Bson
@@ -11,7 +11,7 @@ import org.mongodb.scala.result.UpdateResult
 import javax.inject.{Inject, Singleton}
 
 @Singleton
-class MonitorTypeOp @Inject()(mongodb: MongoDB, alarmDB: AlarmDB) extends MonitorTypeDB {
+class MonitorTypeOp @Inject()(mongodb: MongoDB) extends MonitorTypeDB {
 
   import org.mongodb.scala.bson._
 
@@ -30,7 +30,7 @@ class MonitorTypeOp @Inject()(mongodb: MongoDB, alarmDB: AlarmDB) extends Monito
   lazy val colName = "monitorTypes"
   lazy val collection: MongoCollection[MonitorType] = mongodb.database.getCollection[MonitorType](colName).withCodecRegistry(codecRegistry)
 
-  private def updateMt(): Unit = {
+  private def initDefaultMonitorTypes(): Unit = {
     def getUpdates(mt: MonitorType): Bson =
       Updates.combine(
         Updates.setOnInsert("_id", mt._id),
@@ -51,12 +51,11 @@ class MonitorTypeOp @Inject()(mongodb: MongoDB, alarmDB: AlarmDB) extends Monito
     f.failed.foreach(errorHandler)
     waitReadyResult(f)
   }
-
   {
     val colNames = waitReadyResult(mongodb.database.listCollectionNames().toFuture())
     if (!colNames.contains(colName)) { // New
       waitReadyResult(mongodb.database.createCollection(colName).toFuture())
-      updateMt()
+      initDefaultMonitorTypes()
     }
 
     refreshMtv()

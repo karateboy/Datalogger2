@@ -2,22 +2,22 @@
   <div>
     <b-card title="測項管理" class="text-center">
       <b-table
-        small
-        responsive
-        :fields="columns"
-        :items="monitorTypes"
-        select-mode="single"
-        selectable
-        selected-variant="info"
-        bordered
-        sticky-header
-        :per-page="10"
-        :current-page="currentPage"
-        style="max-height: 650px"
-        @row-selected="onMtSelected"
+          small
+          responsive
+          :fields="columns"
+          :items="monitorTypes"
+          select-mode="single"
+          selectable
+          selected-variant="info"
+          bordered
+          sticky-header
+          :per-page="10"
+          :current-page="currentPage"
+          style="max-height: 650px"
+          @row-selected="onMtSelected"
       >
         <template #cell(desp)="row">
-          <b-form-input v-model="row.item.desp" @change="markDirty(row.item)" />
+          <b-form-input v-model="row.item.desp" @change="markDirty(row.item)"/>
         </template>
         <template #cell(more.rangeMin)="row">
           <b-form-input
@@ -35,59 +35,59 @@
         </template>
         <template #cell(unit)="row">
           <b-form-input
-            v-model="row.item.unit"
-            size="sm"
-            @change="markDirty(row.item)"
+              v-model="row.item.unit"
+              size="sm"
+              @change="markDirty(row.item)"
           />
         </template>
         <template #cell(prec)="row">
           <b-form-input
-            v-model.number="row.item.prec"
-            size="sm"
-            @change="markDirty(row.item)"
+              v-model.number="row.item.prec"
+              size="sm"
+              @change="markDirty(row.item)"
           />
         </template>
         <template #cell(order)="row">
           <b-form-input
-            v-model.number="row.item.order"
-            size="sm"
-            @change="markDirty(row.item)"
+              v-model.number="row.item.order"
+              size="sm"
+              @change="markDirty(row.item)"
           />
         </template>
         <template #cell(std_law)="row">
           <b-form-input
-            v-model.number="row.item.std_law"
-            size="sm"
-            @change="markDirty(row.item)"
+              v-model.number="row.item.std_law"
+              size="sm"
+              @change="markDirty(row.item)"
           />
         </template>
         <template #cell(zd_law)="row">
           <b-form-input
-            v-model.number="row.item.zd_law"
-            size="sm"
-            @change="markDirty(row.item)"
+              v-model.number="row.item.zd_law"
+              size="sm"
+              @change="markDirty(row.item)"
           />
         </template>
         <template #cell(span)="row">
           <b-form-input
-            v-model.number="row.item.span"
-            type="number"
-            size="sm"
-            @change="markDirty(row.item)"
+              v-model.number="row.item.span"
+              type="number"
+              size="sm"
+              @change="markDirty(row.item)"
           />
         </template>
         <template #cell(span_dev_law)="row">
           <b-form-input
-            v-model.number="row.item.span_dev_law"
-            size="sm"
-            @change="markDirty(row.item)"
+              v-model.number="row.item.span_dev_law"
+              size="sm"
+              @change="markDirty(row.item)"
           />
         </template>
         <template #cell(levelSeq)="row">
           <b-form-input
-            v-model="row.item.levelSeq"
-            size="sm"
-            @change="
+              v-model="row.item.levelSeq"
+              size="sm"
+              @change="
               markDirty(row.item);
               checkLevel(row.item.levelSeq);
             "
@@ -95,41 +95,41 @@
         </template>
         <template #cell(calbrate)="row">
           <b-form-checkbox
-            v-model="row.item.calibrate"
-            switch
-            @change="markDirty(row.item)"
+              v-model="row.item.calibrate"
+              switch
+              @change="markDirty(row.item)"
           />
         </template>
         <template #cell(fixedM)="row">
           <b-form-input
-            v-model.number="row.item.fixedM"
-            type="number"
-            size="sm"
-            @change="markDirty(row.item)"
+              v-model.number="row.item.fixedM"
+              type="number"
+              size="sm"
+              @change="markDirty(row.item)"
           />
         </template>
         <template #cell(fixedB)="row">
           <b-form-input
-            v-model.number="row.item.fixedB"
-            type="number"
-            size="sm"
-            @change="markDirty(row.item)"
+              v-model.number="row.item.fixedB"
+              type="number"
+              size="sm"
+              @change="markDirty(row.item)"
           />
         </template>
         <template #cell(accumulated)="row">
           <b-form-checkbox
-            v-model="row.item.accumulated"
-            switch
-            @change="markDirty(row.item)"
+              v-model="row.item.accumulated"
+              switch
+              @change="markDirty(row.item)"
           />
         </template>
         <template #cell(overLawSignalType)="row">
           <v-select
-            v-model="row.item.overLawSignalType"
-            label="desp"
-            :reduce="mt => mt._id"
-            :options="signalTypes"
-            @input="markDirty(row.item)"
+              v-model="row.item.overLawSignalType"
+              label="desp"
+              :reduce="mt => mt._id"
+              :options="signalTypes"
+              @input="markDirty(row.item)"
           />
         </template>
       </b-table>
@@ -146,27 +146,27 @@
       <b-row>
         <b-col>
           <b-button
-            v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-            variant="primary"
-            class="mr-1"
-            @click="save"
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              variant="primary"
+              class="mr-1"
+              @click="save"
           >
             儲存
           </b-button>
           <b-button
-            v-ripple.400="'rgba(186, 191, 199, 0.15)'"
-            type="reset"
-            variant="outline-secondary"
-            class="mr-1"
-            @click="getMonitorTypes"
+              v-ripple.400="'rgba(186, 191, 199, 0.15)'"
+              type="reset"
+              variant="outline-secondary"
+              class="mr-1"
+              @click="getMonitorTypes"
           >
             取消
           </b-button>
           <b-button
-            v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-            variant="danger"
-            class="mr-1"
-            @click="removeMt"
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              variant="danger"
+              class="mr-1"
+              @click="removeMt"
           >
             刪除
           </b-button>
@@ -180,10 +180,11 @@
 </style>
 <script lang="ts">
 import Vue from 'vue';
-const Ripple = require('vue-ripple-directive');
 import axios from 'axios';
-import { MonitorType } from './types';
-import { isNumber } from 'highcharts';
+import {MonitorType} from './types';
+import {isNumber} from 'highcharts';
+
+const Ripple = require('vue-ripple-directive');
 
 interface EditMonitorType extends MonitorType {
   dirty?: boolean;
@@ -252,35 +253,35 @@ export default Vue.extend({
       {
         key: 'calbrate',
         label: '校正回歸',
-        tdClass: { 'text-center': true },
+        tdClass: {'text-center': true},
       },
       {
         key: 'fixedM',
         label: 'slope',
-        tdClass: { 'text-center': true },
+        tdClass: {'text-center': true},
       },
       {
         key: 'fixedB',
         label: 'offset',
-        tdClass: { 'text-center': true },
+        tdClass: {'text-center': true},
       },
       {
         key: 'accumulated',
         label: '累積',
-        tdClass: { 'text-center': true },
+        tdClass: {'text-center': true},
       },
       {
         key: 'overLawSignalType',
         label: '超標數位訊號',
-        tdClass: { 'text-center': true },
+        tdClass: {'text-center': true},
       },
       {
         key: 'measuringBy',
         label: '測量儀器',
         formatter: (
-          value: null | Array<string>,
-          key: string,
-          item: Array<string>,
+            value: null | Array<string>,
+            key: string,
+            item: Array<string>,
         ) => {
           if (value !== null) return `${value.join(', ')}`;
           else return '';
@@ -290,13 +291,7 @@ export default Vue.extend({
     const monitorTypes = Array<EditMonitorType>();
 
     const signalTypes = Array<MonitorType>();
-    let thresholdConfig: ThresholdConfig = {
-      elapseTime: 30,
-    };
 
-    const form = {
-      thresholdConfig,
-    };
     return {
       display: false,
       columns,
@@ -305,7 +300,6 @@ export default Vue.extend({
       editingMt: {
         thresholdConfig: {},
       },
-      form,
       selected: Array<MonitorType>(),
       currentPage: 1
     };
@@ -316,17 +310,20 @@ export default Vue.extend({
   },
   methods: {
     async getMonitorTypes() {
-      try{
+      try {
         let res = await axios.get('/MonitorType');
-        if(res.status === 200){
+        if (res.status === 200) {
           this.monitorTypes = res.data;
           for (const mt of this.monitorTypes) {
             if (mt.levels !== undefined) {
               mt.levelSeq = mt.levels.join(',');
             }
+            if (!mt.more)
+              mt.more = {};
+
           }
         }
-      }catch(error){
+      } catch (error) {
         console.log(error);
       }
     },
@@ -349,15 +346,15 @@ export default Vue.extend({
       if (mt.levelSeq) {
         try {
           let levelSeq = mt.levelSeq as string;
-          let levels = levelSeq.split(',').map(t => parseFloat(t));
-          mt.levels = levels;
-        } catch (err) {}
+          mt.levels = levelSeq.split(',').map(t => parseFloat(t));
+        } catch (err) {
+        }
       }
 
       if (!isNumber(mt.fixedB)) mt.fixedB = undefined;
       if (!isNumber(mt.fixedM)) mt.fixedM = undefined;
-      if(!isNumber(mt.rangeMax)) mt.rangeMax = undefined;
-      if(!isNumber(mt.rangeMin)) mt.rangeMin = undefined;
+      if (!isNumber(mt.more.rangeMax)) mt.more.rangeMax = undefined;
+      if (!isNumber(mt.more.rangeMin)) mt.more.rangeMin = undefined;
     },
     checkLevel(levelSeq: string | undefined): boolean {
       try {
@@ -398,7 +395,7 @@ export default Vue.extend({
     async removeMt() {
       let deletedMts = this.selected.map(p => p._id);
       let ret = await this.$bvModal.msgBoxConfirm(
-        `請確認要刪除${deletedMts.join(',')}等測項`,
+          `請確認要刪除${deletedMts.join(',')}等測項`,
       );
       if (ret === true) {
         try {

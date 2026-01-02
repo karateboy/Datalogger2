@@ -42,8 +42,8 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
                 ,[fixedM] = ${mt.fixedM}
                 ,[fixedB] = ${mt.fixedB}
                 ,[overLawSignalType] = ${mt.overLawSignalType}
-                ,[rangeMin] = ${mt.more.rangeMin}
-                ,[rangeMax] = ${mt.more.rangeMax}
+                ,[rangeMin] = ${mt.more.getOrElse(MonitorTypeMore()).rangeMin}
+                ,[rangeMax] = ${mt.more.getOrElse(MonitorTypeMore()).rangeMax}
             WHERE [id] = ${mt._id}
           IF(@@ROWCOUNT = 0)
             BEGIN
@@ -89,8 +89,8 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
                 ,${mt.fixedM}
                 ,${mt.fixedB}
                 ,${mt.overLawSignalType}
-                ,${mt.more.rangeMin}
-                ,${mt.more.rangeMax})
+                ,${mt.more.getOrElse(MonitorTypeMore()).rangeMin}
+                ,${mt.more.getOrElse(MonitorTypeMore()).rangeMax})
             END
          """.update().apply()
     UpdateResult.acknowledged(ret, ret, null)
@@ -129,7 +129,7 @@ class MonitorTypeOp @Inject()(sqlServer: SqlServer) extends MonitorTypeDB {
       fixedM = rs.doubleOpt("fixedM"),
       fixedB = rs.doubleOpt("fixedB"),
       overLawSignalType = rs.stringOpt("overLawSignalType"),
-      more = more)
+      more = Some(more))
   }
 
   override def deleteItemFuture(_id: String): Unit = {

@@ -739,9 +739,9 @@ class DataCollectManager @Inject()(config: Configuration,
             mtd =>
               if (mtd.status == MonitorStatus.NormalStat) {
                 val mtCase = monitorTypeOp.map(mtd.mt)
-                if (mtd.value < mtCase.more.rangeMin.getOrElse(Double.MinValue))
+                if (mtd.value < mtCase.more.getOrElse(MonitorTypeMore()).rangeMin.getOrElse(Double.MinValue))
                   mtd.copy(status = MonitorStatus.BelowNormalStat)
-                else if (mtd.value > mtCase.more.rangeMax.getOrElse(Double.MaxValue))
+                else if (mtd.value > mtCase.more.getOrElse(MonitorTypeMore()).rangeMax.getOrElse(Double.MaxValue))
                   mtd.copy(status = MonitorStatus.OverNormalStat)
                 else
                   mtd
