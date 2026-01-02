@@ -287,7 +287,7 @@ trait MonitorTypeDB {
             m <- mOpt
             b <- bOpt
           } yield
-            BigDecimal((v * m) + b).setScale(mtCase.prec, RoundingMode.HALF_EVEN).doubleValue()
+            BigDecimal((v * m) + b).setScale(mtCase.prec, RoundingMode.HALF_UP).doubleValue()
 
         calibratedValue.getOrElse(v)
       } else

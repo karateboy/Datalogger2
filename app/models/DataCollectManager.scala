@@ -222,7 +222,7 @@ object DataCollectManager {
 
         try {
           for (avg <- avgOpt) yield
-            BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
+            BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_UP).doubleValue()
         } catch {
           case _: Throwable =>
             None
@@ -355,11 +355,11 @@ object DataCollectManager {
 
       val roundedAvg =
         for (avg <- hourAccumulator(mtRecords.flatMap(_.value), isRaw = false)) yield
-          BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
+          BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_UP).doubleValue()
 
       val roundedRawAvg: Option[Double] =
         for (avg <- hourAccumulator(mtRecords.flatMap(_.rawValue), isRaw = true)) yield
-          BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_EVEN).doubleValue()
+          BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_UP).doubleValue()
 
       MtRecord(mt, roundedAvg, status, rawValue = roundedRawAvg)
     }

@@ -85,7 +85,7 @@ class ExcelUtility @Inject()
           val pair = series.data(rowIdx)
           val statusOpt = series.statusList(rowIdx)
           for (v <- pair._2 if !v.isNaN) {
-            val d = BigDecimal(v).setScale(precision(colIdx), RoundingMode.HALF_EVEN)
+            val d = BigDecimal(v).setScale(precision(colIdx), RoundingMode.HALF_UP)
             cell.setCellValue(d.doubleValue())
           }
           for (status <- statusOpt) {
@@ -114,7 +114,7 @@ class ExcelUtility @Inject()
           val cell = thisRow.createCell(colIdx * 2 + 1)
           cell.setCellStyle(styles(colIdx))
           for (v <- pair._2 if !v.isNaN) {
-            val d = BigDecimal(v).setScale(precision(colIdx), RoundingMode.HALF_EVEN)
+            val d = BigDecimal(v).setScale(precision(colIdx), RoundingMode.HALF_UP)
             cell.setCellValue(d.doubleValue())
             if (series.statusList.nonEmpty)
               for (status <- series.statusList(row - 1)) {
