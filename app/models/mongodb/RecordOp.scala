@@ -1,11 +1,12 @@
 package models.mongodb
 
 import com.github.nscala_time.time.Imports.DateTime
+import com.mongodb.bulk.BulkWriteResult
 import models.ModelHelper.{errorHandler, waitReadyResult}
 import models._
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.result.{InsertManyResult, UpdateResult}
-import org.mongodb.scala.{BulkWriteResult, FindObservable, MongoCollection}
+import org.mongodb.scala.{FindObservable, MongoCollection}
 import play.api.Logger
 
 import java.util.Date
@@ -148,23 +149,28 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
   override def upsertManyRecords(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult] = {
 
     val pullUpdates =
-      for (record <- records) yield {
+      for (record <- records if record.mtDataList.nonEmpty) yield {
         val mtDataPullUpdates = record.mtDataList.map(mtr => Updates.pullByFilter(Document("mtDataList" -> Document("mtName" -> mtr.mtName))))
         val updates = Updates.combine(mtDataPullUpdates: _*)
         UpdateOneModel(Filters.equal("_id", RecordListID(record._id.time, record._id.monitor)), updates, UpdateOptions().upsert(true))
       }
 
-    val setUpdates = for (record <- records) yield {
+    val setUpdates = for (record <- records if record.mtDataList.nonEmpty) yield {
       val updates =
         Updates.addEachToSet("mtDataList", record.mtDataList: _*)
 
       UpdateOneModel(Filters.equal("_id", RecordListID(record._id.time, record._id.monitor)), updates, UpdateOptions().upsert(true))
     }
 
-    val collection = getCollection(colName)
-    val f = collection.bulkWrite(pullUpdates ++ setUpdates, BulkWriteOptions().ordered(true)).toFuture()
-    f.failed.foreach(errorHandler)
-    f
+    val updates = pullUpdates ++ setUpdates
+    if (updates.nonEmpty) {
+      val collection = getCollection(colName)
+      val f = collection.bulkWrite(updates, BulkWriteOptions().ordered(true)).toFuture()
+      f.failed.foreach(errorHandler)
+      f
+    } else
+      Future.successful(BulkWriteResult.unacknowledged())
+
   }
 
   private def init(): Unit = {
