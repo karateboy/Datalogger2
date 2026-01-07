@@ -22,7 +22,7 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
 
   lazy private val valueKey = "value"
 
-  private val defaultConfig = Map(
+  private val defaultConfig: Map[String, Document] = Map(
     Logo -> Document(valueKey -> Array.empty[Byte], "filename" -> ""),
     SpectrumLastParseTime -> Document(valueKey -> new Date(0)),
     WeatherLastParseTime -> Document(valueKey -> new Date(0)),
@@ -40,7 +40,7 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     SMS_PHONES -> Document(valueKey -> ""),
     LINE_CHANNEL_TOKEN -> Document(valueKey -> ""),
     LINE_CHANNEL_GROUP_ID -> Document(valueKey -> ""),
-    HourCalculationRule -> Document(valueKey -> Json.toJson(HourCalculationRule.defaultRules).toString())
+    HOUR_CALCULATION_RULES -> Document(valueKey -> Json.toJson(HourCalculationRule.defaultRules).toString())
   )
 
   override def getSpectrumLastParseTime: Future[Instant] = getInstant(SpectrumLastParseTime)()
