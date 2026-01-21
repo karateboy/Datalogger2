@@ -86,10 +86,11 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
     import com.serotonin.modbus4j.code.DataType
     import com.serotonin.modbus4j.locator.BaseLocator
 
-    def probeInputReg(addr: Int, desc: String) = {
+    def probeInputReg(addr: Int, desc: String): Boolean = {
       try {
         val locator = BaseLocator.inputRegister(tapiConfig.slaveID, addr, DataType.FOUR_BYTE_FLOAT)
-        masterOpt.get.getValue(locator)
+        for(master <- masterOpt)
+          master.getValue(locator)
         true
       } catch {
         case ex: Throwable =>
@@ -99,10 +100,11 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
       }
     }
 
-    def probeHoldingReg(addr: Int, desc: String) = {
+    def probeHoldingReg(addr: Int, desc: String): Boolean = {
       try {
         val locator = BaseLocator.holdingRegister(tapiConfig.slaveID, addr, DataType.FOUR_BYTE_FLOAT)
-        masterOpt.get.getValue(locator)
+        for(master <- masterOpt)
+          master.getValue(locator)
         true
       } catch {
         case ex: Throwable =>
@@ -111,10 +113,11 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
       }
     }
 
-    def probeInputStatus(addr: Int, desc: String) = {
+    def probeInputStatus(addr: Int, desc: String): Boolean = {
       try {
         val locator = BaseLocator.inputStatus(tapiConfig.slaveID, addr)
-        masterOpt.get.getValue(locator)
+        for(master <- masterOpt)
+          master.getValue(locator)
         true
       } catch {
         case ex: Throwable =>
@@ -258,20 +261,20 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
       log.info(s"${self.toString()}: connect $host")
       Future {
         blocking {
+          var master: ModbusMaster = null
           try {
             val ipParameters = new IpParameters()
             ipParameters.setHost(host);
             ipParameters.setPort(502);
             val modbusFactory = new ModbusFactory()
 
-            masterOpt = Some(modbusFactory.createTcpMaster(ipParameters, true))
-            masterOpt.get.setTimeout(4000)
-            masterOpt.get.setRetries(1)
-            masterOpt.get.setConnected(true)
+            master = modbusFactory.createTcpMaster(ipParameters, true)
+            master.setRetries(1)
+            master.setConnected(true)
 
-            masterOpt.get.init();
+            master.init();
             connected = true
-
+            masterOpt = Some(master)
             if (instrumentStatusTypesOpt.isEmpty) {
               instrumentStatusTypesOpt = Some(probeInstrumentStatusType)
               instrumentOp.updateStatusType(instId, instrumentStatusTypesOpt.get)
@@ -283,8 +286,11 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
             case ex: Exception =>
               log.error(ex.getMessage, ex)
               alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"無法連接:${ex.getMessage}")
-              import scala.concurrent.duration._
 
+              if(master != null)
+                master.destroy()
+
+              import scala.concurrent.duration._
               context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
           }
         }
