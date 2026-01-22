@@ -522,10 +522,14 @@ class ExcelUtility @Inject()
         }
     }
 
-    def rowHandler(row: Row) = {
+    def rowHandler(row: Row): List[RecordList] = {
       val cells = row.cellIterator().asScala.toArray
       val time = try {
-        cells.head.getDateCellValue
+        val dt = cells.head.getDateCellValue
+        if (dt != null)
+          dt
+        else
+          throw new Exception("not date cell")
       } catch {
         case _: Throwable =>
           try {
@@ -546,10 +550,10 @@ class ExcelUtility @Inject()
             None
         }
         val status = try {
-          val statusStr = cells(info.pos+1).getStringCellValue
-          if(monitorStatusOp._map.contains(statusStr))
+          val statusStr = cells(info.pos + 1).getStringCellValue
+          if (monitorStatusOp._map.contains(statusStr))
             monitorStatusOp._map(statusStr)._id
-          else{
+          else {
             monitorStatusOp.nameStatusMap.getOrElse(statusStr, MonitorStatus.NormalStat)
           }
         } catch {
@@ -564,10 +568,10 @@ class ExcelUtility @Inject()
     }
 
     rowIterator flatMap { row: Row =>
-      try{
+      try {
         rowHandler(row)
-      }catch{
-        case ex:Throwable=>
+      } catch {
+        case ex: Throwable =>
           logger.error("skip row", ex)
           List.empty[RecordList]
       }
