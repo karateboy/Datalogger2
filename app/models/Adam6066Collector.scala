@@ -49,14 +49,14 @@ class Adam6066Collector @Inject()
     case ConnectHost =>
       Future {
         blocking {
+          var master : ModbusMaster = null
           try {
             val ipParameters = new IpParameters()
             ipParameters.setHost(protocolParam.host.get);
             ipParameters.setPort(502);
             val modbusFactory = new ModbusFactory()
 
-            val master = modbusFactory.createTcpMaster(ipParameters, true)
-            master.setTimeout(4000)
+            master = modbusFactory.createTcpMaster(ipParameters, true)
             master.setRetries(1)
             master.setConnected(true)
             master.init();
@@ -67,6 +67,8 @@ class Adam6066Collector @Inject()
             case ex: Exception =>
               logger.error(ex.getMessage, ex)
               logger.info("Try again 1 min later...")
+              if (master != null)
+                master.destroy()
               //Try again
               import scala.concurrent.duration._
               cancelable = context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)

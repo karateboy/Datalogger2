@@ -258,6 +258,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
 
       Future {
         blocking {
+          var master: ModbusMaster = null
           try {
             val modbusFactory = new ModbusFactory()
             if (protocol.protocol == Protocol.tcp) {
@@ -265,8 +266,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
               ipParameters.setHost(protocol.host.get);
               ipParameters.setPort(502);
               log.info(s"${self.toString()}: connect ${protocol.host.get}")
-              val master = modbusFactory.createTcpMaster(ipParameters, true)
-              master.setTimeout(4000)
+              master = modbusFactory.createTcpMaster(ipParameters, true)
               master.setRetries(1)
               master.setConnected(true)
               master.init();
@@ -287,7 +287,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
             if (instrumentStatusTypesOpt.isEmpty) {
               val statusTypeList = probeInstrumentStatusType.toList
               if (modelReg.dataRegs.forall(reg => statusTypeList.exists(statusType => statusType.addr == reg.address))) {
-                // Data register must included in the list
+                // Data register must include it in the list
                 instrumentStatusTypesOpt = Some(probeInstrumentStatusType.toList)
                 instrumentOp.updateStatusType(instId, instrumentStatusTypesOpt.get)
               } else {
@@ -300,6 +300,10 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
             case ex: Exception =>
               log.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
               alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"無法連接:${ex.getMessage}")
+
+              if (master != null)
+                master.destroy()
+
               import scala.concurrent.duration._
 
               context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, ConnectHost)
