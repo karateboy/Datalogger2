@@ -1,6 +1,7 @@
 package models
 
 import akka.actor._
+import com.github.nscala_time.time.Imports
 import com.google.inject.assistedinject.Assisted
 import com.serotonin.modbus4j.locator.BaseLocator
 import com.serotonin.modbus4j.serial.SerialPortWrapper
@@ -39,37 +40,21 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
   @volatile var (collectorState: String, instrumentStatusTypesOpt) = {
     val instList = instrumentOp.getInstrument(instId)
     if (instList.nonEmpty) {
-      val inst: Instrument = instList(0)
+      val inst: Instrument = instList.head
       (inst.state, inst.statusType)
     } else
       (MonitorStatus.NormalStat, None)
   }
   @volatile var connected = false
   @volatile var oldModelReg: Option[ModelRegValue] = None
-  @volatile var nextLoggingStatusTime = {
-    def getNextTime(period: Int) = {
-      import com.github.nscala_time.time.Imports._
-      val now = DateTime.now()
-      val nextMin = (now.getMinuteOfHour / period + 1) * period
-      val hour = (now.getHourOfDay + (nextMin / 60)) % 24
-      val nextDay = (now.getHourOfDay + (nextMin / 60)) / 24
-
-      now.withHourOfDay(hour).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0) + nextDay.day
-    }
-
-    // suppose every 10 min
-    val period = 30
-    val nextTime = getNextTime(period)
-    //log.debug(s"$instId next logging time= $nextTime")
-    nextTime
-  }
+  @volatile var nextLoggingStatusTime: Imports.DateTime = getNextTime(30)
 
   def probeInstrumentStatusType: Seq[InstrumentStatusType] = {
     log.info("Probing supported modbus registers...")
     import com.serotonin.modbus4j.code.DataType
     import com.serotonin.modbus4j.locator.BaseLocator
 
-    def probeInputReg(addr: Int, desc: String) = {
+    def probeInputReg(addr: Int, desc: String): Boolean = {
       try {
         val locator = if (protocol.protocol == Protocol.tcp)
           BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), addr, DataType.FOUR_BYTE_FLOAT)
@@ -115,7 +100,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     }
 
     val inputRegs =
-      for {r <- modelReg.inputRegs if probeInputReg(r.addr, r.desc)}
+      for {r <- modelReg.inputs if probeInputReg(r.addr, r.desc)}
         yield r
 
     val inputRegStatusType =
@@ -124,7 +109,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
       } yield InstrumentStatusType(key = s"$InputKey${r.addr}", addr = r.addr, desc = r.desc, unit = r.unit)
 
     val holdingRegs =
-      for (r <- modelReg.holdingRegs if probeHoldingReg(r.addr, r.desc))
+      for (r <- modelReg.holding if probeHoldingReg(r.addr, r.desc))
         yield r
 
     val holdingRegStatusType =
@@ -133,7 +118,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
       } yield InstrumentStatusType(key = s"$HoldingKey${r.addr}", addr = r.addr, desc = r.desc, unit = r.unit)
 
     val modeRegs =
-      for (r <- modelReg.modeRegs if probeInputStatus(r.addr, r.desc))
+      for (r <- modelReg.modes if probeInputStatus(r.addr, r.desc))
         yield r
 
     val modeRegStatusType =
@@ -142,7 +127,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
       } yield InstrumentStatusType(key = s"$ModeKey${r.addr}", addr = r.addr, desc = r.desc, unit = "-")
 
     val warnRegs =
-      for (r <- modelReg.warnRegs if probeInputStatus(r.addr, r.desc))
+      for (r <- modelReg.warnings if probeInputStatus(r.addr, r.desc))
         yield r
 
     val warnRegStatusType =
@@ -286,7 +271,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
             connected = true
             if (instrumentStatusTypesOpt.isEmpty) {
               val statusTypeList = probeInstrumentStatusType.toList
-              if (modelReg.dataRegs.forall(reg => statusTypeList.exists(statusType => statusType.addr == reg.address))) {
+              if (modelReg.data.forall(reg => statusTypeList.exists(statusType => statusType.addr == reg.address))) {
                 // Data register must include it in the list
                 instrumentStatusTypesOpt = Some(probeInstrumentStatusType.toList)
                 instrumentOp.updateStatusType(instId, instrumentStatusTypesOpt.get)
@@ -719,7 +704,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
 
   def reportData(regValue: ModelRegValue): Option[ReportData] = {
     val optValues: Seq[Option[(String, (InstrumentStatusType, Float))]] = {
-      for (dataReg <- modelReg.dataRegs) yield {
+      for (dataReg <- modelReg.data) yield {
         def passFilter(v: Double) =
           modelReg.filterRules.forall(rule =>
             if (rule.monitorType == dataReg.monitorType)
