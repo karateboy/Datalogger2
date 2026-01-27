@@ -31,12 +31,12 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
   import com.serotonin.modbus4j._
   import com.serotonin.modbus4j.ip.IpParameters
 
-  val InputKey = "Input"
-  private val Input64Key = "Input64"
-  val HoldingKey = "Holding"
-  private val Holding64Key = "Holding64"
-  val ModeKey = "Mode"
-  val WarnKey = "Warn"
+  private val InputKey = "Input"
+  private val Input64Key = "64Input"
+  private val HoldingKey = "Holding"
+  private val Holding64Key = "64Holding"
+  private val ModeKey = "Mode"
+  private val WarnKey = "Warn"
 
 
   self ! ConnectHost
@@ -55,7 +55,10 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
   @volatile var oldModelReg: Option[RegValueSet] = None
   @volatile var nextLoggingStatusTime: Imports.DateTime = getNextTime(30)
 
-  val logger = Logger(s"${this.getClass}($instId:$desc)")
+  val logger = Logger(this.getClass)
+
+  logger.info(s"TcpModbusCollector $instId started.")
+
 
   def probeInstrumentStatusType: Seq[InstrumentStatusType] = {
     logger.info("Probing supported modbus registers...")
@@ -137,19 +140,17 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
 
     import com.serotonin.modbus4j.locator.BaseLocator
 
-    for {
-      st_idx <- statusTypeList.zipWithIndex
-      st = st_idx._1
-      idx = st_idx._2
-    } {
-      if (st.key.startsWith(InputKey)) {
-        batch.addLocator(idx, BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode))
-      } else if (st.key.startsWith(Input64Key)) {
+    for ((st, idx) <- statusTypeList.zipWithIndex) {
+      if (st.key.startsWith(Input64Key)) {
+        logger.info(s"sending input64 request ${st.addr}")
         batch.addLocator(idx, BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode64))
+      } else if (st.key.startsWith(InputKey)) {
+        batch.addLocator(idx, BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode))
+      } else if (st.key.startsWith(Holding64Key)) {
+        logger.info(s"sending holding64 request ${st.addr}")
+        batch.addLocator(idx, BaseLocator.holdingRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode64))
       } else if (st.key.startsWith(HoldingKey)) {
         batch.addLocator(idx, BaseLocator.holdingRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode))
-      } else if (st.key.startsWith(Holding64Key)) {
-        batch.addLocator(idx, BaseLocator.holdingRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode64))
       } else if (st.key.startsWith(ModeKey) || st.key.startsWith(WarnKey)) {
         batch.addLocator(idx, BaseLocator.inputStatus(deviceConfig.slaveID.getOrElse(1), st.addr))
       } else {
@@ -162,12 +163,9 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     val results = masterOpt.get.send(batch)
 
     def getRegValues(key: String): List[RegDouble] =
-      for {
-        st_idx <- statusTypeList.zipWithIndex if st_idx._1.key.startsWith(key)
-        idx = st_idx._2
-      } yield {
+      for ((ist, idx) <- statusTypeList.zipWithIndex if ist.key.startsWith(key)) yield {
         try {
-          RegDouble(st_idx._1, results.getFloatValue(idx) * modelReg.multiplier)
+          RegDouble(ist, results.getFloatValue(idx) * modelReg.multiplier)
         } catch {
           case ex: Exception =>
             logger.error(s"failed at $idx")
