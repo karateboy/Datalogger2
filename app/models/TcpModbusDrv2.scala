@@ -215,6 +215,10 @@ object TcpModbusDrv2 {
       filterRules = filterRules,
       byteSwapMode64 = byteSwapMode64)
 
+    logger.debug(s"Load TcpModbus device model: $id")
+    logger.debug(s"  Description: $description")
+    logger.debug(s"  Protocols: $protocols")
+    logger.debug(s"  Model Regs: $modelRegs")
     TcpModbusDeviceModel(id = id, description = description, protocols = protocols,
       tcpModelReg = modelRegs)
   }
