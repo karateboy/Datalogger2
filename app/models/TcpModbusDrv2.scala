@@ -53,7 +53,7 @@ case class TcpModelReg(data: List[DataReg],
                        multiplier: Float,
                        byteSwapMode: Int,
                        filterRules: Seq[FilterRule],
-                       eightByteSwapMode: Int = DataType.EIGHT_BYTE_FLOAT)
+                       byteSwapMode64: Int = DataType.EIGHT_BYTE_FLOAT)
 
 
 case class TcpModbusDeviceModel(id: String, description: String, tcpModelReg: TcpModelReg, protocols: Seq[String])
@@ -98,6 +98,13 @@ object TcpModbusDrv2 {
     } catch {
       case _: Throwable =>
         DataType.FOUR_BYTE_FLOAT
+    }
+
+    val byteSwapMode64: Int = try {
+      driverConfig.getInt("byteSwapMode64")
+    } catch {
+      case _: Throwable =>
+        DataType.EIGHT_BYTE_FLOAT
     }
 
     def getAnyRefList(path: String): List[util.ArrayList[Any]] =
@@ -205,7 +212,8 @@ object TcpModbusDrv2 {
       coils = coilRegList,
       multiplier = multiplier,
       byteSwapMode = byteSwapMode,
-      filterRules = filterRules)
+      filterRules = filterRules,
+      byteSwapMode64 = byteSwapMode64)
 
     TcpModbusDeviceModel(id = id, description = description, protocols = protocols,
       tcpModelReg = modelRegs)
