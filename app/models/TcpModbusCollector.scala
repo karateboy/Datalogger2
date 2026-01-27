@@ -9,6 +9,7 @@ import models.ModelHelper._
 import models.MultiCalibrator.TriggerVault
 import models.Protocol.ProtocolParam
 import models.TapiTxx.T700_STANDBY_SEQ
+import play.api.Logger
 
 import javax.inject._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -23,18 +24,23 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
                                    @Assisted("desc") desc: String,
                                    @Assisted modelReg: TcpModelReg,
                                    @Assisted deviceConfig: DeviceConfig,
-                                   @Assisted("protocol") protocol: ProtocolParam) extends Actor with ActorLogging {
-  val InputKey = "Input"
+                                   @Assisted("protocol") protocol: ProtocolParam) extends Actor {
 
   import DataCollectManager._
   import TapiTxxCollector._
   import com.serotonin.modbus4j._
   import com.serotonin.modbus4j.ip.IpParameters
 
+  val InputKey = "Input"
+  private val Input64Key = "Input64"
   val HoldingKey = "Holding"
+  private val Holding64Key = "Holding64"
   val ModeKey = "Mode"
-  self ! ConnectHost
   val WarnKey = "Warn"
+
+
+  self ! ConnectHost
+
   @volatile var timerOpt: Option[Cancellable] = None
   @volatile var masterOpt: Option[ModbusMaster] = None
   @volatile var (collectorState: String, instrumentStatusTypesOpt) = {
@@ -46,100 +52,86 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
       (MonitorStatus.NormalStat, None)
   }
   @volatile var connected = false
-  @volatile var oldModelReg: Option[ModelRegValue] = None
+  @volatile var oldModelReg: Option[RegValueSet] = None
   @volatile var nextLoggingStatusTime: Imports.DateTime = getNextTime(30)
 
+  val logger = Logger(s"${this.getClass}($instId:$desc)")
+
   def probeInstrumentStatusType: Seq[InstrumentStatusType] = {
-    log.info("Probing supported modbus registers...")
+    logger.info("Probing supported modbus registers...")
     import com.serotonin.modbus4j.code.DataType
     import com.serotonin.modbus4j.locator.BaseLocator
 
-    def probeInputReg(addr: Int, desc: String): Boolean = {
+    def probeValueReg(addr: Int, desc: String, input: Boolean, count: Int): Boolean = {
       try {
-        val locator = if (protocol.protocol == Protocol.tcp)
-          BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), addr, DataType.FOUR_BYTE_FLOAT)
-        else
-          BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), addr, DataType.FOUR_BYTE_FLOAT_SWAPPED)
+        val locator =
+          (input, count) match {
+            case (true, 2) =>
+              BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), addr, DataType.FOUR_BYTE_INT_SIGNED)
+            case (true, 4) =>
+              BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), addr, DataType.EIGHT_BYTE_INT_SIGNED)
+            case (false, 2) =>
+              BaseLocator.holdingRegister(deviceConfig.slaveID.getOrElse(1), addr, DataType.FOUR_BYTE_INT_SIGNED)
+            case (false, 4) =>
+              BaseLocator.holdingRegister(deviceConfig.slaveID.getOrElse(1), addr, DataType.EIGHT_BYTE_INT_SIGNED)
 
-        for (master <- masterOpt)
-          master.getValue(locator)
+            case _ =>
+              throw new Exception("Unsupported data type")
+          }
 
-        true
-      } catch {
-        case ex: Throwable =>
-          log.error(s"$instId:$desc=> $ex.getMessage", ex)
-          log.info(s"$addr $desc is not supported.")
-          false
-      }
-    }
-
-    def probeHoldingReg(addr: Int, desc: String): Boolean = {
-      try {
-        val locator = BaseLocator.holdingRegister(deviceConfig.slaveID.getOrElse(1), addr, DataType.FOUR_BYTE_FLOAT)
         for (master <- masterOpt)
           master.getValue(locator)
 
         true
       } catch {
         case _: Throwable =>
-          log.info(s"$instId:$desc=>$addr $desc is not supported.")
+          logger.info(s"Value $addr $desc is not supported.")
           false
       }
     }
 
-    def probeInputStatus(addr: Int, desc: String): Boolean = {
+    def probeModeReg(addr: Int, desc: String): Boolean = {
       try {
         val locator = BaseLocator.inputStatus(deviceConfig.slaveID.getOrElse(1), addr)
         masterOpt.get.getValue(locator)
         true
       } catch {
         case _: Throwable =>
-          log.info(s"${instId}:${desc}=>$addr $desc is not supported.")
+          logger.info(s"Mode $addr $desc is not supported.")
           false
       }
     }
 
-    val inputRegs =
-      for {r <- modelReg.inputs if probeInputReg(r.addr, r.desc)}
-        yield r
 
-    val inputRegStatusType =
-      for {
-        r <- inputRegs
-      } yield InstrumentStatusType(key = s"$InputKey${r.addr}", addr = r.addr, desc = r.desc, unit = r.unit)
+    val input =
+      for (r <- modelReg.inputs if probeValueReg(r.addr, r.desc, input = true, count = 2)) yield
+        InstrumentStatusType(key = s"$InputKey${r.addr}", addr = r.addr, desc = r.desc, unit = r.unit)
 
-    val holdingRegs =
-      for (r <- modelReg.holding if probeHoldingReg(r.addr, r.desc))
-        yield r
+    val input64 =
+      for (r <- modelReg.input64 if probeValueReg(r.addr, r.desc, input = true, count = 4))
+        yield InstrumentStatusType(key = s"$Input64Key${r.addr}", addr = r.addr, desc = r.desc, unit = r.unit)
 
-    val holdingRegStatusType =
-      for {
-        r <- holdingRegs
-      } yield InstrumentStatusType(key = s"$HoldingKey${r.addr}", addr = r.addr, desc = r.desc, unit = r.unit)
+    val holding =
+      for (r <- modelReg.holding if probeValueReg(r.addr, r.desc, input = false, count = 2))
+        yield InstrumentStatusType(key = s"$HoldingKey${r.addr}", addr = r.addr, desc = r.desc, unit = r.unit)
 
-    val modeRegs =
-      for (r <- modelReg.modes if probeInputStatus(r.addr, r.desc))
-        yield r
+    val holding64 =
+      for (r <- modelReg.holding64 if probeValueReg(r.addr, r.desc, input = false, count = 2))
+        yield InstrumentStatusType(key = s"$Holding64Key${r.addr}", addr = r.addr, desc = r.desc, unit = r.unit)
 
-    val modeRegStatusType =
-      for {
-        r <- modeRegs
-      } yield InstrumentStatusType(key = s"$ModeKey${r.addr}", addr = r.addr, desc = r.desc, unit = "-")
+    val modes =
+      for (r <- modelReg.modes if probeModeReg(r.addr, r.desc))
+        yield InstrumentStatusType(key = s"$ModeKey${r.addr}", addr = r.addr, desc = r.desc, unit = "-")
 
-    val warnRegs =
-      for (r <- modelReg.warnings if probeInputStatus(r.addr, r.desc))
-        yield r
+    val warns =
+      for (r <- modelReg.warnings if probeModeReg(r.addr, r.desc))
+        yield InstrumentStatusType(key = s"$WarnKey${r.addr}", addr = r.addr, desc = r.desc, unit = "-")
 
-    val warnRegStatusType =
-      for {
-        r <- warnRegs
-      } yield InstrumentStatusType(key = s"$WarnKey${r.addr}", addr = r.addr, desc = r.desc, unit = "-")
-
-    log.info("Finish probing.")
-    inputRegStatusType ++ holdingRegStatusType ++ modeRegStatusType ++ warnRegStatusType
+    logger.info("Finish probing.")
+    input ++ input64 ++ holding ++ holding64 ++ modes ++ warns
   }
 
-  def readReg(statusTypeList: List[InstrumentStatusType]): ModelRegValue = {
+  def readReg(statusTypeList: List[InstrumentStatusType]): RegValueSet = {
     import com.serotonin.modbus4j.BatchRead
     val batch = new BatchRead[Integer]
 
@@ -152,8 +144,12 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     } {
       if (st.key.startsWith(InputKey)) {
         batch.addLocator(idx, BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode))
+      } else if (st.key.startsWith(Input64Key)) {
+        batch.addLocator(idx, BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.eightByteSwapMode))
       } else if (st.key.startsWith(HoldingKey)) {
         batch.addLocator(idx, BaseLocator.holdingRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode))
+      } else if (st.key.startsWith(Holding64Key)) {
+        batch.addLocator(idx, BaseLocator.holdingRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.eightByteSwapMode))
       } else if (st.key.startsWith(ModeKey) || st.key.startsWith(WarnKey)) {
         batch.addLocator(idx, BaseLocator.inputStatus(deviceConfig.slaveID.getOrElse(1), st.addr))
       } else {
@@ -164,39 +160,51 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     batch.setContiguousRequests(true)
 
     val results = masterOpt.get.send(batch)
-    val inputs =
+
+    def getRegValues(key: String): List[RegDouble] =
       for {
-        st_idx <- statusTypeList.zipWithIndex if st_idx._1.key.startsWith(InputKey)
+        st_idx <- statusTypeList.zipWithIndex if st_idx._1.key.startsWith(key)
         idx = st_idx._2
       } yield {
         try {
-          (st_idx._1, results.getFloatValue(idx).toFloat * modelReg.multiplier)
+          RegDouble(st_idx._1, results.getFloatValue(idx) * modelReg.multiplier)
         } catch {
           case ex: Exception =>
-            log.error(s"failed at ${idx}")
+            logger.error(s"failed at $idx")
             throw ex
         }
       }
 
-    val holdings =
-      for {
-        st_idx <- statusTypeList.zipWithIndex if st_idx._1.key.startsWith(HoldingKey)
-        idx = st_idx._2
-      } yield (st_idx._1, results.getFloatValue(idx).toFloat)
+    val inputs = getRegValues(InputKey)
+    val holdings = getRegValues(HoldingKey)
 
-    val modes =
+    def getModeValues(key: String): List[RegBool] =
       for {
-        st_idx <- statusTypeList.zipWithIndex if st_idx._1.key.startsWith(ModeKey)
+        st_idx <- statusTypeList.zipWithIndex if st_idx._1.key.startsWith(key)
         idx = st_idx._2
-      } yield (st_idx._1, results.getValue(idx).asInstanceOf[Boolean])
+      } yield RegBool(st_idx._1, results.getValue(idx).asInstanceOf[Boolean])
 
-    val warns =
+    val modes = getModeValues(ModeKey)
+    val warns = getModeValues(WarnKey)
+
+    def getReg64Values(key: String): List[RegDouble] =
       for {
-        st_idx <- statusTypeList.zipWithIndex if st_idx._1.key.startsWith(WarnKey)
+        st_idx <- statusTypeList.zipWithIndex if st_idx._1.key.startsWith(key)
         idx = st_idx._2
-      } yield (st_idx._1, results.getValue(idx).asInstanceOf[Boolean])
+      } yield {
+        try {
+          RegDouble(st_idx._1, results.getDoubleValue(idx) * modelReg.multiplier)
+        } catch {
+          case ex: Exception =>
+            logger.error(s"failed at $idx")
+            throw ex
+        }
+      }
 
-    ModelRegValue(inputs, holdings, modes, warns)
+    val input64s = getReg64Values(Input64Key)
+    val holding64s = getReg64Values(Holding64Key)
+
+    RegValueSet(inputs, holdings, modes, warns, input64s, holding64s)
   }
 
   import scala.concurrent.{Future, blocking}
@@ -207,14 +215,13 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     Future {
       blocking {
         try {
-          if (instrumentStatusTypesOpt.isDefined) {
-            val regValues = readReg(instrumentStatusTypesOpt.get)
-            regValueReporter(regValues)(recordCalibration)
-          }
+          for (instStatusTypes <- instrumentStatusTypesOpt)
+            regValueReporter(readReg(instStatusTypes))(recordCalibration)
+
           connected = true
         } catch {
           case ex: Exception =>
-            log.error(s"$instId:$desc=>${ex.getMessage}", ex)
+            logger.error(s"$instId:$desc=>${ex.getMessage}", ex)
             if (connected)
               alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"${ex.getMessage}")
 
@@ -231,16 +238,15 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
 
   def executeCalibration(calibrationType: CalibrationType): Unit = {
     if (deviceConfig.monitorTypes.isEmpty)
-      log.error("There is no monitor type for calibration.")
+      logger.error("There is no monitor type for calibration.")
     else if (!connected)
-      log.error("Cannot calibration before connected.")
+      logger.error("Cannot calibration before connected.")
     else
       startCalibration(calibrationType, deviceConfig.monitorTypes.get)
   }
 
   def normalReceive(): Receive = {
     case ConnectHost =>
-
       Future {
         blocking {
           var master: ModbusMaster = null
@@ -250,7 +256,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
               val ipParameters = new IpParameters()
               ipParameters.setHost(protocol.host.get);
               ipParameters.setPort(502);
-              log.info(s"${self.toString()}: connect ${protocol.host.get}")
+              logger.info(s"${self.toString()}: connect ${protocol.host.get}")
               master = modbusFactory.createTcpMaster(ipParameters, true)
               master.setRetries(1)
               master.setConnected(true)
@@ -258,7 +264,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
               masterOpt = Some(master)
             } else {
               if (masterOpt.isEmpty) {
-                log.info(protocol.toString)
+                logger.info(protocol.toString)
                 val serialWrapper: SerialPortWrapper = TcpModbusDrv2.getSerialWrapper(protocol)
                 val master = modbusFactory.createRtuMaster(serialWrapper)
                 master.init()
@@ -275,15 +281,14 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
                 // Data register must include it in the list
                 instrumentStatusTypesOpt = Some(probeInstrumentStatusType.toList)
                 instrumentOp.updateStatusType(instId, instrumentStatusTypesOpt.get)
-              } else {
+              } else
                 throw new Exception("Probe register failed. Data register is not in there...")
-              };
             }
             import scala.concurrent.duration._
             timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(3, SECONDS), self, ReadRegister))
           } catch {
             case ex: Exception =>
-              log.error(s"${instId}:${desc}=>${ex.getMessage}", ex)
+              logger.error(s"$instId:${desc}=>${ex.getMessage}", ex)
               alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"無法連接:${ex.getMessage}")
 
               if (master != null)
@@ -301,27 +306,27 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
 
     case SetState(id, state) =>
       if (state == MonitorStatus.ZeroCalibrationStat) {
-        log.error(s"Unexpected command: SetState($state)")
+        logger.error(s"Unexpected command: SetState($state)")
       } else {
         collectorState = state
         instrumentOp.setState(instId, collectorState)
       }
-      log.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
+      logger.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
 
-    case AutoCalibration(instId) =>
+    case AutoCalibration(_) =>
       executeCalibration(AutoZero)
 
-    case ManualZeroCalibration(instId) =>
+    case ManualZeroCalibration(_) =>
       executeCalibration(ManualZero)
 
-    case ManualSpanCalibration(instId) =>
+    case ManualSpanCalibration(_) =>
       executeCalibration(ManualSpan)
 
     case ExecuteSeq(seq, on) =>
-      executeSeq(seq, on)
+      logger.warn(s"ExecuteSeq($seq, $on) is not implemented.")
 
     case TriggerVault(zero, on) =>
-      log.info(s"TriggerVault($zero, $on)")
+      logger.info(s"TriggerVault($zero, $on)")
       Future.successful(triggerVault(zero, on))
   }
 
@@ -336,19 +341,15 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     }
   }
 
-  // FIXME not implemented
-  def executeSeq(str: String, bool: Boolean): Unit = ???
-
   def startCalibration(calibrationType: CalibrationType, monitorTypes: List[String]): Unit = {
-
-    log.info(s"start calibrating ${monitorTypes.mkString(",")}")
+    logger.info(s"start calibrating ${monitorTypes.mkString(",")}")
     import com.github.nscala_time.time.Imports._
     val endState = collectorState
 
     if (!calibrationType.zero &&
       deviceConfig.calibratorPurgeTime.isDefined && deviceConfig.calibratorPurgeTime.get != 0) {
       context become calibration(calibrationType, DateTime.now, recordCalibration = false, List.empty[ReportData],
-        List.empty[(String, Double)], endState, Some(purgeCalibrator))
+        List.empty[(String, Double)], endState, Some(purgeCalibrator()))
     } else {
       context become calibration(calibrationType, DateTime.now, recordCalibration = false, List.empty[ReportData],
         List.empty[(String, Double)], endState, None)
@@ -375,16 +376,16 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
                   zeroReading: List[(String, Double)],
                   endState: String, timerOpt: Option[Cancellable]): Receive = {
     case ConnectHost =>
-      log.error("unexpected ConnectHost msg")
+      logger.error("unexpected ConnectHost msg")
 
     case ReadRegister =>
       readRegFuture(recordCalibration)
 
     case SetState(_, targetState) =>
       if (targetState == MonitorStatus.ZeroCalibrationStat) {
-        log.info("Already in calibration. Ignore it")
+        logger.info("Already in calibration. Ignore it")
       } else if (targetState == MonitorStatus.NormalStat) {
-        log.info("Cancel calibration.")
+        logger.info("Cancel calibration.")
         for (timer <- timerOpt)
           timer.cancel()
 
@@ -393,9 +394,9 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
         resetToNormal()
         context become normalReceive()
       } else {
-        log.info(s"During calibration ignore $targetState state change")
+        logger.info(s"During calibration ignore $targetState state change")
       }
-      log.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
+      logger.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
 
     case RaiseStart =>
       collectorState =
@@ -405,7 +406,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
           MonitorStatus.SpanCalibrationStat
 
       instrumentOp.setState(instId, collectorState)
-      log.info(s"${self.path.name} => RaiseStart")
+      logger.info(s"${self.path.name} => RaiseStart")
       import scala.concurrent.duration._
 
       val calibrationTimer =
@@ -425,7 +426,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
       }
 
     case HoldStart => {
-      log.info(s"${self.path.name} => HoldStart")
+      logger.info(s"${self.path.name} => HoldStart")
       import scala.concurrent.duration._
       val calibrationTimer = {
         for (holdTime <- deviceConfig.holdTime) yield
@@ -436,7 +437,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     }
 
     case DownStart =>
-      log.info(s"${self.path.name} => DownStart (${calibrationReadingList.length})")
+      logger.info(s"${self.path.name} => DownStart (${calibrationReadingList.length})")
       import scala.concurrent.duration._
 
       if (calibrationType.auto && calibrationType.zero) {
@@ -471,7 +472,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     case CalibrateEnd =>
       Future {
         blocking {
-          log.info(s"$self =>$calibrationType CalibrateEnd")
+          logger.info(s"$self =>$calibrationType CalibrateEnd")
 
           val values = for {mt <- deviceConfig.monitorTypes.get} yield {
             val calibrations = calibrationReadingList.flatMap {
@@ -482,7 +483,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
             }
 
             if (calibrations.isEmpty) {
-              log.warning(s"No calibration data for $mt")
+              logger.warn(s"No calibration data for $mt")
               (mt, 0d)
             } else
               (mt, calibrations.sum / calibrations.length)
@@ -491,7 +492,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
           //For auto calibration, span will be executed after zero
           if (calibrationType.auto && calibrationType.zero) {
             for (v <- values)
-              log.info(s"${v._1} zero calibration end. (${v._2})")
+              logger.info(s"${v._1} zero calibration end. (${v._2})")
 
             if (deviceConfig.calibratorPurgeTime.isDefined) {
               collectorState = MonitorStatus.NormalStat
@@ -532,12 +533,12 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
               }
             }
 
-            log.info("All monitorTypes are calibrated.")
+            logger.info("All monitorTypes are calibrated.")
             collectorState = endState
             instrumentOp.setState(instId, collectorState)
             resetToNormal()
             context become normalReceive()
-            log.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
+            logger.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
           }
         }
       }
@@ -615,7 +616,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     import scala.concurrent.duration._
 
     val purgeTime = deviceConfig.calibratorPurgeTime.get
-    log.info(s"Purge calibrator. Delay start of calibration $purgeTime seconds")
+    logger.info(s"Purge calibrator. Delay start of calibration $purgeTime seconds")
     triggerCalibratorPurge(true)
     context.system.scheduler.scheduleOnce(Duration(purgeTime, SECONDS), self, RaiseStart)
   }
@@ -631,40 +632,25 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     }
   }
 
-  def regValueReporter(regValue: ModelRegValue)(recordCalibration: Boolean): Unit = {
+  def regValueReporter(regValue: RegValueSet)(recordCalibration: Boolean): Unit = {
     for (report <- reportData(regValue)) {
       context.parent ! report
       if (recordCalibration)
         self ! report
     }
 
-    for {
-      r <- regValue.modeRegs.zipWithIndex
-      statusType = r._1._1
-      enable = r._1._2
-      idx = r._2
-    } {
-      if (enable) {
-        if (oldModelReg.isEmpty || oldModelReg.get.modeRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, statusType.desc)
-        }
-      }
+    for ((r, idx) <- regValue.modes.zipWithIndex if r.value) {
+      if (oldModelReg.isEmpty || oldModelReg.get.modes(idx).value != r.value)
+        alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, r.ist.desc)
     }
 
-    for {
-      r <- regValue.warnRegs.zipWithIndex
-      statusType = r._1._1
-      enable = r._1._2
-      idx = r._2
-    } {
-      if (enable) {
-        if (oldModelReg.isEmpty || oldModelReg.get.warnRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, statusType.desc)
-        }
+    for ((r, idx) <- regValue.warnings.zipWithIndex) {
+      if (r.value) {
+        if (oldModelReg.isEmpty || oldModelReg.get.warnings(idx).value != r.value)
+          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, r.ist.desc)
       } else {
-        if (oldModelReg.isDefined && oldModelReg.get.warnRegs(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, s"${statusType.desc} 解除")
-        }
+        if (oldModelReg.isDefined && oldModelReg.get.warnings(idx).value != r.value)
+          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, s"${r.ist.desc} 解除")
       }
     }
 
@@ -675,37 +661,31 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
         logInstrumentStatus(regValue)
       } catch {
         case _: Throwable =>
-          log.error("Log instrument status failed")
+          logger.error("Log instrument status failed")
       }
-      nextLoggingStatusTime = nextLoggingStatusTime + 10.minute
+      nextLoggingStatusTime = nextLoggingStatusTime + 30.minute
       //log.debug(s"next logging time = $nextLoggingStatusTime")
     }
 
     oldModelReg = Some(regValue)
   }
 
-  def logInstrumentStatus(regValue: ModelRegValue): Unit = {
-    val isList = regValue.inputRegs.map {
-      kv =>
-        val k = kv._1
-        val v = kv._2
-        InstrumentStatusDB.Status(k.key, v)
+  def logInstrumentStatus(regValue: RegValueSet): Unit = {
+    val isList = regValue.inputs.map {
+      reg =>
+        InstrumentStatusDB.Status(reg.ist.key, reg.value)
     }
     val instStatus = InstrumentStatusDB.InstrumentStatus(DateTime.now(), instId, isList).excludeNaN
     instrumentStatusOp.log(instStatus)
   }
 
-  private def getDataRegValue(regValue: ModelRegValue)(addr: Int): Option[(InstrumentStatusType, Float)] = {
-    val dataRegOpt = (regValue.inputRegs ++ regValue.holdingRegs).find(r_idx => r_idx._1.addr == addr)
+  private def getDataRegValue(regValue: RegValueSet)(addr: Int): Option[RegDouble] =
+    regValue.dataList.find(reg => reg.ist.addr == addr)
 
-    for (dataReg <- dataRegOpt) yield
-      dataReg
-  }
-
-  def reportData(regValue: ModelRegValue): Option[ReportData] = {
-    val optValues: Seq[Option[(String, (InstrumentStatusType, Float))]] = {
-      for (dataReg <- modelReg.data) yield {
-        def passFilter(v: Double) =
+  def reportData(regValue: RegValueSet): Option[ReportData] = {
+    val monitorTypeData = modelReg.data flatMap {
+      dataReg =>
+        def passFilter(v: Double): Boolean =
           modelReg.filterRules.forall(rule =>
             if (rule.monitorType == dataReg.monitorType)
               rule.min < v && rule.max > v
@@ -713,18 +693,14 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
               true)
 
         for {rawValue <- getDataRegValue(regValue)(dataReg.address)
-             v = rawValue._2 * dataReg.multiplier if passFilter(v)} yield
-          (dataReg.monitorType, (rawValue._1, v))
-      }
+             v = rawValue.value * dataReg.multiplier if passFilter(v)} yield
+          MonitorTypeData(dataReg.monitorType, v, collectorState)
     }
-
-    val monitorTypeData = optValues.flatten.map(
-      t => MonitorTypeData(t._1, t._2._2.toDouble, collectorState))
 
     if (monitorTypeData.isEmpty)
       None
     else
-      Some(ReportData(monitorTypeData.toList))
+      Some(ReportData(monitorTypeData))
   }
 
   override def postStop(): Unit = {

@@ -52,7 +52,8 @@ case class TcpModelReg(data: List[DataReg],
                        coils: List[ModeReg],
                        multiplier: Float,
                        byteSwapMode: Int,
-                       filterRules: Seq[FilterRule])
+                       filterRules: Seq[FilterRule],
+                       eightByteSwapMode: Int = DataType.EIGHT_BYTE_FLOAT)
 
 
 case class TcpModbusDeviceModel(id: String, description: String, tcpModelReg: TcpModelReg, protocols: Seq[String])
