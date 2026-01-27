@@ -14,7 +14,7 @@ import scala.language.implicitConversions
  */
 
 object ModelHelper {
-  val logger: Logger = Logger(this.getClass)
+  private val logger: Logger = Logger(this.getClass)
 
   implicit def getSqlTimestamp(t: DateTime): Timestamp = {
     new java.sql.Timestamp(t.getMillis)

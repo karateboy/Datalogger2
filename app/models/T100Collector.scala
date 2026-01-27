@@ -56,7 +56,7 @@ class T100Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
 
   override def reportData(regValue: ModelRegValue): Option[ReportData] =
     for (idx <- findDataRegIdx(regValue)(22)) yield {
-      val v = regValue.inputRegs(idx)
+      val v = regValue.inputs(idx)
       ReportData(List(MonitorTypeData(MonitorType.SO2, v._2.toDouble, collectorState)))
     }
 

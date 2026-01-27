@@ -760,13 +760,11 @@ class Query @Inject()(recordOp: RecordDB,
 
     val columnNames: Seq[String] = keyList.map(statusTypeMap).map(_.desc)
     val rows = for (report <- reportMap) yield {
-      val cellData = for (key <- keyList) yield {
-        val instrumentStatusType = statusTypeMap(key)
+      val cellData = for (key <- keyList) yield
         if (report._2.contains(key))
-          CellData(instrumentStatusOp.formatValue(report._2(key), instrumentStatusType.prec.getOrElse(2)), Seq.empty[String])
+          CellData(s"%.2f".format(report._2(key)), Seq.empty[String])
         else
           CellData("-", Seq.empty[String])
-      }
       RowData(report._1.getTime, cellData)
     }
 

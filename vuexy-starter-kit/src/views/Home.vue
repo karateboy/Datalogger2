@@ -337,8 +337,8 @@ export default Vue.extend({
     await this.getMonitorRealtimeData();
 
     const me = this;
-    for (const mt of this.userInfo.monitorTypeOfInterest) this.query(mt);
-    for (const mt of me.windRoseList) await me.queryWindRose(mt);
+    for (const mt of this.userInfo.monitorTypeOfInterest) me.query(mt);
+    for (const mt of me.windRoseList) me.queryWindRose(mt);
 
     this.mtInterestTimer = setInterval(() => {
       for (const mt of me.userInfo.monitorTypeOfInterest) me.query(mt);
@@ -346,8 +346,8 @@ export default Vue.extend({
       this.getMonitorRealtimeData();
     }, 60000);
 
-    await this.getCdxConfig();
-    await this.initRealtimeChart();
+    this.getCdxConfig();
+    this.initRealtimeChart();
   },
   beforeDestroy() {
     clearInterval(this.refreshTimer);
