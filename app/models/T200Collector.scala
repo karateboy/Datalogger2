@@ -60,9 +60,9 @@ class T200Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
       idxNox <- findDataRegIdx(regValue)(30)
       idxNo <- findDataRegIdx(regValue)(34)
       idxNo2 <- findDataRegIdx(regValue)(38)
-      vNOx = regValue.inputRegs(idxNox)
-      vNO = regValue.inputRegs(idxNo)
-      vNO2 = regValue.inputRegs(idxNo2)
+      vNOx = regValue.inputs(idxNox)
+      vNO = regValue.inputs(idxNo)
+      vNO2 = regValue.inputs(idxNo2)
     } yield {
       ReportData(List(
         MonitorTypeData(NOX, vNOx._2.toDouble, collectorState),

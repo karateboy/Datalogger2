@@ -390,6 +390,7 @@ class DataCollectManager @Inject()(config: Configuration,
                                    tableType: TableType) extends Actor with InjectedActorSupport {
 
   import DataCollectManager._
+  val logger = Logger(this.getClass)
 
   logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
   DataCollectManager.updateEffectiveRatio(sysConfig)

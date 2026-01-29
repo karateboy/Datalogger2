@@ -50,7 +50,7 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
         reg = inputRegAnyList.get(i)
         v = reg.asInstanceOf[ArrayList[Any]]
       } yield {
-        InputReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String], v.get(2).asInstanceOf[String])
+        ValueReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String], v.get(2).asInstanceOf[String])
       }
     }
 
@@ -61,7 +61,7 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
         reg = holdingRegAnyList.get(i)
         v = reg.asInstanceOf[ArrayList[Any]]
       } yield {
-        HoldingReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String], v.get(2).asInstanceOf[String])
+        ValueReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String], v.get(2).asInstanceOf[String])
       }
     }
 
@@ -72,7 +72,7 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
         reg = modeRegAnyList.get(i)
         v = reg.asInstanceOf[ArrayList[Any]]
       } yield {
-        DiscreteInputReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String])
+        ModeReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String])
       }
     }
 
@@ -83,7 +83,7 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
         reg = warnRegAnyList.get(i)
         v = reg.asInstanceOf[ArrayList[Any]]
       } yield {
-        DiscreteInputReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String])
+        ModeReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String])
       }
     }
 
@@ -94,7 +94,7 @@ abstract class TapiTxx(modelConfig: ModelConfig) extends DriverOps {
         reg = coilRegAnyList.get(i)
         v = reg.asInstanceOf[ArrayList[Any]]
       } yield {
-        CoilReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String])
+        ModeReg(v.get(0).asInstanceOf[Int], v.get(1).asInstanceOf[String])
       }
     }
 

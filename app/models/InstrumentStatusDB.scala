@@ -31,5 +31,4 @@ trait InstrumentStatusDB {
 
   def queryFuture(start: Imports.DateTime, end: Imports.DateTime): Future[Seq[InstrumentStatus]]
 
-  def formatValue(v: Double, prec: Int = 2): String =s"%.${prec}f".format(v)
 }

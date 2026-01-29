@@ -44,7 +44,7 @@ class T360Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
   val logger: Logger = Logger(this.getClass)
   override def reportData(regValue: ModelRegValue): Option[ReportData] =
     for (idx <- findDataRegIdx(regValue)(18)) yield {
-      val v = regValue.inputRegs(idx)
+      val v = regValue.inputs(idx)
       ReportData(List(MonitorTypeData("CO2", v._2.toDouble, collectorState)))
     }
 

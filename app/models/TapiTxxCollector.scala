@@ -1,6 +1,7 @@
 package models
 
 import akka.actor._
+import com.github.nscala_time.time.Imports
 import models.ModelHelper._
 import models.MultiCalibrator.TriggerVault
 import play.api.Logger
@@ -64,22 +65,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
   }
   @volatile var connected = false
   @volatile var oldModelReg: Option[ModelRegValue] = None
-  @volatile var nextLoggingStatusTime: com.github.nscala_time.time.Imports.DateTime = {
-    def getNextTime(period: Int) = {
-      import com.github.nscala_time.time.Imports._
-      val now = DateTime.now()
-      val nextMin = (now.getMinuteOfHour / period + 1) * period
-      val hour = (now.getHourOfDay + (nextMin / 60)) % 24
-      val nextDay = (now.getHourOfDay + (nextMin / 60)) / 24
-
-      now.withHourOfDay(hour).withMinuteOfHour(nextMin % 60).withSecondOfMinute(0).withMillisOfSecond(0) + nextDay.day
-    }
-
-    // suppose every 10 min
-    val period = 30
-    val nextTime = getNextTime(period)
-    nextTime
-  }
+  @volatile var nextLoggingStatusTime: Imports.DateTime = getNextTime(30)
 
   def probeInstrumentStatusType: List[InstrumentStatusType] = {
     log.info("Probing supported modbus registers...")
@@ -596,30 +582,30 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
     }
 
     for {
-      r <- regValue.modeRegs.zipWithIndex
+      r <- regValue.modes.zipWithIndex
       statusType = r._1._1
       enable = r._1._2
       idx = r._2
     } {
       if (enable) {
-        if (oldModelReg.isEmpty || oldModelReg.get.modeRegs(idx)._2 != enable) {
+        if (oldModelReg.isEmpty || oldModelReg.get.modes(idx)._2 != enable) {
           alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, statusType.desc)
         }
       }
     }
 
     for {
-      r <- regValue.warnRegs.zipWithIndex
+      r <- regValue.warnings.zipWithIndex
       statusType = r._1._1
       enable = r._1._2
       idx = r._2
     } {
       if (enable) {
-        if (oldModelReg.isEmpty || oldModelReg.get.warnRegs(idx)._2 != enable) {
+        if (oldModelReg.isEmpty || oldModelReg.get.warnings(idx)._2 != enable) {
           alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, statusType.desc)
         }
       } else {
-        if (oldModelReg.isDefined && oldModelReg.get.warnRegs(idx)._2 != enable) {
+        if (oldModelReg.isDefined && oldModelReg.get.warnings(idx)._2 != enable) {
           alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, s"${statusType.desc} 解除")
         }
       }
@@ -642,7 +628,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
   }
 
   def logInstrumentStatus(regValue: ModelRegValue): Unit = {
-    val isList = regValue.inputRegs.map {
+    val isList = regValue.inputs.map {
       kv =>
         val k = kv._1
         val v = kv._2
@@ -653,7 +639,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
   }
 
   def findDataRegIdx(regValue: ModelRegValue)(addr: Int): Option[Int] = {
-    val dataReg = regValue.inputRegs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
+    val dataReg = regValue.inputs.zipWithIndex.find(r_idx => r_idx._1._1.addr == addr)
     if (dataReg.isEmpty) {
       log.warn(s"$instId Cannot found Data register!")
       None

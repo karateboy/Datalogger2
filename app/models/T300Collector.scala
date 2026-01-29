@@ -59,7 +59,7 @@ class T300Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
   override def reportData(regValue: ModelRegValue): Option[ReportData] = {
 
     for (idx <- findDataRegIdx(regValue)(18)) yield {
-      val vCO = regValue.inputRegs(idx)
+      val vCO = regValue.inputs(idx)
       val measure = vCO._2.toDouble
       if (!MonitorTypeCollectorStatus.map.contains(CO) ||
         MonitorTypeCollectorStatus.map(CO) != collectorState) {
