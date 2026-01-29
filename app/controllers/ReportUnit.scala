@@ -3,6 +3,7 @@ package controllers
 object ReportUnit extends Enumeration {
   val Sec: Value = Value
   val Min: Value = Value
+  val FiveMin: Value = Value
   val SixMin: Value = Value
   val TenMin: Value = Value
   val FifteenMin: Value = Value
@@ -15,6 +16,7 @@ object ReportUnit extends Enumeration {
     Map(
       Sec -> "秒",
       Min -> "分",
+      FiveMin -> "五分",
       SixMin -> "六分",
       TenMin -> "十分",
       FifteenMin -> "十五分",
