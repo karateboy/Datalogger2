@@ -277,6 +277,8 @@ class Query @Inject()(recordOp: RecordDB,
           1.second
         case ReportUnit.Min =>
           1.minute
+        case ReportUnit.FiveMin =>
+          5.minute
         case ReportUnit.SixMin =>
           6.minute
         case ReportUnit.TenMin =>
@@ -310,6 +312,8 @@ class Query @Inject()(recordOp: RecordDB,
         case ReportUnit.Sec =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
         case ReportUnit.Min =>
+          s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
+        case ReportUnit.FiveMin =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
         case ReportUnit.SixMin =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
@@ -494,11 +498,18 @@ class Query @Inject()(recordOp: RecordDB,
                 val windSpeed = recordOp.getRecordMap(tableType.mapCollection(myTabType))(monitor, List(MonitorType.WIN_SPEED), period_start, period_start + period)(MonitorType.WIN_SPEED)
                 period_start -> (directionAvg(windSpeed.flatMap(_.value), windDir.flatMap(_.value)), None)
               } else {
-                val values = records.flatMap { r => r.value }
+                val matchedRecords = records.filter { r => MonitorStatusFilter.isMatched(statusFilter, r.status) }
+                val values = matchedRecords.flatMap { r => r.value }
+                val status =
+                  if (matchedRecords.nonEmpty)
+                    Some(matchedRecords.head.status)
+                  else
+                    None
+
                 if (values.nonEmpty)
-                  period_start -> (Some(values.sum / values.length), None)
+                  period_start -> (Some(values.sum / values.length), status)
                 else
-                  period_start -> (None, None)
+                  period_start -> (None, status)
               }
             }
           }
