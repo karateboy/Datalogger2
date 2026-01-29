@@ -58,38 +58,6 @@
             >
               重新計算
             </b-button>
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="primary"
-              class="mr-1"
-              @click="upload"
-            >
-              重新上傳
-            </b-button>
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="primary"
-              class="mr-1"
-              @click="cdxUpload"
-            >
-              CDX上傳
-            </b-button>
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="primary"
-              class="mr-1"
-              @click="newTaipeiUpload"
-            >
-              新北OpenData上傳
-            </b-button>
-            <b-button
-              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
-              variant="primary"
-              class="mr-1"
-              @click="resetReader"
-            >
-              VOC重新匯入
-            </b-button>
           </b-col>
         </b-row>
       </b-form>
