@@ -209,7 +209,7 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
       val newCalibrationMap = updateCalibrationMap(Date.from(Instant.now), point, valueMap, calibrationMap)
 
       context.become(handler(point + 1, Map.empty, recording = false, newCalibrationMap))
-      self ! PointCalibrationStart
+      context.system.scheduler.scheduleOnce(FiniteDuration(1, SECONDS), self, PointCalibrationStart)
 
     case ReportData(_dataList) =>
       if (recording) {
