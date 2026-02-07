@@ -51,20 +51,7 @@ export default [
                 action: 'read',
                 resource: 'Data',
             },
-            {
-                title: '月份時報表',
-                route: 'monthly-hour-report',
-                action: 'read',
-                resource: 'Data',
-            },
         ],
-    },
-    {
-        title: '維護操作',
-        icon: 'ActivityIcon',
-        route: 'instrument-maintenance',
-        action: 'set',
-        resource: 'Maintenance',
     },
     {
         title: '系統管理',
@@ -81,10 +68,6 @@ export default [
             {
                 title: '測項管理',
                 route: 'monitor-type-config',
-            },
-            {
-                title: '警報規則管理',
-                route: 'alarm-rule-config',
             },
             {
                 title: '使用者管理',

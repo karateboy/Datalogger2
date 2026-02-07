@@ -6,7 +6,6 @@
           responsive
           :fields="columns"
           :items="monitorTypes"
-          select-mode="single"
           selectable
           selected-variant="info"
           bordered
@@ -19,16 +18,16 @@
         <template #cell(desp)="row">
           <b-form-input v-model="row.item.desp" @change="markDirty(row.item)"/>
         </template>
-        <template #cell(more.rangeMin)="row">
+        <template #cell(more.hAlarm)="row">
           <b-form-input
-              v-model.number="row.item.more.rangeMin"
+              v-model.number="row.item.more.hAlarm"
               size="sm"
               @change="markDirty(row.item)"
           />
         </template>
-        <template #cell(more.rangeMax)="row">
+        <template #cell(more.hhAlarm)="row">
           <b-form-input
-              v-model.number="row.item.more.rangeMax"
+              v-model.number="row.item.more.hhAlarm"
               size="sm"
               @change="markDirty(row.item)"
           />
@@ -59,77 +58,6 @@
               v-model.number="row.item.std_law"
               size="sm"
               @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(zd_law)="row">
-          <b-form-input
-              v-model.number="row.item.zd_law"
-              size="sm"
-              @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(span)="row">
-          <b-form-input
-              v-model.number="row.item.span"
-              type="number"
-              size="sm"
-              @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(span_dev_law)="row">
-          <b-form-input
-              v-model.number="row.item.span_dev_law"
-              size="sm"
-              @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(levelSeq)="row">
-          <b-form-input
-              v-model="row.item.levelSeq"
-              size="sm"
-              @change="
-              markDirty(row.item);
-              checkLevel(row.item.levelSeq);
-            "
-          />
-        </template>
-        <template #cell(calbrate)="row">
-          <b-form-checkbox
-              v-model="row.item.calibrate"
-              switch
-              @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(fixedM)="row">
-          <b-form-input
-              v-model.number="row.item.fixedM"
-              type="number"
-              size="sm"
-              @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(fixedB)="row">
-          <b-form-input
-              v-model.number="row.item.fixedB"
-              type="number"
-              size="sm"
-              @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(accumulated)="row">
-          <b-form-checkbox
-              v-model="row.item.accumulated"
-              switch
-              @change="markDirty(row.item)"
-          />
-        </template>
-        <template #cell(overLawSignalType)="row">
-          <v-select
-              v-model="row.item.overLawSignalType"
-              label="desp"
-              :reduce="mt => mt._id"
-              :options="signalTypes"
-              @input="markDirty(row.item)"
           />
         </template>
       </b-table>
@@ -211,14 +139,6 @@ export default Vue.extend({
         label: '名稱',
       },
       {
-        key: 'more.rangeMin',
-        label: '偵測下限',
-      },
-      {
-        key: 'more.rangeMax',
-        label: '偵測上限',
-      },
-      {
         key: 'unit',
         label: '單位',
       },
@@ -231,49 +151,20 @@ export default Vue.extend({
         label: '順序',
       },
       {
+        key: 'more.hAlarm',
+        label: 'High Alarm',
+      },
+      {
+        key: 'more.hhAlarm',
+        label: 'High High Alarm',
+      },
+      {
         key: 'std_law',
         label: '法規值',
       },
       {
-        key: 'zd_law',
-        label: '零點偏移法規(±)',
-      },
-      {
-        key: 'span',
-        label: '全幅值',
-      },
-      {
-        key: 'span_dev_law',
-        label: '全幅值偏移法規(%)',
-      },
-      {
-        key: 'levelSeq',
-        label: '分級(以逗點分隔)',
-      },
-      {
-        key: 'calbrate',
-        label: '校正回歸',
-        tdClass: {'text-center': true},
-      },
-      {
-        key: 'fixedM',
-        label: 'slope',
-        tdClass: {'text-center': true},
-      },
-      {
-        key: 'fixedB',
-        label: 'offset',
-        tdClass: {'text-center': true},
-      },
-      {
-        key: 'accumulated',
-        label: '累積',
-        tdClass: {'text-center': true},
-      },
-      {
-        key: 'overLawSignalType',
-        label: '超標數位訊號',
-        tdClass: {'text-center': true},
+        key: 'std_law',
+        label: '法規值',
       },
       {
         key: 'measuringBy',
@@ -355,6 +246,8 @@ export default Vue.extend({
       if (!isNumber(mt.fixedM)) mt.fixedM = undefined;
       if (!isNumber(mt.more.rangeMax)) mt.more.rangeMax = undefined;
       if (!isNumber(mt.more.rangeMin)) mt.more.rangeMin = undefined;
+      if (!isNumber(mt.more.hAlarm)) mt.more.hAlarm = undefined;
+      if (!isNumber(mt.more.hhAlarm)) mt.more.hhAlarm = undefined;
     },
     checkLevel(levelSeq: string | undefined): boolean {
       try {

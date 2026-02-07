@@ -44,6 +44,8 @@ export interface ThresholdConfig {
 export interface MonitorTypeMore {
   rangeMin?: number;
   rangeMax?: number;
+  hAlarm?: number;
+  hhAlarm?: number;
 }
 
 export interface MonitorType {

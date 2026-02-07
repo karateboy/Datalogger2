@@ -5,7 +5,10 @@ import models.DataCollectManager.MonitorTypeData
 import java.util.Date
 
 case class MonitorTypeMore(rangeMin: Option[Double] = None,
-                           rangeMax: Option[Double] = None)
+                           rangeMax: Option[Double] = None,
+                           hhAlarm: Option[Double] = None,
+                          hAlarm: Option[Double] = None)
+
 case class MonitorType(_id: String,
                        desp: String,
                        unit: String,
