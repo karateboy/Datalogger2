@@ -44,7 +44,7 @@ class ExcelUtility @Inject()
 
     val sheet = wb.getSheetAt(0)
     val headerRow = sheet.createRow(0)
-    headerRow.createCell(0).setCellValue("時間")
+    headerRow.createCell(0).setCellValue("Time")
     val calibrationStyle = wb.createCellStyle()
     calibrationStyle.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex)
     calibrationStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND)
@@ -58,7 +58,7 @@ class ExcelUtility @Inject()
     for ((series, colIdx) <- chart.series.zipWithIndex) {
       headerRow.createCell(1 + 2 * colIdx).setCellValue(series.name)
       if (series.statusList.nonEmpty)
-        headerRow.createCell(1 + 2 * colIdx + 1).setCellValue("狀態碼")
+        headerRow.createCell(1 + 2 * colIdx + 1).setCellValue("Status")
     }
 
     val styles = precision.map { prec =>
@@ -196,7 +196,7 @@ class ExcelUtility @Inject()
         yield sheet.getRow(1).getCell(col).getCellStyle
 
     sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, dailyReport.columnNames.size))
-    titleRow.getCell(0).setCellValue(s"監測日報 ${dateTime.toString("YYYY年MM月dd日")}")
+    titleRow.getCell(0).setCellValue(s"Daily Report: ${dateTime.toString("YYYY-MM-dd")}")
 
     def setValue(cell: Cell, v: String): Unit = {
       try {
@@ -229,10 +229,7 @@ class ExcelUtility @Inject()
               cell.setCellStyle(statusStyle(2))
             case "abnormal_status" =>
               hasStyle = true
-              cell.setCellStyle(statusStyle(3))
-            case "manual_audit_status" =>
-              hasStyle = true
-              cell.setCellStyle(statusStyle(4))
+              cell.setCellStyle(statusStyle(2))
             case "normal" =>
               if (!hasStyle)
                 cell.setCellStyle(statusStyle(0))

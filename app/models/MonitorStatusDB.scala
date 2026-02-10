@@ -10,18 +10,18 @@ trait MonitorStatusDB {
   val InternalPriorityMax = 100
 
   val defaultStatus: List[MonitorStatus] = List(
-    MonitorStatus(NormalStat, "正常", 11),
-    MonitorStatus(OverNormalStat, "高於偵測極限", 9),
-    MonitorStatus(BelowNormalStat, "低於偵測極限", 10),
-    MonitorStatus(ZeroCalibrationStat, "零點校正", 5),
-    MonitorStatus(SpanCalibrationStat, "全幅校正", 6),
-    MonitorStatus(CalibrationDeviation, "氣象與粒狀物校正", 4),
-    MonitorStatus(Auditing,"查核", 2),
-    MonitorStatus(CalibrationResume, "校正恢復", InternalPriorityMax),
-    MonitorStatus(InvalidDataStat, "無效數據", 7),
-    MonitorStatus(MaintainStat, "維修保養", 3),
-    MonitorStatus(DataLost, "斷線", 8),
-    MonitorStatus(NotActivated, "儀器未啟用", 1))
+    MonitorStatus(NormalStat, "Normal", 11),
+    MonitorStatus(OverNormalStat, "Over Range", 9),
+    MonitorStatus(BelowNormalStat, "Lower Range", 10),
+    MonitorStatus(ZeroCalibrationStat, "Zero Calibration", 5),
+    MonitorStatus(SpanCalibrationStat, "Span Calibration", 6),
+    MonitorStatus(CalibrationDeviation, "Calibration", 4),
+    MonitorStatus(Auditing,"Audit", 2),
+    MonitorStatus(CalibrationResume, "Calibration Resume", InternalPriorityMax),
+    MonitorStatus(InvalidDataStat, "Invalid", 7),
+    MonitorStatus(MaintainStat, "Maintenance", 3),
+    MonitorStatus(DataLost, "Data Loss", 8),
+    MonitorStatus(NotActivated, "Deactivated", 1))
 
   val _map: Map[String, MonitorStatus] = refreshMap()
 
@@ -39,13 +39,13 @@ trait MonitorStatusDB {
       tagInfo.statusType match {
         case StatusType.Auto =>
           val ruleId = tagInfo.auditRule.get.toLower
-          MonitorStatus(key, s"自動註記:$ruleId", InternalPriorityMax)
+          MonitorStatus(key, s"Remark:$ruleId", InternalPriorityMax)
         case StatusType.ManualInvalid =>
           MonitorStatus(key, StatusType.map(StatusType.ManualInvalid), InternalPriorityMax)
         case StatusType.ManualValid =>
           MonitorStatus(key, StatusType.map(StatusType.ManualValid), InternalPriorityMax)
         case StatusType.Internal =>
-          MonitorStatus(key, "未知:" + key, InternalPriorityMax)
+          MonitorStatus(key, "Unknown:" + key, InternalPriorityMax)
       }
     })
   }
