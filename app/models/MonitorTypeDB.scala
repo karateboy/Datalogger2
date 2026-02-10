@@ -116,8 +116,8 @@ trait MonitorTypeDB {
     }
 
     map = (mtListFromDb map { mt => mt._id -> mt }).toMap
-    rangeList = mtListFromDb.filter { mt => !mt.signalType } map (mt => mt._id)
-    signalList = mtListFromDb.filter { mt => mt.signalType } map (mt => mt._id)
+    rangeList = mtListFromDb.filter { mt => !mt.signalType }.sortBy(_.order) map (mt => mt._id)
+    signalList = mtListFromDb.filter { mt => mt.signalType }.sortBy(_.order) map (mt => mt._id)
 
     // ensure calculated types
     for (mt <- calculatedMonitorTypes)
@@ -179,12 +179,12 @@ trait MonitorTypeDB {
 
   def allMtvList: List[String] = rangeList ++ signalList
 
-  def measuredList: List[String] = rangeList.filter { mt => map(mt).measuringBy.isDefined }
+  def measuredList: List[String] = rangeList.filter { mt => map(mt).measuringBy.isDefined }.sortBy(map(_).order)
 
   // Realtime measuring monitorTypes exclude calculated monitorTypes
   def measuringList: List[String] = rangeList.filter { mt =>
     map(mt).measuringBy.getOrElse(Seq.empty[String]).nonEmpty
-  }
+  }.sortBy(map(_).order)
 
   def nonCalculatedMeasuringList: List[String] = measuringList.filter(!IsCalculated(_))
 
@@ -208,10 +208,10 @@ trait MonitorTypeDB {
       map = map + (mt._id -> mt)
       if (mt.signalType) {
         if (!signalList.contains(mt._id))
-          signalList = signalList :+ mt._id
+          signalList = (signalList :+ mt._id).sortBy(map(_).order)
       } else {
         if (!rangeList.contains(mt._id))
-          rangeList = rangeList :+ mt._id
+          rangeList = (rangeList :+ mt._id).sortBy(map(_).order)
       }
 
       upsertItemFuture(mt)
