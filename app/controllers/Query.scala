@@ -461,6 +461,67 @@ class Query @Inject()(recordOp: RecordDB,
     chart
   }
 
+  private case class HistoryTrendParam(monitors: Seq[String],
+                                          monitorTypes: Seq[String],
+                                          raw: Boolean,
+                                          tab: String,
+                                          unit: String,
+                                          filter: String,
+                                          start: Date,
+                                          end: Date,
+                                          output: String)
+
+  def getHistoryTrend: Action[JsValue] = security.Authenticated(parse.json) {
+    implicit request =>
+      implicit val read: Reads[HistoryTrendParam] = Json.reads[HistoryTrendParam]
+      val mResult = request.body.validate[HistoryTrendParam]
+      mResult.fold(
+        error => handleJsonValidateError(error),
+        param => {
+          val myTableType: TableType#Value = tableType.withName(param.tab)
+          val reportUnit = ReportUnit.withName(param.unit)
+          val statusFilter = MonitorStatusFilter.withName(param.filter)
+          val (start, end) =
+            if (reportUnit.id <= ReportUnit.Hour.id) {
+              if (reportUnit == ReportUnit.Hour)
+                (new DateTime(param.start).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0),
+                  new DateTime(param.end).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0))
+              else if (reportUnit == ReportUnit.Sec)
+                (new DateTime(param.start).withMillisOfSecond(0), new DateTime(param.end).withMillisOfSecond(0))
+              else
+                (new DateTime(param.start).withSecondOfMinute(0).withMillisOfSecond(0),
+                  new DateTime(param.end).withSecondOfMinute(0).withMillisOfSecond(0))
+            } else
+              (new DateTime(param.start).withMillisOfDay(0), new DateTime(param.end).withMillisOfDay(0))
+
+          val chart = trendHelper(param.monitors, param.monitorTypes,
+            param.raw, myTableType, reportUnit, start, end, LoggerConfig.config.trendShowActual)(statusFilter)
+
+          val outputType = OutputType.withName(param.output)
+          if (outputType == OutputType.excel) {
+            import java.nio.file.Files
+            val actualMonitorTypes = if (param.raw)
+              param.monitorTypes flatMap (mt => Seq(mt, MonitorType.getRawType(mt)))
+            else
+              param.monitorTypes
+
+            val excelFile = excelUtility.exportChartData(chart, actualMonitorTypes, showSec = true)
+            val downloadFileName =
+              if (chart.downloadFileName.isDefined)
+                chart.downloadFileName.get
+              else
+                chart.title("text")
+
+            Ok.sendFile(excelFile, fileName = _ =>
+              Some(s"$downloadFileName.xlsx"),
+              onClose = () => {
+                Files.deleteIfExists(excelFile.toPath)
+              })
+          } else
+            Results.Ok(Json.toJson(chart))
+        })
+  }
+
   private def getPeriodReportMap(monitor: String, mtList: Seq[String],
                                  myTabType: TableType#Value,
                                  period: Period,
@@ -1190,7 +1251,7 @@ class Query @Inject()(recordOp: RecordDB,
           val precision = Array.fill(chart.series.size) {
             0
           }
-          val excelFile = excelUtility.exportChartData(chart, precision, showSec = false)
+          val excelFile = excelUtility.exportChartDataWithPrecision(chart, precision, showSec = false)
           Ok.sendFile(excelFile, fileName = _ =>
             Some("AQI查詢.xlsx"),
             onClose = () => {

@@ -35,7 +35,13 @@
                 >顯示原始值</b-form-checkbox
               >
             </b-form-group>
-            <b-button class="bg-gradient-success m-50" v-for="mtg in monitorTypeGroups" :key="mtg._id" size="sm" @click="form.monitorTypes = mtg.mts">
+            <b-button
+              class="bg-gradient-success m-50"
+              v-for="mtg in monitorTypeGroups"
+              :key="mtg._id"
+              size="sm"
+              @click="form.monitorTypes = mtg.mts"
+            >
               {{ mtg.name }}
             </b-button>
           </b-col>
@@ -155,17 +161,18 @@
 }
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import DatePicker from 'vue2-datepicker';
-import 'vue2-datepicker/index.css';
-import 'vue2-datepicker/locale/zh-tw';
-const Ripple = require('vue-ripple-directive');
-import { mapState, mapActions, mapMutations, mapGetters } from 'vuex';
-import darkTheme from 'highcharts/themes/dark-unica';
-import useAppConfig from '../@core/app-config/useAppConfig';
-import moment from 'moment';
-import axios from 'axios';
-import highcharts from 'highcharts';
+import Vue from 'vue'
+import DatePicker from 'vue2-datepicker'
+import 'vue2-datepicker/index.css'
+import 'vue2-datepicker/locale/zh-tw'
+const Ripple = require('vue-ripple-directive')
+import { mapState, mapActions, mapMutations, mapGetters } from 'vuex'
+import darkTheme from 'highcharts/themes/dark-unica'
+import useAppConfig from '../@core/app-config/useAppConfig'
+import moment from 'moment'
+import axios from 'axios'
+import highcharts from 'highcharts'
+import { HistoryTrendParam } from './types'
 
 export default Vue.extend({
   components: {
@@ -179,8 +186,8 @@ export default Vue.extend({
     const range = [
       moment().subtract(1, 'days').minute(0).second(0).millisecond(0).valueOf(),
       moment().minute(0).second(0).millisecond(0).valueOf(),
-    ];
-    let includeRaw = false;
+    ]
+    let includeRaw = false
     return {
       statusFilters: [
         { id: 'all', txt: '全部' },
@@ -228,7 +235,7 @@ export default Vue.extend({
         range,
         includeRaw,
       },
-    };
+    }
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
@@ -236,51 +243,51 @@ export default Vue.extend({
     ...mapGetters('monitorTypes', ['activatedMonitorTypes']),
     ...mapState('monitors', ['monitors']),
     ...mapGetters('tables', ['dataTypes']),
-    reportUnits(){
-      const minReportTypes =[
+    reportUnits() {
+      const minReportTypes = [
         { txt: '秒', id: 'Sec' },
         { txt: '分', id: 'Min' },
         { txt: '五分', id: 'FiveMin' },
         { txt: '六分', id: 'SixMin' },
         { txt: '十分', id: 'TenMin' },
-        { txt: '十五分', id: 'FifteenMin' }
-      ];
-      const HourReportTypes =[
+        { txt: '十五分', id: 'FifteenMin' },
+      ]
+      const HourReportTypes = [
         { txt: '小時', id: 'Hour' },
         { txt: '天', id: 'Day' },
         { txt: '月', id: 'Month' },
         { txt: '季', id: 'Quarter' },
         { txt: '年', id: 'Year' },
-      ];
+      ]
 
-      return this.form.reportUnit === 'Hour' ? HourReportTypes : minReportTypes;
-    }
+      return this.form.reportUnit === 'Hour' ? HourReportTypes : minReportTypes
+    },
   },
   watch: {
     'form.dataType': function (val, oldVal) {
       if (val === 'hour') {
-        this.form.reportUnit = 'Hour';
+        this.form.reportUnit = 'Hour'
       } else {
-        this.form.reportUnit = 'Min';
+        this.form.reportUnit = 'Min'
       }
     },
   },
   async mounted() {
-    const { skin } = useAppConfig();
+    const { skin } = useAppConfig()
     if (skin.value == 'dark') {
-      darkTheme(highcharts);
+      darkTheme(highcharts)
     }
 
-    await this.fetchMonitorTypes();
-    await this.fetchMonitors();
-    await this.fetchTables();
-    await this.fetchMonitorTypeGroups();
+    await this.fetchMonitorTypes()
+    await this.fetchMonitors()
+    await this.fetchTables()
+    await this.fetchMonitorTypeGroups()
 
     if (this.activatedMonitorTypes.length !== 0)
-      this.form.monitorTypes.push(this.activatedMonitorTypes[0]._id);
+      this.form.monitorTypes.push(this.activatedMonitorTypes[0]._id)
 
     if (this.monitors.length !== 0) {
-      this.form.monitors.push(this.monitors[0]._id);
+      this.form.monitors.push(this.monitors[0]._id)
     }
   },
   methods: {
@@ -290,24 +297,32 @@ export default Vue.extend({
     ...mapActions('tables', ['fetchTables']),
     ...mapMutations(['setLoading']),
     async query() {
-      let diffHour = (this.form.range[1] - this.form.range[0]) / (1000 * 60 * 60);
-      if (this.form.dataType ==='min' && diffHour > 24 * 31) {
-        await this.$bvModal.msgBoxOk("查詢區間不可大於31天");
-        return;
+      let diffHour =
+        (this.form.range[1] - this.form.range[0]) / (1000 * 60 * 60)
+      if (this.form.dataType === 'min' && diffHour > 24 * 31) {
+        await this.$bvModal.msgBoxOk('查詢區間不可大於31天')
+        return
       }
 
-      this.setLoading({ loading: true });
-      this.display = true;
-      const monitors = this.form.monitors.join(':');
-      const url = `/HistoryTrend/${monitors}/${this.form.monitorTypes.join(
-        ':',
-      )}/${this.form.includeRaw}/${this.form.dataType}/${
-        this.form.reportUnit
-      }/${this.form.statusFilter}/${this.form.range[0]}/${this.form.range[1]}`;
-      const res = await axios.get(url);
-      const ret = res.data;
+      this.setLoading({ loading: true })
+      this.display = true
 
-      this.setLoading({ loading: false });
+      let param: HistoryTrendParam = {
+        monitors: this.form.monitors,
+        monitorTypes: this.form.monitorTypes,
+        raw: this.form.includeRaw,
+        tab: this.form.dataType,
+        unit: this.form.reportUnit,
+        filter: this.form.statusFilter,
+        start: this.form.range[0],
+        end: this.form.range[1],
+        output: 'html',
+      }
+
+      const res = await axios.post('/GetHistoryTrend', param)
+      const ret = res.data
+
+      this.setLoading({ loading: false })
       if (this.form.chartType !== 'boxplot') {
         ret.chart = {
           type: this.form.chartType,
@@ -315,12 +330,12 @@ export default Vue.extend({
           panning: true,
           panKey: 'shift',
           alignTicks: false,
-        };
+        }
 
         const pointFormatter = function pointFormatter(this: any) {
-          const d = new Date(this.x);
-          return `${d.toLocaleString()}:${Math.round(this.y)}度`;
-        };
+          const d = new Date(this.x)
+          return `${d.toLocaleString()}:${Math.round(this.y)}度`
+        }
 
         ret.colors = [
           '#7CB5EC',
@@ -336,20 +351,20 @@ export default Vue.extend({
           '#7CB5EC',
           '#80C535',
           '#969696',
-        ];
+        ]
 
-        ret.tooltip = { valueDecimals: 2 };
-        ret.legend = { enabled: true };
+        ret.tooltip = { valueDecimals: 2 }
+        ret.legend = { enabled: true }
         ret.credits = {
           enabled: false,
           href: 'http://www.wecc.com.tw/',
-        };
-        ret.xAxis.type = 'datetime';
+        }
+        ret.xAxis.type = 'datetime'
         ret.xAxis.dateTimeLabelFormats = {
           day: '%b%e日',
           week: '%b%e日',
           month: '%y年%b',
-        };
+        }
 
         ret.plotOptions = {
           scatter: {
@@ -357,27 +372,40 @@ export default Vue.extend({
               pointFormatter,
             },
           },
-        };
+        }
         ret.time = {
           timezoneOffset: -480,
-        };
+        }
       }
-      highcharts.chart('chart_container', ret);
+      highcharts.chart('chart_container', ret)
     },
     async downloadExcel() {
-      const baseUrl =
-        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
-      const monitors = this.form.monitors.join(':');
-      const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
-        ':',
-      )}/${this.form.includeRaw}/${this.form.dataType}/${
-        this.form.reportUnit
-      }/${this.form.statusFilter}/${this.form.range[0]}/${this.form.range[1]}`;
+      let param: HistoryTrendParam = {
+        monitors: this.form.monitors,
+        monitorTypes: this.form.monitorTypes,
+        raw: this.form.includeRaw,
+        tab: this.form.dataType,
+        unit: this.form.reportUnit,
+        filter: this.form.statusFilter,
+        start: this.form.range[0],
+        end: this.form.range[1],
+        output: 'excel',
+      }
 
-      window.open(url);
+      const res = await axios.post('/GetHistoryTrend', param, {
+        responseType: 'blob',
+      })
+
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const link = document.createElement('a')
+      link.href = url
+      const fileName = 'chat.xlsx'
+      link.setAttribute('download', fileName)
+      document.body.appendChild(link)
+      link.click()
     },
   },
-});
+})
 </script>
 
 <style></style>

@@ -29,6 +29,7 @@ DELETE        /Group/:id                                                        
 
 GET           /HistoryTrend/:monitor/:monitorType/:raw/:tab/:unit/:filter/:start/:end              controllers.Query.historyTrendChart(monitor, monitorType, raw:Boolean, tab, unit, filter, start:Long, end:Long, outputTypeStr="html")
 GET           /HistoryTrend/excel/:monitor/:monitorType/:raw/:tab/:unit/:filter/:start/:end        controllers.Query.historyTrendChart(monitor, monitorType, raw:Boolean, tab, unit, filter, start:Long, end:Long, outputTypeStr="excel")
+POST          /GetHistoryTrend                                                                     controllers.Query.getHistoryTrend
 
 GET           /AqiTrend/:monitor/:isDailyAqi/:tab/:start/:end                                      controllers.Query.aqiTrendChart(monitor, isDailyAqi:Boolean, tab, start:Long, end:Long, outputTypeStr="html")
 GET           /AqiTrend/excel/:monitor/:isDailyAqi/:tab/:start/:end                                controllers.Query.aqiTrendChart(monitor, isDailyAqi:Boolean, tab, start:Long, end:Long, outputTypeStr="excel")
