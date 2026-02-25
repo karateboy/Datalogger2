@@ -79,6 +79,7 @@ class Module(environment: Environment,
     bindActorFactory[MoxaE1212Collector, MoxaE1212Collector.Factory]
     bindActorFactory[MoxaE1240Collector, MoxaE1240Collector.Factory]
     bindActorFactory[MqttCollector2, MqttCollector2.Factory]
+    bindActorFactory[Nh3Collector, Nh3Collector.Factory]
     bindActorFactory[T100Collector, T100Collector.Factory]
     bindActorFactory[T200Collector, T200Collector.Factory]
     bindActorFactory[T201Collector, T201Collector.Factory]

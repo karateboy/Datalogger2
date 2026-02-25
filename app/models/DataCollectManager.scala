@@ -374,6 +374,7 @@ object DataCollectManager {
 
 @Singleton
 class DataCollectManager @Inject()(config: Configuration,
+                                   environment: Environment,
                                    recordOp: RecordDB,
                                    monitorTypeOp: MonitorTypeDB,
                                    monitorOp: MonitorDB,
@@ -433,6 +434,10 @@ class DataCollectManager @Inject()(config: Configuration,
       readers.append(readerRef)
 
     for (readerRef <- VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
+      readers.append(readerRef)
+
+    for(readerRef <- ImsReader.start(config, context.system, monitorTypeOp = monitorTypeOp, recordOp = recordOp,
+      dataCollectManager = self, dataCollectManagerOp = dataCollectManagerOp, environment = environment))
       readers.append(readerRef)
 
     readers.toList
