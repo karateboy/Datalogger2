@@ -25,7 +25,7 @@ class ExcelUtility @Inject()
   val logger: Logger = Logger(this.getClass)
   val docRoot = environment.rootPath + "/report_template/"
 
-  def exportChartData(chart: HighchartData, monitorTypes: Array[String], showSec: Boolean): File = {
+  def exportChartData(chart: HighchartData, monitorTypes: Seq[String], showSec: Boolean): File = {
     val precArray = monitorTypes.map { mt =>
       if (monitorTypeOp.map.contains(mt))
         monitorTypeOp.map(mt).prec
@@ -34,10 +34,10 @@ class ExcelUtility @Inject()
         monitorTypeOp.map(realType).prec
       }
     }
-    exportChartData(chart, precArray, showSec)
+    exportChartDataWithPrecision(chart, precArray, showSec)
   }
 
-  def exportChartData(chart: HighchartData, precision: Array[Int], showSec: Boolean) = {
+  def exportChartDataWithPrecision(chart: HighchartData, precision: Seq[Int], showSec: Boolean): File = {
     val (reportFilePath, pkg, wb) = prepareTemplate("chart_export.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
     val format = wb.createDataFormat();

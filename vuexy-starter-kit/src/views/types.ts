@@ -132,3 +132,15 @@ export interface Position {
   date?: number;
   speed?: number;
 }
+
+export interface HistoryTrendParam {
+  monitors: Array<string>
+  monitorTypes: Array<string>
+  raw: boolean;
+  tab: string;
+  unit: string;
+  filter: string;
+  start: number;
+  end: number;
+  output: string;
+}

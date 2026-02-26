@@ -277,6 +277,8 @@ class Query @Inject()(recordOp: RecordDB,
           1.second
         case ReportUnit.Min =>
           1.minute
+        case ReportUnit.FiveMin =>
+          5.minute
         case ReportUnit.SixMin =>
           6.minute
         case ReportUnit.TenMin =>
@@ -310,6 +312,8 @@ class Query @Inject()(recordOp: RecordDB,
         case ReportUnit.Sec =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
         case ReportUnit.Min =>
+          s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
+        case ReportUnit.FiveMin =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
         case ReportUnit.SixMin =>
           s"趨勢圖 (${start.toString("YYYY年MM月dd日 HH:mm")}~${end.toString("YYYY年MM月dd日 HH:mm")})"
@@ -457,6 +461,67 @@ class Query @Inject()(recordOp: RecordDB,
     chart
   }
 
+  private case class HistoryTrendParam(monitors: Seq[String],
+                                          monitorTypes: Seq[String],
+                                          raw: Boolean,
+                                          tab: String,
+                                          unit: String,
+                                          filter: String,
+                                          start: Date,
+                                          end: Date,
+                                          output: String)
+
+  def getHistoryTrend: Action[JsValue] = security.Authenticated(parse.json) {
+    implicit request =>
+      implicit val read: Reads[HistoryTrendParam] = Json.reads[HistoryTrendParam]
+      val mResult = request.body.validate[HistoryTrendParam]
+      mResult.fold(
+        error => handleJsonValidateError(error),
+        param => {
+          val myTableType: TableType#Value = tableType.withName(param.tab)
+          val reportUnit = ReportUnit.withName(param.unit)
+          val statusFilter = MonitorStatusFilter.withName(param.filter)
+          val (start, end) =
+            if (reportUnit.id <= ReportUnit.Hour.id) {
+              if (reportUnit == ReportUnit.Hour)
+                (new DateTime(param.start).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0),
+                  new DateTime(param.end).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0))
+              else if (reportUnit == ReportUnit.Sec)
+                (new DateTime(param.start).withMillisOfSecond(0), new DateTime(param.end).withMillisOfSecond(0))
+              else
+                (new DateTime(param.start).withSecondOfMinute(0).withMillisOfSecond(0),
+                  new DateTime(param.end).withSecondOfMinute(0).withMillisOfSecond(0))
+            } else
+              (new DateTime(param.start).withMillisOfDay(0), new DateTime(param.end).withMillisOfDay(0))
+
+          val chart = trendHelper(param.monitors, param.monitorTypes,
+            param.raw, myTableType, reportUnit, start, end, LoggerConfig.config.trendShowActual)(statusFilter)
+
+          val outputType = OutputType.withName(param.output)
+          if (outputType == OutputType.excel) {
+            import java.nio.file.Files
+            val actualMonitorTypes = if (param.raw)
+              param.monitorTypes flatMap (mt => Seq(mt, MonitorType.getRawType(mt)))
+            else
+              param.monitorTypes
+
+            val excelFile = excelUtility.exportChartData(chart, actualMonitorTypes, showSec = true)
+            val downloadFileName =
+              if (chart.downloadFileName.isDefined)
+                chart.downloadFileName.get
+              else
+                chart.title("text")
+
+            Ok.sendFile(excelFile, fileName = _ =>
+              Some(s"$downloadFileName.xlsx"),
+              onClose = () => {
+                Files.deleteIfExists(excelFile.toPath)
+              })
+          } else
+            Results.Ok(Json.toJson(chart))
+        })
+  }
+
   private def getPeriodReportMap(monitor: String, mtList: Seq[String],
                                  myTabType: TableType#Value,
                                  period: Period,
@@ -494,11 +559,18 @@ class Query @Inject()(recordOp: RecordDB,
                 val windSpeed = recordOp.getRecordMap(tableType.mapCollection(myTabType))(monitor, List(MonitorType.WIN_SPEED), period_start, period_start + period)(MonitorType.WIN_SPEED)
                 period_start -> (directionAvg(windSpeed.flatMap(_.value), windDir.flatMap(_.value)), None)
               } else {
-                val values = records.flatMap { r => r.value }
+                val matchedRecords = records.filter { r => MonitorStatusFilter.isMatched(statusFilter, r.status) }
+                val values = matchedRecords.flatMap { r => r.value }
+                val status =
+                  if (matchedRecords.nonEmpty)
+                    Some(matchedRecords.head.status)
+                  else
+                    None
+
                 if (values.nonEmpty)
-                  period_start -> (Some(values.sum / values.length), None)
+                  period_start -> (Some(values.sum / values.length), status)
                 else
-                  period_start -> (None, None)
+                  period_start -> (None, status)
               }
             }
           }
@@ -760,13 +832,11 @@ class Query @Inject()(recordOp: RecordDB,
 
     val columnNames: Seq[String] = keyList.map(statusTypeMap).map(_.desc)
     val rows = for (report <- reportMap) yield {
-      val cellData = for (key <- keyList) yield {
-        val instrumentStatusType = statusTypeMap(key)
+      val cellData = for (key <- keyList) yield
         if (report._2.contains(key))
-          CellData(instrumentStatusOp.formatValue(report._2(key), instrumentStatusType.prec.getOrElse(2)), Seq.empty[String])
+          CellData(s"%.2f".format(report._2(key)), Seq.empty[String])
         else
           CellData("-", Seq.empty[String])
-      }
       RowData(report._1.getTime, cellData)
     }
 
@@ -1181,7 +1251,7 @@ class Query @Inject()(recordOp: RecordDB,
           val precision = Array.fill(chart.series.size) {
             0
           }
-          val excelFile = excelUtility.exportChartData(chart, precision, showSec = false)
+          val excelFile = excelUtility.exportChartDataWithPrecision(chart, precision, showSec = false)
           Ok.sendFile(excelFile, fileName = _ =>
             Some("AQI查詢.xlsx"),
             onClose = () => {

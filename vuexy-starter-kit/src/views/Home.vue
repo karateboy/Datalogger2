@@ -134,30 +134,30 @@
 }
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import { mapActions, mapGetters, mapState } from 'vuex';
-import axios from 'axios';
+import Vue from 'vue'
+import { mapActions, mapGetters, mapState } from 'vuex'
+import axios from 'axios'
 import {
   CdxConfig,
   MonitorType,
   MonitorTypeStatus,
   MtRecord,
   RecordList,
-} from './types';
-import highcharts from 'highcharts';
-import darkTheme from 'highcharts/themes/dark-unica';
-import useAppConfig from '../@core/app-config/useAppConfig';
-import highchartMore from 'highcharts/highcharts-more';
-import moment from 'moment';
-import { Monitor } from '@/store/monitors/types';
+} from './types'
+import highcharts from 'highcharts'
+import darkTheme from 'highcharts/themes/dark-unica'
+import useAppConfig from '../@core/app-config/useAppConfig'
+import highchartMore from 'highcharts/highcharts-more'
+import moment from 'moment'
+import { Monitor } from '@/store/monitors/types'
 
 interface LatestMonitorData {
-  monitorTypes: Array<string>;
-  monitorData: Array<RecordList>;
+  monitorTypes: Array<string>
+  monitorData: Array<RecordList>
 }
 
 interface DisplayRecordList extends RecordList {
-  recordMap?: Map<string, MtRecord>;
+  recordMap?: Map<string, MtRecord>
 }
 
 export default Vue.extend({
@@ -175,9 +175,9 @@ export default Vue.extend({
         key: 'value',
         label: '測值',
         formatter: (value: string, key: string, item: MonitorTypeStatus) => {
-          const v = parseFloat(item.value);
-          if (isNaN(v)) return `-`;
-          else return `${item.value}`;
+          const v = parseFloat(item.value)
+          if (isNaN(v)) return `-`
+          else return `${item.value}`
         },
       },
       {
@@ -188,12 +188,12 @@ export default Vue.extend({
         key: 'status',
         label: '狀態',
         tdClass: (value: string, key: string, item: MonitorTypeStatus) => {
-          return item.classStr;
+          return item.classStr
         },
       },
-    ];
-    let chart: any;
-    chart = null;
+    ]
+    let chart: any
+    chart = null
     const cdxUploadColumns = [
       {
         key: 'time',
@@ -208,25 +208,25 @@ export default Vue.extend({
         formatter: (v: number) => {
           switch (v) {
             case 1:
-              return '資訊';
+              return '資訊'
 
             case 2:
-              return '警告';
+              return '警告'
 
             case 3:
-              return '錯誤';
+              return '錯誤'
           }
         },
         tdClass: (v: number) => {
           switch (v) {
             case 1:
-              return 'success';
+              return 'success'
 
             case 2:
-              return 'warning';
+              return 'warning'
 
             case 3:
-              return 'danger';
+              return 'danger'
           }
         },
       },
@@ -235,20 +235,20 @@ export default Vue.extend({
         label: '詳細資訊',
         sortable: true,
       },
-    ];
+    ]
     let cdxConfig: CdxConfig = {
       enable: false,
       user: '',
       password: '',
       siteCounty: '',
       siteID: '',
-    };
+    }
 
-    let infoWindowContent = new Map<string, string>();
-    let infoWindowPos = new Map<string, any>();
-    let infoWinOpen = new Map<string, boolean>();
-    let infoWinIndex = new Map<string, number>();
-    let mapLoaded = false;
+    let infoWindowContent = new Map<string, string>()
+    let infoWindowPos = new Map<string, any>()
+    let infoWinOpen = new Map<string, boolean>()
+    let infoWinIndex = new Map<string, number>()
+    let mapLoaded = false
     let mapOption = {
       zoomControl: true,
       mapTypeControl: true,
@@ -256,8 +256,8 @@ export default Vue.extend({
       streetViewControl: true,
       rotateControl: true,
       fullscreenControl: true,
-    };
-    let recordLists = Array<DisplayRecordList>();
+    }
+    let recordLists = Array<DisplayRecordList>()
 
     return {
       maxPoints: 30,
@@ -277,7 +277,7 @@ export default Vue.extend({
       recordLists,
       infoWinIndex,
       mapOption,
-    };
+    }
   },
   computed: {
     ...mapState('user', ['userInfo']),
@@ -286,36 +286,32 @@ export default Vue.extend({
     ...mapGetters('monitorTypes', ['mtMap']),
     ...mapGetters('monitors', ['mMap']),
     skin() {
-      const { skin } = useAppConfig();
-      return skin;
+      const { skin } = useAppConfig()
+      return skin
     },
     windRoseList(): Array<string> {
-      let mtInterest = this.userInfo.monitorTypeOfInterest as Array<string>;
-      return mtInterest.filter(mt => mt !== 'WD_DIR');
+      let mtInterest = this.userInfo.monitorTypeOfInterest as Array<string>
+      return mtInterest.filter(mt => mt !== 'WD_DIR')
     },
     isRealtimeMeasuring(): boolean {
-      return this.realTimeStatus.length !== 0;
+      return this.realTimeStatus.length !== 0
     },
     activeMonitors(): Array<Monitor> {
-      return this.monitors.filter((m:Monitor) => m._id === this.activeID);
+      return this.monitors.filter((m: Monitor) => m._id === this.activeID)
     },
     activeRecordList(): Array<DisplayRecordList> {
-      return this.recordLists.filter(
-        rl => rl._id.monitor === this.activeID,
-      );
-
-
+      return this.recordLists.filter(rl => rl._id.monitor === this.activeID)
     },
   },
   async mounted() {
-    const { skin } = useAppConfig();
+    const { skin } = useAppConfig()
     if (skin.value == 'dark') {
-      darkTheme(highcharts);
+      darkTheme(highcharts)
     }
 
     this.$gmapApiPromiseLazy().then(() => {
-      this.mapLoaded = true;
-      console.info('Google map api loaded', this.$refs.map);
+      this.mapLoaded = true
+      console.info('Google map api loaded', this.$refs.map)
       /*
       let latlng = Array<google.maps.LatLng>();
       for (let m of this.activeMonitors) {
@@ -328,102 +324,102 @@ export default Vue.extend({
       }
       this.$refs.map.fitBounds(bounds);
        */
-    });
+    })
 
-    await this.fetchMonitors();
-    await this.getActiveID();
-    await this.fetchMonitorTypes();
-    await this.getUserInfo();
-    await this.getMonitorRealtimeData();
+    await this.fetchMonitors()
+    await this.getActiveID()
+    await this.fetchMonitorTypes()
+    await this.getUserInfo()
+    await this.getMonitorRealtimeData()
 
-    const me = this;
-    for (const mt of this.userInfo.monitorTypeOfInterest) this.query(mt);
-    for (const mt of me.windRoseList) await me.queryWindRose(mt);
+    const me = this
+    for (const mt of this.userInfo.monitorTypeOfInterest) me.query(mt)
+    for (const mt of me.windRoseList) me.queryWindRose(mt)
 
     this.mtInterestTimer = setInterval(() => {
-      for (const mt of me.userInfo.monitorTypeOfInterest) me.query(mt);
-      for (const mt of me.windRoseList) me.queryWindRose(mt);
-      this.getMonitorRealtimeData();
-    }, 60000);
+      for (const mt of me.userInfo.monitorTypeOfInterest) me.query(mt)
+      for (const mt of me.windRoseList) me.queryWindRose(mt)
+      this.getMonitorRealtimeData()
+    }, 60000)
 
-    await this.getCdxConfig();
-    await this.initRealtimeChart();
+    this.getCdxConfig()
+    this.initRealtimeChart()
   },
   beforeDestroy() {
-    clearInterval(this.refreshTimer);
-    clearInterval(this.mtInterestTimer);
+    clearInterval(this.refreshTimer)
+    clearInterval(this.mtInterestTimer)
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapActions('monitors', ['fetchMonitors', 'getActiveID']),
     ...mapActions('user', ['getUserInfo']),
     async refresh(): Promise<void> {
-      await this.plotLatestData();
-      await this.getCdxUploadEvents();
+      await this.plotLatestData()
+      await this.getCdxUploadEvents()
     },
     async plotLatestData(): Promise<void> {
-      await this.getRealtimeStatus();
-      const now = new Date().getTime();
+      await this.getRealtimeStatus()
+      const now = new Date().getTime()
 
-      let chart = this.chart as highcharts.Chart;
+      let chart = this.chart as highcharts.Chart
       for (const mtStatus of this.realTimeStatus) {
         const series = chart.series.find(s => {
-          return s.name === mtStatus.desp;
-        });
+          return s.name === mtStatus.desp
+        })
 
         if (series) {
-          let value = parseFloat(mtStatus.value);
+          let value = parseFloat(mtStatus.value)
           if (!isNaN(value)) {
-            series.addPoint([now, value], false, false, true);
+            series.addPoint([now, value], false, false, true)
             while (series.data.length >= this.maxPoints) {
-              series.removePoint(0, false);
+              series.removePoint(0, false)
             }
           }
         }
       }
 
-      chart.redraw();
+      chart.redraw()
     },
     async getRealtimeStatus(): Promise<void> {
-      const ret = await axios.get('/MonitorTypeStatusList');
-      this.realTimeStatus = ret.data;
+      const ret = await axios.get('/MonitorTypeStatusList')
+      this.realTimeStatus = ret.data
     },
     async initRealtimeChart(): Promise<boolean> {
-      await this.getRealtimeStatus();
+      await this.getRealtimeStatus()
 
-      if (this.realTimeStatus.length === 0) return false;
+      if (this.realTimeStatus.length === 0) return false
 
-      let yAxisList = Array<highcharts.YAxisOptions>();
-      let yAxisMap = new Map<string, number>();
+      let yAxisList = Array<highcharts.YAxisOptions>()
+      let yAxisMap = new Map<string, number>()
       for (const mtStatus of this.realTimeStatus) {
-        let data = Array<{ x: number; y: number }>();
+        let data = Array<{ x: number; y: number }>()
         //data.push({ x: 1, y: 1 });
-        const wind = ['WD_DIR'];
-        const selectedMt = Array<string>();
-        let monitorTypes = this.monitorTypes as Array<MonitorType>;
+        const wind = ['WD_DIR']
+        const selectedMt = Array<string>()
+        let monitorTypes = this.monitorTypes as Array<MonitorType>
         let activeMonitorTypes = monitorTypes.filter(mt => {
           if (mt.measuringBy && Array.isArray(mt.measuringBy)) {
-            return mt.measuringBy.length !== 0;
-          } else return false;
-        });
+            return mt.measuringBy.length !== 0
+          } else return false
+        })
 
         if (activeMonitorTypes.length !== 0)
-          selectedMt.push(activeMonitorTypes[0]._id);
+          selectedMt.push(activeMonitorTypes[0]._id)
 
-        const visible = selectedMt.indexOf(mtStatus._id) !== -1;
+        const visible = selectedMt.indexOf(mtStatus._id) !== -1
         if (wind.indexOf(mtStatus._id) === -1) {
-          let yAxisIndex: number;
+          let yAxisIndex: number
           if (yAxisMap.has(mtStatus.unit)) {
-            yAxisIndex = yAxisMap.get(mtStatus.unit) as number;
+            yAxisIndex = yAxisMap.get(mtStatus.unit) as number
           } else {
             yAxisList.push({
               title: {
                 text: mtStatus.unit,
               },
               showEmpty: false,
-            });
-            yAxisIndex = yAxisList.length - 1;
-            yAxisMap.set(mtStatus.unit, yAxisIndex);
+            })
+            yAxisIndex = yAxisList.length - 1
+            yAxisMap.set(mtStatus.unit, yAxisIndex)
           }
 
           let series: highcharts.SeriesSplineOptions = {
@@ -436,8 +432,8 @@ export default Vue.extend({
             },
             yAxis: yAxisIndex,
             visible,
-          };
-          this.chartSeries.push(series);
+          }
+          this.chartSeries.push(series)
         } else {
           let series: highcharts.SeriesScatterOptions = {
             name: mtStatus.desp,
@@ -447,19 +443,19 @@ export default Vue.extend({
               valueDecimals: this.mtMap.get(mtStatus._id).prec,
             },
             visible,
-          };
-          this.chartSeries.push(series);
+          }
+          this.chartSeries.push(series)
         }
       }
       // Make last yAxis oppsite
       //yAxisList[yAxisList.length - 1].opposite = true;
       //console.log(yAxisList);
 
-      const me = this;
+      const me = this
       const pointFormatter = function pointFormatter(this: any) {
-        const d = new Date(this.x);
-        return `${d.toLocaleString()}:${Math.round(this.y)}度`;
-      };
+        const d = new Date(this.x)
+        return `${d.toLocaleString()}:${Math.round(this.y)}度`
+      }
       return new Promise(function (resolve, reject) {
         const chartOption: highcharts.Options = {
           chart: {
@@ -469,9 +465,9 @@ export default Vue.extend({
             events: {
               load: () => {
                 me.refreshTimer = setInterval(() => {
-                  me.refresh();
-                }, 3000);
-                resolve(true);
+                  me.refresh()
+                }, 3000)
+                resolve(true)
               },
             },
           },
@@ -506,18 +502,18 @@ export default Vue.extend({
             },
           },
           series: me.chartSeries,
-        };
-        me.chart = highcharts.chart('realtimeChart', chartOption);
-      });
+        }
+        me.chart = highcharts.chart('realtimeChart', chartOption)
+      })
     },
     async query(mt: string) {
-      const now = new Date().getTime();
-      const oneHourBefore = now - 60 * 60 * 1000;
+      const now = new Date().getTime()
+      const oneHourBefore = now - 60 * 60 * 1000
       const url = `/HistoryTrend/${
         this.activeID
-      }/${mt}/${false}/min/Min/all/${oneHourBefore}/${now}`;
-      const res = await axios.get(url);
-      const ret: highcharts.Options = res.data;
+      }/${mt}/${false}/min/Min/all/${oneHourBefore}/${now}`
+      const res = await axios.get(url)
+      const ret: highcharts.Options = res.data
 
       ret.chart = {
         type: 'spline',
@@ -527,10 +523,10 @@ export default Vue.extend({
         },
         panKey: 'shift',
         alignTicks: false,
-      };
+      }
 
-      let mtInfo = this.mtMap.get(mt) as MonitorType;
-      ret.title!.text = `${mtInfo.desp}分鐘趨勢圖`;
+      let mtInfo = this.mtMap.get(mt) as MonitorType
+      ret.title!.text = `${mtInfo.desp}分鐘趨勢圖`
 
       ret.colors = [
         '#7CB5EC',
@@ -546,26 +542,26 @@ export default Vue.extend({
         '#7CB5EC',
         '#80C535',
         '#969696',
-      ];
+      ]
 
-      ret.tooltip = { valueDecimals: 2 };
-      ret.legend = { enabled: true };
+      ret.tooltip = { valueDecimals: 2 }
+      ret.legend = { enabled: true }
       ret.credits = {
         enabled: false,
         href: 'http://www.wecc.com.tw/',
-      };
+      }
 
       ret.exporting = {
         enabled: false,
-      };
-      let xAxis: highcharts.XAxisOptions = ret.xAxis as highcharts.XAxisOptions;
-      xAxis.type = 'datetime';
+      }
+      let xAxis: highcharts.XAxisOptions = ret.xAxis as highcharts.XAxisOptions
+      xAxis.type = 'datetime'
 
       xAxis!.dateTimeLabelFormats = {
         day: '%b%e日',
         week: '%b%e日',
         month: '%y年%b',
-      };
+      }
 
       ret.plotOptions = {
         spline: {
@@ -578,31 +574,31 @@ export default Vue.extend({
             valueDecimals: this.mtMap.get(mt).prec,
           },
         },
-      };
+      }
       ret.time = {
         timezoneOffset: -480,
-      };
+      }
       ret.exporting = {
         enabled: false,
-      };
-      highcharts.chart(`history_${mt}`, ret);
+      }
+      highcharts.chart(`history_${mt}`, ret)
     },
     getMtName(mt: string): string {
-      let mtInfo = this.mtMap.get(mt) as MonitorType;
-      if (mtInfo !== undefined) return mtInfo.desp;
-      else return '';
+      let mtInfo = this.mtMap.get(mt) as MonitorType
+      if (mtInfo !== undefined) return mtInfo.desp
+      else return ''
     },
     async queryWindRose(mt: string) {
-      const now = new Date().getTime();
-      const oneHourBefore = now - 60 * 60 * 1000;
+      const now = new Date().getTime()
+      const oneHourBefore = now - 60 * 60 * 1000
 
       try {
-        const url = `/WindRose/${this.activeID}/${mt}/min/16/${oneHourBefore}/${now}`;
-        const res = await axios.get(url);
-        const ret = res.data;
+        const url = `/WindRose/${this.activeID}/${mt}/min/16/${oneHourBefore}/${now}`
+        const res = await axios.get(url)
+        const ret = res.data
         ret.pane = {
           size: '90%',
-        };
+        }
 
         ret.yAxis = {
           min: 0,
@@ -613,16 +609,16 @@ export default Vue.extend({
           },
           labels: {
             formatter(this: any) {
-              return this.value + '%';
+              return this.value + '%'
             },
           },
           reversedStacks: false,
-        };
+        }
 
         ret.tooltip = {
           valueDecimals: 2,
           valueSuffix: '%',
-        };
+        }
 
         ret.plotOptions = {
           series: {
@@ -631,19 +627,19 @@ export default Vue.extend({
             groupPadding: 0,
             pointPlacement: 'on',
           },
-        };
+        }
 
         ret.exporting = {
           enabled: false,
-        };
+        }
         ret.credits = {
           enabled: false,
           href: 'http://www.wecc.com.tw/',
-        };
+        }
 
-        ret.title.x = -70;
-        highchartMore(highcharts);
-        highcharts.chart(`rose_${mt}`, ret);
+        ret.title.x = -70
+        highchartMore(highcharts)
+        highcharts.chart(`rose_${mt}`, ret)
       } catch (err) {
       } finally {
       }
@@ -653,47 +649,52 @@ export default Vue.extend({
         const range = [
           moment().subtract(7, 'days').valueOf(),
           moment().valueOf(),
-        ];
-        let src = 'S:CDX';
-        let res = await axios.get(`/Alarms/${src}/1/${range[0]}/${range[1]}`);
+        ]
+        let src = 'S:CDX'
+        let res = await axios.get(`/Alarms/${src}/1/${range[0]}/${range[1]}`)
         if (res.status === 200) {
-          this.cdxUploadLogs = res.data.slice(0, 5);
+          this.cdxUploadLogs = res.data.slice(0, 5)
         }
       } catch (err) {
-        throw new Error(`$err`);
+        throw new Error(`$err`)
       }
     },
     async getCdxConfig() {
       try {
-        let ret = await axios.get('/CdxConfig');
+        let ret = await axios.get('/CdxConfig')
         if (ret.status === 200) {
-          this.cdxConfig = ret.data;
+          this.cdxConfig = ret.data
         }
       } catch (err) {
-        throw new Error(`$err`);
+        throw new Error(`$err`)
       }
     },
     rowClass(item: any, type: any) {
-      if (!item || type !== 'row') return;
+      if (!item || type !== 'row') return
       switch (item.level) {
         case 1:
-          return 'table-success';
+          return 'table-success'
 
         case 2:
-          return 'table-warning';
+          return 'table-warning'
 
         case 3:
-          return 'table-danger';
+          return 'table-danger'
       }
     },
     getMapCenter(): any {
+      if (this.activeMonitors[0].lat && this.activeMonitors[0].lng)
+        return {
+          lat: this.activeMonitors[0].lat,
+          lng: this.activeMonitors[0].lng,
+        }
 
-      return { lat: this.activeMonitors[0].lat, lng: this.activeMonitors[0].lng };
+      return { lat: 25.034556283782745, lng: 121.56198451016448 }
     },
     getWindIcon(recordList: RecordList) {
       let mtData = recordList.mtDataList.find(
         mtData => mtData.mtName === 'WD_DIR',
-      );
+      )
       return {
         path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
         fillColor: 'red',
@@ -702,12 +703,12 @@ export default Vue.extend({
         scale: 5.5,
         strokeColor: 'white',
         strokeWeight: 0.5,
-      };
+      }
     },
     getCircleIcon(recordList: RecordList) {
       let mtData = recordList.mtDataList.find(
         mtData => mtData.mtName === 'WD_DIR',
-      );
+      )
       return {
         path: google.maps.SymbolPath.CIRCLE,
         anchor: new google.maps.Point(0, 1),
@@ -717,45 +718,45 @@ export default Vue.extend({
         scale: 15,
         strokeColor: 'black',
         strokeWeight: 1,
-      };
+      }
     },
     async getMonitorRealtimeData() {
-      const ret = await axios.get('/LatestMonitorData');
-      let data = ret.data as LatestMonitorData;
-      console.info('getMonitorRealtimeData()', data);
-      this.recordLists = data.monitorData;
+      const ret = await axios.get('/LatestMonitorData')
+      let data = ret.data as LatestMonitorData
+      console.info('getMonitorRealtimeData()', data)
+      this.recordLists = data.monitorData
       for (let recordList of this.recordLists) {
-        recordList.recordMap = new Map<string, MtRecord>();
+        recordList.recordMap = new Map<string, MtRecord>()
         for (let mtData of recordList.mtDataList) {
-          recordList.recordMap.set(mtData.mtName, mtData);
+          recordList.recordMap.set(mtData.mtName, mtData)
         }
       }
     },
     getSudoMonitorName(_id: string): string {
       if (this.mMap.has(_id)) {
-        let m = this.mMap.get(_id) as Monitor;
-        return m.desc;
+        let m = this.mMap.get(_id) as Monitor
+        return m.desc
       }
 
-      return `${_id}`;
+      return `${_id}`
     },
     getSudoMonitorPos(_id: string): any {
-      const monitor = this.mMap.get(_id) as Monitor;
+      const monitor = this.mMap.get(_id) as Monitor
       if (monitor && monitor.lat && monitor.lng) {
-        return { lat: monitor.lat, lng: monitor.lng };
+        return { lat: monitor.lat, lng: monitor.lng }
       }
 
-      console.info(`Monitor ${_id} has no lat/lng`);
-      return this.getMapCenter();
+      console.info(`Monitor ${_id} has no lat/lng`)
+      return this.getMapCenter()
     },
     geMtRecordValue(recordList: DisplayRecordList, mt: string): string {
-      let mtRecord = recordList?.recordMap!.get(mt);
-      let mtCase = this.mtMap.get(mt) as MonitorType;
+      let mtRecord = recordList?.recordMap!.get(mt)
+      let mtCase = this.mtMap.get(mt) as MonitorType
       if (mtRecord === undefined || mtRecord.value === undefined)
-        return `N/A ${mtCase.unit}`;
+        return `N/A ${mtCase.unit}`
 
-      return `${mtRecord.value.toFixed(mtCase.prec)} ${mtCase.unit}`;
+      return `${mtRecord.value.toFixed(mtCase.prec)} ${mtCase.unit}`
     },
   },
-});
+})
 </script>

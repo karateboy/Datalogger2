@@ -57,11 +57,11 @@ class T201Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
       idxNOx <- findDataRegIdx(regValue)(54)
       idxNO <- findDataRegIdx(regValue)(58)
       idxNO2 <- findDataRegIdx(regValue)(62)
-      vTNX = regValue.inputRegs(idxTNX)
-      vNH3 = regValue.inputRegs(idxNH3)
-      vNOx = regValue.inputRegs(idxNOx)
-      vNO = regValue.inputRegs(idxNO)
-      vNO2 = regValue.inputRegs(idxNO2)
+      vTNX = regValue.inputs(idxTNX)
+      vNH3 = regValue.inputs(idxNH3)
+      vNOx = regValue.inputs(idxNOx)
+      vNO = regValue.inputs(idxNO)
+      vNO2 = regValue.inputs(idxNO2)
     } yield {
       ReportData(List(
         MonitorTypeData(TNX, vTNX._2.toDouble, collectorState),
