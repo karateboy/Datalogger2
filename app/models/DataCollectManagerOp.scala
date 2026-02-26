@@ -2,7 +2,7 @@ package models
 
 import akka.actor.ActorRef
 import com.github.nscala_time.time.Imports.{DateTime, _}
-import models.ForwardManager.ForwardHour
+import models.ForwardManager.ForwardHourRecord
 import play.api.Logger
 
 import javax.inject.{Inject, Named, Singleton}
@@ -121,7 +121,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
       val defaultHourRecordList = RecordList.factory(current.minusHours(1).toDate, mtDataList.toSeq, monitor)
       val hourRecordListsFuture = HourCalculationRule.calculateHourRecord(monitor, current, recordOp)
       for (ruleHourRecordLists <- hourRecordListsFuture) {
-        val hourRecordLists = ruleHourRecordLists :+ defaultHourRecordList
+        val hourRecordLists = (ruleHourRecordLists :+ defaultHourRecordList).sortBy(_._id.time)
 
         // Check alarm
         if (checkAlarm) {
@@ -133,7 +133,9 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         if (forward) {
           f onComplete {
             case Success(_) =>
-              manager ! ForwardHour
+              val start = new DateTime(hourRecordLists.head._id.time)
+              val end = new DateTime(hourRecordLists.last._id.time)
+              manager ! ForwardHourRecord(start, end.plusHours(1))
               for {cdxConfig <- sysConfigDB.getCdxConfig if monitor == Monitor.activeId
                    cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes} {
                 cdxUploader.upload(recordList = defaultHourRecordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
