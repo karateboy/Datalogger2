@@ -254,7 +254,7 @@ export default Vue.extend({
             },
           };
           ret.time = {
-            timezoneOffset: -480,
+            timezoneOffset: -420,
           };
         }
         highcharts.chart('chart_container', ret);

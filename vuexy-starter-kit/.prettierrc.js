@@ -1,7 +1,7 @@
 // .prettierrc.js
 
 module.exports = {
-  semi: false,
+  semi: true,
   singleQuote: true,
   arrowParens: 'avoid',
   trailingComma: 'all',

@@ -439,7 +439,7 @@ export default Vue.extend({
         },
       };
       ret.time = {
-        timezoneOffset: -480,
+        timezoneOffset: -420,
       };
       for (let s of ret.series as Array<highcharts.SeriesOptionsType>) {
         s.visible = false;

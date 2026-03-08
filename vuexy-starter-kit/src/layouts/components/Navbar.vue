@@ -14,7 +14,10 @@
       class="bookmark-wrapper align-items-center flex-grow-1 d-none d-lg-flex"
     >
       <dark-Toggler class="d-none d-lg-block" />
-      <h2 class="m-0">環境資料蒐集系統&nbsp;&nbsp;&nbsp;</h2>
+      <h2 class="m-0">
+        Hệ thống quan trắc tự động nhà máy xử lý nước thải tập
+        trung&nbsp;&nbsp;&nbsp;
+      </h2>
       <sub class="text-muted">{{ version }}</sub>
     </div>
 

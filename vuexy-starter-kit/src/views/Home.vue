@@ -297,14 +297,10 @@ export default Vue.extend({
       return this.realTimeStatus.length !== 0;
     },
     activeMonitors(): Array<Monitor> {
-      return this.monitors.filter((m:Monitor) => m._id === this.activeID);
+      return this.monitors.filter((m: Monitor) => m._id === this.activeID);
     },
     activeRecordList(): Array<DisplayRecordList> {
-      return this.recordLists.filter(
-        rl => rl._id.monitor === this.activeID,
-      );
-
-
+      return this.recordLists.filter(rl => rl._id.monitor === this.activeID);
     },
   },
   async mounted() {
@@ -493,7 +489,7 @@ export default Vue.extend({
           },
           yAxis: yAxisList,
           time: {
-            timezoneOffset: -480,
+            timezoneOffset: -420,
           },
           exporting: {
             enabled: false,
@@ -580,7 +576,7 @@ export default Vue.extend({
         },
       };
       ret.time = {
-        timezoneOffset: -480,
+        timezoneOffset: -420,
       };
       ret.exporting = {
         enabled: false,
@@ -687,8 +683,10 @@ export default Vue.extend({
       }
     },
     getMapCenter(): any {
-
-      return { lat: this.activeMonitors[0].lat, lng: this.activeMonitors[0].lng };
+      return {
+        lat: this.activeMonitors[0].lat,
+        lng: this.activeMonitors[0].lng,
+      };
     },
     getWindIcon(recordList: RecordList) {
       let mtData = recordList.mtDataList.find(
