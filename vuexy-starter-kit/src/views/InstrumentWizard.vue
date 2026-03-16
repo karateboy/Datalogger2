@@ -13,18 +13,18 @@
         @on-complete="formSubmitted"
     >
       <!-- account datails tab -->
-      <tab-content title="儀器種類" :before-change="validateInstType">
+      <tab-content title="Loại thiết bị" :before-change="validateInstType">
         <validation-observer ref="instTypeRules" tag="form">
           <b-row>
             <b-col cols="12">
               <b-form-group
-                  label="儀器種類"
+                  label="Loại thiết bị"
                   label-for="instrumentType"
                   label-cols-md="3"
               >
                 <validation-provider
                     v-slot="{ errors }"
-                    name="儀器種類"
+                    name="Loại thiết bị"
                     rules="required"
                 >
                   <v-select
@@ -490,7 +490,7 @@ export default Vue.extend({
       };
 
       let desc = `儀器ID:${this.form._id}\n`;
-      desc += `儀器種類:${this.getInstrumentDesc()}\n`;
+      desc += `Loại thiết bị:${this.getInstrumentDesc()}\n`;
       desc += `通訊協定:${this.form.protocol.protocol}\n`;
       if (this.form.protocol.protocol === 'tcp')
         desc += `網址:${this.form.protocol.host}\n`;

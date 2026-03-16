@@ -113,7 +113,7 @@ export default Vue.extend({
       },
       {
         key: 'mt',
-        label: '測項',
+        label: 'Thông số ',
       },
       {
         key: 'min',
@@ -125,11 +125,11 @@ export default Vue.extend({
       },
       {
         key: 'mtMin',
-        label: '測項最小值',
+        label: 'Thông số 最小值',
       },
       {
         key: 'mtMax',
-        label: '測項最大值',
+        label: 'Thông số 最大值',
       },
     ];
 

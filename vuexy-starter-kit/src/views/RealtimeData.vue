@@ -17,31 +17,31 @@ export default {
       fields: [
         {
           key: 'index',
-          label: '序號',
+          label: 'STT',
         },
         {
           key: 'desp',
-          label: '測項',
+          label: 'Thông số ',
           sortable: true,
         },
         {
           key: 'value',
-          label: '測值',
+          label: 'Giá trị đo',
           sortable: true,
         },
         {
           key: 'unit',
-          label: '單位',
+          label: 'Đơn vị',
           sortable: true,
         },
         {
           key: 'instrument',
-          label: '設備',
+          label: 'Thiết bị',
           sortable: true,
         },
         {
           key: 'status',
-          label: '狀態',
+          label: 'Trạng thái',
           sortable: true,
         },
       ],

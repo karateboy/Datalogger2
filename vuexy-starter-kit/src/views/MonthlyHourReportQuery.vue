@@ -5,7 +5,7 @@
         <b-row>
           <b-col cols="6">
             <b-form-group
-              label="測項"
+              label="Thông số "
               label-for="monitorType"
               label-cols-md="3"
             >

@@ -277,7 +277,7 @@ export default Vue.extend({
       },
       {
         key: 'monitorTypes',
-        label: '測項',
+        label: 'Thông số ',
       },
     ];
     return {

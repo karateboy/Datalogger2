@@ -5,7 +5,7 @@
         <b-row>
           <b-col cols="6">
             <b-form-group
-                label="報表種類"
+                label="Loại bảng biểu"
                 label-for="reportType"
                 label-cols-md="3"
             >

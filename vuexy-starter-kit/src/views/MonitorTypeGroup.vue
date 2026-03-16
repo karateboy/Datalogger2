@@ -1,6 +1,6 @@
 <template>
   <div>
-    <b-card title="測項群組管理" class="text-center">
+    <b-card title="Thông số Quản lý nhóm" class="text-center">
       <b-table
         small
         :fields="columns"
@@ -105,7 +105,7 @@ export default Vue.extend({
       },
       {
         key: 'mts',
-        label: '包含測項',
+        label: '包含Thông số ',
         thStyle: { width: '80%' },
       },
     ];

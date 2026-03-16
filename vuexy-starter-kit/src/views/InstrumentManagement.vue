@@ -158,41 +158,41 @@ export default Vue.extend({
     const fields = [
       {
         key: 'selected',
-        label: '選擇',
+        label: 'Lựa chọn',
       },
       {
         key: '_id',
-        label: '儀器名稱',
+        label: 'Tên thiết bị',
         sortable: true,
       },
       {
         key: 'instType',
-        label: '儀器種類',
+        label: 'Loại thiết bị',
         sortable: true,
       },
       {
         key: 'state',
-        label: '狀態',
+        label: 'Trạng thái',
         sortable: true,
       },
       {
         key: 'protocol',
-        label: '連線方式',
+        label: 'Hình thức kết nối',
         sortable: true,
       },
       {
         key: 'protocolParam',
-        label: '通訊參數',
+        label: 'Phương thức giao tiếp',
         sortable: true,
       },
       {
         key: 'calibrationTime',
-        label: '每日校正時間',
+        label: 'Thời gian hiệu chuẩn hàng ngày',
         sortable: true,
       },
       {
         key: 'monitorTypes',
-        label: '測項',
+        label: 'Thông số ',
         sortable: true,
       },
     ];

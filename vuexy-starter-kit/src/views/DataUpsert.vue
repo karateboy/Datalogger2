@@ -11,7 +11,7 @@
             :state="Boolean(form.uploadFile)"
             accept=".xlsx"
             browse-text="..."
-            placeholder="選擇上傳檔案..."
+            placeholder="Lựa chọn上傳檔案..."
             drop-placeholder="拖曳檔案至此..."
             v-b-tooltip
             title="分鐘資料Excel表格"
@@ -62,7 +62,7 @@ export default Vue.extend({
     async upload() {
       let formData = new FormData();
       formData.append('data', this.form.uploadFile as Blob);
-      this.setLoading({ loading: true, message: '資料上傳中' });
+      this.setLoading({ loading: true, message: 'Tải dữ liệu lên中' });
       try {
         let res = await axios.post(`/UpsertData`, formData, {
           headers: {

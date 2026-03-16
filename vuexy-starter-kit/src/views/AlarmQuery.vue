@@ -5,7 +5,7 @@
         <b-row>
           <b-col cols="6">
             <b-form-group
-              label="警報等級"
+              label="Mức độ cảnh báo"
               label-for="alarmLevel"
               label-cols-md="3"
             >
@@ -20,7 +20,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="資料區間"
+              label="Khoảng dữ liệu"
               label-for="dataRange"
               label-cols-md="3"
             >
@@ -133,10 +133,10 @@ export default Vue.extend({
             let tokens = src.split(':');
             switch (tokens[0]) {
               case 'I':
-                return `設備:${tokens[1]}`;
+                return `Thiết bị:${tokens[1]}`;
 
               case 'T':
-                return `測項:${tokens[1]}`;
+                return `Thông số :${tokens[1]}`;
 
               case 'S':
                 if (tokens[1] === 'System') return `系統`;

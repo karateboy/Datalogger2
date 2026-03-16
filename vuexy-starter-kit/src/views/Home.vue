@@ -165,15 +165,15 @@ export default Vue.extend({
     const fields = [
       {
         key: 'index',
-        label: '序號',
+        label: 'STT',
       },
       {
         key: 'desp',
-        label: '測項',
+        label: 'Thông số ',
       },
       {
         key: 'value',
-        label: '測值',
+        label: 'Giá trị đo',
         formatter: (value: string, key: string, item: MonitorTypeStatus) => {
           const v = parseFloat(item.value);
           if (isNaN(v)) return `-`;
@@ -182,11 +182,11 @@ export default Vue.extend({
       },
       {
         key: 'unit',
-        label: '單位',
+        label: 'Đơn vị',
       },
       {
         key: 'status',
-        label: '狀態',
+        label: 'Trạng thái',
         tdClass: (value: string, key: string, item: MonitorTypeStatus) => {
           return item.classStr;
         },

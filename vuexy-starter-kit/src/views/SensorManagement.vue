@@ -120,11 +120,11 @@ export default Vue.extend({
       },
       {
         key: 'monitor',
-        label: '測點代碼',
+        label: 'Điểm đo代碼',
       },
       {
         key: 'monitorCase.desc',
-        label: '測點名稱',
+        label: 'Điểm đo名稱',
       },
       {
         key: 'group',

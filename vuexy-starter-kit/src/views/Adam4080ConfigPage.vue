@@ -70,7 +70,7 @@ export default Vue.extend({
       },
       {
         key: 'monitorType',
-        label: '測項',
+        label: 'Thông số ',
       },
       {
         key: 'multiplier',

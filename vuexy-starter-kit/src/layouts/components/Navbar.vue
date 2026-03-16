@@ -99,7 +99,7 @@ export default {
   computed: {
     ...mapState('user', ['userInfo']),
     role() {
-      if (this.userInfo.isAdmin) return '系統管理員';
+      if (this.userInfo.isAdmin) return 'Quản lý hệ thống員';
 
       return '使用者';
     },

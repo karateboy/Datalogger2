@@ -52,7 +52,7 @@
               </b-tr>
               <b-tr>
                 <b-th>$mt</b-th>
-                <b-td>測項</b-td>
+                <b-td>Thông số </b-td>
               </b-tr>
               <b-tr>
                 <b-th>$time</b-th>
@@ -60,11 +60,11 @@
               </b-tr>
               <b-tr>
                 <b-th>$value</b-th>
-                <b-td>測值</b-td>
+                <b-td>Giá trị đo</b-td>
               </b-tr>
               <b-tr>
-                <b-th>$(測項代碼), 例如: $(PM25), $(SO2)...</b-th>
-                <b-td>其他測值</b-td>
+                <b-th>$(Thông số 代碼), 例如: $(PM25), $(SO2)...</b-th>
+                <b-td>其他Giá trị đo</b-td>
               </b-tr>
             </b-tbody>
           </b-table-simple>
@@ -236,7 +236,7 @@ export default Vue.extend({
       },
       {
         key: 'monitorTypes',
-        label: '測項',
+        label: 'Thông số ',
       },
       {
         key: 'monitors',
@@ -244,7 +244,7 @@ export default Vue.extend({
       },
       {
         key: 'tableTypes',
-        label: '資料種類',
+        label: 'Loại dữ liệu',
       },
       {
         key: 'alarmLevel',

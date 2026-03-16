@@ -88,7 +88,7 @@ export default Vue.extend({
     const fields = [
       {
         key: 'selected',
-        label: '選擇',
+        label: 'Lựa chọn',
       },
       {
         key: '_id',

@@ -183,20 +183,13 @@ class ExcelUtility @Inject()
   }
 
   def exportDailyReport(dateTime: DateTime, dailyReport: DisplayReport) = {
-    val (reportFilePath, pkg, wb) = prepareTemplate("dailyReport.xlsx")
+    val (reportFilePath, pkg, wb) = prepareTemplate("dailyReport2.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
     val format = wb.createDataFormat()
     val sheet = wb.getSheetAt(0)
     val titleRow = sheet.createRow(0)
     for (i <- 0 to dailyReport.columnNames.size + 1)
       titleRow.createCell(i)
-
-    val statusStyle =
-      for (col <- 0 to 4)
-        yield sheet.getRow(1).getCell(col).getCellStyle
-
-    sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, dailyReport.columnNames.size))
-    titleRow.getCell(0).setCellValue(s"Daily Report: ${dateTime.toString("YYYY-MM-dd")}")
 
     def setValue(cell: Cell, v: String): Unit = {
       try {
@@ -208,6 +201,7 @@ class ExcelUtility @Inject()
       }
     }
 
+    val mtList =
     val headerRow = sheet.getRow(2)
     for ((mtName, mtIdx) <- dailyReport.columnNames.zipWithIndex) {
       val headerCell = headerRow.createCell(mtIdx + 1)

@@ -45,7 +45,7 @@
       <b-form-group label="管理員:" label-for="admin" label-cols="3">
         <b-form-checkbox id="admin" v-model="group.admin" />
       </b-form-group>
-      <b-form-group label="測項:" label-for="monitorTypes" label-cols="3">
+      <b-form-group label="Thông số :" label-for="monitorTypes" label-cols="3">
         <b-form-checkbox-group
           id="monitorTypes"
           v-model="group.monitorTypes"
@@ -120,7 +120,7 @@ export default Vue.extend({
 
     const abilityOptions = [
       {
-        text: '儀表板',
+        text: 'Bảng điều khiển',
         value: {
           action: 'read',
           subject: 'Dashboard',
@@ -141,7 +141,7 @@ export default Vue.extend({
         },
       },
       {
-        text: '系統管理',
+        text: 'Quản lý hệ thống',
         value: {
           action: 'set',
           subject: 'Alarm',

@@ -22,7 +22,7 @@
         <b-row>
           <b-col cols="12">
             <b-form-group
-              label="資料區間"
+              label="Khoảng dữ liệu"
               label-for="dataRange"
               label-cols-md="3"
             >

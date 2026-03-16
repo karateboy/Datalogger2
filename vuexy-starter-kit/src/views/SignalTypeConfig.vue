@@ -267,7 +267,7 @@ export default Vue.extend({
     async removeMt() {
       let deletedMts = this.selected.map(p => p._id);
       let ret = await this.$bvModal.msgBoxConfirm(
-        `請確認要刪除${deletedMts.join(',')}測項`,
+        `請確認要刪除${deletedMts.join(',')}Thông số `,
       );
       if (ret === true) {
         try {

@@ -16,17 +16,17 @@ export default [
     ],
   },
   {
-    title: '數據查詢',
+    title: 'Truy vấn dữ liệu',
     icon: 'DatabaseIcon',
     children: [
       {
-        title: '歷史資料查詢',
+        title: 'Tìm kiếm dữ liệu lịch sử',
         route: 'history-data',
         action: 'read',
         resource: 'Data',
       },
       {
-        title: '歷史趨勢圖',
+        title: 'Biểu đồ dữ liệu lịch sử',
         route: 'history-trend',
         action: 'read',
         resource: 'Data',
@@ -48,7 +48,7 @@ export default [
     icon: 'BookOpenIcon',
     children: [
       {
-        title: '監測報表',
+        title: 'Bảng biểu kết quả quan trắc',
         route: 'report',
       },
       {
@@ -58,7 +58,7 @@ export default [
     ],
   },
   {
-    title: '系統管理',
+    title: 'Quản lý hệ thống',
     icon: 'BookOpenIcon',
     children: [
       {
@@ -66,17 +66,17 @@ export default [
         route: 'instrument-management',
       },
       {
-        title: '儀器狀態查詢',
+        title: '儀器Trạng thái查詢',
         route: 'instrument-status',
       },
       {
-        title: '測點管理',
+        title: 'Điểm đo管理',
         route: 'monitor-config',
         action: 'set',
         resource: 'Alarm',
       },
       {
-        title: '測項管理',
+        title: 'Thông số 管理',
         route: 'monitor-type-config',
         action: 'set',
         resource: 'Alarm',
@@ -90,11 +90,11 @@ export default [
         route: 'audit-log-query',
       },
       {
-        title: '使用者管理',
+        title: 'Quản lý người dùng',
         route: 'user-management',
       },
       {
-        title: '群組管理',
+        title: 'Quản lý nhóm',
         route: 'group-management',
       },
       {

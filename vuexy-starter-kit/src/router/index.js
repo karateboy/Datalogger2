@@ -15,10 +15,10 @@ const router = new VueRouter({
             name: 'home',
             component: () => import('@/views/Home.vue'),
             meta: {
-                pageTitle: '儀表板',
+                pageTitle: 'Bảng điều khiển',
                 breadcrumb: [
                     {
-                        text: '儀表板',
+                        text: 'Bảng điều khiển',
                         active: true,
                     },
                 ],
@@ -29,10 +29,10 @@ const router = new VueRouter({
             name: 'realtime-data',
             component: () => import('@/views/RealtimeData.vue'),
             meta: {
-                pageTitle: '即時資料',
+                pageTitle: 'Dữ liệu tức thời',
                 breadcrumb: [
                     {
-                        text: '即時資料',
+                        text: 'Dữ liệu tức thời',
                         active: true,
                     },
                 ],
@@ -43,7 +43,7 @@ const router = new VueRouter({
             name: 'realtime-aqi',
             component: () => import('@/views/RealtimeAQI.vue'),
             meta: {
-                pageTitle: '即時資料',
+                pageTitle: 'Dữ liệu tức thời',
                 breadcrumb: [
                     {
                         text: '即時AQI',
@@ -60,11 +60,11 @@ const router = new VueRouter({
                 pageTitle: '歷史資料',
                 breadcrumb: [
                     {
-                        text: '數據查詢',
+                        text: 'Truy vấn dữ liệu',
                         active: true,
                     },
                     {
-                        text: '歷史資料查詢',
+                        text: 'Tìm kiếm dữ liệu lịch sử',
                         active: true,
                     },
                 ],
@@ -75,14 +75,14 @@ const router = new VueRouter({
             name: 'history-trend',
             component: () => import('@/views/HistoryTrend.vue'),
             meta: {
-                pageTitle: '歷史趨勢圖',
+                pageTitle: 'Biểu đồ dữ liệu lịch sử',
                 breadcrumb: [
                     {
-                        text: '數據查詢',
+                        text: 'Truy vấn dữ liệu',
                         active: true,
                     },
                     {
-                        text: '歷史趨勢圖',
+                        text: 'Biểu đồ dữ liệu lịch sử',
                         active: true,
                     },
                 ],
@@ -96,7 +96,7 @@ const router = new VueRouter({
                 pageTitle: 'AQI趨勢圖',
                 breadcrumb: [
                     {
-                        text: '數據查詢',
+                        text: 'Truy vấn dữ liệu',
                         active: true,
                     },
                     {
@@ -111,14 +111,14 @@ const router = new VueRouter({
             name: 'scatter-chart',
             component: () => import('@/views/ScatterChart.vue'),
             meta: {
-                pageTitle: '雙測項對比圖',
+                pageTitle: '雙Thông số 對比圖',
                 breadcrumb: [
                     {
-                        text: '數據查詢',
+                        text: 'Truy vấn dữ liệu',
                         active: true,
                     },
                     {
-                        text: '雙測項對比圖',
+                        text: '雙Thông số 對比圖',
                         active: true,
                     },
                 ],
@@ -132,7 +132,7 @@ const router = new VueRouter({
                 pageTitle: '煙流回推軌跡線',
                 breadcrumb: [
                     {
-                        text: '數據查詢',
+                        text: 'Truy vấn dữ liệu',
                         active: true,
                     },
                     {
@@ -150,7 +150,7 @@ const router = new VueRouter({
                 pageTitle: '校正查詢',
                 breadcrumb: [
                     {
-                        text: '數據查詢',
+                        text: 'Truy vấn dữ liệu',
                         active: true,
                     },
                     {
@@ -168,7 +168,7 @@ const router = new VueRouter({
                 pageTitle: '多點校正查詢',
                 breadcrumb: [
                     {
-                        text: '數據查詢',
+                        text: 'Truy vấn dữ liệu',
                         active: true,
                     },
                     {
@@ -183,14 +183,14 @@ const router = new VueRouter({
             name: 'alarm-query',
             component: () => import('@/views/AlarmQuery.vue'),
             meta: {
-                pageTitle: '警報查詢',
+                pageTitle: 'Truy vấn cảnh báo',
                 breadcrumb: [
                     {
-                        text: '數據查詢',
+                        text: 'Truy vấn dữ liệu',
                         active: true,
                     },
                     {
-                        text: '警報查詢',
+                        text: 'Truy vấn cảnh báo',
                         active: true,
                     },
                 ],
@@ -204,7 +204,7 @@ const router = new VueRouter({
                 pageTitle: '玫瑰圖查詢',
                 breadcrumb: [
                     {
-                        text: '數據查詢',
+                        text: 'Truy vấn dữ liệu',
                         active: true,
                     },
                     {
@@ -219,14 +219,14 @@ const router = new VueRouter({
             name: 'report',
             component: () => import('@/views/ReportQuery.vue'),
             meta: {
-                pageTitle: '監測報表',
+                pageTitle: 'Bảng biểu kết quả quan trắc',
                 breadcrumb: [
                     {
                         text: '報表查詢',
                         active: true,
                     },
                     {
-                        text: '監測報表',
+                        text: 'Bảng biểu kết quả quan trắc',
                         active: true,
                     },
                 ],
@@ -272,7 +272,7 @@ const router = new VueRouter({
                 pageTitle: '儀器管理',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {
@@ -287,14 +287,14 @@ const router = new VueRouter({
             name: 'instrument-status',
             component: () => import('@/views/InstrumentStatus.vue'),
             meta: {
-                pageTitle: '儀器狀態查詢',
+                pageTitle: '儀器Trạng thái查詢',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {
-                        text: '儀器狀態查詢',
+                        text: '儀器Trạng thái查詢',
                         active: true,
                     },
                 ],
@@ -305,14 +305,14 @@ const router = new VueRouter({
             name: 'monitor-config',
             component: () => import('@/views/MonitorConfig.vue'),
             meta: {
-                pageTitle: '測點管理',
+                pageTitle: 'Điểm đo管理',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {
-                        text: '測點管理',
+                        text: 'Điểm đo管理',
                         active: true,
                     },
                 ],
@@ -326,7 +326,7 @@ const router = new VueRouter({
                 pageTitle: '多點校正管理',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {
@@ -344,7 +344,7 @@ const router = new VueRouter({
                 pageTitle: '警報規則管理',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {
@@ -362,7 +362,7 @@ const router = new VueRouter({
                 pageTitle: '感測器管理',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {
@@ -377,14 +377,14 @@ const router = new VueRouter({
             name: 'monitor-type-config',
             component: () => import('@/views/MonitorTypeConfig.vue'),
             meta: {
-                pageTitle: '測項管理',
+                pageTitle: 'Thông số 管理',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {
-                        text: '測項管理',
+                        text: 'Thông số 管理',
                         active: true,
                     },
                 ],
@@ -395,14 +395,14 @@ const router = new VueRouter({
             name: 'monitor-status-config',
             component: () => import('@/views/MonitorStatusConfig.vue'),
             meta: {
-                pageTitle: '狀態碼管理',
+                pageTitle: 'Trạng thái碼管理',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {
-                        text: '狀態碼管理',
+                        text: 'Trạng thái碼管理',
                         active: true,
                     },
                 ],
@@ -413,14 +413,14 @@ const router = new VueRouter({
             name: 'monitor-type-group',
             component: () => import('@/views/MonitorTypeGroup.vue'),
             meta: {
-                pageTitle: '測項群組管理',
+                pageTitle: 'Thông số Quản lý nhóm',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {
-                        text: '測項群組管理',
+                        text: 'Thông số Quản lý nhóm',
                         active: true,
                     },
                 ],
@@ -434,7 +434,7 @@ const router = new VueRouter({
                 pageTitle: '數位訊號管理',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {
@@ -452,7 +452,7 @@ const router = new VueRouter({
                 pageTitle: '人工註記',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {
@@ -470,7 +470,7 @@ const router = new VueRouter({
                 pageTitle: '人工註記查詢',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {
@@ -485,14 +485,14 @@ const router = new VueRouter({
             name: 'user-management',
             component: () => import('@/views/UserManagement.vue'),
             meta: {
-                pageTitle: '使用者管理',
+                pageTitle: 'Quản lý người dùng',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {
-                        text: '使用者管理',
+                        text: 'Quản lý người dùng',
                         active: true,
                     },
                 ],
@@ -503,14 +503,14 @@ const router = new VueRouter({
             name: 'group-management',
             component: () => import('@/views/GroupManagement.vue'),
             meta: {
-                pageTitle: '群組管理',
+                pageTitle: 'Quản lý nhóm',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {
-                        text: '群組管理',
+                        text: 'Quản lý nhóm',
                         active: true,
                     },
                 ],
@@ -521,14 +521,14 @@ const router = new VueRouter({
             name: 'data-management',
             component: () => import('@/views/DataManagement.vue'),
             meta: {
-                pageTitle: '資料上傳',
+                pageTitle: 'Tải dữ liệu lên',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {
-                        text: '資料上傳',
+                        text: 'Tải dữ liệu lên',
                         active: true,
                     },
                 ],
@@ -542,7 +542,7 @@ const router = new VueRouter({
                 pageTitle: 'CDX上傳設定',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {
@@ -557,14 +557,14 @@ const router = new VueRouter({
             name: 'system-config',
             component: () => import('@/views/SystemConfig.vue'),
             meta: {
-                pageTitle: '參數設定',
+                pageTitle: 'Cài đặt tham số',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {
-                        text: '參數設定',
+                        text: 'Cài đặt tham số',
                         active: true,
                     },
                 ],
@@ -578,7 +578,7 @@ const router = new VueRouter({
                 pageTitle: '資料檢核設定',
                 breadcrumb: [
                     {
-                        text: '系統管理',
+                        text: 'Quản lý hệ thống',
                         active: true,
                     },
                     {

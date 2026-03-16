@@ -4,9 +4,9 @@
     <b-table-simple>
       <b-thead>
         <b-tr>
-          <b-th>測項</b-th>
+          <b-th>Thông số </b-th>
           <b-th>校正值</b-th>
-          <b-th>單位</b-th>
+          <b-th>Đơn vị</b-th>
           <b-th></b-th>
         </b-tr>
       </b-thead>
@@ -86,7 +86,7 @@ export default Vue.extend({
       fields: [
         {
           key: 'monitorType',
-          label: '測項',
+          label: 'Thông số ',
         },
         {
           key: 'value',
@@ -94,7 +94,7 @@ export default Vue.extend({
         },
         {
           key: 'unit',
-          label: '單位',
+          label: 'Đơn vị',
           formatter: me.formatter,
         },
         {

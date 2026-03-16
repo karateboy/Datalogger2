@@ -5,7 +5,7 @@
         <b-row>
           <b-col cols="12">
             <b-form-group
-              label="資料區間"
+              label="Khoảng dữ liệu"
               label-for="dataRange"
               label-cols-md="3"
             >
@@ -90,7 +90,7 @@ export default Vue.extend({
         },
         {
           key: 'mt',
-          label: '測項',
+          label: 'Thông số ',
           sortable: true,
         },
         {

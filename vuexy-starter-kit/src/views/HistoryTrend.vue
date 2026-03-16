@@ -4,7 +4,7 @@
       <b-form @submit.prevent>
         <b-row>
           <b-col cols="6">
-            <b-form-group label="測點" label-for="monitor" label-cols-md="3">
+            <b-form-group label="Điểm đo" label-for="monitor" label-cols-md="3">
               <v-select
                 id="monitor"
                 v-model="form.monitors"
@@ -18,7 +18,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="測項"
+              label="Thông số "
               label-for="monitorType"
               label-cols-md="3"
             >
@@ -32,7 +32,7 @@
                 multiple
               />
               <b-form-checkbox v-model="form.includeRaw"
-                >顯示原始值</b-form-checkbox
+                >Hiển thị giá trị thô</b-form-checkbox
               >
             </b-form-group>
             <b-button class="bg-gradient-success m-50" v-for="mtg in monitorTypeGroups" :key="mtg._id" size="sm" @click="form.monitorTypes = mtg.mts">
@@ -41,7 +41,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="資料種類"
+              label="Loại dữ liệu"
               label-for="dataType"
               label-cols-md="3"
             >
@@ -56,7 +56,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="時間單位"
+              label="時間Đơn vị"
               label-for="reportUnit"
               label-cols-md="3"
             >
@@ -71,7 +71,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="狀態"
+              label="Trạng thái"
               label-for="statusFilter"
               label-cols-md="3"
             >
@@ -86,7 +86,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="圖表類型"
+              label="Loại biểu đồ"
               label-for="chartType"
               label-cols-md="3"
             >
@@ -101,7 +101,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="資料區間"
+              label="Khoảng dữ liệu"
               label-for="dataRange"
               label-cols-md="3"
             >
@@ -184,7 +184,7 @@ export default Vue.extend({
     return {
       statusFilters: [
         { id: 'all', txt: '全部' },
-        { id: 'normal', txt: '正常量測值' },
+        { id: 'normal', txt: '正常量Giá trị đo' },
         { id: 'calibration', txt: '校正' },
         { id: 'maintenance', txt: '維修' },
         { id: 'invalid', txt: '無效數據' },

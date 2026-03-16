@@ -1,6 +1,6 @@
 <template>
   <div>
-    <b-card title="測點管理" class="text-center">
+    <b-card title="Điểm đo管理" class="text-center">
       <b-table
         responsive
         :fields="columns"
@@ -113,7 +113,7 @@ export default Vue.extend({
     const columns = [
       {
         key: 'selected',
-        label: '選擇',
+        label: 'Lựa chọn',
       },
       {
         key: '_id',
@@ -190,7 +190,7 @@ export default Vue.extend({
       if (this.selected === undefined) return;
 
       if (this.editMonitors.length === 1) {
-        this.$bvModal.msgBoxOk('應至少有一個測點');
+        this.$bvModal.msgBoxOk('應至少有一個Điểm đo');
         return;
       }
 

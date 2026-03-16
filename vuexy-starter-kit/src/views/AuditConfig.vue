@@ -2,7 +2,7 @@
   <b-card no-body>
     <b-tabs pills card>
       <b-tab title="突波高值檢核" active class="pt-0">
-        <h3 class="ml-2"><strong>說明:</strong>測值超過前後平均的絕對值範圍</h3>
+        <h3 class="ml-2"><strong>說明:</strong>Giá trị đo超過前後平均的絕對值範圍</h3>
         <b-table :items="spikeRules" :fields="spikeRuleFields" bordered>
           <template #thead-top>
             <b-tr>
@@ -112,7 +112,7 @@
       <b-tab title="變動檢核" class="pt-0">
         <h3 class="ml-2">
           <strong>說明:</strong
-          >連續兩小時測值變化如超過系統設定之絕對值,該小時值註記為異常值
+          >連續兩小時Giá trị đo變化如超過系統設定之絕對值,該小時值註記為異常值
         </h3>
         <b-table :items="variationRules" :fields="variationRuleFields" bordered>
           <template #thead-top>
@@ -201,7 +201,7 @@ export default Vue.extend({
     let spikeRuleFields = [
       {
         key: '_id',
-        label: '測項',
+        label: 'Thông số ',
       },
       {
         key: 'enable',
@@ -219,7 +219,7 @@ export default Vue.extend({
     let constantRuleFields = [
       {
         key: '_id',
-        label: '測項',
+        label: 'Thông số ',
       },
       {
         key: 'enable',

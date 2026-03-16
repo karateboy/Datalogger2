@@ -65,7 +65,7 @@ export default Vue.extend({
       },
       {
         key: 'mt',
-        label: '測項',
+        label: 'Thông số ',
       },
     ];
 

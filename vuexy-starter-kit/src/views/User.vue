@@ -60,7 +60,7 @@
           :options="groupList"
         />
       </b-form-group>
-      <b-form-group label="關注測項:" label-for="monitorTypes" label-cols="3">
+      <b-form-group label="關注Thông số :" label-for="monitorTypes" label-cols="3">
         <b-form-checkbox-group
           id="monitorTypes"
           v-model="user.monitorTypeOfInterest"

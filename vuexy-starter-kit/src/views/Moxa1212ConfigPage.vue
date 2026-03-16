@@ -96,7 +96,7 @@ export default Vue.extend({
       },
       {
         key: 'mt',
-        label: '測項/數位訊號',
+        label: 'Thông số /數位訊號',
       },
       {
         key: 'scale',

@@ -97,7 +97,7 @@
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="設備ID"
+              label="Thiết bịID"
               label-for="instrument-id"
               label-cols-md="3"
             >
@@ -169,7 +169,7 @@
               </template>
               <template #cell(deviationAllowance)="row">
                 <span v-if="row.index === 0 || row.index === 1"
-                  >依測項管理設定</span
+                  >依Thông số 管理設定</span
                 >
                 <b-form-input
                   v-else-if="row.index !== 6"
@@ -203,7 +203,7 @@ export default Vue.extend({
     const fields = [
       {
         key: 'selected',
-        label: '選擇',
+        label: 'Lựa chọn',
       },
       {
         key: '_id',
@@ -220,12 +220,12 @@ export default Vue.extend({
       },
       {
         key: 'calibrationTime',
-        label: '每日校正時間',
+        label: 'Thời gian hiệu chuẩn hàng ngày',
         sortable: true,
       },
       {
         key: 'monitorTypes',
-        label: '測項',
+        label: 'Thông số ',
         sortable: true,
         formatter: (value, key, item) => {
           let monitorTypes = item.instrumentIds.map(instId => {

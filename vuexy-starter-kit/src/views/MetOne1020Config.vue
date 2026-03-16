@@ -1,6 +1,6 @@
 <template>
   <div>
-    <b-form-group label="測項" label-for="monitorType" label-cols-md="3">
+    <b-form-group label="Thông số " label-for="monitorType" label-cols-md="3">
       <v-select
         v-model="paramObj.slaveID"
         label="text"

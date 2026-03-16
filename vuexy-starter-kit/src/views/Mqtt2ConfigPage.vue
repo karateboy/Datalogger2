@@ -19,7 +19,7 @@
       </b-col>
       <b-col cols="12">
         <b-form-group
-          label="高值警報設備"
+          label="高值警報Thiết bị"
           label-for="instrument"
           label-cols-md="3"
         >

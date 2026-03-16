@@ -2,7 +2,7 @@
   <div>
     <b-card>
       <b-form @submit.prevent>
-        <b-form-group label="測點" label-for="monitor" label-cols-md="3">
+        <b-form-group label="Điểm đo" label-for="monitor" label-cols-md="3">
           <v-select
             id="monitor"
             v-model="form.monitor"
@@ -11,7 +11,7 @@
             :options="monitors"
           />
         </b-form-group>
-        <b-form-group label="資料種類" label-for="dataType" label-cols-md="3">
+        <b-form-group label="Loại dữ liệu" label-for="dataType" label-cols-md="3">
           <v-select
             id="dataType"
             v-model="form.dataType"
@@ -21,7 +21,7 @@
           />
         </b-form-group>
         <b-form-group
-          label="監測資料區間"
+          label="監測Khoảng dữ liệu"
           label-for="dataRange"
           label-cols-md="3"
         >

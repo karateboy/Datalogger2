@@ -71,7 +71,7 @@
           </b-col>
         </b-row>
       </b-tab>
-      <b-tab title="CDX上傳測項設定" class="pt-0">
+      <b-tab title="CDX上傳Thông số 設定" class="pt-0">
         <b-row class="pb-2">
           <b-col class="text-center">
             <b-button
@@ -216,10 +216,10 @@ export default Vue.extend({
           let tokens = src.split(':');
           switch (tokens[0]) {
             case 'I':
-              return `設備:${tokens[1]}`;
+              return `Thiết bị:${tokens[1]}`;
 
             case 'T':
-              return `測項:${tokens[1]}`;
+              return `Thông số :${tokens[1]}`;
 
             case 'S':
               if (tokens[1] === 'System') return `系統`;

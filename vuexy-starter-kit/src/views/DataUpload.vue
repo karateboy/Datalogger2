@@ -4,7 +4,7 @@
       <b-form @submit.prevent>
         <b-row>
           <b-col cols="12">
-            <b-form-group label="測點" label-for="monitor" label-cols-md="3">
+            <b-form-group label="Điểm đo" label-for="monitor" label-cols-md="3">
               <v-select
                 id="monitor"
                 v-model="form.monitors"
@@ -33,7 +33,7 @@
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="資料區間"
+              label="Khoảng dữ liệu"
               label-for="dataRange"
               label-cols-md="3"
             >
@@ -139,10 +139,10 @@ export default Vue.extend({
             let tokens = src.split(':');
             switch (tokens[0]) {
               case 'I':
-                return `設備:${tokens[1]}`;
+                return `Thiết bị:${tokens[1]}`;
 
               case 'T':
-                return `測項:${tokens[1]}`;
+                return `Thông số :${tokens[1]}`;
 
               case 'S':
                 if (tokens[1] === 'System') return `系統`;

@@ -4,7 +4,7 @@
       <b-form @submit.prevent>
         <b-row>
           <b-col cols="6">
-            <b-form-group label="測點" label-for="monitor" label-cols-md="3">
+            <b-form-group label="Điểm đo" label-for="monitor" label-cols-md="3">
               <v-select
                 id="monitor"
                 v-model="form.monitor"
@@ -16,7 +16,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="測項 (需先定義分級)"
+              label="Thông số  (需先定義分級)"
               label-for="monitorType"
               label-cols-md="3"
             >
@@ -32,7 +32,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="資料種類"
+              label="Loại dữ liệu"
               label-for="dataType"
               label-cols-md="3"
             >
@@ -58,7 +58,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="資料區間"
+              label="Khoảng dữ liệu"
               label-for="dataRange"
               label-cols-md="3"
             >

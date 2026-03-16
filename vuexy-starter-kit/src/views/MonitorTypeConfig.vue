@@ -1,6 +1,6 @@
 <template>
   <div>
-    <b-card title="測項管理" class="text-center">
+    <b-card title="Thông số 管理" class="text-center">
       <b-table
           small
           responsive
@@ -140,7 +140,7 @@ export default Vue.extend({
       },
       {
         key: 'unit',
-        label: '單位',
+        label: 'Đơn vị',
       },
       {
         key: 'prec',
@@ -288,7 +288,7 @@ export default Vue.extend({
     async removeMt() {
       let deletedMts = this.selected.map(p => p._id);
       let ret = await this.$bvModal.msgBoxConfirm(
-          `請確認要刪除${deletedMts.join(',')}等測項`,
+          `請確認要刪除${deletedMts.join(',')}等Thông số `,
       );
       if (ret === true) {
         try {

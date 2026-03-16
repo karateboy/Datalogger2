@@ -4,7 +4,7 @@
       <b-form @submit.prevent>
         <b-row>
           <b-col cols="6">
-            <b-form-group label="測點" label-for="monitor" label-cols-md="3">
+            <b-form-group label="Điểm đo" label-for="monitor" label-cols-md="3">
               <v-select
                 id="monitor"
                 v-model="form.monitors"
@@ -18,7 +18,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="測項"
+              label="Thông số "
               label-for="monitorType"
               label-cols-md="3"
             >
@@ -35,7 +35,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="資料種類"
+              label="Loại dữ liệu"
               label-for="dataType"
               label-cols-md="3"
             >
@@ -65,7 +65,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="狀態"
+              label="Trạng thái"
               label-for="statusFilter"
               label-cols-md="3"
             >
@@ -80,7 +80,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="資料區間"
+              label="Khoảng dữ liệu"
               label-for="dataRange"
               label-cols-md="3"
             >
@@ -160,7 +160,7 @@ export default Vue.extend({
     return {
       statusFilters: [
         { id: 'all', txt: '全部' },
-        { id: 'normal', txt: '正常量測值' },
+        { id: 'normal', txt: '正常量Giá trị đo' },
         { id: 'calibration', txt: '校正' },
         { id: 'maintenance', txt: '維修' },
         { id: 'invalid', txt: '無效數據' },
@@ -218,7 +218,7 @@ export default Vue.extend({
     ...mapMutations(['setLoading']),
     async query() {
       if (this.form.monitorTypes.length !== 2) {
-        this.$bvModal.msgBoxOk('測項數必須為2個');
+        this.$bvModal.msgBoxOk('Thông số 數必須為2個');
         return;
       }
       this.setLoading({ loading: true });

@@ -5,7 +5,7 @@
         <b-row>
           <b-col cols="6">
             <b-form-group
-              label="資料區間"
+              label="Khoảng dữ liệu"
               label-for="dataRange"
               label-cols-md="3"
             >
@@ -123,7 +123,7 @@ export default Vue.extend({
       return [
         {
           key: 'monitorType',
-          label: '測項',
+          label: 'Thông số ',
           sortable: true,
         },
         {
@@ -348,7 +348,7 @@ export default Vue.extend({
         },
         {
           key: 'success',
-          label: '校正狀態',
+          label: '校正Trạng thái',
           tdClass: function (
             v: number | null,
             _key: string,

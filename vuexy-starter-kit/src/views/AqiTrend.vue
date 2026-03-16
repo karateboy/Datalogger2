@@ -4,7 +4,7 @@
       <b-form @submit.prevent>
         <b-row>
           <b-col cols="6">
-            <b-form-group label="測點" label-for="monitor" label-cols-md="3">
+            <b-form-group label="Điểm đo" label-for="monitor" label-cols-md="3">
               <v-select
                 id="monitor"
                 v-model="form.monitors"
@@ -18,7 +18,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="資料種類"
+              label="Loại dữ liệu"
               label-for="dataType"
               label-cols-md="3"
             >
@@ -33,7 +33,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="統計單位"
+              label="統計Đơn vị"
               label-for="reportUnit"
               label-cols-md="3"
             >
@@ -48,7 +48,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="圖表類型"
+              label="Loại biểu đồ"
               label-for="chartType"
               label-cols-md="3"
             >
@@ -63,7 +63,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="資料區間"
+              label="Khoảng dữ liệu"
               label-for="dataRange"
               label-cols-md="3"
             >

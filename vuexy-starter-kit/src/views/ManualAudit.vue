@@ -5,7 +5,7 @@
         <b-row>
           <b-col cols="12">
             <b-form-group
-              label="測項"
+              label="Thông số "
               label-for="monitorType"
               label-cols-md="3"
             >
@@ -37,7 +37,7 @@
           </b-col>
           <b-col cols="12">
             <b-form-group
-              label="資料區間"
+              label="Khoảng dữ liệu"
               label-for="dataRange"
               label-cols-md="3"
             >
@@ -294,7 +294,7 @@ export default Vue.extend({
       const ret = [];
       ret.push({
         key: 'include',
-        label: '選擇',
+        label: 'Lựa chọn',
       });
       ret.push({
         key: 'dateStr',

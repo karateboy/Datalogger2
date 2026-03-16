@@ -1,6 +1,6 @@
 <template>
   <div>
-    <b-card title="狀態碼管理" class="text-center">
+    <b-card title="Trạng thái碼管理" class="text-center">
       <b-table
         small
         responsive

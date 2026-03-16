@@ -27,8 +27,8 @@
     </b-card>
     <b-card title="即時空氣品質指標(AQI)計算方式如下">
       <p>
-        各測項即時濃度依下列公式計算後，再對應下表得出O<sub>3</sub>、PM<sub>2.5</sub>、PM<sub>10</sub>、CO、SO<sub>2</sub>、
-        NO<sub>2</sub>等6個測項之即時副指標值，再取出其中最大值為即時空氣品質指標，該最大值測項即為指標污染物：
+        各Thông số 即時濃度依下列公式計算後，再對應下表得出O<sub>3</sub>、PM<sub>2.5</sub>、PM<sub>10</sub>、CO、SO<sub>2</sub>、
+        NO<sub>2</sub>等6個Thông số 之即時副指標值，再取出其中最大值為即時空氣品質指標，該最大值Thông số 即為指標污染物：
       </p>
       <table summary="for layout" border="0" style="margin-left: 2em">
         <tbody>
@@ -146,7 +146,7 @@
             </td>
           </tr>
           <tr class="ALT">
-            <th nowrap="">單位</th>
+            <th nowrap="">Đơn vị</th>
             <td class="text-center">ppm</td>
             <td class="text-center">ppm</td>
             <td class="text-center">μg/m<sup>3</sup></td>
@@ -376,7 +376,7 @@ export default Vue.extend({
     const fields = [
       {
         key: 'mtName',
-        label: '測項',
+        label: 'Thông số ',
         sortable: true,
         tdClass: function (v: string, _key: string, item: AqiSubExplain) {
           return [item.explain.css];
@@ -392,7 +392,7 @@ export default Vue.extend({
       },
       {
         key: 'explain.value',
-        label: '測值',
+        label: 'Giá trị đo',
         sortable: true,
         tdClass: function (v: string, _key: string, item: AqiSubExplain) {
           return [item.explain.css];

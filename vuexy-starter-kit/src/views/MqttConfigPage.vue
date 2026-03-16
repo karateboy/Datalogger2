@@ -4,10 +4,10 @@
       <b-col cols="12">
         <validation-provider
           v-slot="{ errors }"
-          name="測點代碼"
+          name="Điểm đo代碼"
           rules="required"
         >
-          <b-form-group label="測點代碼" label-for="monitor" label-cols-md="3">
+          <b-form-group label="Điểm đo代碼" label-for="monitor" label-cols-md="3">
             <b-form-input v-model="paramObj.monitor"></b-form-input>
             <small class="text-danger">{{ errors[0] }}</small>
           </b-form-group>
@@ -23,7 +23,7 @@
       </b-col>
       <b-col cols="12">
         <b-form-group
-          label="高值警報設備"
+          label="高值警報Thiết bị"
           label-for="instrument"
           label-cols-md="3"
         >

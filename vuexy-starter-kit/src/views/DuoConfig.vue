@@ -61,11 +61,11 @@ export default Vue.extend({
     let fields = [
       {
         key: 'selected',
-        label: '選擇',
+        label: 'Lựa chọn',
       },
       {
         key: 'desc',
-        label: '測項名稱',
+        label: 'Thông số 名稱',
       },
       {
         key: 'isSpectrum',

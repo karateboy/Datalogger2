@@ -270,12 +270,20 @@ trait MonitorTypeDB {
     val mtCase = map(mt)
 
     val overLaw =
-      for (std <- mtCase.std_law; v <- vOpt) yield
+      for (std <- mtCase.more.getOrElse(MonitorTypeMore()).hhAlarm; v <- vOpt) yield
         if (v > std)
           true
         else
           false
-    (overLaw.getOrElse(false), overLaw.getOrElse(false))
+
+    val overInternal =
+      for (std <- mtCase.more.getOrElse(MonitorTypeMore()).hAlarm; v <- vOpt) yield
+        if (v > std)
+          true
+        else
+          false
+
+    (overInternal.getOrElse(false), overLaw.getOrElse(false))
   }
 
   def getMinMtRecordByRawValue(mt: String, rawValue: Option[Double], status: String)(mOpt: Option[Double], bOpt: Option[Double]): MtRecord = {
