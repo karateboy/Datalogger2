@@ -15,18 +15,21 @@ import scala.util.{Failure, Success}
 
 object MinRecordForwarder {
   trait Factory {
-    def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String): Actor
+    def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String, @Assisted("tsmcLegacy") tsmcLegacy:Boolean): Actor
   }
 
   val logger: Logger = Logger(this.getClass)
 }
 
 class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
-                                  (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
+                                  (@Assisted("server") server: String, @Assisted("monitor") monitor: String, @Assisted("tsmcLegacy") tsmcLegacy:Boolean) extends Actor {
   val logger: Logger = Logger(this.getClass)
   logger.info(s"MinRecordForwarder created with server=$server monitor=$monitor")
 
-  private val postUrl = s"http://$server/Record/Min/$monitor"
+  private val postUrl = if(tsmcLegacy)
+    s"http://$server/MinRecord/$monitor"
+  else
+    s"http://$server/Record/Min/$monitor"
 
   import ForwardManager._
 
@@ -34,7 +37,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
 
   def receive: Receive = handler(None)
 
-  def checkLatest() = {
+  def checkLatest(): Unit = {
     val url = s"http://$server/MinRecordRange/$monitor"
     val f = ws.url(url).get().map {
       response =>
@@ -68,7 +71,18 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
     for (records <- recordFuture) {
 
       if (records.nonEmpty) {
-        val f = ws.url(postUrl).withRequestTimeout(FiniteDuration(10, SECONDS)).post(Json.toJson(records.filter(_.mtDataList.nonEmpty)))
+        val f = if(!tsmcLegacy)
+          ws.url(postUrl).withRequestTimeout(FiniteDuration(10, SECONDS)).post(Json.toJson(records.filter(_.mtDataList.nonEmpty)))
+        else{
+          import HourRecordForwarder._
+          val tsmcRecordLists = records.filter(_.mtDataList.nonEmpty).map(rl=>{
+            val tsmcMtData = for(md<-rl.mtDataList;v<-md.value) yield
+              TsmcMtRecord(md.mtName, v, md.status)
+
+            TsmcRecordList(time = rl._id.time.getTime, mtDataList = tsmcMtData)
+          })
+          ws.url(postUrl).withRequestTimeout(FiniteDuration(10, SECONDS)).post(Json.toJson(tsmcRecordLists))
+        }
 
         f onComplete {
           case Success(response) =>

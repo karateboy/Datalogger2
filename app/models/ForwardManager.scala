@@ -12,7 +12,7 @@ import scala.concurrent.duration.{FiniteDuration, MINUTES, SECONDS}
 
 case class LatestRecordTime(time: Long)
 
-case class ForwardManagerConfig(server: String, monitor: String)
+case class ForwardManagerConfig(server: String, monitor: String, tsmcLegacy:Boolean)
 
 object ForwardManager {
   val logger: Logger = Logger(this.getClass)
@@ -26,7 +26,8 @@ object ForwardManager {
            if serverConfig.getOptional[Boolean]("enable").getOrElse(false)) yield {
         val server = serverConfig.getOptional[String]("host").getOrElse("localhost")
         val monitor = serverConfig.getOptional[String]("monitor").getOrElse("A01")
-        ForwardManagerConfig(server, monitor)
+        val tsmcLegacy = serverConfig.getOptional[Boolean]("tsmcLegacy").getOrElse(false)
+        ForwardManagerConfig(server, monitor, tsmcLegacy)
       }
     } catch {
       case ex: Exception =>
@@ -43,7 +44,7 @@ object ForwardManager {
   }
 
   trait Factory {
-    def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String): Actor
+    def apply(@Assisted("forwardConfig") forwardConfig:ForwardManagerConfig): Actor
   }
 
   case class ForwardHourRecord(start: DateTime, end: DateTime)
@@ -71,15 +72,19 @@ class ForwardManager @Inject()(hourRecordForwarderFactory: HourRecordForwarder.F
                                alarmForwarderFactory: AlarmForwarder.Factory,
                                instrumentStatusForwarderFactory: InstrumentStatusForwarder.Factory,
                                instrumentStatusTypeForwarderFactory: InstrumentStatusTypeForwarder.Factory)
-                              (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor with InjectedActorSupport {
+                              (@Assisted("forwardConfig") config: ForwardManagerConfig) extends Actor with InjectedActorSupport {
   val logger: Logger = Logger(this.getClass)
   import ForwardManager._
 
-  logger.info(s"create forwarder to $server/$monitor")
+  val server: String = config.server
+  val monitor: String = config.monitor
+  val tsmcLegacy: Boolean = config.tsmcLegacy
 
-  private val hourRecordForwarder = injectedChild(hourRecordForwarderFactory(server, monitor), "hourForwarder")
+  logger.info(s"create forwarder to ${config.server}/${config.monitor} tsmc=${config.tsmcLegacy}")
 
-  private val minRecordForwarder = injectedChild(minRecordForwarderFactory(server, monitor), "minForwarder")
+  private val hourRecordForwarder = injectedChild(hourRecordForwarderFactory(server, monitor, tsmcLegacy), "hourForwarder")
+
+  private val minRecordForwarder = injectedChild(minRecordForwarderFactory(server, monitor, tsmcLegacy), "minForwarder")
 
   private val calibrationForwarder = injectedChild(calibrationForwarderFactory(server, monitor), "calibrationForwarder")
 
