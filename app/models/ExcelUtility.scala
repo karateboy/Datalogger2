@@ -182,7 +182,7 @@ class ExcelUtility @Inject()
       abnormalStyles(2)
   }
 
-  def exportDailyReport(dateTime: DateTime, dailyReport: DisplayReport) = {
+  def exportDailyReport(dateTime: DateTime, dailyReport: DisplayReport): File = {
     val (reportFilePath, pkg, wb) = prepareTemplate("dailyReport2.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
     val format = wb.createDataFormat()
@@ -201,52 +201,28 @@ class ExcelUtility @Inject()
       }
     }
 
-    val mtList =
-    val headerRow = sheet.getRow(2)
-    for ((mtName, mtIdx) <- dailyReport.columnNames.zipWithIndex) {
-      val headerCell = headerRow.createCell(mtIdx + 1)
-      headerCell.setCellValue(mtName)
-      headerCell.setCellStyle(statusStyle(0))
+    val mtList = Seq("COD", "PH", "TSS", "COLOR", "TP", "BOD", "TSS", "TEMP", "FLOW_OUT", "FLOW_IN", "NH4",
+      "FlowInTotal", "FlowOutTotal", "FT502_IN", "FT007_OUT")
+    for (hr <- 0 to 23) {
+      val row = sheet.getRow(3 + hr)
+      val dateCell = row.getCell(0)
+      dateCell.setCellValue(dateTime.toDate)
+      val timeCell = row.getCell(1)
+      timeCell.setCellValue(s"$hr:00")
+    }
+    for ((mtName, mtIdx) <- mtList.zipWithIndex) {
       for (hr <- 0 to 23) {
         val row = sheet.getRow(3 + hr)
-        val cell = row.createCell(mtIdx + 1)
-        val mtHrData = dailyReport.rows(hr).cellData(mtIdx)
-        setValue(cell, mtHrData.v)
-        var hasStyle = false
-        mtHrData.cellClassName.foreach(status => {
-          status match {
-            case "calibration_status" =>
-              hasStyle = true
-              cell.setCellStyle(statusStyle(1))
-            case "maintain_status" =>
-              hasStyle = true
-              cell.setCellStyle(statusStyle(2))
-            case "abnormal_status" =>
-              hasStyle = true
-              cell.setCellStyle(statusStyle(2))
-            case "normal" =>
-              if (!hasStyle)
-                cell.setCellStyle(statusStyle(0))
-            case _ =>
-              if (!hasStyle)
-                cell.setCellStyle(statusStyle(0))
-          }
-        })
+        val cell = row.createCell(mtIdx + 2)
+        val mtDataIndex = dailyReport.mtList.indexOf(mtName)
+
+        if(mtDataIndex >= 0){
+          val mtHrData = dailyReport.rows(hr).cellData(mtDataIndex)
+          setValue(cell, mtHrData.v)
+        }
       }
     }
-
-    for ((statusRowData, statusIdx) <- dailyReport.statRows.zipWithIndex) {
-      val row = sheet.createRow(statusIdx + 3 + dailyReport.rows.size)
-      val titleCell = row.createCell(0)
-      titleCell.setCellValue(statusRowData.name)
-      titleCell.setCellStyle(statusStyle(0))
-      for (mtIdx <- 0 to dailyReport.columnNames.size - 1) {
-        val valueCell = row.createCell(mtIdx + 1)
-        setValue(valueCell, statusRowData.cellData(mtIdx).v)
-        valueCell.setCellStyle(statusStyle(0))
-      }
-    }
-
+    evaluator.evaluateAll()
     finishExcel(reportFilePath, pkg, wb)
   }
 

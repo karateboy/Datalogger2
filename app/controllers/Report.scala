@@ -26,7 +26,7 @@ case class StatRow(name: String, cellData: Seq[CellData])
 
 case class HourEntry(time: Long, cells: CellData)
 
-case class DisplayReport(columnNames: Seq[String], rows: Seq[RowData], statRows: Seq[StatRow])
+case class DisplayReport(columnNames: Seq[String], rows: Seq[RowData], statRows: Seq[StatRow], mtList:Seq[String])
 
 @Singleton
 class Report @Inject()(monitorTypeOp: MonitorTypeDB,
@@ -113,7 +113,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
           val columnNames = mtList map {
             monitorTypeOp.map(_).desp
           }
-          val dailyReport = DisplayReport(columnNames, hourRows, statRows)
+          val dailyReport = DisplayReport(columnNames, hourRows, statRows, mtList)
 
           if (outputType == OutputType.html)
             Ok(Json.toJson(dailyReport))
@@ -174,7 +174,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
           val columnNames = mtList map {
             monitorTypeOp.map(_).desp
           }
-          val monthlyReport = DisplayReport(columnNames, dayRows, statRows)
+          val monthlyReport = DisplayReport(columnNames, dayRows, statRows, mtList)
           if (outputType == OutputType.html)
             Ok(Json.toJson(monthlyReport))
           else {
@@ -250,7 +250,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
           val columnNames = mtList map {
             monitorTypeOp.map(_).desp
           }
-          val yearlyReport = DisplayReport(columnNames, monthRow, statRows)
+          val yearlyReport = DisplayReport(columnNames, monthRow, statRows, mtList)
           if (outputType == OutputType.html)
             Ok(Json.toJson(yearlyReport))
           else {
@@ -480,7 +480,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
       rows = rows.:+(RowData(date, cellData))
     }
 
-    val report = DisplayReport(columns, rows, statRows)
+    val report = DisplayReport(columns, rows, statRows, columns)
     if (outputType == OutputType.html || outputType == OutputType.pdf) {
       Ok(Json.toJson(report))
     } else {

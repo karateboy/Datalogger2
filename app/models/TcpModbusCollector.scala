@@ -142,12 +142,12 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
 
     for ((st, idx) <- statusTypeList.zipWithIndex) {
       if (st.key.startsWith(Input64Key)) {
-        logger.info(s"sending input64 request ${st.addr}")
+        logger.debug(s"sending input64 request ${st.addr}")
         batch.addLocator(idx, BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode64))
       } else if (st.key.startsWith(InputKey)) {
         batch.addLocator(idx, BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode))
       } else if (st.key.startsWith(Holding64Key)) {
-        logger.info(s"sending holding64 request ${st.addr}")
+        logger.debug(s"sending holding64 request ${st.addr}")
         batch.addLocator(idx, BaseLocator.holdingRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode64))
       } else if (st.key.startsWith(HoldingKey)) {
         batch.addLocator(idx, BaseLocator.holdingRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode))
