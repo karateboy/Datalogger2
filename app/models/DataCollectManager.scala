@@ -426,7 +426,7 @@ class DataCollectManager @Inject()(config: Configuration,
   private val readerList: List[ActorRef] = startReaders()
   private val forwardManagerOpt: Option[ActorRef] =
     for (serverConfig <- ForwardManager.getConfig(config)) yield
-      injectedChild(forwardManagerFactory(serverConfig.server, serverConfig.monitor), "forwardManager")
+      injectedChild(forwardManagerFactory(serverConfig), "forwardManager")
 
   private def startReaders(): List[ActorRef] = {
     val readers: ListBuffer[ActorRef] = ListBuffer.empty[ActorRef]

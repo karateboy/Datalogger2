@@ -4,7 +4,7 @@ import akka.actor.Actor
 import com.google.inject.assistedinject.Assisted
 import models.ModelHelper.errorHandler
 import play.api.Logger
-import play.api.libs.json.{JsError, Json}
+import play.api.libs.json.{JsError, Json, OWrites}
 import play.api.libs.ws.WSClient
 
 import javax.inject._
@@ -12,12 +12,18 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object HourRecordForwarder {
   trait Factory {
-    def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String): Actor
+    def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String, @Assisted("tsmcLegacy") tsmcLegacy:Boolean): Actor
   }
+
+  case class TsmcMtRecord(mtName: String, value: Double, status: String)
+  case class TsmcRecordList(time: Long, mtDataList: Seq[TsmcMtRecord])
+
+  implicit val write1: OWrites[TsmcMtRecord] = Json.writes[TsmcMtRecord]
+  implicit val write: OWrites[TsmcRecordList] = Json.writes[TsmcRecordList]
 }
 
 class HourRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
-                                   (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
+                                   (@Assisted("server") server: String, @Assisted("monitor") monitor: String, @Assisted("tsmcLegacy") tsmcLegacy:Boolean) extends Actor {
   val logger: Logger = Logger(this.getClass)
   logger.info(s"HourRecordForwarder created with server=$server monitor=$monitor")
 
@@ -25,9 +31,9 @@ class HourRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
 
   self ! ForwardHour
 
-  def receive = handler(None)
+  def receive: Receive = handler(None)
 
-  def checkLatest = {
+  def checkLatest(): Unit = {
     import com.github.nscala_time.time.Imports._
     val url = s"http://$server/HourRecordRange/$monitor"
     val f = ws.url(url).get().map {
@@ -64,7 +70,18 @@ class HourRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
         logger.info(s"uploadRecord from ${new DateTime(latestRecordTime + 1)} => ${DateTime.now}")
         logger.info(s"total ${records.size} hour records")
         val url = s"http://$server/HourRecord/$monitor"
-        val f = ws.url(url).put(Json.toJson(nonEmptyRecords))
+
+        val f = if(tsmcLegacy) {
+          import HourRecordForwarder._
+          val tsmcRecordLists = nonEmptyRecords.map(rl=>{
+            val tsmcMtData = for(md<-rl.mtDataList;v<-md.value) yield
+              TsmcMtRecord(md.mtName, v, md.status)
+
+            TsmcRecordList(time = rl._id.time.getTime, mtDataList = tsmcMtData)
+          })
+          ws.url(url).put(Json.toJson(tsmcRecordLists))
+        }else
+          ws.url(url).put(Json.toJson(nonEmptyRecords))
         f.foreach(response =>
           if (response.status == 200) {
             context become handler(Some(nonEmptyRecords.last._id.time.getTime))
