@@ -37,6 +37,7 @@ GET           /AqiTrend/excel/:monitor/:isDailyAqi/:tab/:start/:end             
 GET           /ScatterChart/:monitor/:monitorType/:tabType/:statusFilter/:start/:end               controllers.Query.scatterChart(monitor, monitorType, tabType, statusFilter, start:Long, end:Long)
 
 GET           /HistoryReport/:monitor/:monitorType/:tabType/:includeRaw/:start/:end                controllers.Query.historyData(monitor, monitorType, tabType, includeRaw:Boolean, start: Long, end: Long)
+POST          /GetHistoryData                                                                      controllers.Query.getHistoryData
 
 GET           /CalibrationReport/:start/:end                                                       controllers.Query.calibrationReport(start:Long, end:Long)
 

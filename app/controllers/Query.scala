@@ -462,14 +462,14 @@ class Query @Inject()(recordOp: RecordDB,
   }
 
   private case class HistoryTrendParam(monitors: Seq[String],
-                                          monitorTypes: Seq[String],
-                                          raw: Boolean,
-                                          tab: String,
-                                          unit: String,
-                                          filter: String,
-                                          start: Date,
-                                          end: Date,
-                                          output: String)
+                                       monitorTypes: Seq[String],
+                                       raw: Boolean,
+                                       tab: String,
+                                       unit: String,
+                                       filter: String,
+                                       start: Date,
+                                       end: Date,
+                                       output: String)
 
   def getHistoryTrend: Action[JsValue] = security.Authenticated(parse.json) {
     implicit request =>
@@ -740,48 +740,92 @@ class Query @Inject()(recordOp: RecordDB,
       }
   }
 
-  def historyReport(monitorTypeStr: String, tabTypeStr: String,
-                    startNum: Long, endNum: Long) = security.Authenticated.async {
+  private case class HistoryDataParam(monitors: Seq[String],
+                                      monitorTypes: Seq[String],
+                                      raw: Boolean,
+                                      tab: String,
+                                      start: Date,
+                                      end: Date)
+
+  def getHistoryData: Action[JsValue] = security.Authenticated.async(parse.json) {
     implicit request =>
+      implicit val read: Reads[HistoryDataParam] = Json.reads[HistoryDataParam]
+      val mResult = request.body.validate[HistoryDataParam]
+      mResult.fold(
+        error => Future.successful(handleJsonValidateError(error)),
+        param => {
+          val tabType: TableType#Value = tableType.withName(param.tab)
+          val (start, end) =
+            if (tabType == tableType.hour) {
+              val original_start = new DateTime(param.start)
+              val original_end = new DateTime(param.end)
+              (original_start.withMinuteOfHour(0), original_end.withMinute(0) + 1.hour)
+            } else {
+              (new DateTime(param.start), new DateTime(param.end))
+            }
 
-      val monitorTypes = monitorTypeStr.split(':')
-      val tabType = tableType.withName(tabTypeStr)
-      val (start, end) =
-        if (tabType == tableType.hour) {
-          val orignal_start = new DateTime(startNum)
-          val orignal_end = new DateTime(endNum)
+          val resultFuture = recordOp.getRecordListFuture(tableType.mapCollection(tabType))(start, end, param.monitors)
+          val emptyCell = CellData("-", Seq.empty[String])
+          for (recordList <- resultFuture) yield {
+            val timeMtMonitorMap = mutable.Map.empty[DateTime, mutable.Map[String, mutable.Map[String, Seq[CellData]]]]
+            recordList foreach {
+              r =>
+                val stripedTime = new DateTime(r._id.time).withSecondOfMinute(0).withMillisOfSecond(0)
+                val mtMonitorMap = timeMtMonitorMap.getOrElseUpdate(stripedTime, mutable.Map.empty[String, mutable.Map[String, Seq[CellData]]])
+                for (mt <- param.monitorTypes) {
+                  val monitorMap = mtMonitorMap.getOrElseUpdate(mt, mutable.Map.empty[String, Seq[CellData]])
+                  val cellData = if (r.mtMap.contains(mt)) {
+                    val mtRecord = r.mtMap(mt)
+                    val valueCell = CellData(monitorTypeOp.format(mt, mtRecord.value),
+                      monitorTypeOp.getCssClassStr(mtRecord), Some(mtRecord.status))
+                    val rawCell = CellData(monitorTypeOp.format(mt, mtRecord.rawValue),
+                      monitorTypeOp.getCssClassStr(mtRecord), Some(mtRecord.status))
+                    if (param.raw)
+                      Seq(valueCell, rawCell)
+                    else
+                      Seq(valueCell)
+                  } else {
+                    if (param.raw)
+                      Seq(emptyCell, emptyCell)
+                    else
+                      Seq(emptyCell)
+                  }
 
-          (orignal_start.withMinuteOfHour(0), orignal_end.withMinute(0) + 1.hour)
-        } else {
-          val timeStart = new DateTime(startNum)
-          val timeEnd = new DateTime(endNum)
-          val timeDuration = new Duration(timeStart, timeEnd)
-          tabType match {
-            case tableType.min =>
-              if (timeDuration.getStandardMinutes > 60 * 12)
-                (timeStart, timeStart + 12.hour)
-              else
-                (timeStart, timeEnd)
-            case tableType.second =>
-              if (timeDuration.getStandardSeconds > 60 * 60)
-                (timeStart, timeStart + 1.hour)
-              else
-                (timeStart, timeEnd)
+                  monitorMap.update(r._id.monitor, cellData)
+                }
+            }
+            val timeList = timeMtMonitorMap.keys.toList.sorted
+            val timeRows: Seq[RowData] = for (time <- timeList) yield {
+              val mtMonitorMap = timeMtMonitorMap(time)
+              var cellDataList = Seq.empty[CellData]
+              for {
+                mt <- param.monitorTypes
+                m <- param.monitors
+              } {
+                val monitorMap = mtMonitorMap(mt)
+                if (monitorMap.contains(m))
+                  cellDataList = cellDataList ++ mtMonitorMap(mt)(m)
+                else {
+                  if (param.raw)
+                    cellDataList = cellDataList ++ Seq(emptyCell, emptyCell)
+                  else
+                    cellDataList = cellDataList ++ Seq(emptyCell)
+                }
+              }
+              RowData(time.getMillis, cellDataList)
+            }
+
+            val columnNames = param.monitorTypes flatMap { mt => {
+              for(mtCase <-monitorTypeOp.map.get(mt)) yield
+                if (param.raw)
+                  Seq(mtCase.desp, s"${mtCase.desp} 原始值")
+                else
+                  Seq(mtCase.desp)
+              }
+            }
+            Ok(Json.toJson(DataTab(columnNames.flatten, timeRows)))
           }
-        }
-      val timeList = tabType match {
-        case tableType.hour =>
-          getPeriods(start, end, 1.hour)
-        case tableType.min =>
-          getPeriods(start, end, 1.minute)
-        case tableType.second =>
-          getPeriods(start, end, 1.second)
-      }
-
-      val f = recordOp.getRecordListFuture(tableType.mapCollection(tabType))(start, end)
-
-      for (recordList <- f) yield
-        Ok(Json.toJson(recordList))
+        })
   }
 
   def calibrationReport(startNum: Long, endNum: Long): Action[AnyContent] = security.Authenticated {

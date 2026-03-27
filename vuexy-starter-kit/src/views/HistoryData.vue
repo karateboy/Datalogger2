@@ -159,7 +159,7 @@ import moment from 'moment'
 import axios from 'axios'
 const excel = require('../libs/excel')
 const _ = require('lodash')
-import { HistoryTrendParam } from './types'
+import { HistoryTrendParam, HistoryDataParam } from './types'
 
 export default Vue.extend({
   components: {
@@ -236,10 +236,17 @@ export default Vue.extend({
       this.display = true
       this.rows = []
       this.columns = this.getColumns()
-      const monitors = this.form.monitors.join(':')
-      const monitorTypes = this.form.monitorTypes.join(':')
-      const url = `/HistoryReport/${monitors}/${monitorTypes}/${this.form.dataType}/${this.form.includeRaw}/${this.form.range[0]}/${this.form.range[1]}`
-      const ret = await axios.get(url)
+      let param: HistoryDataParam = {
+        monitors: this.form.monitors,
+        monitorTypes: this.form.monitorTypes,
+        raw: this.form.includeRaw,
+        tab: this.form.dataType,
+        start: this.form.range[0],
+        end: this.form.range[1],
+      }
+
+      const ret = await axios.post('/GetHistoryData', param)
+
       this.setLoading({ loading: false })
       console.info(ret)
       for (const row of ret.data.rows) {
@@ -288,9 +295,6 @@ export default Vue.extend({
       return ret
     },
     async downloadExcel() {
-      const baseUrl =
-        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/'
-      const monitors = this.form.monitors.join(':')
       let reportUnit = 'Min'
       if (this.form.dataType === 'hour') reportUnit = 'Hour'
 
