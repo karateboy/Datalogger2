@@ -7,6 +7,7 @@ import java.util.Date
 
 case class MonitorTypeMore(rangeMin: Option[Double] = None,
                            rangeMax: Option[Double] = None)
+
 case class MonitorType(_id: String,
                        desp: String,
                        unit: String,
@@ -105,7 +106,15 @@ object MonitorType {
   val WS_SPEED = "WS_SPEED"
   val WS10 = "WS10"
   val WD10 = "WD10"
+  val PM10D = "PM10D"
+  val PM25D = "PM25D"
 
+
+  val DailyAvgMonitorTypes: Seq[String] = Seq(PM25, PM10)
+  val DailyAvgMonitorTypeMap: Map[String, String] = Map(
+    PM10 -> PM10D,
+    PM25 -> PM25D
+  )
 
   private case class CalculatedMonitorType(requiredMonitorTypes: Seq[String],
                                            targetMonitorType: String,
