@@ -222,7 +222,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
           case ex: Exception =>
             log.error(ex.getMessage, ex)
             if (connected)
-              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, s"${ex.getMessage}")
 
             connected = false
         } finally {
@@ -271,7 +271,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
           } catch {
             case ex: Exception =>
               log.error(ex.getMessage, ex)
-              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"無法連接:${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, s"無法連接:${ex.getMessage}")
 
               if(master != null)
                 master.destroy()
