@@ -47,8 +47,9 @@ class CalibrationForwarder @Inject()
                 new DateTime(latest.time)
               }
 
-            context become handler(monitorLatestMap + (monitor->serverLatest.getMillis))
-            uploadCalibration(monitor, serverLatest.getMillis)(monitorLatestMap:Map[String, Long])
+            val newMap = monitorLatestMap + (monitor->serverLatest.getMillis)
+            context become handler(newMap)
+            uploadCalibration(monitor, serverLatest.getMillis)(newMap)
           })
     }
   }

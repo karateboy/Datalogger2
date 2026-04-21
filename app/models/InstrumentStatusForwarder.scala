@@ -39,8 +39,9 @@ class InstrumentStatusForwarder @Inject()(ws: WSClient, instrumentStatusOp: Inst
           },
           latest => {
             logger.info(s"server latest instrument status: ${new DateTime(latest.time).toString}")
-            context become handler(monitorLatestMap + (monitor->latest.time))
-            uploadRecord(monitor, latest.time)(monitorLatestMap)
+            val newMap = monitorLatestMap + (monitor->latest.time)
+            context become handler(newMap)
+            uploadRecord(monitor, latest.time)(newMap)
           })
     }
     f.failed.foreach(errorHandler)

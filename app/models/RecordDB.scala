@@ -65,7 +65,7 @@ trait RecordDB {
   def getRecordWithLimitFuture(colName: String)(startTime: Imports.DateTime,
                                                 endTime: Imports.DateTime,
                                                 limit: Int,
-                                                monitor: String = Monitor.activeId,
+                                                monitor: String,
                                                 ascending: Boolean = true):
   Future[Seq[RecordList]]
 

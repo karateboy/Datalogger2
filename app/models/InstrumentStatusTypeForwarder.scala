@@ -27,7 +27,7 @@ class InstrumentStatusTypeForwarder @Inject()(instrumentOp: InstrumentDB, ws: WS
 
   def receive: Receive = handler(Map.empty)
 
-  private def getId(monitor:String)(monitorInstrumentStatusTypeIdMap:Map[String, String]): Unit ={
+  private def fetchId(monitor:String)(monitorInstrumentStatusTypeIdMap:Map[String, String]): Unit ={
     try{
       val url = s"http://$server/InstrumentStatusTypeIds/$monitor"
       val f = ws.url(url).get().map {
@@ -48,7 +48,7 @@ class InstrumentStatusTypeForwarder @Inject()(instrumentOp: InstrumentDB, ws: WS
         ModelHelper.logException(ex)
     }
   }
-  private def getStatusType(monitor:String)(monitorInstrumentStatusTypeIdMap:Map[String, String]): Unit = {
+  private def fetchStatusType(monitor:String)(monitorInstrumentStatusTypeIdMap:Map[String, String]): Unit = {
     try{
       val recordFuture = instrumentOp.getAllInstrumentFuture
       for (records <- recordFuture) {
@@ -84,9 +84,9 @@ class InstrumentStatusTypeForwarder @Inject()(instrumentOp: InstrumentDB, ws: WS
       try {
         monitors.foreach(monitor=>{
           if (monitorInstrumentStatusTypeIdMap.contains(monitor))
-            getStatusType(monitor)(monitorInstrumentStatusTypeIdMap)
+            fetchStatusType(monitor)(monitorInstrumentStatusTypeIdMap)
           else
-            getId(monitor)(monitorInstrumentStatusTypeIdMap)
+            fetchId(monitor)(monitorInstrumentStatusTypeIdMap)
         })
       } catch {
         case ex: Throwable =>

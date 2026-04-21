@@ -47,8 +47,9 @@ class AlarmForwarder @Inject()(alarmOp: AlarmDB, ws: WSClient)
                 new DateTime(latest.time)
               }
 
-            context become handler(monitorLatestMap + (monitor->serverLatest.getMillis))
-            uploadAlarm(monitor, serverLatest.getMillis)(monitorLatestMap:Map[String, Long])
+            val newMap = monitorLatestMap + (monitor->serverLatest.getMillis)
+            context become handler(newMap)
+            uploadAlarm(monitor, serverLatest.getMillis)(newMap)
           })
     }
     f.failed.foreach(errorHandler)

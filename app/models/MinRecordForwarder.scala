@@ -50,8 +50,9 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
                 new DateTime(latest.time)
               }
 
-            context become handler(monitorLatestMap + (monitor->serverLatest.getMillis))
-            uploadRecord(monitor, serverLatest.getMillis)(monitorLatestMap:Map[String, Long])
+            val newMap = monitorLatestMap + (monitor->serverLatest.getMillis)
+            context become handler(newMap)
+            uploadRecord(monitor, serverLatest.getMillis)(newMap)
           })
     }
     f.failed.foreach(errorHandler)
@@ -61,14 +62,13 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
 
     val serverRecordStart = new DateTime(latestRecordTime + 1)
     val recordFuture =
-      recordOp.getRecordWithLimitFuture(recordOp.MinCollection)(serverRecordStart, DateTime.now, 60)
+      recordOp.getRecordWithLimitFuture(recordOp.MinCollection)(serverRecordStart, DateTime.now, 60, monitor)
 
     for (records <- recordFuture) {
       val postUrl = s"http://$server/Record/Min/$monitor"
       if (records.nonEmpty) {
         val f =
           ws.url(postUrl).withRequestTimeout(FiniteDuration(10, SECONDS)).post(Json.toJson(records.filter(_.mtDataList.nonEmpty)))
-
 
         f onComplete {
           case Success(response) =>

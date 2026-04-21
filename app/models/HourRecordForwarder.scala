@@ -66,8 +66,9 @@ class HourRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
                 new DateTime(latest.time)
               }
 
-            context become handler(monitorLatestMap + (monitor->serverLatest.getMillis))
-            uploadRecord(monitor, serverLatest.getMillis)(monitorLatestMap:Map[String, Long])
+            val newMap = monitorLatestMap + (monitor->serverLatest.getMillis)
+            context become handler(newMap)
+            uploadRecord(monitor, serverLatest.getMillis)(newMap)
           })
     }
     f.failed.foreach(errorHandler)
@@ -76,7 +77,7 @@ class HourRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
   def uploadRecord(monitor:String, latestRecordTime: Long)(monitorLatestMap:Map[String, Long]): Unit = {
     import com.github.nscala_time.time.Imports._
     val recordFuture =
-      recordOp.getRecordWithLimitFuture(recordOp.HourCollection)(new DateTime(latestRecordTime + 1), DateTime.now, 144)
+      recordOp.getRecordWithLimitFuture(recordOp.HourCollection)(new DateTime(latestRecordTime + 1), DateTime.now, 144, monitor)
 
     for (records <- recordFuture) {
       val nonEmptyRecords = records.filter(_.mtDataList.nonEmpty)
