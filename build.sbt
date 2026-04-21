@@ -69,7 +69,7 @@ mappings in Universal ++= Seq((baseDirectory.value / "cleanup.bat", "cleanup.bat
 //libraryDependencies += "com.google.guava" % "guava" % "19.0"
 scalacOptions += "-feature"
 resolvers += "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases"
-
+javacOptions ++= Seq("-source", "8", "-target", "8")
 routesGenerator := InjectedRoutesGenerator
 
 //WIX setting
