@@ -46,6 +46,8 @@ object DataCollectManager {
 
   case class WriteSignal(mtId: String, bit: Boolean)
 
+  case class ToggleSignal(mtId:String, delay:Int)
+
   private case object CheckInstruments
 
   private case class UpdateCalibrationMap(map: CalibrationListMap)
@@ -482,7 +484,10 @@ class DataCollectManager @Inject()(config: Configuration,
             alarmOp.log(alarmOp.src(mt), Alarm.Level.INFO, msg)
             overThreshold = true
             mtCase.overLawSignalType.foreach(signalType => {
-              self ! WriteSignal(signalType, bit = true)
+              if(mtCase.span.isEmpty)
+                self ! WriteSignal(signalType, bit = true)
+              else
+                self ! ToggleSignal(signalType, mtCase.span.get.toInt)
             })
           }
         }
@@ -1119,6 +1124,14 @@ class DataCollectManager @Inject()(config: Configuration,
       val handlerMap = signalTypeHandlerMap.getOrElse(mtId, Map.empty[ActorRef, Boolean => Unit])
       for (handler <- handlerMap.values)
         handler(bit)
+
+    case ToggleSignal(mtId, delay) =>
+      // Trigger only when signalMap is empty or is false
+      if(!signalDataMap.contains(mtId) || !signalDataMap(mtId)._2){
+        self ! WriteSignal(mtId, bit = true)
+        context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(delay, SECONDS),
+          self, WriteSignal(mtId, bit = false))
+      }
 
     case ReportSignalData(dataList) =>
       dataList.foreach(signalData => monitorTypeOp.logDiMonitorType(alarmOp, signalData.mt, signalData.value))

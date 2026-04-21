@@ -91,6 +91,10 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! WriteSignal(mtId, bit)
   }
 
+  def toggleSignal(mtId: String, delay: Int): Unit = {
+    manager ! ToggleSignal(mtId, delay)
+  }
+
   def updateStatusMap(mtRecord: MtRecord, mtMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]]): Unit = {
     val statusMap = mtMap.getOrElseUpdate(mtRecord.mtName, mutable.Map.empty[String, ListBuffer[MtRecord]])
     val tagInfo = MonitorStatus.getTagInfo(mtRecord.status)
