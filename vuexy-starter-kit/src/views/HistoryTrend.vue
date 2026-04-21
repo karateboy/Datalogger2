@@ -106,6 +106,26 @@
             </b-form-group>
           </b-col>
           <b-col cols="6">
+            <b-form-group label="Y軸最小值" label-for="YMin" label-cols-md="3">
+              <b-form-input
+                id="YMin"
+                v-model.number="form.YMin"
+                type="number"
+                step="1"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="6">
+            <b-form-group label="Y軸最大值" label-for="YMax" label-cols-md="3">
+              <b-form-input
+                id="YMax"
+                v-model.number="form.YMax"
+                type="number"
+                step="1"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="6">
             <b-form-group
               label="資料區間"
               label-for="dataRange"
@@ -234,6 +254,8 @@ export default Vue.extend({
         chartType: 'line',
         range,
         includeRaw,
+        YMax: undefined,
+        YMin: 0,
       },
     }
   },
@@ -365,7 +387,22 @@ export default Vue.extend({
           week: '%b%e日',
           month: '%y年%b',
         }
+        let yAxisArray = ret.yAxis as Array<highcharts.YAxisOptions>
+        for (let yAxis of yAxisArray) {
+          if (typeof this.form.YMax === 'number') yAxis.max = this.form.YMax
 
+          if (typeof this.form.YMin === 'number') yAxis.min = this.form.YMin
+
+          yAxis.gridLineColor = '#666666'
+          yAxis.lineColor = '#000000'
+          yAxis.tickColor = '#000000'
+          yAxis.labels = {
+            style: {
+              color: '#000000',
+              fontSize: '1rem',
+            },
+          }
+        }
         ret.plotOptions = {
           scatter: {
             tooltip: {
