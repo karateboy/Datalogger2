@@ -33,7 +33,7 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
 
     val f = collection.find(and(gte("startTime", start.toDate),
       lt("startTime", end.toDate),
-      equal("monitor", monitor))).sort(ascending("startTime")).toFuture()
+      or(equal("monitor", monitor), equal("monitor", null)))).sort(ascending("startTime")).toFuture()
     f.failed.foreach(errorHandler)
     waitReadyResult(f)
   }
@@ -47,7 +47,7 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
     val f = collection.find(and(
       gte("startTime", start.toDate),
       lt("startTime", end.toDate),
-      equal("monitor", monitor))).sort(ascending("startTime")).toFuture()
+      or(equal("monitor", monitor), equal("monitor", null)))).sort(ascending("startTime")).toFuture()
 
     f.failed.foreach(errorHandler)
     f
@@ -58,7 +58,7 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
     import org.mongodb.scala.model.Sorts._
     val f = collection.find(and(
       gte("startTime", start.toDate),
-      equal("monitor", monitor))).sort(ascending("startTime")).toFuture()
+      or(equal("monitor", monitor), equal("monitor", null)))).sort(ascending("startTime")).toFuture()
 
     f.failed.foreach(errorHandler)
     f
@@ -69,7 +69,7 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
     import org.mongodb.scala.model.Sorts._
 
     val f = collection.find(and(
-      equal("monitor", monitor),
+      or(equal("monitor", monitor), equal("monitor", null)),
       equal("monitorType", mt),
       gte("startTime", start.toDate),
       lt("startTime", end.toDate))).sort(ascending("startTime")).toFuture()

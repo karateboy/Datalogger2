@@ -57,7 +57,7 @@ class AlarmForwarder @Inject()(alarmOp: AlarmDB, ws: WSClient)
 
   private def uploadAlarm(monitor:String, latestAlarm: Long)(monitorLatestMap:Map[String, Long]): Unit = {
     import alarmOp.write
-    val recordFuture = alarmOp.getAlarmsFuture(Date.from(Instant.ofEpochMilli(latestAlarm + 1)), new Date())
+    val recordFuture = alarmOp.getAlarmsFuture(Date.from(Instant.ofEpochMilli(latestAlarm + 1)), new Date())(monitor)
     for (alarms <- recordFuture) {
       if (alarms.nonEmpty) {
         val url = s"http://$server/AlarmRecord/$monitor"

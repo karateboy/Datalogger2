@@ -99,7 +99,7 @@ trait AlarmRuleDb {
             }
 
 
-            Some(Alarm(new Date(), alarmDB.src(mtData.mtName), alarmLevel, message))
+            Some(Alarm(new Date(), alarmDB.src(mtData.mtName), alarmLevel, message, Some(Monitor.activeId)))
           } else
             None
         }
