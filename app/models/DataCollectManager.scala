@@ -791,7 +791,7 @@ class DataCollectManager @Inject()(config: Configuration,
 
       val now = DateTime.now()
       //Update Calibration Map
-      for (map <- calibrationDB.getCalibrationListMapFuture(now.minusDays(2), now)(monitorTypeOp)) {
+      for (map <- calibrationDB.getCalibrationListMapFuture(now.minusDays(2), now)(Monitor.activeId)(monitorTypeOp)) {
         self ! UpdateCalibrationMap(map)
       }
 

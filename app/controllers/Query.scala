@@ -831,7 +831,7 @@ class Query @Inject()(recordOp: RecordDB,
   def calibrationReport(startNum: Long, endNum: Long): Action[AnyContent] = security.Authenticated {
     import calibrationOp.writes
     val (start, end) = (new DateTime(startNum), new DateTime(endNum))
-    val report: Seq[Calibration] = calibrationOp.calibrationReport(start, end)
+    val report: Seq[Calibration] = calibrationOp.calibrationReport(start, end)(Monitor.activeId)
     Ok(Json.toJson(report))
   }
 
@@ -964,7 +964,7 @@ class Query @Inject()(recordOp: RecordDB,
     val startTime = new DateTime(start)
     val endTime = new DateTime(end)
     val outputType = OutputType.withName(outputTypeStr)
-    val recordListF = calibrationOp.calibrationReportFuture(startTime, endTime)
+    val recordListF = calibrationOp.calibrationReportFuture(startTime, endTime)(Monitor.activeId)
     implicit val w = Json.writes[Calibration]
     for (records <- recordListF) yield {
       outputType match {

@@ -55,7 +55,7 @@ class CalibrationForwarder @Inject()
   }
 
   private def uploadCalibration(monitor:String, latestCalibration: Long)(monitorLatestMap:Map[String, Long]): Unit = {
-    val recordFuture = calibrationOp.calibrationReportFuture(new DateTime(latestCalibration + 1))
+    val recordFuture = calibrationOp.calibrationReportFuture(new DateTime(latestCalibration + 1))(monitor)
     for (records <- recordFuture) {
       if (records.nonEmpty) {
         val url = s"http://$server/CalibrationRecord/$monitor"

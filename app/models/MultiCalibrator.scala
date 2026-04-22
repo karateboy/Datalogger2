@@ -61,7 +61,9 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
   private def getDefaultCalibrationMap: Map[String, Calibration] = {
     val pair =
       for (monitorType <- calibrationMonitorTypes) yield {
-        monitorType -> Calibration(monitorType = monitorType,
+        monitorType -> Calibration(
+          monitor = Some(Monitor.activeId),
+          monitorType = monitorType,
           startTime = Date.from(Instant.now),
           endTime = Date.from(Instant.now),
           zero_val = None,

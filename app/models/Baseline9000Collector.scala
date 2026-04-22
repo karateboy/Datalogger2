@@ -322,12 +322,12 @@ class Baseline9000Collector @Inject()
         logger.info(s"$mt calibration end.")
         val cal =
           if (calibrationType.auto) {
-            Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, zeroValue, monitorTypeOp.map(mt).span, avg)
+            Calibration(Some(Monitor.activeId), mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, zeroValue, monitorTypeOp.map(mt).span, avg)
           } else {
             if (calibrationType.zero) {
-              Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, avg, None, None)
+              Calibration(Some(Monitor.activeId), mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, avg, None, None)
             } else {
-              Calibration(mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, None, monitorTypeOp.map(mt).span, avg)
+              Calibration(Some(Monitor.activeId), mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, None, monitorTypeOp.map(mt).span, avg)
             }
           }
         calibrationOp.insertFuture(cal)
