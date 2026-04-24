@@ -162,7 +162,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
           alarms.foreach(alarmDb.log)
         }
 
-        val f = recordOp.upsertManyRecords(recordOp.HourCollection)(hourRecordLists)
+        val f = recordOp.upsertManyRecordsChecked(recordOp.HourCollection)(hourRecordLists)
         if (forward) {
           f onComplete {
             case Success(_) =>

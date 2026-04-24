@@ -940,7 +940,7 @@ class Query @Inject()(recordOp: RecordDB,
 
       val startTime = new DateTime(start)
       val endTime = new DateTime(end)
-      val recordListF = recordOp.getRecordListFuture(recordOp.HourCollection)(startTime, endTime)
+      val recordListF = recordOp.getRecordListFuture(recordOp.HourCollection)(startTime, endTime, Seq(Monitor.activeId))
       for (recordList <- recordListF) yield {
         Ok(Json.toJson(recordList))
       }
@@ -951,7 +951,7 @@ class Query @Inject()(recordOp: RecordDB,
     implicit request =>
       val startTime = new DateTime(start)
       val endTime = new DateTime(end)
-      val recordListF = recordOp.getRecordListFuture(recordOp.MinCollection)(startTime, endTime)
+      val recordListF = recordOp.getRecordListFuture(recordOp.MinCollection)(startTime, endTime, Seq(Monitor.activeId))
 
       for (recordList <- recordListF) yield {
         Ok(Json.toJson(recordList))

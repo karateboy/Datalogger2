@@ -88,7 +88,7 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
   }
 
   def uploadRecord(monitor:String, start: DateTime, end: DateTime): Unit = {
-    val recordFuture = recordOp.getRecordListFuture(recordOp.MinCollection)(start, end)
+    val recordFuture = recordOp.getRecordListFuture(recordOp.MinCollection)(start, end, Seq(monitor))
     for (record <- recordFuture if record.nonEmpty) {
 
       logger.info(s"upload min ${start.toString()} => ${end.toString}")

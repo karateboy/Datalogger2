@@ -26,34 +26,43 @@ trait RecordDB {
   val MinCollection = "min_data"
   val SecCollection = "sec_data"
 
-  def ensureMonitorType(mt:String): Unit
+  def ensureMonitorType(mt: String): Unit
 
-  def insertManyRecord(colName: String)(docs: Seq[RecordList]): Future[InsertManyResult]
+  private def sanityCheck(doc: RecordList): RecordList = doc.sanityCheck
 
-  def upsertRecord(colName: String)(doc: RecordList): Future[UpdateResult]
+  private def sanityCheck(docs: Seq[RecordList]): Seq[RecordList] = docs.map(_.sanityCheck)
+
+  def insertManyRecordChecked(colName: String)(docs: Seq[RecordList]): Future[InsertManyResult]
+  = insertManyRecord(colName)(sanityCheck(docs))
+
+  protected def insertManyRecord(colName: String)(docs: Seq[RecordList]): Future[InsertManyResult]
+
+  def upsertRecordChecked(colName: String)(doc: RecordList): Future[UpdateResult] = upsertRecord(colName)(sanityCheck(doc))
+
+  protected def upsertRecord(colName: String)(doc: RecordList): Future[UpdateResult]
 
   def updateRecordStatus(colName: String)(dt: Long, mt: String, status: String, monitor: String = Monitor.activeId): Future[UpdateResult]
 
   def getRecordMap(colName: String)
-                  (monitor: String, mtList: Seq[String], startTime: DateTime, endTime: DateTime, includeRaw:Boolean = false): Map[String, Seq[Record]] = {
+                  (monitor: String, mtList: Seq[String], startTime: DateTime, endTime: DateTime, includeRaw: Boolean = false): Map[String, Seq[Record]] = {
     val f = getRecordMapFuture(colName)(monitor, mtList, startTime, endTime, includeRaw)
     waitReadyResult(f)
   }
 
   def getRecordMapFuture(colName: String)
-                        (monitor: String, mtList: Seq[String], startTime: Imports.DateTime, endTime: Imports.DateTime, includeRaw:Boolean = false): Future[Map[String, Seq[Record]]]
+                        (monitor: String, mtList: Seq[String], startTime: Imports.DateTime, endTime: Imports.DateTime, includeRaw: Boolean = false): Future[Map[String, Seq[Record]]]
 
-  def getRecordListFuture(colName: String)(startTime: Imports.DateTime, endTime: Imports.DateTime, monitors: Seq[String] = Seq(Monitor.activeId)): Future[Seq[RecordList]]
+  def getRecordListFuture(colName: String)(startTime: Imports.DateTime, endTime: Imports.DateTime, monitors: Seq[String]): Future[Seq[RecordList]]
 
   def getMtRecordMapFuture(colName: String)
-                           (monitor: String, mtList: Seq[String], startTime: Imports.DateTime, endTime: Imports.DateTime): Future[mutable.Map[String, ListBuffer[MtRecord]]] = {
-    for(recordLists <- getRecordListFuture(colName)(startTime, endTime, Seq(monitor))) yield {
+                          (monitor: String, mtList: Seq[String], startTime: Imports.DateTime, endTime: Imports.DateTime): Future[mutable.Map[String, ListBuffer[MtRecord]]] = {
+    for (recordLists <- getRecordListFuture(colName)(startTime, endTime, Seq(monitor))) yield {
       val map = mutable.Map.empty[String, ListBuffer[MtRecord]]
-      for{recordList<-recordLists
-          mtMap = recordList.mtMap
-          mt<-mtList
-          }{
-        if(mtMap.contains(mt)){
+      for {recordList <- recordLists
+           mtMap = recordList.mtMap
+           mt <- mtList
+           } {
+        if (mtMap.contains(mt)) {
           val lb = map.getOrElseUpdate(mt, ListBuffer.empty[MtRecord])
           lb.append(mtMap(mt))
         }
@@ -66,8 +75,7 @@ trait RecordDB {
                                                 endTime: Imports.DateTime,
                                                 limit: Int,
                                                 monitor: String,
-                                                ascending: Boolean = true):
-  Future[Seq[RecordList]]
+                                                ascending: Boolean = true): Future[Seq[RecordList]]
 
   def getWindRose(colName: String)(monitor: String, monitorType: String,
                                    start: DateTime, end: DateTime,
@@ -121,9 +129,10 @@ trait RecordDB {
                               endTime: Imports.DateTime,
                               monitor: String): Future[Seq[Seq[MtRecord]]]
 
-  def upsertManyRecords(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult]
+  def upsertManyRecordsChecked(colName: String)(records: Seq[RecordList]): Future[BulkWriteResult] = upsertManyRecords(colName)(sanityCheck(records))
+  protected def upsertManyRecords(colName: String)(records: Seq[RecordList]): Future[BulkWriteResult]
 
-  def getRecordMapFromRecordList(mtList:Seq[String], records: Seq[RecordList], includeRaw:Boolean): Map[String, Seq[Record]] = {
+  def getRecordMapFromRecordList(mtList: Seq[String], records: Seq[RecordList], includeRaw: Boolean): Map[String, Seq[Record]] = {
     val resultMap = mutable.Map.empty[String, Seq[Record]]
     for (mt <- mtList) {
       val recordSeq = records flatMap {
@@ -153,7 +162,7 @@ trait RecordDB {
     resultMap.toMap
   }
 
-  def moveRecordToYearTable(colName:String)(year:Int): Future[Boolean]
+  def moveRecordToYearTable(colName: String)(year: Int): Future[Boolean]
 
 
   def getHourCollectionList: Future[Seq[String]]

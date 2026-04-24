@@ -186,7 +186,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
 
     reader.close()
     if (docs.nonEmpty) {
-      for (ret <- recordOp.upsertManyRecords(recordOp.MinCollection)(docs)) yield
+      for (ret <- recordOp.upsertManyRecordsChecked(recordOp.MinCollection)(docs)) yield
         Some(ParseResult(getLastModified(file).toInstant, dataBegin, dataEnd, mtName))
     } else
       Future {

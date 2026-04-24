@@ -110,7 +110,7 @@ class HourRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
   def uploadRecord(monitor:String, start: DateTime, end: DateTime): Unit = {
     logger.info(s"upload hour ${start.toString()} => ${end.toString}")
 
-    val recordFuture = recordOp.getRecordListFuture(recordOp.HourCollection)(start, end)
+    val recordFuture = recordOp.getRecordListFuture(recordOp.HourCollection)(start, end, Seq(monitor))
 
     for (record <- recordFuture if record.nonEmpty) {
       for (chunk <- record.grouped(24)) {

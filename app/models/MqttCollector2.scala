@@ -267,7 +267,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
 
         if (sensorMap.contains(message.id)) {
           val sensor = sensorMap(message.id)
-          val f = recordOp.upsertRecord(recordOp.MinCollection)(RecordList.factory(time.toDate, mtDataList, sensor.monitor))
+          val f = recordOp.upsertRecordChecked(recordOp.MinCollection)(RecordList.factory(time.toDate, mtDataList, sensor.monitor))
           f.failed.foreach(ModelHelper.errorHandler)
         } else {
           monitorDB.upsertMonitor(Monitor(message.id, message.id, Some(message.lat), Some(message.lon)))
@@ -277,7 +277,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
               sensorMap = sensorMap + (message.id -> sensor)
           })
 
-          val f = recordOp.upsertRecord(recordOp.MinCollection)(RecordList.factory(time.toDate, mtDataList, sensor.monitor))
+          val f = recordOp.upsertRecordChecked(recordOp.MinCollection)(RecordList.factory(time.toDate, mtDataList, sensor.monitor))
           f.failed.foreach(errorHandler)
         }
       })

@@ -92,7 +92,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
     val f = col.find(and(in("_id.monitor", monitors: _*), gte("_id.time", startTime.toDate), lt("_id.time", endTime.toDate)))
       .sort(ascending("_id.time")).toFuture()
     f.failed.foreach(errorHandler)
-    f
+    f.map(rets=>rets.map(_.sanityCheck))
   }
 
   override def getRecordWithLimitFuture(colName: String)(startTime: DateTime,
@@ -117,7 +117,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
         .limit(limit).sort(sort).toFuture()
 
     f.failed.foreach(errorHandler)
-    f
+    f.map(rets=>rets.map(_.sanityCheck))
   }
 
   override def getRecordValueSeqFuture(colName: String)
@@ -146,7 +146,7 @@ class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
 
   private def getCollection(colName: String): MongoCollection[RecordList] = mongodb.database.getCollection[RecordList](colName).withCodecRegistry(codecRegistry)
 
-  override def upsertManyRecords(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult] = {
+  override def upsertManyRecords(colName: String)(records: Seq[RecordList]): Future[BulkWriteResult] = {
 
     val pullUpdates =
       for (record <- records if record.mtDataList.nonEmpty) yield {

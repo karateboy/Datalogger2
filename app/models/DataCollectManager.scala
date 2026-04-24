@@ -857,7 +857,7 @@ class DataCollectManager @Inject()(config: Configuration,
 
           val sortedDocs = docs.toSeq.sortBy { x => x._1 } map (_._2)
           if (sortedDocs.nonEmpty)
-            recordOp.insertManyRecord(recordOp.SecCollection)(sortedDocs)
+            recordOp.insertManyRecordChecked(recordOp.SecCollection)(sortedDocs)
         }
       }
 
@@ -933,7 +933,7 @@ class DataCollectManager @Inject()(config: Configuration,
         val alarms = alarmRuleDb.checkAlarm(tableType.min, recordList, alarmRules)(monitorOp, monitorTypeOp, alarmOp)
         alarms.foreach(ar => alarmOp.log(ar.src, ar.level, ar.desc, 0))
 
-        val f = recordOp.upsertRecord(recordOp.MinCollection)(recordList)
+        val f = recordOp.upsertRecordChecked(recordOp.MinCollection)(recordList)
         f onComplete {
           case Success(_) =>
             self ! ForwardMin
