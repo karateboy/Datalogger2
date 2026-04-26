@@ -55,6 +55,8 @@ trait MonitorTypeDB {
     rangeType(LDN, "LDN", "dB", 2, accumulated = true),
     rangeType(WD10, "前10分風向向量平均", "degrees", 2),
     rangeType(WS10, "前10分風速算術平均", "m/sec", 2),
+    rangeType(PM10D, "前24小時PM10平均", "μg/m3", 2),
+    rangeType(PM25D, "前24小時PM2.5平均", "μg/m3", 2),
     /////////////////////////////////////////////////////
     signalType(DOOR, "門禁"),
     signalType(SMOKE, "煙霧"),
@@ -120,8 +122,11 @@ trait MonitorTypeDB {
     signalList = mtListFromDb.filter { mt => mt.signalType }.sortBy(_.order) map (mt => mt._id)
 
     // ensure calculated types
-    for (mt <- calculatedMonitorTypes)
-      ensure(mt)
+    calculatedMonitorTypes.foreach(ensure)
+
+    // ensure daily avg monitor types
+    MonitorType.DailyAvgMonitorTypes.foreach(ensure)
+
   }
 
   def getList: List[MonitorType]

@@ -24,6 +24,8 @@ case class RecordList(var mtDataList: Seq[MtRecord], _id: RecordListID) {
     mtDataList.foreach( data=>map.update(data.mtName, data))
     map
   }
+
+  def sanityCheck: RecordList = this.copy(mtDataList = mtMap.values.toList)
 }
 
 case class RecordListID(time: Date, monitor: String)

@@ -91,6 +91,51 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! WriteSignal(mtId, bit)
   }
 
+  def toggleSignal(mtId: String, delay: Int): Unit = {
+    manager ! ToggleSignal(mtId, delay)
+  }
+
+  def updateStatusMap(mtRecord: MtRecord, mtMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]]): Unit = {
+    val statusMap = mtMap.getOrElseUpdate(mtRecord.mtName, mutable.Map.empty[String, ListBuffer[MtRecord]])
+    val tagInfo = MonitorStatus.getTagInfo(mtRecord.status)
+    val status = tagInfo.statusType match {
+      case StatusType.ManualValid =>
+        MonitorStatus.NormalStat
+      case _ =>
+        mtRecord.status
+    }
+
+    val lb = statusMap.getOrElseUpdate(status, ListBuffer.empty[MtRecord])
+
+    for (v <- mtRecord.value if !v.isNaN)
+      lb.append(mtRecord)
+  }
+
+  private def calculateDayAvgHourRecord(monitor: String,
+                                        mtList: Seq[String],
+                                        current: DateTime,
+                                        currentHourRecords: Seq[MtRecord]): Future[Seq[MtRecord]] = {
+
+    for (recordMap <- recordOp.getMtRecordMapFuture(recordOp.HourCollection)
+    (monitor, mtList, current - 24.hour, current)) yield {
+      val mtMap = mutable.Map.empty[String, mutable.Map[String, ListBuffer[MtRecord]]]
+
+      for (mtRecordList <- recordMap.values; mtRecord <- mtRecordList)
+        updateStatusMap(mtRecord, mtMap)
+
+      currentHourRecords.foreach(mtRecord => updateStatusMap(mtRecord, mtMap))
+
+      val mtDataList = calculateHourAvgMap(mtMap, alwaysValid = false, monitorTypeDb)
+      val mapDailyMtDataList = mtDataList.map(mtRecord => {
+        if (MonitorType.DailyAvgMonitorTypeMap.contains(mtRecord.mtName))
+          mtRecord.copy(mtName = MonitorType.DailyAvgMonitorTypeMap(mtRecord.mtName))
+        else
+          mtRecord
+      })
+      mapDailyMtDataList.toSeq
+    }
+  }
+
   def recalculateHourData(monitor: String,
                           current: DateTime,
                           checkAlarm: Boolean = true,
@@ -101,26 +146,14 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
          alarmRules <- alarmRuleDb.getRulesAsync) yield {
       val mtMap = mutable.Map.empty[String, mutable.Map[String, ListBuffer[MtRecord]]]
 
-      for ((mt, mtRecordList) <- recordMap; mtRecord <- mtRecordList) {
-        val statusMap = mtMap.getOrElseUpdate(mt, mutable.Map.empty[String, ListBuffer[MtRecord]])
-        val tagInfo = MonitorStatus.getTagInfo(mtRecord.status)
-        val status = tagInfo.statusType match {
-          case StatusType.ManualValid =>
-            MonitorStatus.NormalStat
-          case _ =>
-            mtRecord.status
-        }
-
-        val lb = statusMap.getOrElseUpdate(status, ListBuffer.empty[MtRecord])
-
-        for (v <- mtRecord.value if !v.isNaN)
-          lb.append(mtRecord)
-      }
+      for (mtRecordList <- recordMap.values; mtRecord <- mtRecordList)
+        updateStatusMap(mtRecord, mtMap)
 
       val mtDataList = calculateHourAvgMap(mtMap, alwaysValid, monitorTypeDb)
-      val defaultHourRecordList = RecordList.factory(current.minusHours(1).toDate, mtDataList.toSeq, monitor)
       val hourRecordListsFuture = HourCalculationRule.calculateHourRecord(monitor, current, recordOp)
-      for (ruleHourRecordLists <- hourRecordListsFuture) {
+      val dailyAvgMtRecordsFuture = calculateDayAvgHourRecord(monitor, MonitorType.DailyAvgMonitorTypes, current, mtDataList.toSeq)
+      for (ruleHourRecordLists <- hourRecordListsFuture; dailyAvgMtRecords <- dailyAvgMtRecordsFuture) {
+        val defaultHourRecordList = RecordList.factory(current.minusHours(1).toDate, mtDataList.toSeq ++ dailyAvgMtRecords, monitor)
         val hourRecordLists = (ruleHourRecordLists :+ defaultHourRecordList).sortBy(_._id.time)
 
         // Check alarm
@@ -129,7 +162,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
           alarms.foreach(alarmDb.log)
         }
 
-        val f = recordOp.upsertManyRecords(recordOp.HourCollection)(hourRecordLists)
+        val f = recordOp.upsertManyRecordsChecked(recordOp.HourCollection)(hourRecordLists)
         if (forward) {
           f onComplete {
             case Success(_) =>

@@ -150,15 +150,15 @@ class VerewaF701Collector @Inject()
     }
 
     if ((error & 0x10) != 0) {
-      log(instrumentSrc(id), Level.ERR, "Volume < 25 liter")
+      log(instrumentSrc(id), Level.WARN, "Volume < 25 liter")
     }
 
     if ((error & 0x20) != 0) {
-      log(instrumentSrc(id), Level.ERR, "Change battery")
+      log(instrumentSrc(id), Level.WARN, "Change battery")
     }
 
     if ((error & 0x40) != 0) {
-      log(instrumentSrc(id), Level.ERR, "Filter crack")
+      log(instrumentSrc(id), Level.WARN, "Filter crack")
     }
   }
 

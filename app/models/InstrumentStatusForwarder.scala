@@ -14,21 +14,21 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object InstrumentStatusForwarder {
   trait Factory {
-    def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String): Actor
+    def apply(@Assisted("server") server: String, @Assisted("monitors") monitors: Seq[String]): Actor
   }
 }
 
 class InstrumentStatusForwarder @Inject()(ws: WSClient, instrumentStatusOp: InstrumentStatusDB)
-                                         (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
+                                         (@Assisted("server") server: String, @Assisted("monitors") monitors: Seq[String]) extends Actor {
 
   import ForwardManager._
 
   val logger: Logger = Logger(this.getClass)
-  logger.info(s"InstrumentStatusForwarder started $server/$monitor")
+  logger.info(s"InstrumentStatusForwarder started server=$server monitor=${monitors.mkString(",")}")
 
-  def receive: Receive = handler(None)
+  def receive: Receive = handler(Map.empty)
 
-  def checkLatest(): Unit = {
+  def checkLatest(monitor:String)(monitorLatestMap:Map[String, Long]): Unit = {
     val url = s"http://$server/InstrumentStatusRange/$monitor"
     val f = ws.url(url).get().map {
       response =>
@@ -39,34 +39,37 @@ class InstrumentStatusForwarder @Inject()(ws: WSClient, instrumentStatusOp: Inst
           },
           latest => {
             logger.info(s"server latest instrument status: ${new DateTime(latest.time).toString}")
-            context become handler(Some(new Date(latest.time)))
-            uploadRecord(new Date(latest.time))
+            val newMap = monitorLatestMap + (monitor->latest.time)
+            context become handler(newMap)
+            uploadRecord(monitor, latest.time)(newMap)
           })
     }
     f.failed.foreach(errorHandler)
   }
 
-  def uploadRecord(latestRecordTime: Date): Unit = {
-    val recordFuture = instrumentStatusOp.queryFuture(new DateTime(latestRecordTime.getTime + 1), DateTime.now)
+  def uploadRecord(monitor:String, latestRecordTime: Long)(monitorLatestMap:Map[String, Long]): Unit = {
+    val recordFuture = instrumentStatusOp.queryFuture(new DateTime(latestRecordTime + 1), DateTime.now)
     for (records <- recordFuture) {
       if (records.nonEmpty) {
         val url = s"http://$server/InstrumentStatusRecord/$monitor"
         val f = ws.url(url).put(Json.toJson(records))
-        f.foreach(_ => context become handler(Some(records.last.time)))
+        f.foreach(_ => context become handler(monitorLatestMap + (monitor->records.last.time.getTime)))
         f.failed.foreach(ex => {
           ModelHelper.logException(ex)
-          context become handler(None)
+          context become handler(monitorLatestMap - monitor)
         })
       }
     }
   }
 
 
-  def handler(latestRecordTimeOpt: Option[Date]): Receive = {
+  def handler(monitorLatestMap:Map[String, Long]): Receive = {
     case ForwardInstrumentStatus =>
-      if (latestRecordTimeOpt.isEmpty)
-        checkLatest()
-      else
-        uploadRecord(latestRecordTimeOpt.get)
+      monitors.foreach(monitor=>{
+        if (monitorLatestMap.contains(monitor))
+          uploadRecord(monitor, monitorLatestMap(monitor))(monitorLatestMap)
+        else
+          checkLatest(monitor)(monitorLatestMap)
+      })
   }
 }

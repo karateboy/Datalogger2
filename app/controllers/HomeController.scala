@@ -577,7 +577,12 @@ class HomeController @Inject()(
 
   def setSignal(mtId: String, bit: Boolean): Action[AnyContent] = security.Authenticated {
     implicit request =>
-      dataCollectManagerOp.writeSignal(mtId, bit)
+      val mtCase = monitorTypeOp.map(mtId)
+      if(mtCase.span.isEmpty)
+        dataCollectManagerOp.writeSignal(mtId, bit)
+      else
+        dataCollectManagerOp.toggleSignal(mtId, mtCase.span.get.toInt)
+
       Ok("")
   }
 

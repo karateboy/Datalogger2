@@ -222,7 +222,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
           case ex: Exception =>
             log.error(ex.getMessage, ex)
             if (connected)
-              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, s"${ex.getMessage}")
 
             connected = false
         } finally {
@@ -271,7 +271,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
           } catch {
             case ex: Exception =>
               log.error(ex.getMessage, ex)
-              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"無法連接:${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, s"無法連接:${ex.getMessage}")
 
               if(master != null)
                 master.destroy()
@@ -489,7 +489,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
             val zero = zeroMap.get(mt)
             val span = spanMap.get(mt)
             val spanStd = monitorTypeDB.map(mt).span
-            val cal = Calibration(mt, startTime, endTime, zero, spanStd, span)
+            val cal = Calibration(Some(Monitor.activeId), mt, startTime, endTime, zero, spanStd, span)
             calibrationOp.insertFuture(cal)
           }
         } else {
@@ -498,10 +498,10 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
             val values = valueMap.get(mt)
             val cal =
               if (calibrationType.zero)
-                Calibration(mt, startTime, endTime, values, None, None)
+                Calibration(Some(Monitor.activeId), mt, startTime, endTime, values, None, None)
               else {
                 val spanStd = monitorTypeDB.map(mt).span
-                Calibration(mt, startTime, endTime, None, spanStd, values)
+                Calibration(Some(Monitor.activeId), mt, startTime, endTime, None, spanStd, values)
               }
             calibrationOp.insertFuture(cal)
           }

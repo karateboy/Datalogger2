@@ -47,6 +47,8 @@ object DataCollectManager {
 
   case class WriteSignal(mtId: String, bit: Boolean)
 
+  case class ToggleSignal(mtId:String, delay:Int)
+
   private case object CheckInstruments
 
   private case class UpdateCalibrationMap(map: CalibrationListMap)
@@ -425,7 +427,7 @@ class DataCollectManager @Inject()(config: Configuration,
   logger.info(s"YL UploaderConfig=$ylUploaderConfigOpt")
   private val readerList: List[ActorRef] = startReaders()
   private val forwardManagerOpt: Option[ActorRef] =
-    for (serverConfig <- ForwardManager.getConfig(config)) yield
+    for (serverConfig <- ForwardManager.getConfig(config, monitorOp)) yield
       injectedChild(forwardManagerFactory(serverConfig), "forwardManager")
 
   private def startReaders(): List[ActorRef] = {
@@ -491,7 +493,10 @@ class DataCollectManager @Inject()(config: Configuration,
             alarmOp.log(alarmOp.src(mt), Alarm.Level.INFO, msg)
             overThreshold = true
             mtCase.overLawSignalType.foreach(signalType => {
-              self ! WriteSignal(signalType, bit = true)
+              if(mtCase.span.isEmpty)
+                self ! WriteSignal(signalType, bit = true)
+              else
+                self ! ToggleSignal(signalType, mtCase.span.get.toInt)
             })
           }
         }
@@ -795,7 +800,7 @@ class DataCollectManager @Inject()(config: Configuration,
 
       val now = DateTime.now()
       //Update Calibration Map
-      for (map <- calibrationDB.getCalibrationListMapFuture(now.minusDays(2), now)(monitorTypeOp)) {
+      for (map <- calibrationDB.getCalibrationListMapFuture(now.minusDays(2), now)(Monitor.activeId)(monitorTypeOp)) {
         self ! UpdateCalibrationMap(map)
       }
 
@@ -861,7 +866,7 @@ class DataCollectManager @Inject()(config: Configuration,
 
           val sortedDocs = docs.toSeq.sortBy { x => x._1 } map (_._2)
           if (sortedDocs.nonEmpty)
-            recordOp.insertManyRecord(recordOp.SecCollection)(sortedDocs)
+            recordOp.insertManyRecordChecked(recordOp.SecCollection)(sortedDocs)
         }
       }
 
@@ -937,7 +942,7 @@ class DataCollectManager @Inject()(config: Configuration,
         val alarms = alarmRuleDb.checkAlarm(tableType.min, recordList, alarmRules)(monitorOp, monitorTypeOp, alarmOp)
         alarms.foreach(ar => alarmOp.log(ar.src, ar.level, ar.desc, 0))
 
-        val f = recordOp.upsertRecord(recordOp.MinCollection)(recordList)
+        val f = recordOp.upsertRecordChecked(recordOp.MinCollection)(recordList)
         f onComplete {
           case Success(_) =>
             for(ylUploadConfig <- ylUploaderConfigOpt)
@@ -1131,6 +1136,14 @@ class DataCollectManager @Inject()(config: Configuration,
       val handlerMap = signalTypeHandlerMap.getOrElse(mtId, Map.empty[ActorRef, Boolean => Unit])
       for (handler <- handlerMap.values)
         handler(bit)
+
+    case ToggleSignal(mtId, delay) =>
+      // Trigger only when signalMap is empty or is false
+      if(!signalDataMap.contains(mtId) || !signalDataMap(mtId)._2){
+        self ! WriteSignal(mtId, bit = true)
+        context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(delay, SECONDS),
+          self, WriteSignal(mtId, bit = false))
+      }
 
     case ReportSignalData(dataList) =>
       dataList.foreach(signalData => monitorTypeOp.logDiMonitorType(alarmOp, signalData.mt, signalData.value))

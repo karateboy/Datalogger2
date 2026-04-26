@@ -67,7 +67,7 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb,
         if(minRecordLists.nonEmpty)
           logger.info("1st record=>" + minRecordLists.head.toString)
 
-        for (_ <- recordDB.upsertManyRecords(recordDB.MinCollection)(minRecordLists)) yield {
+        for (_ <- recordDB.upsertManyRecordsChecked(recordDB.MinCollection)(minRecordLists)) yield {
           Ok(Json.obj("ok" -> true))
         }
       }

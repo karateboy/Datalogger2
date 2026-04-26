@@ -201,7 +201,7 @@ class VocReader(config: VocReaderConfig,
       monitorTypeOp.getMinMtRecordByRawValue(mt, Some(value), status)(mtCase.fixedM, mtCase.fixedB)
     })
 
-    val f = recordOp.upsertRecord(recordOp.HourCollection)(RecordList.factory(dateTime.toDate, mtDataList, monitorId))
+    val f = recordOp.upsertRecordChecked(recordOp.HourCollection)(RecordList.factory(dateTime.toDate, mtDataList, monitorId))
     f onComplete {
       case Success(_) =>
         dataCollectManager ! ForwardHourRecord(dateTime, dateTime.plusHours(1))

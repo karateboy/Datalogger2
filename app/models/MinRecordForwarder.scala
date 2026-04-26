@@ -15,29 +15,24 @@ import scala.util.{Failure, Success}
 
 object MinRecordForwarder {
   trait Factory {
-    def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String, @Assisted("tsmcLegacy") tsmcLegacy:Boolean): Actor
+    def apply(@Assisted("server") server: String, @Assisted("monitors") monitors: Seq[String]): Actor
   }
 
   val logger: Logger = Logger(this.getClass)
 }
 
 class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
-                                  (@Assisted("server") server: String, @Assisted("monitor") monitor: String, @Assisted("tsmcLegacy") tsmcLegacy:Boolean) extends Actor {
+                                  (@Assisted("server") server: String, @Assisted("monitors") monitors: Seq[String]) extends Actor {
   val logger: Logger = Logger(this.getClass)
-  logger.info(s"MinRecordForwarder created with server=$server monitor=$monitor")
-
-  private val postUrl = if(tsmcLegacy)
-    s"http://$server/MinRecord/$monitor"
-  else
-    s"http://$server/Record/Min/$monitor"
+  logger.info(s"MinRecordForwarder created with server=$server monitor=${monitors.mkString(",")}")
 
   import ForwardManager._
 
   self ! ForwardMin
 
-  def receive: Receive = handler(None)
+  def receive: Receive = handler(Map.empty)
 
-  def checkLatest(): Unit = {
+  def checkLatest(monitor:String)(monitorLatestMap:Map[String, Long]): Unit = {
     val url = s"http://$server/MinRecordRange/$monitor"
     val f = ws.url(url).get().map {
       response =>
@@ -55,60 +50,50 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
                 new DateTime(latest.time)
               }
 
-            context become handler(Some(serverLatest.getMillis))
-            uploadRecord(serverLatest.getMillis)
+            val newMap = monitorLatestMap + (monitor->serverLatest.getMillis)
+            context become handler(newMap)
+            uploadRecord(monitor, serverLatest.getMillis)(newMap)
           })
     }
     f.failed.foreach(errorHandler)
   }
 
-  def uploadRecord(latestRecordTime: Long): Unit = {
+  def uploadRecord(monitor:String, latestRecordTime: Long)(monitorLatestMap:Map[String, Long]): Unit = {
 
     val serverRecordStart = new DateTime(latestRecordTime + 1)
     val recordFuture =
-      recordOp.getRecordWithLimitFuture(recordOp.MinCollection)(serverRecordStart, DateTime.now, 60)
+      recordOp.getRecordWithLimitFuture(recordOp.MinCollection)(serverRecordStart, DateTime.now, 60, monitor)
 
     for (records <- recordFuture) {
-
+      val postUrl = s"http://$server/Record/Min/$monitor"
       if (records.nonEmpty) {
-        val f = if(!tsmcLegacy)
+        val f =
           ws.url(postUrl).withRequestTimeout(FiniteDuration(10, SECONDS)).post(Json.toJson(records.filter(_.mtDataList.nonEmpty)))
-        else{
-          import HourRecordForwarder._
-          val tsmcRecordLists = records.filter(_.mtDataList.nonEmpty).map(rl=>{
-            val tsmcMtData = for(md<-rl.mtDataList;v<-md.value) yield
-              TsmcMtRecord(md.mtName, v, md.status)
-
-            TsmcRecordList(time = rl._id.time.getTime, mtDataList = tsmcMtData)
-          })
-          ws.url(postUrl).withRequestTimeout(FiniteDuration(10, SECONDS)).post(Json.toJson(tsmcRecordLists))
-        }
 
         f onComplete {
           case Success(response) =>
             if (response.status == 200) {
-              if (records.last._id.time.getTime > latestRecordTime) {
-                context become handler(Some(records.last._id.time.getTime))
-              }
+              if (records.last._id.time.getTime > latestRecordTime)
+                context become handler(monitorLatestMap + (monitor->records.last._id.time.getTime))
             } else {
               logger.error(s"${response.status}:${response.statusText}")
-              context become handler(None)
+              context become handler(monitorLatestMap - monitor)
             }
           case Failure(exception) =>
-            context become handler(None)
+            context become handler(monitorLatestMap - monitor)
             errorHandler(exception)
         }
       }
     }
   }
 
-  def uploadRecord(start: DateTime, end: DateTime): Unit = {
-    val recordFuture = recordOp.getRecordListFuture(recordOp.MinCollection)(start, end)
+  def uploadRecord(monitor:String, start: DateTime, end: DateTime): Unit = {
+    val recordFuture = recordOp.getRecordListFuture(recordOp.MinCollection)(start, end, Seq(monitor))
     for (record <- recordFuture if record.nonEmpty) {
 
       logger.info(s"upload min ${start.toString()} => ${end.toString}")
       logger.info(s"Total ${record.length} records")
-
+      val postUrl = s"http://$server/Record/Min/$monitor"
       for (chunk <- record.grouped(60)) {
         val f = ws.url(postUrl).post(Json.toJson(chunk.filter(_.mtDataList.nonEmpty)))
         f.foreach(response => {
@@ -120,15 +105,19 @@ class MinRecordForwarder @Inject()(ws: WSClient, recordOp: RecordDB)
     }
   }
 
-  def handler(latestRecordTimeOpt: Option[Long]): Receive = {
+  def handler(monitorLatestMap:Map[String, Long]): Receive = {
     case ForwardMin =>
-      if (latestRecordTimeOpt.isEmpty)
-        checkLatest()
-      else
-        uploadRecord(latestRecordTimeOpt.get)
+      monitors.foreach(monitor=>{
+        if (monitorLatestMap.contains(monitor))
+          uploadRecord(monitor, monitorLatestMap(monitor))(monitorLatestMap)
+        else
+          checkLatest(monitor)(monitorLatestMap)
+      })
 
     case ForwardMinRecord(start, end) =>
-      uploadRecord(start, end)
+      monitors.foreach(monitor=>{
+        uploadRecord(monitor, start, end)
+      })
 
   }
 

@@ -178,7 +178,7 @@ private class ImsReader(config: ImsConfig,
                 None
             }
           }
-        for (_ <- recordDB.upsertRecord(recordDB.MinCollection)(RecordList.factory(dateTime.toDate, mtDataList.flatten, Monitor.activeId))) yield
+        for (_ <- recordDB.upsertRecordChecked(recordDB.MinCollection)(RecordList.factory(dateTime.toDate, mtDataList.flatten, Monitor.activeId))) yield
           Some(dateTime)
       } catch {
         case ex: Throwable =>
