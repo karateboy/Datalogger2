@@ -302,7 +302,7 @@ object GcReader {
       if (needUpdateVocAuditMonitorTypes)
         sysConfigDB.setVocAuditMonitorTypes(vocAuditMonitorTypes.toList)
 
-      val f = recordOp.upsertRecord(recordOp.HourCollection)(record)
+      val f = recordOp.upsertRecordChecked(recordOp.HourCollection)(record)
       f onComplete {
         case Success(_) =>
           // Upload
