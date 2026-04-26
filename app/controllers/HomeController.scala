@@ -1072,9 +1072,8 @@ class HomeController @Inject()(
       Ok(Json.obj("ok" -> (ret.getDeletedCount != 0)))
   }
 
-  def getHourCalculationRules: Action[AnyContent] = security.Authenticated.async {
-    for (rules <- sysConfig.getHourCalculationRules) yield
-      Ok(Json.toJson(rules))
+  def getHourCalculationRules: Action[AnyContent] = security.Authenticated {
+      Ok(Json.toJson(HourCalculationRule.getRules))
   }
 
   def setHourCalculationRules(): Action[JsValue] = security.Authenticated(parse.json) {
