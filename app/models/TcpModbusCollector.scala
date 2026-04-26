@@ -256,6 +256,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
               ipParameters.setPort(502);
               logger.info(s"${self.toString()}: connect ${protocol.host.get}")
               master = modbusFactory.createTcpMaster(ipParameters, true)
+              master.setTimeout(3000)
               master.setRetries(1)
               master.setConnected(true)
               master.init();

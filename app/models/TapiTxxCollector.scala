@@ -255,6 +255,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
             val modbusFactory = new ModbusFactory()
 
             master = modbusFactory.createTcpMaster(ipParameters, true)
+            master.setTimeout(3000)
             master.setRetries(1)
             master.setConnected(true)
 

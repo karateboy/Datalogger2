@@ -77,6 +77,7 @@ class MoxaE1212Collector @Inject()
             val modbusFactory = new ModbusFactory()
 
             master = modbusFactory.createTcpMaster(ipParameters, true)
+            master.setTimeout(3000)
             master.setRetries(1)
             master.setConnected(true)
             master.init()
