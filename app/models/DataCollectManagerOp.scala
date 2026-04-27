@@ -151,7 +151,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 
       val mtDataList = calculateHourAvgMap(mtMap, alwaysValid, monitorTypeDb)
       val hourRecordListsFuture = HourCalculationRule.calculateHourRecord(monitor, current, recordOp)
-      val dailyAvgMtRecordsFuture = calculateDayAvgHourRecord(monitor, MonitorType.DailyAvgMonitorTypes, current, mtDataList.toSeq)
+      val dailyAvgMtRecordsFuture = calculateDayAvgHourRecord(monitor, MonitorType.DailyAvgInputMonitorTypes, current, mtDataList.toSeq)
       for (ruleHourRecordLists <- hourRecordListsFuture; dailyAvgMtRecords <- dailyAvgMtRecordsFuture) {
         val defaultHourRecordList = RecordList.factory(current.minusHours(1).toDate, mtDataList.toSeq ++ dailyAvgMtRecords, monitor)
         val hourRecordLists = ruleHourRecordLists :+ defaultHourRecordList

@@ -125,7 +125,7 @@ trait MonitorTypeDB {
     calculatedMonitorTypes.foreach(ensure)
 
     // ensure daily avg monitor types
-    MonitorType.DailyAvgMonitorTypes.foreach(ensure)
+    MonitorType.DailyAvgTargetMonitorTypes.foreach(ensure)
 
   }
 
