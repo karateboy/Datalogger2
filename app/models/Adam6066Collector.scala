@@ -57,7 +57,7 @@ class Adam6066Collector @Inject()
             val modbusFactory = new ModbusFactory()
 
             master = modbusFactory.createTcpMaster(ipParameters, true)
-            master.setTimeout(3000)
+            master.setTimeout(10000)
             master.setRetries(1)
             master.setConnected(true)
             master.init();
