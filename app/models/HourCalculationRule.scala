@@ -1,6 +1,6 @@
 package models
 
-import com.github.nscala_time.time.Imports.DateTime
+import com.github.nscala_time.time.Imports._
 import models.ModelHelper.errorHandler
 import play.api.Logger
 import play.api.libs.json.{Json, OWrites, Reads}
@@ -15,10 +15,12 @@ object HourCalculationRule {
 
   private val LastMinValue = 1
   private val DesignatedMinAvg = 2
+  private val LastHourMinAvg = 3
 
   val defaultRules: List[HourCalculationRule] = List(
     HourCalculationRule("BTEX (00:40+00:55+01:10+01:25)/4", Seq.empty[String], 2, DesignatedMinAvg),
-    HourCalculationRule("611/811 1:59分鐘值", Seq.empty[String], 2, LastMinValue)
+    HourCalculationRule("611/811 1:59分鐘值", Seq.empty[String], 2, LastMinValue),
+    HourCalculationRule("Marga IC", Seq.empty, 3, LastHourMinAvg)
   )
 
   private var rules: List[HourCalculationRule] = defaultRules
@@ -27,12 +29,19 @@ object HourCalculationRule {
   implicit val writes: OWrites[HourCalculationRule] = Json.writes[HourCalculationRule]
 
   def init(sysConfigDB: SysConfigDB): Unit = {
+    var defaultRuleMap: Map[String, HourCalculationRule] = defaultRules.map(rule=>rule.name -> rule).toMap
     for (hourRules <- sysConfigDB.getHourCalculationRules) {
-      rules = hourRules.toList
+      rules = List.empty
+      hourRules.foreach(rule=> {
+        defaultRuleMap = defaultRuleMap - rule.name
+        rules = rules :+ rule
+      })
+      rules = rules ++ defaultRuleMap.values.toSeq
       logger.info(s"HourCalculationRules = $rules")
     }
   }
 
+  def getRules: List[HourCalculationRule] = rules
   def updateRules(newRules: List[HourCalculationRule]): Unit =
     rules = newRules
 
@@ -49,6 +58,21 @@ object HourCalculationRule {
     }
   }
 
+  private def getLastHourMinAvg(rule: HourCalculationRule, current:DateTime, recordMap: Map[String, Seq[Record]]): Seq[MtRecord] = {
+    rule.monitorTypes map {
+      mt =>
+        val records = recordMap.getOrElse(mt, Seq.empty[Record]).filter(record=>{
+          current.minusHours(1) <= record.time && record.time < current
+        })
+        val values = records.flatMap(_.value)
+        val maxStatus = records.groupBy(_.status).maxBy(_._2.length)._1
+        if (values.nonEmpty) {
+          MtRecord(mt, Some(values.sum/values.length), maxStatus)
+        } else {
+          MtRecord(mt, None, MonitorStatus.DataLost)
+        }
+    }
+  }
   private def getDesignatedValueAvg(rule: HourCalculationRule, current: DateTime, recordMap: Map[String, Seq[Record]]): Seq[MtRecord] = {
     val start = current.minusHours(rule.delay)
     rule.monitorTypes map {
@@ -104,6 +128,8 @@ object HourCalculationRule {
                     getLastMinValue(rule, recordMap)
                   case DesignatedMinAvg =>
                     getDesignatedValueAvg(rule, current, recordMap)
+                  case LastHourMinAvg=>
+                    getLastHourMinAvg(rule, current, recordMap)
                   case x =>
                     logger.warn(s"Unknown rule type $x")
                     Seq.empty[MtRecord]

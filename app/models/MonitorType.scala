@@ -112,11 +112,13 @@ object MonitorType {
   val PM25D = "PM25D"
 
 
-  val DailyAvgMonitorTypes: Seq[String] = Seq(PM25, PM10)
+
   val DailyAvgMonitorTypeMap: Map[String, String] = Map(
     PM10 -> PM10D,
     PM25 -> PM25D
   )
+  val DailyAvgInputMonitorTypes: Seq[String] = DailyAvgMonitorTypeMap.keys.toSeq
+  val DailyAvgTargetMonitorTypes: Seq[String] = DailyAvgMonitorTypeMap.values.toSeq
 
   private case class CalculatedMonitorType(requiredMonitorTypes: Seq[String],
                                            targetMonitorType: String,
