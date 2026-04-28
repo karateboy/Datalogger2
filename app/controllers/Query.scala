@@ -816,12 +816,12 @@ class Query @Inject()(recordOp: RecordDB,
             }
 
             val columnNames = param.monitorTypes flatMap { mt => {
-              for(mtCase <-monitorTypeOp.map.get(mt)) yield
+              for (mtCase <- monitorTypeOp.map.get(mt)) yield
                 if (param.raw)
                   Seq(mtCase.desp, s"${mtCase.desp} 原始值")
                 else
                   Seq(mtCase.desp)
-              }
+            }
             }
             Ok(Json.toJson(DataTab(columnNames.flatten, timeRows)))
           }
@@ -1328,7 +1328,7 @@ class Query @Inject()(recordOp: RecordDB,
 
   private case class TraceResult(trace: Seq[Position])
 
-  def traceQuery(monitor: String, tableTypeStr: String, start: Long, end: Long): Action[AnyContent] = security.Authenticated.async {
+  def traceQuery(monitor: String, tableTypeStr: String, backward: Boolean, start: Long, end: Long): Action[AnyContent] = security.Authenticated.async {
     implicit request =>
       implicit val w = Json.writes[Position]
       implicit val w2 = Json.writes[TraceResult]
@@ -1342,18 +1342,23 @@ class Query @Inject()(recordOp: RecordDB,
           NotFound("查無資料")
         else {
           val trace = ListBuffer.empty[Position]
-          val recordReverse = records.reverse
+          val recordPipeline =
+            if (backward)
+              records.reverse
+            else
+              records
+
           val currentPos = Position(lat =
-            recordReverse.head.mtMap.get(MonitorType.LAT)
+            recordPipeline.head.mtMap.get(MonitorType.LAT)
               .flatMap(_.value).getOrElse(m.lat.getOrElse(23.587100069188324)),
-            lng = recordReverse.head.mtMap.get(MonitorType.LNG)
+            lng = recordPipeline.head.mtMap.get(MonitorType.LNG)
               .flatMap(_.value).getOrElse(m.lng.getOrElse(121.14727819361042)),
-            date = recordReverse.head._id.time)
+            date = recordPipeline.head._id.time)
 
           trace.append(currentPos)
 
           var lastPos = currentPos
-          for (record <- recordReverse) {
+          for (record <- recordPipeline) {
             for (windDir <- record.mtMap.get(MonitorType.WIN_DIRECTION).flatMap(_.value);
                  windSpeed <- record.mtMap.get(MonitorType.WIN_SPEED).flatMap(_.value)) {
               val distance = if (tab == tableType.hour)
@@ -1361,7 +1366,10 @@ class Query @Inject()(recordOp: RecordDB,
               else
                 windSpeed * 60 // m/s * 1 minute
 
-              lastPos = lastPos.getNextPosition(windDir, distance, record._id.time)
+              lastPos = if (backward)
+                lastPos.getNextPosition(windDir, distance, record._id.time)
+              else
+                lastPos.getNextPosition(windDir - 180, distance, record._id.time)
               trace.append(lastPos)
             }
           }

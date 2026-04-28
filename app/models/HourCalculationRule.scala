@@ -65,8 +65,8 @@ object HourCalculationRule {
           current.minusHours(1) <= record.time && record.time < current
         })
         val values = records.flatMap(_.value)
-        val maxStatus = records.groupBy(_.status).maxBy(_._2.length)._1
         if (values.nonEmpty) {
+          val maxStatus = records.groupBy(_.status).maxBy(_._2.length)._1
           MtRecord(mt, Some(values.sum/values.length), maxStatus)
         } else {
           MtRecord(mt, None, MonitorStatus.DataLost)
