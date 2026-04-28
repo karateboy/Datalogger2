@@ -4,6 +4,7 @@ import akka.actor._
 import com.github.nscala_time.time.Imports._
 import models.DataCollectManager.ReaderReset
 import models.ForwardManager.ForwardHourRecord
+import models.GcReader.logger
 import models.ModelHelper.waitReadyResult
 import play.api._
 import play.api.libs.ws.WSClient
@@ -55,8 +56,8 @@ object GcReader {
   var count = 0
   val logger: Logger = Logger(this.getClass)
 
-  def start(configuration: Configuration, actorSystem: ActorSystem, monitorOp: MonitorDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, alarmDB: AlarmDB,
+  def start(configuration: Configuration, actorSystem: ActorSystem, monitorDb: MonitorDB, monitorTypeDb: MonitorTypeDB,
+            recordDb: RecordDB, WSClient: WSClient, monitorDB: MonitorDB, alarmDB: AlarmDB,
             sysConfigDB: SysConfigDB, ylUploaderConfig: YlUploaderConfig, dataCollectManager: ActorRef): Option[ActorRef] = {
     def getConfig: Option[GcReaderConfig] = {
       def getMonitorConfig(config: Configuration) = {
@@ -99,10 +100,10 @@ object GcReader {
     for (config <- getConfig if config.enable) yield {
       logger.info(config.toString)
       config.monitors.foreach(config => {
-        monitorOp.ensure(Monitor(_id = config.id, desc = config.name, lat = Some(config.lat), lng = Some(config.lng)))
+        monitorDb.ensure(Monitor(_id = config.id, desc = config.name, lat = Some(config.lat), lng = Some(config.lng)))
       })
       count = count + 1
-      actorSystem.actorOf(props(config, monitorTypeOp, recordOp, WSClient, monitorDB,
+      actorSystem.actorOf(props(config, monitorTypeDb, recordDb, WSClient, monitorDB,
         alarmDB = alarmDB, sysConfigDB = sysConfigDB, ylUploaderConfig = ylUploaderConfig,
         dataCollectManager = dataCollectManager),
         s"GcReader$count")
@@ -165,11 +166,29 @@ object GcReader {
   @volatile var vocMonitorTypes = Set.empty[String]
   @volatile var vocAuditMonitorTypes = Set.empty[String]
 
-  def parser(gcMonitorConfig: GcMonitorConfig, reportDir: File)
-            (implicit recordOp: RecordDB, wsClient: WSClient,
-             monitorDB: MonitorDB, monitorTypeDB: MonitorTypeDB, sysConfigDB: SysConfigDB,
-             ylUploaderConfig: YlUploaderConfig,
-             dataCollectManager: ActorRef): Boolean = {
+}
+
+private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, WSClient: WSClient,
+                       monitorDB: MonitorDB, alarmDB: AlarmDB, sysConfigDB: SysConfigDB,
+                       ylUploaderConfig: YlUploaderConfig,
+                       dataCollectManager: ActorRef)
+  extends Actor with ActorLogging {
+  private val logger: Logger = Logger(this.getClass)
+  logger.info(s"GcReader start with $config")
+
+  import GcReader._
+
+  override def postStop(): Unit = {
+    //timer.cancel()
+  }
+
+  override def receive: Receive = handler(Map.empty[String, Int], Instant.now())
+
+  private val MAX_RETRY_COUNT = 120
+  self ! ParseReport
+
+
+  def parser(gcMonitorConfig: GcMonitorConfig, reportDir: File): Boolean = {
     import com.github.nscala_time.time.Imports._
 
     import java.nio.charset.StandardCharsets
@@ -237,8 +256,8 @@ object GcReader {
         } else if (reportDir.getName.startsWith("Q")) {
           MonitorStatus.CalibrationSampleStat
         } else {
-          if (monitorTypeDB.map.contains(mtName)) {
-            val mt = monitorTypeDB.map(mtName)
+          if (monitorTypeOp.map.contains(mtName)) {
+            val mt = monitorTypeOp.map(mtName)
             if (mt.mdl.isDefined && value < mt.mdl.get)
               MonitorStatus.LessThanMDL
             else
@@ -263,18 +282,18 @@ object GcReader {
       val record = RecordList.factory(dateTime.toDate, internalValues ++ actualValues, gcMonitorConfig.id)
       record.mtDataList.foreach(mtRecord => {
         if (mtPostfix.nonEmpty &&
-          monitorTypeDB.map.contains(mtRecord.mtName.dropRight(mtPostfix.length))) {
+          monitorTypeOp.map.contains(mtRecord.mtName.dropRight(mtPostfix.length))) {
 
-          val srcMtCase = monitorTypeDB.map(mtRecord.mtName.dropRight(mtPostfix.length))
+          val srcMtCase = monitorTypeOp.map(mtRecord.mtName.dropRight(mtPostfix.length))
           val mtCase = srcMtCase.copy(_id = mtRecord.mtName, desp = srcMtCase.desp + gcMonitorConfig.mtAnnotation.getOrElse(""))
-          monitorTypeDB.ensure(mtCase)
+          monitorTypeOp.ensure(mtCase)
           recordOp.ensureMonitorType(mtRecord.mtName)
           if (!vocAuditMonitorTypes.contains(mtRecord.mtName)) {
             needUpdateVocAuditMonitorTypes = true
             vocAuditMonitorTypes = vocAuditMonitorTypes + mtRecord.mtName
           }
         } else {
-          monitorTypeDB.ensure(mtRecord.mtName)
+          monitorTypeOp.ensure(mtRecord.mtName)
           recordOp.ensureMonitorType(mtRecord.mtName)
           if (!vocMonitorTypes.contains(mtRecord.mtName)) {
             needUpdateVocMonitorTypes = true
@@ -308,7 +327,7 @@ object GcReader {
           // Upload
           logger.debug(s"upload GC record $dateTime")
           dataCollectManager ! ForwardHourRecord(dateTime, dateTime.plusHours(1))
-          YlUploader.upload(wsClient)(record, monitorDB.map(gcMonitorConfig.id), ylUploaderConfig)
+          YlUploader.upload(WSClient)(record, monitorDB.map(gcMonitorConfig.id), ylUploaderConfig)
         case Failure(exception) =>
           logger.error("failed", exception)
       }
@@ -317,27 +336,6 @@ object GcReader {
 
     true
   } //End of process report.txt
-}
-
-private class GcReader(config: GcReaderConfig, monitorTypeOp: MonitorTypeDB, recordOp: RecordDB, WSClient: WSClient,
-                       monitorDB: MonitorDB, alarmDB: AlarmDB, sysConfigDB: SysConfigDB,
-                       ylUploaderConfig: YlUploaderConfig,
-                       dataCollectManager: ActorRef)
-  extends Actor with ActorLogging {
-  private val logger: Logger = Logger(this.getClass)
-  logger.info(s"GcReader start with $config")
-
-  import GcReader._
-
-  override def postStop(): Unit = {
-    //timer.cancel()
-  }
-
-  override def receive: Receive = handler(Map.empty[String, Int], Instant.now())
-
-  private val MAX_RETRY_COUNT = 120
-  self ! ParseReport
-
 
   def handler(retryMap: Map[String, Int], lastReceiveTime: Instant): Receive = {
     case ParseReport =>
