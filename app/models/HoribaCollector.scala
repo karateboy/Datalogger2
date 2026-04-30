@@ -53,7 +53,10 @@ object HoribaCollector {
   implicit val cfgRead: Reads[HoribaConfig] = Json.reads[HoribaConfig]
   implicit val cfgWrite: OWrites[HoribaConfig] = Json.writes[HoribaConfig]
 
-  case object ReadData
+  private case object ReadData
+
+  private case object CheckStatus
+
 }
 
 abstract class HoribaCollector @Inject()

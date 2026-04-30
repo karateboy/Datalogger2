@@ -113,8 +113,6 @@ object DataCollectManager {
 
   private case object UpdateHourAccumulatedRain
 
-  case object CheckStatus
-
   private def updateEffectiveRatio(sysConfig: SysConfigDB): Unit = {
     for (ratio <- sysConfig.getEffectiveRatio)
       effectiveRatio = ratio
@@ -236,9 +234,10 @@ object DataCollectManager {
     }
   }
 
-  def calculateHourAvgMap(mtMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]],
-                          alwaysValid: Boolean,
-                          monitorTypeDB: MonitorTypeDB): mutable.Iterable[MtRecord] = {
+  def calculateAvgMap(mtMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]],
+                      alwaysValid: Boolean,
+                      monitorTypeDB: MonitorTypeDB,
+                      dailyAvg: Boolean = false): mutable.Iterable[MtRecord] = {
     for {
       (mt, statusMap) <- mtMap
       totalSize = statusMap.map {
@@ -326,13 +325,13 @@ object DataCollectManager {
               Some(values.sum)
 
             case MonitorType.PM10 =>
-              if (LoggerConfig.config.pm25HourAvgUseLastRecord)
+              if (!dailyAvg && LoggerConfig.config.pm25HourAvgUseLastRecord)
                 Some(values.last)
               else
                 Some(values.sum / values.length)
 
             case MonitorType.PM25 =>
-              if (LoggerConfig.config.pm25HourAvgUseLastRecord)
+              if (!dailyAvg && LoggerConfig.config.pm25HourAvgUseLastRecord)
                 Some(values.last)
               else
                 Some(values.sum / values.length)
@@ -1147,11 +1146,15 @@ class DataCollectManager @Inject()(config: Configuration,
       val f = recordOp.getMtRecordMapFuture(recordOp.MinCollection)(Monitor.activeId, monitorTypeOp.measuringList,
         now.minusHours(1), now)
       for (minRecordMap <- f) {
+        val exDataLossRecordMap = minRecordMap.map(pair=>{
+          val (mt, mtRecords) = pair
+          mt->mtRecords.filter(_.status != MonitorStatus.DataLost)
+        })
         for (kv <- instrumentMap) {
           val (instID, instParam) = kv;
           if (instParam.mtList.filter(mt => !monitorTypeOp.map(mt).signalType)
-            .exists(mt => !minRecordMap.contains(mt) ||
-              minRecordMap.contains(mt) && minRecordMap(mt).size < 45)) {
+            .exists(mt => !exDataLossRecordMap.contains(mt) ||
+              exDataLossRecordMap.contains(mt) && exDataLossRecordMap(mt).size < 45)) {
             logger.error(s"$instID has less than 45 minRecords. Restart $instID")
             alarmOp.log(alarmOp.srcInstrumentID(instID), Alarm.Level.ERR, s"$instID 每小時分鐘資料小於45筆. 重新啟動 $instID 設備")
             self ! RestartInstrument(instID)

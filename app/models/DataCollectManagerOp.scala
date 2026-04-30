@@ -125,7 +125,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 
       currentHourRecords.foreach(mtRecord => updateStatusMap(mtRecord, mtMap))
 
-      val mtDataList = calculateHourAvgMap(mtMap, alwaysValid = false, monitorTypeDb)
+      val mtDataList = calculateAvgMap(mtMap, alwaysValid = false, monitorTypeDb, dailyAvg = true)
       val mapDailyMtDataList = mtDataList.map(mtRecord => {
         if (MonitorType.DailyAvgMonitorTypeMap.contains(mtRecord.mtName))
           mtRecord.copy(mtName = MonitorType.DailyAvgMonitorTypeMap(mtRecord.mtName))
@@ -149,7 +149,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
       for (mtRecordList <- recordMap.values; mtRecord <- mtRecordList)
         updateStatusMap(mtRecord, mtMap)
 
-      val mtDataList = calculateHourAvgMap(mtMap, alwaysValid, monitorTypeDb)
+      val mtDataList = calculateAvgMap(mtMap, alwaysValid, monitorTypeDb)
       val hourRecordListsFuture = HourCalculationRule.calculateHourRecord(monitor, current, recordOp)
       val dailyAvgMtRecordsFuture = calculateDayAvgHourRecord(monitor, MonitorType.DailyAvgInputMonitorTypes, current, mtDataList.toSeq)
       for (ruleHourRecordLists <- hourRecordListsFuture; dailyAvgMtRecords <- dailyAvgMtRecordsFuture) {
