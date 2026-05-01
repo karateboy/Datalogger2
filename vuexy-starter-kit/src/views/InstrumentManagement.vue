@@ -141,11 +141,11 @@
   </b-card>
 </template>
 <script>
-import Vue from 'vue';
-import axios from 'axios';
-const Ripple = require('vue-ripple-directive');
-import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
-import InstrumentWizard from './InstrumentWizard.vue';
+import Vue from 'vue'
+import axios from 'axios'
+const Ripple = require('vue-ripple-directive')
+import ToastificationContent from '@core/components/toastification/ToastificationContent.vue'
+import InstrumentWizard from './InstrumentWizard.vue'
 export default Vue.extend({
   components: {
     InstrumentWizard,
@@ -154,7 +154,7 @@ export default Vue.extend({
     Ripple,
   },
   data() {
-    const instList = [];
+    const instList = []
     const fields = [
       {
         key: 'selected',
@@ -195,7 +195,7 @@ export default Vue.extend({
         label: '測項',
         sortable: true,
       },
-    ];
+    ]
 
     return {
       fields,
@@ -204,39 +204,39 @@ export default Vue.extend({
       selected: [],
       bit: 17,
       on: true,
-    };
+    }
   },
   computed: {
     modalTitle() {
-      return this.isNew ? '新增儀器' : '更新儀器設定';
+      return this.isNew ? '新增儀器' : '更新儀器設定'
     },
     selectedInstrument() {
-      if (!this.isNew && this.selected.length) return this.selected[0].inst;
-      else return {};
+      if (!this.isNew && this.selected.length) return this.selected[0].inst
+      else return {}
     },
     canToggleActivate() {
       return (
         this.selected.length === 1 &&
         (this.selected[0].state !== '啟用中' ||
           this.selected[0].state === '停用中')
-      );
+      )
     },
     toggleActivateName() {
       if (this.selected.length === 1) {
-        if (this.selected[0].state === '停用') return '啟用';
+        if (this.selected[0].state === '停用') return '啟用'
 
-        return '停用';
+        return '停用'
       }
-      return '停用/啟用';
+      return '停用/啟用'
     },
   },
   mounted() {
-    this.getInstList();
+    this.getInstList()
   },
 
   methods: {
     onSubmit(evt) {
-      this.$bvModal.hide('instModal');
+      this.$bvModal.hide('instModal')
       this.$toast({
         component: ToastificationContent,
         props: {
@@ -244,8 +244,8 @@ export default Vue.extend({
           icon: 'EditIcon',
           variant: 'success',
         },
-      });
-      this.getInstList();
+      })
+      this.getInstList()
     },
     showResult(ok) {
       if (ok) {
@@ -256,7 +256,7 @@ export default Vue.extend({
             icon: 'EditIcon',
             variant: 'success',
           },
-        });
+        })
       } else {
         this.$toast({
           component: ToastificationContent,
@@ -265,84 +265,84 @@ export default Vue.extend({
             icon: 'EditIcon',
             variant: 'danger',
           },
-        });
+        })
       }
-      this.getInstList();
+      this.getInstList()
     },
     async toggleActivateState() {
       try {
-        let res = undefined;
+        let res = undefined
         if (this.selected[0].state === '停用') {
-          this.selected[0].state = '啟動中';
+          this.selected[0].state = '啟動中'
           res = await axios.put(
             `/ActivateInstrument/${this.selected[0]._id}`,
             {},
-          );
+          )
         } else {
-          this.selected[0].state = '停用中';
+          this.selected[0].state = '停用中'
           res = await axios.put(
             `/DeactivateInstrument/${this.selected[0]._id}`,
             {},
-          );
+          )
         }
-        this.showResult(res.data.ok);
+        this.showResult(res.data.ok)
       } catch (err) {
-        console.error(`${err}`);
-        this.showResult(false);
+        console.error(`${err}`)
+        this.showResult(false)
       }
     },
     async toggleMaintenanceMode() {
       const res = await axios.put(
         `/ToggleMaintainInstrument/${this.selected[0]._id}`,
         {},
-      );
-      this.showResult(res.data.ok);
+      )
+      this.showResult(res.data.ok)
     },
     async calibrateInstrumentZero() {
       const res = await axios.put(
         `/CalibrateInstrumentZero/${this.selected[0]._id}`,
         {},
-      );
-      this.showResult(res.data.ok);
+      )
+      this.showResult(res.data.ok)
     },
     async calibrateInstrumentSpan() {
       const res = await axios.put(
         `/CalibrateInstrumentSpan/${this.selected[0]._id}`,
         {},
-      );
-      this.showResult(res.data.ok);
+      )
+      this.showResult(res.data.ok)
     },
     async calibrateInstrument() {
       const res = await axios.put(
         `/CalibrateInstrument/${this.selected[0]._id}`,
         {},
-      );
-      this.showResult(res.data.ok);
+      )
+      this.showResult(res.data.ok)
     },
     async resetInstrument() {
       const res = await axios.put(
         `/ResetInstrument/${this.selected[0]._id}`,
         {},
-      );
-      this.showResult(res.data.ok);
+      )
+      this.showResult(res.data.ok)
     },
     showWriteDoDlg() {
-      this.$bvModal.show('writeDoModal');
+      this.$bvModal.show('writeDoModal')
     },
     async writeDO() {
       const res = await axios.put(`/WriteDO/${this.selected[0]._id}`, {
         bit: this.bit,
         on: this.on,
-      });
-      this.showResult(res.data.ok);
+      })
+      this.showResult(res.data.ok)
     },
     newInst() {
-      this.isNew = true;
-      this.$bvModal.show('instModal');
+      this.isNew = true
+      this.$bvModal.show('instModal')
     },
     updateInst() {
-      this.isNew = false;
-      this.$bvModal.show('instModal');
+      this.isNew = false
+      this.$bvModal.show('instModal')
     },
     deleteInst() {
       this.$bvModal
@@ -353,31 +353,31 @@ export default Vue.extend({
         })
         .then(ret => {
           if (ret) {
-            this.delInst(this.selected[0]._id);
+            this.delInst(this.selected[0]._id)
           }
         })
         .catch(err => {
-          throw Error(err);
-        });
+          throw Error(err)
+        })
     },
     getInstList() {
       axios
         .get('/InstrumentInfos')
         .then(res => {
-          this.instList = res.data;
+          this.instList = res.data
         })
         .catch(err => {
-          throw new Error(err);
-        });
+          throw new Error(err)
+        })
     },
     onInstSelected(items) {
-      this.selected = items;
+      this.selected = items
     },
     delInst(id) {
       axios
         .delete(`/Instrument/${id}`)
         .then(res => {
-          const ret = res.data;
+          const ret = res.data
           if (ret.ok) {
             this.$toast({
               component: ToastificationContent,
@@ -385,7 +385,7 @@ export default Vue.extend({
                 title: '成功',
                 icon: 'UserIcon',
               },
-            });
+            })
           } else {
             this.$toast({
               component: ToastificationContent,
@@ -393,26 +393,26 @@ export default Vue.extend({
                 title: '刪除失敗',
                 icon: 'UserIcon',
               },
-            });
+            })
           }
-          this.getInstList();
+          this.getInstList()
         })
         .catch(err => {
-          throw new Error(err);
-        });
+          throw new Error(err)
+        })
     },
     onUpdate() {
-      this.$bvModal.hide('instModal');
-      this.getInstList();
+      this.$bvModal.hide('instModal')
+      this.getInstList()
     },
     onRefresh() {
-      this.getInstList();
+      this.getInstList()
     },
     onDeleted() {
-      this.getInstList();
+      this.getInstList()
     },
   },
-});
+})
 </script>
 <style lang="scss">
 @import '@core/scss/vue/libs/vue-wizard.scss';

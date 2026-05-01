@@ -36,9 +36,9 @@
               >
             </b-form-group>
             <b-button
-              class="bg-gradient-success m-50"
               v-for="mtg in monitorTypeGroups"
               :key="mtg._id"
+              class="bg-gradient-success m-50"
               size="sm"
               @click="form.monitorTypes = mtg.mts"
             >

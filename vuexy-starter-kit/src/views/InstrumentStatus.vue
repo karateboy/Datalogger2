@@ -110,16 +110,16 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import DatePicker from 'vue2-datepicker';
-import vSelect from 'vue-select';
-import 'vue2-datepicker/index.css';
-import 'vue2-datepicker/locale/zh-tw';
-const Ripple = require('vue-ripple-directive');
-import moment from 'moment';
-import axios from 'axios';
-const excel = require('../libs/excel');
-const _ = require('lodash');
+import Vue from 'vue'
+import DatePicker from 'vue2-datepicker'
+import vSelect from 'vue-select'
+import 'vue2-datepicker/index.css'
+import 'vue2-datepicker/locale/zh-tw'
+const Ripple = require('vue-ripple-directive')
+import moment from 'moment'
+import axios from 'axios'
+const excel = require('../libs/excel')
+const _ = require('lodash')
 
 export default Vue.extend({
   components: {
@@ -133,7 +133,7 @@ export default Vue.extend({
     const range = [
       moment().subtract(1, 'days').minute(0).second(0).millisecond(0).valueOf(),
       moment().minute(0).second(0).millisecond(0).valueOf(),
-    ];
+    ]
     return {
       display: false,
       columns: Array<any>(),
@@ -145,35 +145,35 @@ export default Vue.extend({
         range,
       },
       currentPage: 1,
-    };
+    }
   },
   mounted() {
-    this.getInstruments();
+    this.getInstruments()
   },
   methods: {
     getInstruments() {
       axios.get('/Instruments').then(res => {
-        const ret = res.data;
-        this.instruments = ret;
+        const ret = res.data
+        this.instruments = ret
         if (this.instruments.length !== 0) {
-          this.form.instrument = this.instruments[0]._id;
+          this.form.instrument = this.instruments[0]._id
         }
-      });
+      })
     },
     async query() {
-      this.display = true;
-      const url = `/InstrumentStatusReport/${this.form.instrument}/${this.form.range[0]}/${this.form.range[1]}`;
-      const res = await axios.get(url);
-      this.handleReport(res.data);
+      this.display = true
+      const url = `/InstrumentStatusReport/${this.form.instrument}/${this.form.range[0]}/${this.form.range[1]}`
+      const res = await axios.get(url)
+      this.handleReport(res.data)
     },
     handleReport(report: any) {
-      this.columns.splice(0, this.columns.length);
+      this.columns.splice(0, this.columns.length)
 
       this.columns.push({
         key: 'time',
         label: '時間',
         sortable: true,
-      });
+      })
 
       for (let i = 0; i < report.columnNames.length; i++) {
         this.columns.push({
@@ -181,21 +181,21 @@ export default Vue.extend({
           label: `${report.columnNames[i]}`,
           sortable: true,
           stickyColumn: true,
-        });
+        })
       }
       for (const row of report.rows) {
-        row.time = moment(row.date).format('lll');
+        row.time = moment(row.date).format('lll')
       }
-      this.rows = report.rows;
-      this.statRows = report.statRows;
+      this.rows = report.rows
+      this.statRows = report.statRows
     },
     exportExcel() {
-      const title = this.columns.map(e => e.label);
-      const key = this.columns.map(e => e.key);
+      const title = this.columns.map(e => e.label)
+      const key = this.columns.map(e => e.key)
       for (let entry of this.rows) {
-        let e = entry as any;
+        let e = entry as any
         for (let k of key) {
-          e[k] = _.get(entry, k);
+          e[k] = _.get(entry, k)
         }
       }
       const params = {
@@ -204,9 +204,9 @@ export default Vue.extend({
         data: this.rows,
         autoWidth: true,
         filename: `${this.form.instrument}儀器參數`,
-      };
-      excel.export_array_to_excel(params);
+      }
+      excel.export_array_to_excel(params)
     },
   },
-});
+})
 </script>

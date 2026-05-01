@@ -1,4 +1,4 @@
-const path = require('path');
+const path = require('path')
 
 module.exports = {
   publicPath: process.env.NODE_ENV === 'production' ? '/dist/' : '/',
@@ -42,9 +42,9 @@ module.exports = {
           'b-card-img-lazy': ['src', 'blank-src'],
           'b-carousel-slide': 'img-src',
           'b-embed': 'src',
-        };
-        return options;
-      });
+        }
+        return options
+      })
   },
   transpileDependencies: ['vue-echarts', 'resize-detector'],
-};
+}

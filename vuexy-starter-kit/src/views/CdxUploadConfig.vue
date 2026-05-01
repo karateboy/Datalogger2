@@ -117,21 +117,21 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue';
-const Ripple = require('vue-ripple-directive');
-import axios from 'axios';
-import moment from 'moment';
-import { isNumber } from 'highcharts';
-import DatePicker from 'vue2-datepicker';
-import 'vue2-datepicker/index.css';
-import 'vue2-datepicker/locale/zh-tw';
-import { CdxConfig } from './types';
+import Vue from 'vue'
+const Ripple = require('vue-ripple-directive')
+import axios from 'axios'
+import moment from 'moment'
+import { isNumber } from 'highcharts'
+import DatePicker from 'vue2-datepicker'
+import 'vue2-datepicker/index.css'
+import 'vue2-datepicker/locale/zh-tw'
+import { CdxConfig } from './types'
 
 interface CdxMonitorTypes {
-  mt: string;
-  name: string;
-  min?: number;
-  max?: number;
+  mt: string
+  name: string
+  min?: number
+  max?: number
 }
 
 export default Vue.extend({
@@ -163,7 +163,7 @@ export default Vue.extend({
         key: 'siteID',
         label: 'siteID',
       },
-    ];
+    ]
 
     const columns = [
       {
@@ -182,7 +182,7 @@ export default Vue.extend({
         key: 'max',
         label: '最大值',
       },
-    ];
+    ]
 
     const cdxUploadColumns = [
       {
@@ -198,13 +198,13 @@ export default Vue.extend({
         formatter: (v: number) => {
           switch (v) {
             case 1:
-              return '資訊';
+              return '資訊'
 
             case 2:
-              return '警告';
+              return '警告'
 
             case 3:
-              return '錯誤';
+              return '錯誤'
           }
         },
       },
@@ -213,19 +213,19 @@ export default Vue.extend({
         label: '來源',
         sortable: true,
         formatter: (src: string) => {
-          let tokens = src.split(':');
+          let tokens = src.split(':')
           switch (tokens[0]) {
             case 'I':
-              return `設備:${tokens[1]}`;
+              return `設備:${tokens[1]}`
 
             case 'T':
-              return `測項:${tokens[1]}`;
+              return `測項:${tokens[1]}`
 
             case 'S':
-              if (tokens[1] === 'System') return `系統`;
-              else return `系統:${tokens[1]}`;
+              if (tokens[1] === 'System') return `系統`
+              else return `系統:${tokens[1]}`
             default:
-              return src;
+              return src
           }
         },
       },
@@ -234,12 +234,12 @@ export default Vue.extend({
         label: '詳細資訊',
         sortable: true,
       },
-    ];
-    const monitorTypes = Array<CdxMonitorTypes>();
+    ]
+    const monitorTypes = Array<CdxMonitorTypes>()
     const range = [
       moment().subtract(1, 'days').minute(0).second(0).millisecond(0).valueOf(),
       moment().minute(0).second(0).millisecond(0).valueOf(),
-    ];
+    ]
 
     let cdxConfig: CdxConfig = {
       enable: false,
@@ -247,7 +247,7 @@ export default Vue.extend({
       password: '',
       siteCounty: '',
       siteID: '',
-    };
+    }
     return {
       display: false,
       configColumns,
@@ -257,74 +257,74 @@ export default Vue.extend({
       range,
       cdxUploadColumns,
       cdxUploadLogs: [],
-    };
+    }
   },
   async mounted() {
-    await this.getCdxConfig();
-    await this.getMonitorTypes();
-    await this.getCdxUploadEvents();
+    await this.getCdxConfig()
+    await this.getMonitorTypes()
+    await this.getCdxUploadEvents()
   },
   methods: {
     async getCdxConfig() {
       try {
-        let ret = await axios.get('/CdxConfig');
+        let ret = await axios.get('/CdxConfig')
         if (ret.status === 200) {
-          this.cdxConfig = ret.data;
+          this.cdxConfig = ret.data
         }
       } catch (err) {
-        throw new Error(`$err`);
+        throw new Error(`$err`)
       }
     },
     async getMonitorTypes() {
       try {
-        let res = await axios.get('/CdxMonitorTypes');
+        let res = await axios.get('/CdxMonitorTypes')
         if (res.status === 200) {
-          this.monitorTypes = res.data;
+          this.monitorTypes = res.data
         }
       } catch (err) {
-        throw new Error(`$err`);
+        throw new Error(`$err`)
       }
     },
     justify(mt: any) {
-      if (!isNumber(mt.min)) mt.min = undefined;
-      if (!isNumber(mt.max)) mt.min = undefined;
+      if (!isNumber(mt.min)) mt.min = undefined
+      if (!isNumber(mt.max)) mt.min = undefined
     },
     async saveCdxConfig() {
       try {
-        let ret = await axios.put('/CdxConfig', this.cdxConfig);
+        let ret = await axios.put('/CdxConfig', this.cdxConfig)
         if (ret.status === 200) {
-          this.$bvModal.msgBoxOk('成功');
+          this.$bvModal.msgBoxOk('成功')
         }
       } catch (err) {
-        throw new Error(`$err`);
+        throw new Error(`$err`)
       }
     },
     async save() {
       for (const mt of this.monitorTypes) {
-        this.justify(mt);
+        this.justify(mt)
       }
       try {
-        let ret = await axios.put('/CdxMonitorTypes', this.monitorTypes);
-        if (ret.status === 200) this.$bvModal.msgBoxOk('成功');
+        let ret = await axios.put('/CdxMonitorTypes', this.monitorTypes)
+        if (ret.status === 200) this.$bvModal.msgBoxOk('成功')
       } catch (err) {
-        throw new Error(`$err`);
+        throw new Error(`$err`)
       }
     },
     async getCdxUploadEvents() {
       try {
-        let src = 'S:CDX';
+        let src = 'S:CDX'
         let res = await axios.get(
           `/Alarms/${src}/1/${this.range[0]}/${this.range[1]}`,
-        );
+        )
         if (res.status === 200) {
-          this.cdxUploadLogs = res.data;
+          this.cdxUploadLogs = res.data
         }
       } catch (err) {
-        throw new Error(`$err`);
+        throw new Error(`$err`)
       }
     },
   },
-});
+})
 </script>
 
 <style></style>

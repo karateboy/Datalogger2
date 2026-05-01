@@ -25,10 +25,10 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script>
-import Vue from 'vue';
-import { mapState, mapGetters } from 'vuex';
-import vSelect from 'vue-select';
-import axios from 'axios';
+import Vue from 'vue'
+import { mapState, mapGetters } from 'vuex'
+import vSelect from 'vue-select'
+import axios from 'axios'
 
 export default Vue.extend({
   components: {
@@ -41,17 +41,17 @@ export default Vue.extend({
     },
   },
   data() {
-    let chs = [];
+    let chs = []
     for (let i = 0; i < 6; i++) {
       chs.push({
         enable: false,
         mt: undefined,
         repairMode: false,
-      });
+      })
     }
-    let paramObj = { chs };
+    let paramObj = { chs }
 
-    if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr);
+    if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr)
 
     const fields = [
       'index',
@@ -67,27 +67,27 @@ export default Vue.extend({
         key: 'mt',
         label: '測項',
       },
-    ];
+    ]
 
     return {
       paramObj,
       fields,
       signalTypes: [],
-    };
+    }
   },
   mounted() {
-    this.getSignalTypes();
+    this.getSignalTypes()
   },
   methods: {
     async getSignalTypes() {
-      const res = await axios.get('/SignalTypes');
-      this.signalTypes = res.data;
+      const res = await axios.get('/SignalTypes')
+      this.signalTypes = res.data
     },
     justify() {},
     onChange(evt) {
-      this.justify();
-      this.$emit('param-changed', JSON.stringify(this.paramObj));
+      this.justify()
+      this.$emit('param-changed', JSON.stringify(this.paramObj))
     },
   },
-});
+})
 </script>

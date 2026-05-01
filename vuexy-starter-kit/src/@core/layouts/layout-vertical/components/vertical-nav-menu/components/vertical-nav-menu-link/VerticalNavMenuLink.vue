@@ -23,11 +23,11 @@
 </template>
 
 <script>
-import { useUtils as useAclUtils } from '@core/libs/acl';
-import { BLink, BBadge } from 'bootstrap-vue';
-import { useUtils as useI18nUtils } from '@core/libs/i18n';
-import useVerticalNavMenuLink from './useVerticalNavMenuLink';
-import mixinVerticalNavMenuLink from './mixinVerticalNavMenuLink';
+import { useUtils as useAclUtils } from '@core/libs/acl'
+import { BLink, BBadge } from 'bootstrap-vue'
+import { useUtils as useI18nUtils } from '@core/libs/i18n'
+import useVerticalNavMenuLink from './useVerticalNavMenuLink'
+import mixinVerticalNavMenuLink from './mixinVerticalNavMenuLink'
 
 export default {
   components: {
@@ -44,9 +44,9 @@ export default {
   setup(props) {
     const { isActive, linkProps, updateIsActive } = useVerticalNavMenuLink(
       props.item,
-    );
-    const { t } = useI18nUtils();
-    const { canViewVerticalNavMenuLink } = useAclUtils();
+    )
+    const { t } = useI18nUtils()
+    const { canViewVerticalNavMenuLink } = useAclUtils()
 
     return {
       isActive,
@@ -58,7 +58,7 @@ export default {
 
       // i18n
       t,
-    };
+    }
   },
-};
+}
 </script>

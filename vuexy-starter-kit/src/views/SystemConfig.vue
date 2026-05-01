@@ -218,14 +218,19 @@
       </b-form>
     </b-card>
     <b-card title="小時值特殊計算規則">
-      <b-table :items="hourCalculationRules" :fields="hourCalculationRuleFields" bordered fixed>
+      <b-table
+        :items="hourCalculationRules"
+        :fields="hourCalculationRuleFields"
+        bordered
+        fixed
+      >
         <template #thead-top>
           <b-tr>
             <b-td colspan="3">
               <b-button
-                  variant="gradient-primary"
-                  class="mr-1"
-                  @click="saveHourCalculationRules"
+                variant="gradient-primary"
+                class="mr-1"
+                @click="saveHourCalculationRules"
               >
                 儲存規則
               </b-button>
@@ -234,13 +239,13 @@
         </template>
         <template #cell(monitorTypes)="row">
           <v-select
-              id="monitorType"
-              v-model="row.item.monitorTypes"
-              label="desp"
-              :reduce="mt => mt._id"
-              :options="monitorTypes"
-              :close-on-select="false"
-              multiple
+            id="monitorType"
+            v-model="row.item.monitorTypes"
+            label="desp"
+            :reduce="mt => mt._id"
+            :options="monitorTypes"
+            :close-on-select="false"
+            multiple
           />
         </template>
       </b-table>
@@ -394,35 +399,35 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import axios from 'axios';
-import { isNumber } from 'highcharts';
-import { mapActions, mapGetters, mapMutations, mapState } from 'vuex';
-import moment from 'moment';
+import Vue from 'vue'
+import axios from 'axios'
+import { isNumber } from 'highcharts'
+import { mapActions, mapGetters, mapMutations, mapState } from 'vuex'
+import moment from 'moment'
 
-const Ripple = require('vue-ripple-directive');
+const Ripple = require('vue-ripple-directive')
 
 interface EmailTarget {
-  _id: string;
-  topic: Array<string>;
+  _id: string
+  topic: Array<string>
 }
 
 const emailRegx =
-  /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+  /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
 
 interface HourCalculationRule {
-  name:string;
-  monitorTypes:Array<string>;
-  delay:number;
-  hourRule:number;
+  name: string
+  monitorTypes: Array<string>
+  delay: number
+  hourRule: number
 }
 export default Vue.extend({
   directives: {
     Ripple,
   },
   data() {
-    let emails = Array<EmailTarget>();
-    let aqiMonitorTypes = new Array<string>();
+    let emails = Array<EmailTarget>()
+    let aqiMonitorTypes = new Array<string>()
     const fields = [
       {
         key: '_id',
@@ -432,10 +437,11 @@ export default Vue.extend({
         key: 'operation',
         label: '操作',
       },
-    ];
+    ]
 
-    let splitYear = moment().year() - 2;
-    let hourCalculationRules: HourCalculationRule[] = Array<HourCalculationRule>();
+    let splitYear = moment().year() - 2
+    let hourCalculationRules: HourCalculationRule[] =
+      Array<HourCalculationRule>()
     const hourCalculationRuleFields = [
       {
         key: 'name',
@@ -449,7 +455,7 @@ export default Vue.extend({
         key: 'monitorTypes',
         label: '測項',
       },
-    ];
+    ]
     return {
       form: {
         effectiveRatio: 0.75,
@@ -465,58 +471,58 @@ export default Vue.extend({
       smsPhones: '',
       lineChannelToken: '',
       hourCalculationRules,
-      hourCalculationRuleFields
-    };
+      hourCalculationRuleFields,
+    }
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap', 'activatedMonitorTypes']),
     canSaveEffectiveRatio(): boolean {
-      if (!this.form.effectiveRatio) return false;
+      if (!this.form.effectiveRatio) return false
 
-      if (!isNumber(this.form.effectiveRatio)) return false;
+      if (!isNumber(this.form.effectiveRatio)) return false
 
-      return !(this.form.effectiveRatio > 1 || this.form.effectiveRatio < 0);
+      return !(this.form.effectiveRatio > 1 || this.form.effectiveRatio < 0)
     },
   },
   async mounted() {
-    await this.getEffectiveRatio();
-    await this.getAlertEmailTarget();
-    await this.fetchMonitorTypes();
-    await this.getAqiMapping();
-    await this.getSmsPhones();
-    await this.getLineChannelToken();
-    await this.getLineChannelGroupId();
-    await this.getHourCalculationRules();
+    await this.getEffectiveRatio()
+    await this.getAlertEmailTarget()
+    await this.fetchMonitorTypes()
+    await this.getAqiMapping()
+    await this.getSmsPhones()
+    await this.getLineChannelToken()
+    await this.getLineChannelGroupId()
+    await this.getHourCalculationRules()
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapMutations(['setLoading']),
     async getEffectiveRatio() {
-      const res = await axios.get('/SystemConfig/EffectiveRatio');
-      this.form.effectiveRatio = res.data;
+      const res = await axios.get('/SystemConfig/EffectiveRatio')
+      this.form.effectiveRatio = res.data
     },
     async setEffectiveRatio() {
       const res = await axios.post('/SystemConfig/EffectiveRatio', {
         id: '',
         value: this.form.effectiveRatio.toString(),
-      });
+      })
       if (res.status === 200) {
-        this.$bvModal.msgBoxOk('成功', { headerBgVariant: 'info' });
+        this.$bvModal.msgBoxOk('成功', { headerBgVariant: 'info' })
       } else {
         this.$bvModal.msgBoxOk(`失敗 ${res.status} - ${res.statusText}`, {
           headerBgVariant: 'danger',
-        });
+        })
       }
     },
     async getAqiMapping() {
       try {
-        const res = await axios.get('/SystemConfig/AqiMonitorTypes');
+        const res = await axios.get('/SystemConfig/AqiMonitorTypes')
         if (res.status === 200) {
-          this.aqiMonitorTypes = res.data;
+          this.aqiMonitorTypes = res.data
         }
       } catch (err) {
-        console.error(err);
+        console.error(err)
       }
     },
     async setAqiMapping() {
@@ -524,70 +530,70 @@ export default Vue.extend({
         const res = await axios.post(
           '/SystemConfig/AqiMonitorTypes',
           this.aqiMonitorTypes,
-        );
+        )
         if (res.status === 200) {
-          this.$bvModal.msgBoxOk('成功更新');
+          this.$bvModal.msgBoxOk('成功更新')
         }
       } catch (err) {
-        console.error(err);
+        console.error(err)
       }
     },
     onEmailSelected(items: never[]) {
-      this.selected = items;
+      this.selected = items
     },
     async getAlertEmailTarget() {
       try {
-        const res = await axios.get('/AlertEmailTargets');
-        this.emails = res.data;
+        const res = await axios.get('/AlertEmailTargets')
+        this.emails = res.data
       } catch (err) {
-        throw new Error('failed to get Alert email!');
+        throw new Error('failed to get Alert email!')
       }
     },
     newEmail() {
       this.emails.push({
         _id: '',
         topic: [],
-      });
+      })
     },
     deleteEmail(index: number) {
-      this.emails.splice(index, 1);
+      this.emails.splice(index, 1)
     },
     validateEmail(index: number) {
-      return emailRegx.test(this.emails[index]._id);
+      return emailRegx.test(this.emails[index]._id)
     },
     async saveEmail() {
       let filteredEmails = this.emails.filter(v => {
-        if (!Boolean(v._id)) return false;
-        return emailRegx.test(v._id.toLowerCase());
-      });
+        if (!Boolean(v._id)) return false
+        return emailRegx.test(v._id.toLowerCase())
+      })
 
-      const res = await axios.post('/AlertEmailTargets', filteredEmails);
-      if (res.status === 200) this.$bvModal.msgBoxOk('成功');
+      const res = await axios.post('/AlertEmailTargets', filteredEmails)
+      if (res.status === 200) this.$bvModal.msgBoxOk('成功')
     },
     async testEmail(index: number) {
       const params = {
         email: this.emails[index]._id,
-      };
+      }
 
       const res = await axios.get('/TestAlertEmail', {
         params,
-      });
-      if (res.status === 200) this.$bvModal.msgBoxOk('成功');
+      })
+      if (res.status === 200) this.$bvModal.msgBoxOk('成功')
     },
     async testAllEmail() {
       try {
-        const res = await axios.get('/TestAllAlertEmail');
-        if (res.status === 200) await this.$bvModal.msgBoxOk('成功');
+        const res = await axios.get('/TestAllAlertEmail')
+        if (res.status === 200) await this.$bvModal.msgBoxOk('成功')
       } catch (err) {
-        throw new Error('failed to test email!');
+        throw new Error('failed to test email!')
       }
     },
     async getSmsPhones() {
       try {
-        const res = await axios.get('/SystemConfig/SmsPhones');
-        this.smsPhones = res.data.join(',');
+        const res = await axios.get('/SystemConfig/SmsPhones')
+        this.smsPhones = res.data.join(',')
       } catch (err) {
-        throw new Error('failed to get SMS Token!');
+        throw new Error('failed to get SMS Token!')
       }
     },
     async saveSmsPhones() {
@@ -595,32 +601,32 @@ export default Vue.extend({
         const res = await axios.post('/SystemConfig/SmsPhones', {
           id: '',
           value: this.smsPhones,
-        });
+        })
         if (res.status === 200) {
-          await this.$bvModal.msgBoxOk('成功');
+          await this.$bvModal.msgBoxOk('成功')
         }
       } catch (err) {
-        console.error(err);
+        console.error(err)
       }
     },
     async testSmsPhones() {
       try {
         const res = await axios.get(
           `/SystemConfig/SmsPhones/Verify/${this.smsPhones}`,
-        );
+        )
         if (res.status === 200) {
-          await this.$bvModal.msgBoxOk('成功');
+          await this.$bvModal.msgBoxOk('成功')
         }
       } catch (err) {
-        console.error(err);
+        console.error(err)
       }
     },
     async getLineChannelToken() {
       try {
-        const res = await axios.get('/SystemConfig/LineChannelToken');
-        this.lineChannelToken = res.data;
+        const res = await axios.get('/SystemConfig/LineChannelToken')
+        this.lineChannelToken = res.data
       } catch (err) {
-        throw new Error('failed to get Line Channel Token!');
+        throw new Error('failed to get Line Channel Token!')
       }
     },
     async saveLineChannelToken() {
@@ -628,12 +634,12 @@ export default Vue.extend({
         const res = await axios.post('/SystemConfig/LineChannelToken', {
           id: '',
           value: this.lineChannelToken,
-        });
+        })
         if (res.status === 200) {
-          await this.$bvModal.msgBoxOk('成功');
+          await this.$bvModal.msgBoxOk('成功')
         }
       } catch (err) {
-        console.error(err);
+        console.error(err)
       }
     },
     async testLineChannelToken() {
@@ -641,20 +647,20 @@ export default Vue.extend({
         const res = await axios.post(`/SystemConfig/LineChannelToken/Verify`, {
           id: '',
           value: this.lineChannelToken,
-        });
+        })
         if (res.status === 200) {
-          await this.$bvModal.msgBoxOk('成功');
+          await this.$bvModal.msgBoxOk('成功')
         }
       } catch (err) {
-        console.error(err);
+        console.error(err)
       }
     },
     async getLineChannelGroupId() {
       try {
-        const res = await axios.get('/SystemConfig/LineChannelGroupId');
-        this.lineChannelGroupId = res.data.join(',');
+        const res = await axios.get('/SystemConfig/LineChannelGroupId')
+        this.lineChannelGroupId = res.data.join(',')
       } catch (err) {
-        throw new Error('failed to get Line Channel Group Id!');
+        throw new Error('failed to get Line Channel Group Id!')
       }
     },
     async saveLineChannelGroupId() {
@@ -662,12 +668,12 @@ export default Vue.extend({
         const res = await axios.post('/SystemConfig/LineChannelGroupId', {
           id: '',
           value: this.lineChannelGroupId,
-        });
+        })
         if (res.status === 200) {
-          await this.$bvModal.msgBoxOk('成功');
+          await this.$bvModal.msgBoxOk('成功')
         }
       } catch (err) {
-        console.error(err);
+        console.error(err)
       }
     },
     async testLineChannelGroupId() {
@@ -678,49 +684,52 @@ export default Vue.extend({
             id: '',
             value: this.lineChannelGroupId,
           },
-        );
+        )
         if (res.status === 200) {
-          await this.$bvModal.msgBoxOk('成功');
+          await this.$bvModal.msgBoxOk('成功')
         }
       } catch (err) {
-        console.error(err);
+        console.error(err)
       }
     },
     async getHourCalculationRules() {
       try {
-        const res = await axios.get('/SystemConfig/HourCalculationRules');
-        this.hourCalculationRules = res.data;
+        const res = await axios.get('/SystemConfig/HourCalculationRules')
+        this.hourCalculationRules = res.data
       } catch (err) {
-        throw new Error('failed to get HourCalculationRules!');
+        throw new Error('failed to get HourCalculationRules!')
       }
     },
     async saveHourCalculationRules() {
       try {
-        const res = await axios.put('/SystemConfig/HourCalculationRules', this.hourCalculationRules);
+        const res = await axios.put(
+          '/SystemConfig/HourCalculationRules',
+          this.hourCalculationRules,
+        )
         if (res.status === 200) {
-          await this.$bvModal.msgBoxOk('成功');
+          await this.$bvModal.msgBoxOk('成功')
         }
       } catch (err) {
-        console.error(err);
+        console.error(err)
       }
     },
     async splitTable() {
       try {
-        this.setLoading({ loading: true });
+        this.setLoading({ loading: true })
         const res = await axios.post('/SystemConfig/SplitTable', {
           id: '',
           value: this.form.splitYear.toString(),
-        });
+        })
         if (res.status === 200) {
-          this.$bvModal.msgBoxOk('成功');
+          this.$bvModal.msgBoxOk('成功')
         }
       } catch (err) {
-        this.$bvModal.msgBoxOk(`失敗:${err}`);
-        console.error(err);
+        this.$bvModal.msgBoxOk(`失敗:${err}`)
+        console.error(err)
       } finally {
-        this.setLoading({ loading: false });
+        this.setLoading({ loading: false })
       }
     },
   },
-});
+})
 </script>

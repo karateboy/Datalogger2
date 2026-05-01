@@ -1,45 +1,45 @@
-import Vue from 'vue';
-import Vuex, {StoreOptions} from 'vuex';
+import Vue from 'vue'
+import Vuex, { StoreOptions } from 'vuex'
 
 // Modules
-import app from './app';
-import appConfig from './app-config';
-import verticalMenu from './vertical-menu';
-import monitorTypes from './monitorTypes';
-import {monitors} from './monitors';
-import {monitorTypeGroups} from "@/store/monitorTypeGroups";
-import user from './user';
-import {tables} from './tables';
-import {RootState} from './types';
+import app from './app'
+import appConfig from './app-config'
+import verticalMenu from './vertical-menu'
+import monitorTypes from './monitorTypes'
+import { monitors } from './monitors'
+import { monitorTypeGroups } from '@/store/monitorTypeGroups'
+import user from './user'
+import { tables } from './tables'
+import { RootState } from './types'
 
-Vue.use(Vuex);
+Vue.use(Vuex)
 
 const store: StoreOptions<RootState> = {
-    state: {
-        isLoading: false,
-        loadingMessage: '...',
-        login: false,
+  state: {
+    isLoading: false,
+    loadingMessage: '...',
+    login: false,
+  },
+  mutations: {
+    setLoading(state, param) {
+      const { loading, message } = param
+      state.isLoading = loading
+      if (message) state.loadingMessage = message
     },
-    mutations: {
-        setLoading(state, param) {
-            const {loading, message} = param;
-            state.isLoading = loading;
-            if (message) state.loadingMessage = message;
-        },
-        setLogin(state, login) {
-            state.login = login;
-        },
+    setLogin(state, login) {
+      state.login = login
     },
-    modules: {
-        app,
-        appConfig,
-        verticalMenu,
-        monitorTypes,
-        monitors,
-        monitorTypeGroups,
-        user,
-        tables,
-    },
-    strict: process.env.DEV,
-};
-export default new Vuex.Store<RootState>(store);
+  },
+  modules: {
+    app,
+    appConfig,
+    verticalMenu,
+    monitorTypes,
+    monitors,
+    monitorTypeGroups,
+    user,
+    tables,
+  },
+  strict: process.env.DEV,
+}
+export default new Vuex.Store<RootState>(store)

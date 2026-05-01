@@ -58,10 +58,10 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script>
-import Vue from 'vue';
-import { mapState, mapGetters } from 'vuex';
-import vSelect from 'vue-select';
-import axios from 'axios';
+import Vue from 'vue'
+import { mapState, mapGetters } from 'vuex'
+import vSelect from 'vue-select'
+import axios from 'axios'
 
 export default Vue.extend({
   components: {
@@ -82,11 +82,11 @@ export default Vue.extend({
         bit: 0,
         seconds: 30,
       },
-    };
+    }
 
     if (this.paramStr !== '{}') {
-      paramObj = JSON.parse(this.paramStr);
-      this.$emit('param-changed', JSON.stringify(this.paramObj));
+      paramObj = JSON.parse(this.paramStr)
+      this.$emit('param-changed', JSON.stringify(this.paramObj))
     }
 
     return {
@@ -102,28 +102,28 @@ export default Vue.extend({
         },
       ],
       doInstruments: [],
-    };
+    }
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap']),
   },
   mounted() {
-    this.getDoInstruments();
+    this.getDoInstruments()
   },
   methods: {
     async getDoInstruments() {
-      const res = await axios.get('/Instruments/DO');
-      this.doInstruments = res.data;
+      const res = await axios.get('/Instruments/DO')
+      this.doInstruments = res.data
     },
     justify() {
-      const param = this.paramObj;
-      if (param.eventConfig.seconds === '') param.eventConfig.seconds = 30;
+      const param = this.paramObj
+      if (param.eventConfig.seconds === '') param.eventConfig.seconds = 30
     },
     onChange(evt) {
-      this.justify();
-      this.$emit('param-changed', JSON.stringify(this.paramObj));
+      this.justify()
+      this.$emit('param-changed', JSON.stringify(this.paramObj))
     },
   },
-});
+})
 </script>
