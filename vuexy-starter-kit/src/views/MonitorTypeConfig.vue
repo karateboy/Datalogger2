@@ -211,14 +211,6 @@ export default Vue.extend({
         label: '名稱',
       },
       {
-        key: 'more.rangeMin',
-        label: '偵測下限',
-      },
-      {
-        key: 'more.rangeMax',
-        label: '偵測上限',
-      },
-      {
         key: 'unit',
         label: '單位',
       },
@@ -233,42 +225,6 @@ export default Vue.extend({
       {
         key: 'std_law',
         label: '法規值',
-      },
-      {
-        key: 'zd_law',
-        label: '零點偏移法規(±)',
-      },
-      {
-        key: 'span',
-        label: '全幅值',
-      },
-      {
-        key: 'span_dev_law',
-        label: '全幅值偏移法規(%)',
-      },
-      {
-        key: 'levelSeq',
-        label: '分級(以逗點分隔)',
-      },
-      {
-        key: 'calbrate',
-        label: '校正回歸',
-        tdClass: {'text-center': true},
-      },
-      {
-        key: 'fixedM',
-        label: 'slope',
-        tdClass: {'text-center': true},
-      },
-      {
-        key: 'fixedB',
-        label: 'offset',
-        tdClass: {'text-center': true},
-      },
-      {
-        key: 'accumulated',
-        label: '累積',
-        tdClass: {'text-center': true},
       },
       {
         key: 'overLawSignalType',

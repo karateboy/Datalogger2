@@ -15,12 +15,6 @@ export default [
                 action: 'read',
                 resource: 'Dashboard',
             },
-            {
-                title: '即時AQI',
-                route: 'realtime-aqi',
-                action: 'read',
-                resource: 'Dashboard',
-            },
         ],
     },
     {
@@ -40,36 +34,6 @@ export default [
                 resource: 'Data',
             },
             {
-                title: 'AQI趨勢圖',
-                route: 'aqi-trend',
-                action: 'read',
-                resource: 'Data',
-            },
-            {
-                title: '雙測項對比圖',
-                route: 'scatter-chart',
-                action: 'read',
-                resource: 'Data',
-            },
-            {
-                title: '煙流回推軌跡線',
-                route: 'trace-query',
-                action: 'read',
-                resource: 'Data',
-            },
-            {
-                title: '玫瑰圖查詢',
-                route: 'wind-rose-query',
-            },
-            {
-                title: '校正資料查詢',
-                route: 'calibration-query',
-            },
-            {
-                title: '多點校正查詢',
-                route: 'multi-calibration-query',
-            },
-            {
                 title: '警報記錄查詢',
                 route: 'alarm-query',
                 action: 'read',
@@ -87,20 +51,7 @@ export default [
                 action: 'read',
                 resource: 'Data',
             },
-            {
-                title: '月份時報表',
-                route: 'monthly-hour-report',
-                action: 'read',
-                resource: 'Data',
-            },
         ],
-    },
-    {
-        title: '維護操作',
-        icon: 'ActivityIcon',
-        route: 'instrument-maintenance',
-        action: 'set',
-        resource: 'Maintenance',
     },
     {
         title: '系統管理',
@@ -111,28 +62,12 @@ export default [
                 route: 'instrument-management',
             },
             {
-                title: '儀器狀態查詢',
-                route: 'instrument-status',
-            },
-            {
                 title: '測點管理',
                 route: 'monitor-config',
             },
             {
                 title: '測項管理',
                 route: 'monitor-type-config',
-            },
-            {
-                title: '測項群組管理',
-                route: 'monitor-type-group',
-            },
-            {
-                title: '狀態碼管理',
-                route: 'monitor-status-config',
-            },
-            {
-                title: '多點校正管理',
-                route: 'calibration-config',
             },
             {
                 title: '警報規則管理',
@@ -143,32 +78,12 @@ export default [
                 route: 'signal-type-config',
             },
             {
-                title: '人工資料註記',
-                route: 'manual-audit',
-            },
-            {
-                title: '人工註記查詢',
-                route: 'audit-log-query',
-            },
-            {
                 title: '使用者管理',
                 route: 'user-management',
             },
             {
                 title: '群組管理',
                 route: 'group-management',
-            },
-            {
-                title: '資料檢核設定',
-                route: 'audit-config',
-            },
-            {
-                title: '資料上傳',
-                route: 'data-management',
-            },
-            {
-                title: 'CDX上傳設定',
-                route: 'cdx-upload-config',
             },
             {
                 title: '參數設定',
