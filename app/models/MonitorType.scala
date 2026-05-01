@@ -114,34 +114,7 @@ object MonitorType {
   /*
   * GeneratingFunction(required MonitorTypes, generated MonitorType, rawData)
   * */
-  private val calculatedMonitorTypeList: List[CalculatedMonitorType] =
-    List(
-      CalculatedMonitorType(Seq(LEQA), LDN, (mtDataList, now) =>
-        for (mtData <- mtDataList.find(_.mt == LEQA))
-          yield {
-            val localTime = now.toInstant
-              .atZone(ZoneId.systemDefault())
-              .toLocalTime;
-
-            if (localTime.getHour < 7 || localTime.getHour >= 22)
-              MonitorTypeData(LDN, mtData.value + 10, mtData.status)
-            else
-              MonitorTypeData(LDN, mtData.value, mtData.status)
-          }
-      ),
-      CalculatedMonitorType(Seq(WIN_SPEED), WS_SPEED, (mtDataList, _) =>
-        for (target <- mtDataList.find(_.mt == WIN_SPEED)) yield
-          target.copy(mt = WS_SPEED)
-      ),
-      CalculatedMonitorType(Seq(WIN_SPEED), WS10, (mtDataList, _) =>
-        for (target <- mtDataList.find(_.mt == WIN_SPEED)) yield
-          target.copy(mt = WS10)
-      ),
-      CalculatedMonitorType(Seq(WIN_DIRECTION), WD10, (mtDataList, _) =>
-        for (target <- mtDataList.find(_.mt == WIN_DIRECTION)) yield
-          target.copy(mt = WD10)
-      ),
-    )
+  private val calculatedMonitorTypeList: List[CalculatedMonitorType] = List.empty
 
   val calculatedMonitorTypes: Seq[String] = calculatedMonitorTypeList.map(_.targetMonitorType)
 

@@ -32,24 +32,6 @@
       </b-card>
     </b-col>
     <b-col
-      v-if="cdxConfig.enable"
-      cols="12"
-      lg="6"
-      md="6"
-      style="max-height: 400px"
-      xl="6"
-    >
-      <b-table
-        :fields="cdxUploadColumns"
-        :items="cdxUploadLogs"
-        :tbody-tr-class="rowClass"
-        responsive
-        small
-        sticky-header
-        striped
-      />
-    </b-col>
-    <b-col
       v-for="mt in userInfo.monitorTypeOfInterest"
       :key="mt"
       cols="12"
@@ -59,65 +41,6 @@
     >
       <b-card border-variant="primary">
         <div :id="`history_${mt}`"></div>
-      </b-card>
-    </b-col>
-    <b-col
-      v-for="mt in windRoseList"
-      :key="`rose${mt}`"
-      cols="12"
-      lg="4"
-      md="6"
-      xl="3"
-    >
-      <b-card
-        :header="`${getMtName(mt)}玫瑰圖`"
-        border-variant="success"
-        header-bg-variant="success"
-        header-class="h4 display text-center"
-        header-text-variant="white"
-      >
-        <div :id="`rose_${mt}`">尚無資料</div>
-      </b-card>
-    </b-col>
-    <b-col v-if="userInfo.windField" cols="12">
-      <b-card border-variant="primary" no-body>
-        <div class="map_container">
-          <GmapMap
-            ref="map"
-            :center="getMapCenter()"
-            :options="mapOption"
-            :zoom="14"
-            class="map_canvas"
-            map-type-id="hybrid"
-          >
-            <div v-if="mapLoaded">
-              <div
-                v-for="recordList in activeRecordList"
-                :key="recordList._id.monitor"
-              >
-                <GmapMarker
-                  :clickable="false"
-                  :icon="getCircleIcon(recordList)"
-                  :position="getSudoMonitorPos(recordList._id.monitor)"
-                />
-                <GmapMarker
-                  :clickable="true"
-                  :icon="getWindIcon(recordList)"
-                  :label="{
-                    text: `${geMtRecordValue(recordList, 'WD_SPEED')}`,
-                    className:
-                      'map-label bg-white rounded border border-primary',
-                    color: 'black',
-                    fontSize: '14px',
-                    fontWeight: '400',
-                  }"
-                  :position="getSudoMonitorPos(recordList._id.monitor)"
-                  :title="getSudoMonitorName(recordList._id.monitor)"
-                />
-              </div>
-            </div>
-          </GmapMap>
-        </div>
       </b-card>
     </b-col>
   </b-row>
