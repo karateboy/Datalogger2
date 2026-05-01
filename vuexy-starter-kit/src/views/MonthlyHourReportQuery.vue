@@ -87,17 +87,17 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import DatePicker from 'vue2-datepicker';
-import vSelect from 'vue-select';
-import 'vue2-datepicker/index.css';
-import 'vue2-datepicker/locale/zh-tw';
-const Ripple = require('vue-ripple-directive');
-import { mapState, mapActions, mapGetters } from 'vuex';
-import moment from 'moment';
-import axios from 'axios';
-const excel = require('../libs/excel');
-const _ = require('lodash');
+import Vue from 'vue'
+import DatePicker from 'vue2-datepicker'
+import vSelect from 'vue-select'
+import 'vue2-datepicker/index.css'
+import 'vue2-datepicker/locale/zh-tw'
+const Ripple = require('vue-ripple-directive')
+import { mapState, mapActions, mapGetters } from 'vuex'
+import moment from 'moment'
+import axios from 'axios'
+const excel = require('../libs/excel')
+const _ = require('lodash')
 
 export default Vue.extend({
   components: {
@@ -108,7 +108,7 @@ export default Vue.extend({
     Ripple,
   },
   data() {
-    const date = moment().valueOf();
+    const date = moment().valueOf()
     return {
       display: false,
       columns: Array<any>(),
@@ -118,7 +118,7 @@ export default Vue.extend({
         date,
         monitorType: undefined,
       },
-    };
+    }
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
@@ -127,38 +127,38 @@ export default Vue.extend({
   mounted() {
     this.fetchMonitorTypes().then(() => {
       if (this.monitorTypes.length !== 0) {
-        this.form.monitorType = this.monitorTypes[0]._id;
+        this.form.monitorType = this.monitorTypes[0]._id
       }
-    });
+    })
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     async query() {
-      this.display = true;
-      const url = `/MonthlyHourReport/${this.form.monitorType}/${this.form.date}`;
-      const res = await axios.get(url);
-      this.handleReport(res.data);
+      this.display = true
+      const url = `/MonthlyHourReport/${this.form.monitorType}/${this.form.date}`
+      const res = await axios.get(url)
+      this.handleReport(res.data)
     },
     downloadReport() {
       const baseUrl =
-        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
+        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/'
 
-      const url = `${baseUrl}Excel/MonthlyHourReport/${this.form.monitorType}/${this.form.date}`;
+      const url = `${baseUrl}Excel/MonthlyHourReport/${this.form.monitorType}/${this.form.date}`
 
-      window.open(url);
+      window.open(url)
     },
     cellDataTd(i: number) {
       return (_value: any, _key: any, item: any) =>
-        item.cellData[i].cellClassName;
+        item.cellData[i].cellClassName
     },
     handleReport(report: any) {
-      this.columns.splice(0, this.columns.length);
+      this.columns.splice(0, this.columns.length)
 
       this.columns.push({
         key: 'time',
         label: '日\\時間',
         sortable: true,
-      });
+      })
 
       for (let i = 0; i < report.columnNames.length; i++) {
         this.columns.push({
@@ -167,26 +167,26 @@ export default Vue.extend({
           sortable: true,
           tdClass: this.cellDataTd(i),
           stickyColumn: true,
-        });
+        })
       }
       for (const row of report.rows) {
-        row.time = moment(row.date).format('MM/DD');
+        row.time = moment(row.date).format('MM/DD')
       }
-      this.rows = report.rows;
-      this.statRows = report.statRows;
+      this.rows = report.rows
+      this.statRows = report.statRows
     },
     exportExcel() {
-      const title = this.columns.map(e => e.label);
-      const key = this.columns.map(e => e.key);
+      const title = this.columns.map(e => e.label)
+      const key = this.columns.map(e => e.key)
       for (let entry of this.rows) {
-        let e = entry as any;
+        let e = entry as any
         for (let k of key) {
-          e[k] = _.get(entry, k);
+          e[k] = _.get(entry, k)
         }
       }
       let filename = `${moment(this.form.date).year()}年${
         moment(this.form.date).month() + 1
-      }月分時報表`;
+      }月分時報表`
 
       const params = {
         title,
@@ -194,11 +194,11 @@ export default Vue.extend({
         data: this.rows,
         autoWidth: true,
         filename,
-      };
-      excel.export_array_to_excel(params);
+      }
+      excel.export_array_to_excel(params)
     },
   },
-});
+})
 </script>
 
 <style></style>

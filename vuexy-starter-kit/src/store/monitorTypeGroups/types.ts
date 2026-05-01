@@ -1,9 +1,9 @@
 export interface MonitorTypeGroup {
-  _id: string;
-  name: string;
-  mts: Array<string>;
+  _id: string
+  name: string
+  mts: Array<string>
 }
 
 export interface MonitorTypeGroupState {
-  monitorTypeGroups: Array<MonitorTypeGroup>;
+  monitorTypeGroups: Array<MonitorTypeGroup>
 }

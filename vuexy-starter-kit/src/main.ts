@@ -1,46 +1,46 @@
-import Vue from 'vue';
+import Vue from 'vue'
 import {
   BootstrapVue,
   IconsPlugin,
   ToastPlugin,
   ModalPlugin,
-} from 'bootstrap-vue';
-import VueCompositionAPI from '@vue/composition-api';
-import axios from 'axios';
-import moment from 'moment';
-import Highcharts from 'highcharts';
-import ex from 'highcharts/modules/exporting';
-import csv from 'highcharts/modules/export-data';
-import offlineExport from 'highcharts/modules/offline-exporting';
-import Loading from 'vue-loading-overlay';
-import VueFormWizard from 'vue-form-wizard';
-import 'vue-form-wizard/dist/vue-form-wizard.min.css';
+} from 'bootstrap-vue'
+import VueCompositionAPI from '@vue/composition-api'
+import axios from 'axios'
+import moment from 'moment'
+import Highcharts from 'highcharts'
+import ex from 'highcharts/modules/exporting'
+import csv from 'highcharts/modules/export-data'
+import offlineExport from 'highcharts/modules/offline-exporting'
+import Loading from 'vue-loading-overlay'
+import VueFormWizard from 'vue-form-wizard'
+import 'vue-form-wizard/dist/vue-form-wizard.min.css'
 
-import router from './router';
-import store from './store';
-import App from './App.vue';
-import { ValidationProvider } from 'vee-validate';
-import vSelect from 'vue-select';
-import GmapVue from 'gmap-vue';
+import router from './router'
+import store from './store'
+import App from './App.vue'
+import { ValidationProvider } from 'vee-validate'
+import vSelect from 'vue-select'
+import GmapVue from 'gmap-vue'
 
 // Global Components
-import './global-components';
+import './global-components'
 
 // 3rd party plugins
-import '@/libs/acl';
-import '@/libs/portal-vue';
-import '@/libs/toastification';
+import '@/libs/acl'
+import '@/libs/portal-vue'
+import '@/libs/toastification'
 
 axios.defaults.baseURL =
-  process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '';
-axios.defaults.withCredentials = true;
+  process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : ''
+axios.defaults.withCredentials = true
 
 // Setup moment
-moment.locale('zh_tw');
+moment.locale('zh_tw')
 
-ex(Highcharts);
-csv(Highcharts);
-offlineExport(Highcharts);
+ex(Highcharts)
+csv(Highcharts)
+offlineExport(Highcharts)
 const colors = [
   '#00FF00',
   '#FFD700',
@@ -51,7 +51,7 @@ const colors = [
   '#FF9655',
   '#FFF263',
   '#6AF9C4',
-];
+]
 Highcharts.setOptions({
   lang: {
     contextButtonTitle: '圖表功能表',
@@ -107,41 +107,41 @@ Highcharts.setOptions({
     ],
   },
   colors,
-});
+})
 
-Vue.use(VueFormWizard);
-Vue.component('VSelect', vSelect);
+Vue.use(VueFormWizard)
+Vue.component('VSelect', vSelect)
 
-Vue.component('ValidationProvider', ValidationProvider);
+Vue.component('ValidationProvider', ValidationProvider)
 
 // BSV Plugin Registration
-Vue.use(BootstrapVue);
-Vue.use(IconsPlugin);
-Vue.use(ToastPlugin);
-Vue.use(ModalPlugin);
-Vue.use(Loading);
+Vue.use(BootstrapVue)
+Vue.use(IconsPlugin)
+Vue.use(ToastPlugin)
+Vue.use(ModalPlugin)
+Vue.use(Loading)
 // Composition API
-Vue.use(VueCompositionAPI);
+Vue.use(VueCompositionAPI)
 
 // import core styles
-require('@core/scss/core.scss');
+require('@core/scss/core.scss')
 
 // import assets styles
-require('@/assets/scss/style.scss');
+require('@/assets/scss/style.scss')
 
-require('@core/assets/fonts/feather/iconfont.css');
+require('@core/assets/fonts/feather/iconfont.css')
 
-require('vue-loading-overlay/dist/vue-loading.css');
+require('vue-loading-overlay/dist/vue-loading.css')
 
-Vue.config.productionTip = false;
+Vue.config.productionTip = false
 
 router.beforeEach((to, from, next) => {
   if (store.state.login || to.name === 'login') {
-    next();
+    next()
   } else {
-    next({ name: 'login' });
+    next({ name: 'login' })
   }
-});
+})
 
 Vue.use(GmapVue, {
   load: {
@@ -150,9 +150,9 @@ Vue.use(GmapVue, {
     v: '3.26',
   },
   installComponents: true,
-});
+})
 new Vue({
   router,
   store,
   render: h => h(App),
-}).$mount('#app');
+}).$mount('#app')

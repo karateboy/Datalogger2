@@ -100,9 +100,9 @@ import {
   BAvatar,
   BButton,
   BFormCheckbox,
-} from 'bootstrap-vue';
-import VuePerfectScrollbar from 'vue-perfect-scrollbar';
-import Ripple from 'vue-ripple-directive';
+} from 'bootstrap-vue'
+import VuePerfectScrollbar from 'vue-perfect-scrollbar'
+import Ripple from 'vue-ripple-directive'
 
 export default {
   components: {
@@ -139,7 +139,7 @@ export default {
         subtitle: 'MD Inc. order updated',
         type: 'light-danger',
       },
-    ];
+    ]
     /* eslint-disable global-require */
 
     const systemNotifications = [
@@ -161,20 +161,20 @@ export default {
         type: 'light-warning',
         icon: 'AlertTriangleIcon',
       },
-    ];
+    ]
 
     const perfectScrollbarSettings = {
       maxScrollbarLength: 60,
       wheelPropagation: false,
-    };
+    }
 
     return {
       notifications,
       systemNotifications,
       perfectScrollbarSettings,
-    };
+    }
   },
-};
+}
 </script>
 
 <style></style>

@@ -13,7 +13,7 @@
 </template>
 
 <script>
-import { BCard, BAvatar } from 'bootstrap-vue';
+import { BCard, BAvatar } from 'bootstrap-vue'
 
 export default {
   components: {
@@ -38,5 +38,5 @@ export default {
       default: 'primary',
     },
   },
-};
+}
 </script>

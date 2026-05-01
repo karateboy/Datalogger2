@@ -22,21 +22,21 @@
   </b-form>
 </template>
 <script lang="ts">
-import Vue from 'vue';
-import axios from 'axios';
+import Vue from 'vue'
+import axios from 'axios'
 interface DuoMonitorType {
-  id: string;
-  desc: string;
-  configID: string;
+  id: string
+  desc: string
+  configID: string
 }
 
 interface EditRow extends DuoMonitorType {
-  rowSelected?: boolean;
+  rowSelected?: boolean
 }
 
 interface DuoConfig {
-  fixed: boolean;
-  monitorTypes: Array<DuoMonitorType>;
+  fixed: boolean
+  monitorTypes: Array<DuoMonitorType>
 }
 
 export default Vue.extend({
@@ -55,15 +55,15 @@ export default Vue.extend({
     },
   },
   data() {
-    let monitorTypes = Array<DuoMonitorType>();
+    let monitorTypes = Array<DuoMonitorType>()
     let config: DuoConfig = {
       fixed: true,
       monitorTypes,
-    };
+    }
 
-    if (this.paramStr !== '{}') config = JSON.parse(this.paramStr);
+    if (this.paramStr !== '{}') config = JSON.parse(this.paramStr)
 
-    let supportedMonitorTypes = Array<EditRow>();
+    let supportedMonitorTypes = Array<EditRow>()
 
     let fields = [
       {
@@ -79,51 +79,51 @@ export default Vue.extend({
         label: '頻譜',
         formatter: (v: boolean) => (v ? '是' : '否'),
       },
-    ];
+    ]
     return {
       config,
       supportedMonitorTypes,
       fields,
-    };
+    }
   },
   watch: {
     loading(newValue: boolean) {
       if (newValue) {
-        let duoMonitorTypes = this.$refs.duoMonitorTypes as any;
+        let duoMonitorTypes = this.$refs.duoMonitorTypes as any
         this.supportedMonitorTypes.forEach((t, idx) => {
           if (
             this.config.monitorTypes.find(mt => mt.id === t.id) !== undefined
           ) {
-            duoMonitorTypes.selectRow(idx);
+            duoMonitorTypes.selectRow(idx)
           }
-        });
+        })
       }
     },
   },
   mounted() {
-    this.getFixedMonitorTypes();
+    this.getFixedMonitorTypes()
   },
   methods: {
     async getFixedMonitorTypes() {
       try {
-        const res = await axios.get('/DuoFixedMonitorTypes');
+        const res = await axios.get('/DuoFixedMonitorTypes')
 
         if (res.status === 200) {
-          this.supportedMonitorTypes = res.data;
+          this.supportedMonitorTypes = res.data
         }
       } catch (err) {
-        throw new Error(`${err}`);
+        throw new Error(`${err}`)
       }
     },
     onSelected(items: Array<DuoMonitorType>) {
-      this.config.monitorTypes = items;
-      this.onChange();
+      this.config.monitorTypes = items
+      this.onChange()
     },
     justify() {},
     onChange() {
-      this.justify();
-      this.$emit('param-changed', JSON.stringify(this.config));
+      this.justify()
+      this.$emit('param-changed', JSON.stringify(this.config))
     },
   },
-});
+})
 </script>

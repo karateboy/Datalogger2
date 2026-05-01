@@ -34,18 +34,18 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import { mapState, mapGetters } from 'vuex';
-import vSelect from 'vue-select';
-import { isNumber } from 'highcharts';
+import Vue from 'vue'
+import { mapState, mapGetters } from 'vuex'
+import vSelect from 'vue-select'
+import { isNumber } from 'highcharts'
 interface AiChannelCfg {
-  enable: boolean;
-  mt?: string;
-  max?: number;
-  mtMax?: number;
-  min?: number;
-  mtMin?: number;
-  repairMode?: boolean;
+  enable: boolean
+  mt?: string
+  max?: number
+  mtMax?: number
+  min?: number
+  mtMin?: number
+  repairMode?: boolean
 }
 
 export default Vue.extend({
@@ -59,7 +59,7 @@ export default Vue.extend({
     },
   },
   data() {
-    let chs = Array<AiChannelCfg>();
+    let chs = Array<AiChannelCfg>()
     for (let i = 0; i < 8; i++) {
       chs.push({
         enable: false,
@@ -69,10 +69,10 @@ export default Vue.extend({
         min: undefined,
         mtMin: undefined,
         repairMode: false,
-      });
+      })
     }
 
-    if (this.paramStr !== '') chs = JSON.parse(this.paramStr);
+    if (this.paramStr !== '') chs = JSON.parse(this.paramStr)
 
     const fields = [
       {
@@ -103,12 +103,12 @@ export default Vue.extend({
         key: 'mtMax',
         label: '測項最大值',
       },
-    ];
+    ]
 
     return {
       chs,
       fields,
-    };
+    }
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
@@ -117,16 +117,16 @@ export default Vue.extend({
   methods: {
     justify() {
       for (const ch of this.chs) {
-        if (!isNumber(ch.min)) ch.min = undefined;
-        if (!isNumber(ch.max)) ch.max = undefined;
-        if (!isNumber(ch.mtMin)) ch.mtMin = undefined;
-        if (!isNumber(ch.mtMax)) ch.mtMax = undefined;
+        if (!isNumber(ch.min)) ch.min = undefined
+        if (!isNumber(ch.max)) ch.max = undefined
+        if (!isNumber(ch.mtMin)) ch.mtMin = undefined
+        if (!isNumber(ch.mtMax)) ch.mtMax = undefined
       }
     },
     onChange(evt: any) {
-      this.justify();
-      this.$emit('param-changed', JSON.stringify(this.chs));
+      this.justify()
+      this.$emit('param-changed', JSON.stringify(this.chs))
     },
   },
-});
+})
 </script>

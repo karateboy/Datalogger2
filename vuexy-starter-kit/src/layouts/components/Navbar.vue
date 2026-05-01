@@ -72,10 +72,10 @@
 </template>
 
 <script>
-import DarkToggler from '@core/layouts/components/app-navbar/components/DarkToggler.vue';
-import axios from 'axios';
-import { mapState } from 'vuex';
-import jscookie from 'js-cookie';
+import DarkToggler from '@core/layouts/components/app-navbar/components/DarkToggler.vue'
+import axios from 'axios'
+import { mapState } from 'vuex'
+import jscookie from 'js-cookie'
 
 export default {
   components: {
@@ -91,30 +91,30 @@ export default {
   data() {
     return {
       version: '1.0.0',
-    };
+    }
   },
   computed: {
     ...mapState('user', ['userInfo']),
     role() {
-      if (this.userInfo.isAdmin) return '系統管理員';
+      if (this.userInfo.isAdmin) return '系統管理員'
 
-      return '使用者';
+      return '使用者'
     },
   },
   async mounted() {
-    await this.getVersion();
+    await this.getVersion()
   },
   methods: {
     async getVersion() {
-      let res = await axios.get('/version');
-      if (res.status === 200) this.version = res.data.version;
+      let res = await axios.get('/version')
+      if (res.status === 200) this.version = res.data.version
     },
     logout() {
       axios.get('/logout').then(() => {
-        jscookie.remove('authentication');
-        this.$router.push('/login');
-      });
+        jscookie.remove('authentication')
+        this.$router.push('/login')
+      })
     },
   },
-};
+}
 </script>

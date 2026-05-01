@@ -172,32 +172,32 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import axios from 'axios';
-import { mapState, mapActions } from 'vuex';
+import Vue from 'vue'
+import axios from 'axios'
+import { mapState, mapActions } from 'vuex'
 interface RuleID {
-  monitor: string;
-  monitorType: string;
+  monitor: string
+  monitorType: string
 }
 interface SpikeRule {
-  _id: RuleID;
-  enable: boolean;
-  abs: number;
+  _id: RuleID
+  enable: boolean
+  abs: number
 }
 interface ConstantRule {
-  _id: RuleID;
-  enable: boolean;
-  count: number;
+  _id: RuleID
+  enable: boolean
+  count: number
 }
 interface VariationRule {
-  _id: RuleID;
-  enable: boolean;
-  abs: number;
+  _id: RuleID
+  enable: boolean
+  abs: number
 }
 
 export default Vue.extend({
   data() {
-    let spikeRules = Array<SpikeRule>();
+    let spikeRules = Array<SpikeRule>()
     let spikeRuleFields = [
       {
         key: '_id',
@@ -215,7 +215,7 @@ export default Vue.extend({
         key: 'operation',
         label: '操作',
       },
-    ];
+    ]
     let constantRuleFields = [
       {
         key: '_id',
@@ -233,10 +233,10 @@ export default Vue.extend({
         key: 'operation',
         label: '操作',
       },
-    ];
-    let constantRules = Array<ConstantRule>();
-    let variationRules = Array<VariationRule>();
-    let variationRuleFields = spikeRuleFields;
+    ]
+    let constantRules = Array<ConstantRule>()
+    let variationRules = Array<VariationRule>()
+    let variationRuleFields = spikeRuleFields
     return {
       spikeRules,
       spikeRuleFields,
@@ -244,18 +244,18 @@ export default Vue.extend({
       constantRuleFields,
       variationRules,
       variationRuleFields,
-    };
+    }
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapState('monitors', ['monitors']),
   },
   async mounted() {
-    await this.fetchMonitorTypes();
-    await this.fetchMonitors();
-    await this.getSpikeRules();
-    await this.getConstantRules();
-    await this.getVariationRules();
+    await this.fetchMonitorTypes()
+    await this.fetchMonitors()
+    await this.getSpikeRules()
+    await this.getConstantRules()
+    await this.getVariationRules()
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
@@ -269,7 +269,7 @@ export default Vue.extend({
         },
         enable: true,
         abs: 10,
-      });
+      })
     },
     newConstantRule() {
       this.constantRules.push({
@@ -279,7 +279,7 @@ export default Vue.extend({
         },
         enable: true,
         count: 2,
-      });
+      })
     },
     newVariationRule() {
       this.variationRules.push({
@@ -289,64 +289,64 @@ export default Vue.extend({
         },
         enable: true,
         abs: 10,
-      });
+      })
     },
     async getSpikeRules() {
       try {
-        let ret = await axios.get('/SpikeRules');
-        this.spikeRules = ret.data;
+        let ret = await axios.get('/SpikeRules')
+        this.spikeRules = ret.data
       } catch (err) {
-        throw new Error('failed to get spike rules');
+        throw new Error('failed to get spike rules')
       }
     },
     async getConstantRules() {
       try {
-        let ret = await axios.get('/ConstantRules');
-        this.constantRules = ret.data;
+        let ret = await axios.get('/ConstantRules')
+        this.constantRules = ret.data
       } catch (err) {
-        throw new Error('failed to get constant rules');
+        throw new Error('failed to get constant rules')
       }
     },
     async getVariationRules() {
       try {
-        let ret = await axios.get('/VariationRules');
-        this.variationRules = ret.data;
+        let ret = await axios.get('/VariationRules')
+        this.variationRules = ret.data
       } catch (err) {
-        throw new Error('failed to get variation rules');
+        throw new Error('failed to get variation rules')
       }
     },
     async saveRules(url: string, rules: Array<any>) {
-      let promiseList = Array<Promise<any>>();
+      let promiseList = Array<Promise<any>>()
       for (let rule of rules) {
-        let p = axios.post(`${url}`, rule);
-        promiseList.push(p);
+        let p = axios.post(`${url}`, rule)
+        promiseList.push(p)
       }
-      let all = Promise.all(promiseList);
+      let all = Promise.all(promiseList)
       try {
-        await all;
-        this.$bvModal.msgBoxOk('成功', { headerBgVariant: 'info' });
+        await all
+        this.$bvModal.msgBoxOk('成功', { headerBgVariant: 'info' })
       } catch (err) {
         this.$bvModal.msgBoxOk(`失敗 ${err}`, {
           headerBgVariant: 'danger',
-        });
-        throw new Error('failed to save all rules');
+        })
+        throw new Error('failed to save all rules')
       }
     },
     async deleteRule(url: string, id: RuleID, reget: () => void) {
       try {
-        let ret = await axios.delete(`${url}/${id.monitor}/${id.monitorType}`);
+        let ret = await axios.delete(`${url}/${id.monitor}/${id.monitorType}`)
         if (ret.status === 200) {
-          this.$bvModal.msgBoxOk('成功', { headerBgVariant: 'info' });
-          reget();
+          this.$bvModal.msgBoxOk('成功', { headerBgVariant: 'info' })
+          reget()
         } else {
           this.$bvModal.msgBoxOk(`失敗 ${ret.status} - ${ret.statusText}`, {
             headerBgVariant: 'danger',
-          });
+          })
         }
       } catch (err) {
-        throw new Error('failed to delete spike rule');
+        throw new Error('failed to delete spike rule')
       }
     },
   },
-});
+})
 </script>

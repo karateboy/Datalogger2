@@ -100,12 +100,12 @@
 </template>
 
 <script>
-import Vue from 'vue';
-import { mapState, mapActions } from 'vuex';
-import axios from 'axios';
-const Ripple = require('vue-ripple-directive');
-import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
-const emptyPassword = '';
+import Vue from 'vue'
+import { mapState, mapActions } from 'vuex'
+import axios from 'axios'
+const Ripple = require('vue-ripple-directive')
+import ToastificationContent from '@core/components/toastification/ToastificationContent.vue'
+const emptyPassword = ''
 export default Vue.extend({
   directives: {
     Ripple,
@@ -125,62 +125,62 @@ export default Vue.extend({
       password: '',
       confirmPassword: '',
       isAdmin: false,
-      windField: false
-    };
+      windField: false,
+    }
 
-    this.copyUser(user);
-    const groupList = [];
+    this.copyUser(user)
+    const groupList = []
     return {
       user,
       groupList,
-    };
+    }
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapState('user', ['userInfo']),
     passwordLabel() {
-      if (this.isNew) return '密碼:';
-      return '變更密碼:';
+      if (this.isNew) return '密碼:'
+      return '變更密碼:'
     },
     isPasswordValid() {
-      if (!this.isNew) return true;
+      if (!this.isNew) return true
 
-      if (this.user.password === this.user.confirmPassword) return true;
-      return false;
+      if (this.user.password === this.user.confirmPassword) return true
+      return false
     },
     passwordInvalidReason() {
       if (this.user.password !== this.user.confirmPassword) {
-        return '密碼和重新輸入必須一致';
+        return '密碼和重新輸入必須一致'
       }
-      return '';
+      return ''
     },
     canUpsert() {
-      return this.isPasswordValid;
+      return this.isPasswordValid
     },
     btnTitle() {
-      if (this.isNew) return '新增';
-      return '更新';
+      if (this.isNew) return '新增'
+      return '更新'
     },
     isMyself() {
-      if (this.isNew) return false;
+      if (this.isNew) return false
 
-      if (this.user._id === this.userInfo._id) return true;
-      return false;
+      if (this.user._id === this.userInfo._id) return true
+      return false
     },
     isAdmin() {
-      return this.userinfo.isAdmin;
+      return this.userinfo.isAdmin
     },
     monitorTypeOptions() {
-      let ret = [];
+      let ret = []
       for (const mt of this.monitorTypes)
-        ret.push({ text: mt.desp, value: mt._id });
-      return ret;
+        ret.push({ text: mt.desp, value: mt._id })
+      return ret
     },
   },
   async mounted() {
-    await this.fetchMonitorTypes();
-    await this.fetchMonitors();
-    this.getGroupList();
+    await this.fetchMonitorTypes()
+    await this.fetchMonitors()
+    this.getGroupList()
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
@@ -189,41 +189,41 @@ export default Vue.extend({
       axios
         .get('/Groups')
         .then(res => {
-          this.groupList = res.data;
+          this.groupList = res.data
         })
         .catch(err => {
-          throw new Error(err);
-        });
+          throw new Error(err)
+        })
     },
     copyUser(user) {
       if (!this.isNew) {
-        const self = this.currentUser;
-        user._id = self._id;
-        user.name = self.name;
-        user.isAdmin = self.isAdmin;
-        user.group = self.group;
-        user.monitorTypeOfInterest = self.monitorTypeOfInterest;
-        user.windField = self.windField;
+        const self = this.currentUser
+        user._id = self._id
+        user.name = self.name
+        user.isAdmin = self.isAdmin
+        user.group = self.group
+        user.monitorTypeOfInterest = self.monitorTypeOfInterest
+        user.windField = self.windField
       }
     },
     reset() {
-      this.copyUser(this.user);
+      this.copyUser(this.user)
     },
 
     upsert() {
       if (this.isNew) {
         axios.post(`/User`, this.user).then(res => {
           if (res.status === 200) {
-            this.$bvModal.msgBoxOk('成功', { headerBgVariant: 'primary' });
+            this.$bvModal.msgBoxOk('成功', { headerBgVariant: 'primary' })
           } else {
-            this.$bvModal.msgBoxOk('失敗', { headerBgVariant: 'danger' });
+            this.$bvModal.msgBoxOk('失敗', { headerBgVariant: 'danger' })
           }
-          this.$emit('created');
-        });
+          this.$emit('created')
+        })
       } else {
         if (this.user.Password === emptyPassword) {
-          this.user.Password = '';
-          this.user.ConfirmPassword = '';
+          this.user.Password = ''
+          this.user.ConfirmPassword = ''
         }
 
         axios.put(`/User/${this.currentUser.Id}`, this.user).then(res => {
@@ -234,14 +234,14 @@ export default Vue.extend({
                 title: '成功',
                 icon: 'UserIcon',
               },
-            });
+            })
           } else {
-            this.$bvModal.msgBoxOk('失敗', { headerBgVariant: 'danger' });
+            this.$bvModal.msgBoxOk('失敗', { headerBgVariant: 'danger' })
           }
-          this.$emit('updated');
-        });
+          this.$emit('updated')
+        })
       }
     },
   },
-});
+})
 </script>
