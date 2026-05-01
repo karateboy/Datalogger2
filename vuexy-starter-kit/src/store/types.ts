@@ -1,5 +1,5 @@
 export interface RootState {
-  isLoading: boolean;
-  loadingMessage: string;
-  login: boolean;
+  isLoading: boolean
+  loadingMessage: string
+  login: boolean
 }

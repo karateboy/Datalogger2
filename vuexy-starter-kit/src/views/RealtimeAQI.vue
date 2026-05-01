@@ -346,40 +346,40 @@ table.TMP1 td {
 }
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import axios from 'axios';
-import moment from 'moment';
+import Vue from 'vue'
+import axios from 'axios'
+import moment from 'moment'
 
 interface RealtimeAQI {
-  date: Date;
-  aqi: AqiExplainReport;
+  date: Date
+  aqi: AqiExplainReport
 }
 
 interface AqiExplain {
-  aqi: string;
-  value: string;
-  css: string;
+  aqi: string
+  value: string
+  css: string
 }
 
 interface AqiSubExplain {
-  mtName: string;
-  explain: AqiExplain;
+  mtName: string
+  explain: AqiExplain
 }
 
 interface AqiExplainReport {
-  value: AqiExplain;
-  subExplain: Array<AqiSubExplain>;
+  value: AqiExplain
+  subExplain: Array<AqiSubExplain>
 }
 export default Vue.extend({
   data() {
-    let report: RealtimeAQI | undefined;
+    let report: RealtimeAQI | undefined
     const fields = [
       {
         key: 'mtName',
         label: '測項',
         sortable: true,
         tdClass: function (v: string, _key: string, item: AqiSubExplain) {
-          return [item.explain.css];
+          return [item.explain.css]
         },
       },
       {
@@ -387,7 +387,7 @@ export default Vue.extend({
         label: '副指標',
         sortable: true,
         tdClass: function (v: string, _key: string, item: AqiSubExplain) {
-          return [item.explain.css];
+          return [item.explain.css]
         },
       },
       {
@@ -395,40 +395,40 @@ export default Vue.extend({
         label: '測值',
         sortable: true,
         tdClass: function (v: string, _key: string, item: AqiSubExplain) {
-          return [item.explain.css];
+          return [item.explain.css]
         },
       },
-    ];
+    ]
     return {
       report,
       fields,
       timer: 0,
-    };
+    }
   },
   computed: {
     title(): string {
       if (this.report) {
-        let lastHour = moment(this.report.date);
-        return `即時AQI (${lastHour.format('lll')})`;
+        let lastHour = moment(this.report.date)
+        return `即時AQI (${lastHour.format('lll')})`
       }
 
-      return '';
+      return ''
     },
   },
   mounted() {
-    this.getRealtimeAQI();
-    this.timer = setInterval(this.getRealtimeAQI, 60000);
+    this.getRealtimeAQI()
+    this.timer = setInterval(this.getRealtimeAQI, 60000)
   },
   beforeDestroy() {
-    clearInterval(this.timer);
+    clearInterval(this.timer)
   },
   methods: {
     async getRealtimeAQI() {
-      const res = await axios.get('/RealtimeAQI');
+      const res = await axios.get('/RealtimeAQI')
       if (res.status === 200) {
-        this.report = res.data as RealtimeAQI;
+        this.report = res.data as RealtimeAQI
       }
     },
   },
-});
+})
 </script>

@@ -53,9 +53,9 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import { mapGetters, mapActions } from 'vuex';
-import { ThetaConfig, CalibrationConfig, TextStrValue } from './types';
+import Vue from 'vue'
+import { mapGetters, mapActions } from 'vuex'
+import { ThetaConfig, CalibrationConfig, TextStrValue } from './types'
 
 export default Vue.extend({
   components: {},
@@ -68,20 +68,20 @@ export default Vue.extend({
   data() {
     let config: ThetaConfig = {
       calibrations: [],
-    };
+    }
 
     let calibrationConfig: CalibrationConfig = {
       monitorType: '',
       value: 0,
-    };
-
-    if (this.paramStr !== '{}') {
-      config = JSON.parse(this.paramStr);
-    } else {
-      this.$emit('param-changed', JSON.stringify(config));
     }
 
-    let me = this as any;
+    if (this.paramStr !== '{}') {
+      config = JSON.parse(this.paramStr)
+    } else {
+      this.$emit('param-changed', JSON.stringify(config))
+    }
+
+    let me = this as any
     return {
       fields: [
         {
@@ -104,15 +104,15 @@ export default Vue.extend({
       ],
       calibrationConfig,
       config,
-    };
+    }
   },
   computed: {
     ...mapGetters('monitorTypes', ['mtMap']),
     canAddConfig(): boolean {
       if (this.calibrationConfig.monitorType)
-        return this.calibrationConfig.value !== 0;
+        return this.calibrationConfig.value !== 0
 
-      return false;
+      return false
     },
     thetaMonitorTypes(): Array<TextStrValue> {
       const mtList = [
@@ -136,43 +136,43 @@ export default Vue.extend({
         'H2S',
         'H2',
         'NH3',
-      ];
-      if (this.mtMap.size === 0) return [];
+      ]
+      if (this.mtMap.size === 0) return []
 
       return mtList.map(mt => {
         let ret: TextStrValue = {
           text: this.mtMap.get(mt).desp,
           value: mt,
-        };
-        return ret;
-      });
+        }
+        return ret
+      })
     },
   },
   async mounted() {
-    await this.fetchMonitorTypes();
+    await this.fetchMonitorTypes()
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     onChange(): void {
-      this.$emit('param-changed', JSON.stringify(this.config));
+      this.$emit('param-changed', JSON.stringify(this.config))
     },
     addCalibrationConfig(): void {
-      this.config.calibrations.push(Object.assign({}, this.calibrationConfig));
-      this.calibrationConfig.monitorType = 'PM25';
-      this.calibrationConfig.value = 0;
-      this.onChange();
+      this.config.calibrations.push(Object.assign({}, this.calibrationConfig))
+      this.calibrationConfig.monitorType = 'PM25'
+      this.calibrationConfig.value = 0
+      this.onChange()
     },
     deleteRow(row: any): void {
-      this.config.calibrations.splice(row.index, 1);
-      this.onChange();
+      this.config.calibrations.splice(row.index, 1)
+      this.onChange()
     },
     getUnit(mt: string): string {
-      if (this.mtMap.get(mt)) return this.mtMap.get(mt).unit;
-      else return '';
+      if (this.mtMap.get(mt)) return this.mtMap.get(mt).unit
+      else return ''
     },
     formatter(value: string, key: string, item: any): string {
-      return this.mtMap.get(item.monitorType).unit;
+      return this.mtMap.get(item.monitorType).unit
     },
   },
-});
+})
 </script>

@@ -117,17 +117,17 @@
 }
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import DatePicker from 'vue2-datepicker';
-import 'vue2-datepicker/index.css';
-import 'vue2-datepicker/locale/zh-tw';
-const Ripple = require('vue-ripple-directive');
-import { mapState, mapActions, mapMutations, mapGetters } from 'vuex';
-import darkTheme from 'highcharts/themes/dark-unica';
-import useAppConfig from '../@core/app-config/useAppConfig';
-import moment from 'moment';
-import axios from 'axios';
-import highcharts from 'highcharts';
+import Vue from 'vue'
+import DatePicker from 'vue2-datepicker'
+import 'vue2-datepicker/index.css'
+import 'vue2-datepicker/locale/zh-tw'
+const Ripple = require('vue-ripple-directive')
+import { mapState, mapActions, mapMutations, mapGetters } from 'vuex'
+import darkTheme from 'highcharts/themes/dark-unica'
+import useAppConfig from '../@core/app-config/useAppConfig'
+import moment from 'moment'
+import axios from 'axios'
+import highcharts from 'highcharts'
 
 export default Vue.extend({
   components: {
@@ -141,7 +141,7 @@ export default Vue.extend({
     const range = [
       moment().subtract(1, 'days').minute(0).second(0).millisecond(0).valueOf(),
       moment().minute(0).second(0).millisecond(0).valueOf(),
-    ];
+    ]
     return {
       reportUnits: [
         { txt: '小時AQI', id: 'Hour' },
@@ -182,7 +182,7 @@ export default Vue.extend({
         chartType: 'line',
         range,
       },
-    };
+    }
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
@@ -192,16 +192,16 @@ export default Vue.extend({
   },
   watch: {},
   async mounted() {
-    const { skin } = useAppConfig();
+    const { skin } = useAppConfig()
     if (skin.value == 'dark') {
-      darkTheme(highcharts);
+      darkTheme(highcharts)
     }
 
-    await this.fetchMonitors();
-    await this.fetchTables();
+    await this.fetchMonitors()
+    await this.fetchTables()
 
     if (this.monitors.length !== 0) {
-      this.form.monitors.push(this.monitors[0]._id);
+      this.form.monitors.push(this.monitors[0]._id)
     }
   },
   methods: {
@@ -209,16 +209,16 @@ export default Vue.extend({
     ...mapActions('tables', ['fetchTables']),
     ...mapMutations(['setLoading']),
     async query() {
-      this.setLoading({ loading: true });
+      this.setLoading({ loading: true })
       try {
-        this.display = true;
-        const monitors = this.form.monitors.join(':');
-        let isDailyAqi = true;
-        if (this.form.reportUnit === 'Hour') isDailyAqi = false;
+        this.display = true
+        const monitors = this.form.monitors.join(':')
+        let isDailyAqi = true
+        if (this.form.reportUnit === 'Hour') isDailyAqi = false
 
-        const url = `/AqiTrend/${monitors}/${isDailyAqi}/${this.form.dataType}/${this.form.range[0]}/${this.form.range[1]}`;
-        const res = await axios.get(url);
-        const ret = res.data;
+        const url = `/AqiTrend/${monitors}/${isDailyAqi}/${this.form.dataType}/${this.form.range[0]}/${this.form.range[1]}`
+        const res = await axios.get(url)
+        const ret = res.data
         if (this.form.chartType !== 'boxplot') {
           ret.chart = {
             type: this.form.chartType,
@@ -226,25 +226,25 @@ export default Vue.extend({
             panning: true,
             panKey: 'shift',
             alignTicks: false,
-          };
+          }
 
           const pointFormatter = function pointFormatter(this: any) {
-            const d = new Date(this.x);
-            return `${d.toLocaleString()}:${Math.round(this.y)}度`;
-          };
+            const d = new Date(this.x)
+            return `${d.toLocaleString()}:${Math.round(this.y)}度`
+          }
 
-          ret.tooltip = { valueDecimals: 2 };
-          ret.legend = { enabled: true };
+          ret.tooltip = { valueDecimals: 2 }
+          ret.legend = { enabled: true }
           ret.credits = {
             enabled: false,
             href: 'http://www.wecc.com.tw/',
-          };
-          ret.xAxis.type = 'datetime';
+          }
+          ret.xAxis.type = 'datetime'
           ret.xAxis.dateTimeLabelFormats = {
             day: '%b%e日',
             week: '%b%e日',
             month: '%y年%b',
-          };
+          }
 
           ret.plotOptions = {
             scatter: {
@@ -252,31 +252,31 @@ export default Vue.extend({
                 pointFormatter,
               },
             },
-          };
+          }
           ret.time = {
             timezoneOffset: -480,
-          };
+          }
         }
-        highcharts.chart('chart_container', ret);
+        highcharts.chart('chart_container', ret)
       } catch (err) {
-        console.error(err);
-        this.$bvModal.show(`查詢失敗 ${err}`);
+        console.error(err)
+        this.$bvModal.show(`查詢失敗 ${err}`)
       } finally {
-        this.setLoading({ loading: false });
+        this.setLoading({ loading: false })
       }
     },
     async downloadExcel() {
       const baseUrl =
-        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
-      const monitors = this.form.monitors.join(':');
-      let isDailyAqi = true;
-      if (this.form.reportUnit === 'Hour') isDailyAqi = false;
+        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/'
+      const monitors = this.form.monitors.join(':')
+      let isDailyAqi = true
+      if (this.form.reportUnit === 'Hour') isDailyAqi = false
 
-      const url = `${baseUrl}AqiTrend/excel/${monitors}/${isDailyAqi}/${this.form.dataType}/${this.form.range[0]}/${this.form.range[1]}`;
-      window.open(url);
+      const url = `${baseUrl}AqiTrend/excel/${monitors}/${isDailyAqi}/${this.form.dataType}/${this.form.range[0]}/${this.form.range[1]}`
+      window.open(url)
     },
   },
-});
+})
 </script>
 
 <style></style>

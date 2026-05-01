@@ -47,4 +47,4 @@ module.exports = {
     '@vue/prettier',
     '@vue/typescript',
   ],
-};
+}

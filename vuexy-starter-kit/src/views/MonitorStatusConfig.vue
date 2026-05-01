@@ -22,18 +22,16 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue';
-const Ripple = require('vue-ripple-directive');
-import axios from 'axios';
-import { MonitorType, ThresholdConfig } from './types';
-import { isNumber } from 'highcharts';
+import Vue from 'vue'
+const Ripple = require('vue-ripple-directive')
+import axios from 'axios'
+import { MonitorType, ThresholdConfig } from './types'
+import { isNumber } from 'highcharts'
 
-interface MonitorStatus {
-
-}
+interface MonitorStatus {}
 
 interface EditMonitorStatus extends MonitorStatus {
-  dirty?: boolean;
+  dirty?: boolean
 }
 
 export default Vue.extend({
@@ -45,7 +43,7 @@ export default Vue.extend({
     const columns = [
       {
         key: '_id',
-        label: '代碼'
+        label: '代碼',
       },
       {
         key: 'name',
@@ -55,32 +53,32 @@ export default Vue.extend({
         key: 'priority',
         label: '優先級 (1最優先)',
       },
-    ];
-    const monitorStatusList = Array<EditMonitorStatus>();
+    ]
+    const monitorStatusList = Array<EditMonitorStatus>()
 
     return {
       display: false,
       columns,
       monitorStatusList,
       selected: Array<MonitorStatus>(),
-    };
+    }
   },
   async mounted() {
-    await this.getMonitorStatus();
+    await this.getMonitorStatus()
   },
   methods: {
     async getMonitorStatus() {
-      try{
-        const res = await axios.get('/MonitorStatus');
-        if(res.status === 200){
-          this.monitorStatusList = res.data;
+      try {
+        const res = await axios.get('/MonitorStatus')
+        if (res.status === 200) {
+          this.monitorStatusList = res.data
         }
-      }catch(error){
-        console.log(error);
+      } catch (error) {
+        console.log(error)
       }
     },
   },
-});
+})
 </script>
 
 <style></style>
