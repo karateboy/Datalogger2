@@ -69,9 +69,6 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
       throw new Exception(s"unknown ${config.model} model")
   }
 
-  for (mt <- mtList)
-    recordOp.ensureMonitorType(mt)
-
   @volatile var timer: Cancellable = context.system.scheduler.scheduleOnce(FiniteDuration(5, SECONDS), self, ParseReport)
 
   override def receive: Receive = {
@@ -97,7 +94,7 @@ class WeatherReader(config: WeatherReaderConfig, sysConfig: SysConfigDB,
   def fileParser(file: File): Unit = {
     import scala.collection.mutable.ListBuffer
     for (mt <- mtList)
-      monitorTypeOp.ensure(mt)
+      monitorTypeOp.ensureRangeType(mt, recordOp)
 
     logger.debug(s"parsing ${file.getAbsolutePath}")
     val skipLines = waitReadyResult(sysConfig.getWeatherSkipLine)

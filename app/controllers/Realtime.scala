@@ -146,7 +146,7 @@ class Realtime @Inject()
         monitorTypes => {
           for (ret <- sysConfigDB.setAqiMonitorTypes(monitorTypes)) yield {
             //insert case
-            monitorTypes.foreach(monitorTypeOp.ensure)
+            monitorTypes.foreach(monitorTypeOp.ensureRangeType(_, recordDB))
             AQI.updateAqiTypeMapping(monitorTypes)
             Ok(Json.obj("ok" -> ret.wasAcknowledged()))
           }

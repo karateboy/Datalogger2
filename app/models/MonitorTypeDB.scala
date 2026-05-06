@@ -121,18 +121,27 @@ trait MonitorTypeDB {
     rangeList = mtListFromDb.filter { mt => !mt.signalType }.sortBy(_.order) map (mt => mt._id)
     signalList = mtListFromDb.filter { mt => mt.signalType }.sortBy(_.order) map (mt => mt._id)
 
-    // ensure calculated types
-    calculatedMonitorTypes.foreach(ensure)
-
-    // ensure daily avg monitor types
-    MonitorType.DailyAvgTargetMonitorTypes.foreach(ensure)
-
   }
 
   def getList: List[MonitorType]
 
-  def ensure(id: String): Unit =
+  private def ensure(mtCase:MonitorType): Unit ={
     synchronized {
+      if (!map.contains(mtCase._id)) {
+        mtCase.measuringBy = Some(List.empty[String])
+        upsertMonitorType(mtCase)
+      } else {
+        if (mtCase.measuringBy.isEmpty) {
+          mtCase.measuringBy = Some(List.empty[String])
+          upsertMonitorType(mtCase)
+        }
+      }
+    }
+  }
+
+  def ensureRangeType(id: String, recordDB: RecordDB): Unit =
+    synchronized {
+      recordDB.ensureMonitorType(id)
       if (!map.contains(id)) {
         val mt = defaultMonitorTypes.find(_._id == id).getOrElse(rangeType(id, id, "??", 2))
         mt.measuringBy = Some(List.empty[String])
@@ -146,19 +155,12 @@ trait MonitorTypeDB {
       }
     }
 
-  def ensure(mtCase: MonitorType): Unit = {
-    synchronized {
-      if (!map.contains(mtCase._id)) {
-        mtCase.measuringBy = Some(List.empty[String])
-        upsertMonitorType(mtCase)
-      } else {
-        if (mtCase.measuringBy.isEmpty) {
-          mtCase.measuringBy = Some(List.empty[String])
-          upsertMonitorType(mtCase)
-        }
-      }
-    }
+  def ensureRangeType(mtCase: MonitorType, recordDB: RecordDB): Unit = {
+    recordDB.ensureMonitorType(mtCase._id)
+    ensure(mtCase)
   }
+
+  def ensureSignalType(mtCase: MonitorType): Unit = ensure(mtCase)
 
   def rangeType(_id: String, desp: String, unit: String, prec: Int, accumulated: Boolean = false, acoustic: Boolean = false): MonitorType = {
     rangeOrder += 1

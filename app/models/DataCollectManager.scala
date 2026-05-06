@@ -401,6 +401,13 @@ class DataCollectManager @Inject()(config: Configuration,
   for (aqiMonitorTypes <- sysConfig.getAqiMonitorTypes)
     AQI.updateAqiTypeMapping(aqiMonitorTypes)
 
+  // ensure calculated types
+  MonitorType.calculatedMonitorTypes.foreach(monitorTypeOp.ensureRangeType(_, recordOp))
+
+  // ensure daily avg monitor types
+  MonitorType.DailyAvgTargetMonitorTypes.foreach(monitorTypeOp.ensureRangeType(_, recordOp))
+
+
   val timer: Cancellable = {
     import scala.concurrent.duration._
     //Try to trigger at 30 sec

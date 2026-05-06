@@ -128,10 +128,7 @@ private class ImsReader(config: ImsConfig,
 
   logger.info(s"ImsReader start $config")
   initParsedInfoMap()
-  mtNames.foreach(mt=>{
-    monitorTypeDB.ensure(mt)
-    recordDB.ensureMonitorType(mt)
-  })
+  mtNames.foreach(mt=> monitorTypeDB.ensureRangeType(mt, recordDB))
 
   def resetTimer(t: Int): Cancellable = {
     import scala.concurrent.duration._

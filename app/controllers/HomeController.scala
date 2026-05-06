@@ -703,12 +703,12 @@ class HomeController @Inject()(
           for (_: WSResponse <- f) yield {
             monitorTypes.foreach(t =>
               if (t.isSpectrum) {
-                Duo.ensureSpectrumTypes(t)(monitorTypeOp)
+                Duo.ensureSpectrumTypes(t)(monitorTypeOp, recordDB)
               } else {
                 if (Duo.map.contains(t.id))
-                  monitorTypeOp.ensure(Duo.map(t.id))
+                  monitorTypeOp.ensureRangeType(Duo.map(t.id), recordDB)
                 else
-                  monitorTypeOp.ensure(t.id)
+                  monitorTypeOp.ensureRangeType(t.id, recordDB)
               })
 
             Ok(Json.obj("ok" -> true))
@@ -728,19 +728,19 @@ class HomeController @Inject()(
 
       instantMonitorTypes.foreach(t =>
         if (t.isSpectrum) {
-          Duo.ensureSpectrumTypes(t)(monitorTypeOp)
+          Duo.ensureSpectrumTypes(t)(monitorTypeOp, recordDB)
         } else {
           if (Duo.fixedMap.contains(t.id))
-            monitorTypeOp.ensure(Duo.fixedMap(t.id))
+            monitorTypeOp.ensureRangeType(Duo.fixedMap(t.id), recordDB)
           else
-            monitorTypeOp.ensure(t.id)
+            monitorTypeOp.ensureRangeType(t.id, recordDB)
         })
 
       val spectrumMonitorTypes =
         for ((id, idx) <- spectrums.zipWithIndex) yield
           DuoMonitorType(id = id, desc = s"$id 1/3 octave", configID = s"S${idx + 1}", isSpectrum = true)
 
-      spectrumMonitorTypes.foreach(t => Duo.ensureSpectrumTypes(t)(monitorTypeOp))
+      spectrumMonitorTypes.foreach(t => Duo.ensureSpectrumTypes(t)(monitorTypeOp, recordDB))
 
       val weatherMonitorTypes =
         for ((id, idx) <- weathers.zipWithIndex) yield
