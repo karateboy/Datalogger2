@@ -87,13 +87,13 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { mapState } from 'vuex';
-import axios from 'axios';
-import { Group, TextStrValue } from './types';
-const Ripple = require('vue-ripple-directive');
-import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
-const emptyPassword = '';
+import Vue from 'vue'
+import { mapState } from 'vuex'
+import axios from 'axios'
+import { Group, TextStrValue } from './types'
+const Ripple = require('vue-ripple-directive')
+import ToastificationContent from '@core/components/toastification/ToastificationContent.vue'
+const emptyPassword = ''
 
 export default Vue.extend({
   directives: {
@@ -116,7 +116,7 @@ export default Vue.extend({
       monitorTypes: [],
       abilities: [],
       parent: undefined,
-    };
+    }
 
     const abilityOptions = [
       {
@@ -147,102 +147,103 @@ export default Vue.extend({
           subject: 'Alarm',
         },
       },
-    ];
+    ]
 
     return {
       group,
       abilityOptions,
       groupList: Array<Group>(),
-    };
+    }
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapState('monitors', ['monitors', 'activeID']),
     btnTitle(): string {
-      if (this.isNew) return '新增';
-      return '更新';
+      if (this.isNew) return '新增'
+      return '更新'
     },
     monitorOptions(): Array<any> {
-      const ret = Array<TextStrValue>();
-      let monitors = this.monitors;
+      const ret = Array<TextStrValue>()
+      let monitors = this.monitors
       if (this.group.parent) {
         const parentGroup = this.groupList.find((group, index) => {
-          return group._id === this.group.parent;
-        }) as Group;
+          return group._id === this.group.parent
+        }) as Group
 
         monitors = this.monitors.filter((m: any) => {
-          return parentGroup.monitors.indexOf(m._id) !== -1;
-        });
+          return parentGroup.monitors.indexOf(m._id) !== -1
+        })
       }
 
-      for (const m of monitors) ret.push({ text: m.desc, value: m._id });
-      return ret;
+      for (const m of monitors) ret.push({ text: m.desc, value: m._id })
+      return ret
     },
     monitorTypeOptions(): Array<TextStrValue> {
-      const ret = Array<TextStrValue>();
+      const ret = Array<TextStrValue>()
 
-      let monitorTypes: Array<any> = this.monitorTypes;
+      let monitorTypes: Array<any> = this.monitorTypes
       if (this.group.parent) {
         const parentGroup = this.groupList.find((group, index) => {
-          return group._id === this.group.parent;
-        }) as Group;
+          return group._id === this.group.parent
+        }) as Group
 
         monitorTypes = this.monitorTypes.filter((mt: any) => {
-          return parentGroup.monitorTypes.indexOf(mt._id) !== -1;
-        });
+          return parentGroup.monitorTypes.indexOf(mt._id) !== -1
+        })
       }
 
-      for (const mt of monitorTypes) ret.push({ text: mt.desp, value: mt._id });
+      for (const mt of monitorTypes) ret.push({ text: mt.desp, value: mt._id })
 
-      return ret;
+      return ret
     },
     canUpsert(): boolean {
-      if (!this.group._id) return false;
-      if (!this.group.name) return false;
-      return true;
+      if (!this.group._id) return false
+      if (!this.group.name) return false
+      return true
     },
   },
   mounted() {
-    this.copyProp(this.group);
-    this.getGroupList();
+    this.copyProp(this.group)
+    this.getGroupList()
   },
   methods: {
     copyProp(group: Group): void {
       if (!this.isNew) {
-        const self = this.currentGroup;
-        group._id = self._id;
-        group.name = self.name;
-        group.admin = self.admin;
-        group.monitors = self.monitors;
+        const self = this.currentGroup
+        group._id = self._id
+        group.name = self.name
+        group.admin = self.admin
+        group.monitors = self.monitors
 
-        console.info('group',group);
-        console.info('activeID',this.activeID);
-        if(group.monitors.indexOf(this.activeID) === -1)
-          { group.monitors.push(this.activeID); }
+        console.info('group', group)
+        console.info('activeID', this.activeID)
+        if (group.monitors.indexOf(this.activeID) === -1) {
+          group.monitors.push(this.activeID)
+        }
 
-        group.monitorTypes = self.monitorTypes;
-        group.abilities = self.abilities;
-        group.parent = self.parent;
+        group.monitorTypes = self.monitorTypes
+        group.abilities = self.abilities
+        group.parent = self.parent
       }
     },
     reset() {
-      this.copyProp(this.group);
-      this.$emit('updated');
+      this.copyProp(this.group)
+      this.$emit('updated')
     },
     async getGroupList() {
-      const res = await axios.get('/Groups');
-      if (res.status == 200) this.groupList = res.data;
+      const res = await axios.get('/Groups')
+      if (res.status == 200) this.groupList = res.data
     },
     upsert() {
       if (this.isNew) {
         axios.post(`/Group`, this.group).then(res => {
           if (res.status === 200) {
-            this.$bvModal.msgBoxOk('成功', { headerBgVariant: 'primary' });
+            this.$bvModal.msgBoxOk('成功', { headerBgVariant: 'primary' })
           } else {
-            this.$bvModal.msgBoxOk('失敗', { headerBgVariant: 'danger' });
+            this.$bvModal.msgBoxOk('失敗', { headerBgVariant: 'danger' })
           }
-          this.$emit('created');
-        });
+          this.$emit('created')
+        })
       } else {
         axios.put(`/Group/${this.currentGroup.Id}`, this.group).then(res => {
           if (res.status === 200) {
@@ -252,14 +253,14 @@ export default Vue.extend({
                 title: '成功',
                 icon: 'GroupIcon',
               },
-            });
+            })
           } else {
-            this.$bvModal.msgBoxOk('失敗', { headerBgVariant: 'danger' });
+            this.$bvModal.msgBoxOk('失敗', { headerBgVariant: 'danger' })
           }
-          this.$emit('updated');
-        });
+          this.$emit('updated')
+        })
       }
     },
   },
-});
+})
 </script>

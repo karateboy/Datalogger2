@@ -8,12 +8,12 @@
           </b-toast>
           <b-form-file
             v-model="form.uploadFile"
+            v-b-tooltip
             :state="Boolean(form.uploadFile)"
             accept=".xlsx"
             browse-text="..."
             placeholder="選擇上傳檔案..."
             drop-placeholder="拖曳檔案至此..."
-            v-b-tooltip
             title="分鐘資料Excel表格"
           ></b-form-file>
         </b-col>
@@ -36,10 +36,10 @@
   </div>
 </template>
 <script lang="ts">
-import Vue from 'vue';
-const Ripple = require('vue-ripple-directive');
-import { mapMutations } from 'vuex';
-import axios from 'axios';
+import Vue from 'vue'
+const Ripple = require('vue-ripple-directive')
+import { mapMutations } from 'vuex'
+import axios from 'axios'
 
 export default Vue.extend({
   directives: {
@@ -48,47 +48,47 @@ export default Vue.extend({
 
   data() {
     const form: {
-      uploadFile: Blob | undefined;
+      uploadFile: Blob | undefined
     } = {
       uploadFile: undefined,
-    };
+    }
     return {
       form,
-    };
+    }
   },
   computed: {},
   methods: {
     ...mapMutations(['setLoading']),
     async upload() {
-      let formData = new FormData();
-      formData.append('data', this.form.uploadFile as Blob);
-      this.setLoading({ loading: true, message: '資料上傳中' });
+      let formData = new FormData()
+      formData.append('data', this.form.uploadFile as Blob)
+      this.setLoading({ loading: true, message: '資料上傳中' })
       try {
         let res = await axios.post(`/UpsertData`, formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
-        });
-        this.setLoading({ loading: false });
+        })
+        this.setLoading({ loading: false })
 
         if (res.status === 200) {
           this.$bvModal.msgBoxOk(`上傳成功`, {
             headerBgVariant: 'success',
-          });
+          })
         } else {
           this.$bvModal.msgBoxOk(`上傳失敗 ${res.status} - ${res.statusText}`, {
             headerBgVariant: 'danger',
-          });
+          })
         }
       } catch (err) {
-        this.setLoading({ loading: false });
+        this.setLoading({ loading: false })
         this.$bvModal.msgBoxOk(`上傳失敗 ${err}`, {
           headerBgVariant: 'danger',
-        });
+        })
       }
     },
   },
-});
+})
 </script>
 
 <style></style>

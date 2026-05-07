@@ -103,15 +103,15 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import vSelect from 'vue-select';
-import DatePicker from 'vue2-datepicker';
-import 'vue2-datepicker/index.css';
-import 'vue2-datepicker/locale/zh-tw';
-const Ripple = require('vue-ripple-directive');
-import { mapState, mapGetters, mapActions } from 'vuex';
-import moment from 'moment';
-import axios from 'axios';
+import Vue from 'vue'
+import vSelect from 'vue-select'
+import DatePicker from 'vue2-datepicker'
+import 'vue2-datepicker/index.css'
+import 'vue2-datepicker/locale/zh-tw'
+const Ripple = require('vue-ripple-directive')
+import { mapState, mapGetters, mapActions } from 'vuex'
+import moment from 'moment'
+import axios from 'axios'
 
 export default Vue.extend({
   components: {
@@ -126,9 +126,9 @@ export default Vue.extend({
     const range = [
       moment().subtract(1, 'hour').minute(0).second(0).millisecond(0).valueOf(),
       moment().minute(0).second(0).millisecond(0).valueOf(),
-    ];
-    let displayCdx = false;
-    let cdxStartTime = 0;
+    ]
+    let displayCdx = false
+    let cdxStartTime = 0
     return {
       dataTypes: [{ txt: '小時資料', id: 'hour' }],
       form: {
@@ -153,13 +153,13 @@ export default Vue.extend({
           formatter: (v: number) => {
             switch (v) {
               case 1:
-                return '資訊';
+                return '資訊'
 
               case 2:
-                return '警告';
+                return '警告'
 
               case 3:
-                return '錯誤';
+                return '錯誤'
             }
           },
         },
@@ -168,19 +168,19 @@ export default Vue.extend({
           label: '來源',
           sortable: true,
           formatter: (src: string) => {
-            let tokens = src.split(':');
+            let tokens = src.split(':')
             switch (tokens[0]) {
               case 'I':
-                return `設備:${tokens[1]}`;
+                return `設備:${tokens[1]}`
 
               case 'T':
-                return `測項:${tokens[1]}`;
+                return `測項:${tokens[1]}`
 
               case 'S':
-                if (tokens[1] === 'System') return `系統`;
-                else return `系統:${tokens[1]}`;
+                if (tokens[1] === 'System') return `系統`
+                else return `系統:${tokens[1]}`
               default:
-                return src;
+                return src
             }
           },
         },
@@ -191,101 +191,101 @@ export default Vue.extend({
         },
       ],
       rows: [],
-    };
+    }
   },
   computed: {
     ...mapState('monitors', ['monitors']),
     ...mapGetters('monitors', ['mMap']),
   },
   async mounted() {
-    await this.fetchMonitors();
+    await this.fetchMonitors()
 
-    for (const m of this.monitors) this.form.monitors.push(m._id);
+    for (const m of this.monitors) this.form.monitors.push(m._id)
   },
   methods: {
     ...mapActions('monitors', ['fetchMonitors']),
     async recalculate() {
-      const monitors = this.form.monitors.join(':');
-      const url = `/Recalculate/${monitors}/${this.form.range[0]}/${this.form.range[1]}`;
+      const monitors = this.form.monitors.join(':')
+      const url = `/Recalculate/${monitors}/${this.form.range[0]}/${this.form.range[1]}`
 
       try {
-        const res = await axios.get(url);
+        const res = await axios.get(url)
         if (res.data.ok) {
-          this.$bvModal.msgBoxOk('開始重新計算小時值');
+          this.$bvModal.msgBoxOk('開始重新計算小時值')
         }
       } catch (err) {
-        throw new Error('failed to recalculate hour');
+        throw new Error('failed to recalculate hour')
       }
     },
     async upload() {
-      const monitors = this.form.monitors.join(':');
-      const url = `/Upload/${this.form.range[0]}/${this.form.range[1]}`;
+      const monitors = this.form.monitors.join(':')
+      const url = `/Upload/${this.form.range[0]}/${this.form.range[1]}`
 
       try {
-        const res = await axios.get(url);
+        const res = await axios.get(url)
         if (res.data.ok) {
-          this.$bvModal.msgBoxOk('重新上傳資料');
+          this.$bvModal.msgBoxOk('重新上傳資料')
         }
       } catch (err) {
-        throw new Error('failed to upload data');
+        throw new Error('failed to upload data')
       }
     },
     async cdxUpload() {
-      const url = `/CdxUpload/${this.form.range[0]}/${this.form.range[1]}`;
+      const url = `/CdxUpload/${this.form.range[0]}/${this.form.range[1]}`
 
       try {
-        this.form.cdxStartTime = new Date().getTime();
-        const res = await axios.get(url);
+        this.form.cdxStartTime = new Date().getTime()
+        const res = await axios.get(url)
         if (res.status === 200) {
-          this.$bvModal.msgBoxOk('Cdx重傳資料中');
-          this.displayCdx = true;
-          this.getCdxUploadEvents();
+          this.$bvModal.msgBoxOk('Cdx重傳資料中')
+          this.displayCdx = true
+          this.getCdxUploadEvents()
         }
       } catch (err) {
-        throw new Error('failed to upload data');
+        throw new Error('failed to upload data')
       }
     },
     async newTaipeiUpload() {
-      const url = `/NewTaipeiUpload/${this.form.range[0]}/${this.form.range[1]}`;
+      const url = `/NewTaipeiUpload/${this.form.range[0]}/${this.form.range[1]}`
       try {
-        this.form.cdxStartTime = new Date().getTime();
-        const res = await axios.get(url);
+        this.form.cdxStartTime = new Date().getTime()
+        const res = await axios.get(url)
         if (res.status === 200) {
-          this.$bvModal.msgBoxOk('新北OpenData上傳資料中');
+          this.$bvModal.msgBoxOk('新北OpenData上傳資料中')
         }
       } catch (err) {
-        throw new Error('failed to upload data');
+        throw new Error('failed to upload data')
       }
     },
     async resetReader() {
-      const url = `/ResetReaders`;
+      const url = `/ResetReaders`
 
       try {
-        const res = await axios.get(url);
+        const res = await axios.get(url)
         if (res.status === 200) {
-          this.$bvModal.msgBoxOk('VOC重新匯入');
+          this.$bvModal.msgBoxOk('VOC重新匯入')
         }
       } catch (err) {
-        throw new Error('failed to reset reader');
+        throw new Error('failed to reset reader')
       }
     },
     async getCdxUploadEvents() {
       try {
-        let src = 'S:CDX';
+        let src = 'S:CDX'
         let res = await axios.get(
           `/Alarms/${src}/1/${this.form.cdxStartTime}/${
             this.form.cdxStartTime + 1000 * 60 * 15
           }`,
-        );
+        )
         if (res.status === 200) {
-          this.rows = res.data;
+          this.rows = res.data
         }
       } catch (err) {
-        throw new Error(`$err`);
+        throw new Error(`$err`)
       }
     },
   },
-});
+})
 </script>
 
 <style></style>

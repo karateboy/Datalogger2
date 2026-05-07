@@ -59,10 +59,10 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script>
-import Vue from 'vue';
-import { mapState, mapGetters } from 'vuex';
-import vSelect from 'vue-select';
-import axios from 'axios';
+import Vue from 'vue'
+import { mapState, mapGetters } from 'vuex'
+import vSelect from 'vue-select'
+import axios from 'axios'
 
 export default Vue.extend({
   components: {
@@ -79,7 +79,7 @@ export default Vue.extend({
     },
   },
   data() {
-    let chs = [];
+    let chs = []
     for (let i = 0; i < 8; i++) {
       chs.push({
         enable: false,
@@ -89,18 +89,18 @@ export default Vue.extend({
         min: undefined,
         mtMin: undefined,
         repairMode: false,
-      });
+      })
     }
-    let doChannels = [];
+    let doChannels = []
     for (let i = 0; i < 2; i++) {
       doChannels.push({
         monitorType: undefined,
-      });
+      })
     }
-    let addr = 1;
-    let paramObj = { addr, chs, doChannels };
+    let addr = 1
+    let paramObj = { addr, chs, doChannels }
 
-    if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr);
+    if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr)
 
     const fields = [
       {
@@ -131,47 +131,47 @@ export default Vue.extend({
         key: 'mtMax',
         label: '測項最大值',
       },
-    ];
+    ]
 
     const doFields = [
       {
         key: 'monitorType',
         label: '數位訊號',
       },
-    ];
+    ]
 
-    let signalTypes = [];
+    let signalTypes = []
     return {
       paramObj,
       doFields,
       fields,
       signalTypes,
-    };
+    }
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap']),
   },
   async mounted() {
-    await this.getSignalTypes();
+    await this.getSignalTypes()
   },
   methods: {
     justify() {
       for (const ch of this.paramObj.chs) {
-        if (ch.min === '') ch.min = undefined;
-        if (ch.max === '') ch.max = undefined;
-        if (ch.mtMin === '') ch.mtMin = undefined;
-        if (ch.mtMax === '') ch.mtMax = undefined;
+        if (ch.min === '') ch.min = undefined
+        if (ch.max === '') ch.max = undefined
+        if (ch.mtMin === '') ch.mtMin = undefined
+        if (ch.mtMax === '') ch.mtMax = undefined
       }
     },
     onChange(evt) {
-      this.justify();
-      this.$emit('param-changed', JSON.stringify(this.paramObj));
+      this.justify()
+      this.$emit('param-changed', JSON.stringify(this.paramObj))
     },
     async getSignalTypes() {
-      const res = await axios.get('/SignalTypes');
-      this.signalTypes = res.data;
+      const res = await axios.get('/SignalTypes')
+      this.signalTypes = res.data
     },
   },
-});
+})
 </script>

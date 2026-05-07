@@ -106,8 +106,8 @@
   </b-form>
 </template>
 <script>
-import { isNumber } from 'highcharts';
-import Vue from 'vue';
+import { isNumber } from 'highcharts'
+import Vue from 'vue'
 export default Vue.extend({
   props: {
     instType: {
@@ -135,38 +135,38 @@ export default Vue.extend({
       calibrateZeoDO: null,
       calibrateSpanDO: null,
       skipInternalVault: null,
-    };
+    }
 
-    if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr);
+    if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr)
 
     return {
       paramObj,
-    };
+    }
   },
   async mounted() {
-    this.onChange();
+    this.onChange()
   },
   methods: {
     justify() {
-      const paramObj = this.paramObj;
-      if (paramObj.calibrationTime === '') paramObj.calibrationTime = undefined;
-      if (paramObj.raiseTime === '') paramObj.raiseTime = undefined;
-      if (paramObj.holdTime === '') paramObj.holdTime = undefined;
-      if (paramObj.downTime === '') paramObj.downTime = undefined;
-      if (paramObj.calibrateZeoSeq === '') paramObj.calibrateZeoSeq = undefined;
+      const paramObj = this.paramObj
+      if (paramObj.calibrationTime === '') paramObj.calibrationTime = undefined
+      if (paramObj.raiseTime === '') paramObj.raiseTime = undefined
+      if (paramObj.holdTime === '') paramObj.holdTime = undefined
+      if (paramObj.downTime === '') paramObj.downTime = undefined
+      if (paramObj.calibrateZeoSeq === '') paramObj.calibrateZeoSeq = undefined
       if (paramObj.calibrateSpanSeq === '')
-        paramObj.calibrateSpanSeq = undefined;
+        paramObj.calibrateSpanSeq = undefined
       if (paramObj.calibratorPurgeSeq === '')
-        paramObj.calibratorPurgeSeq = undefined;
+        paramObj.calibratorPurgeSeq = undefined
       if (!isNumber(paramObj.calibratorPurgeTime))
-        paramObj.calibratorPurgeTime = undefined;
-      if (paramObj.calibrateZeoDO === '') paramObj.calibrateZeoDO = undefined;
-      if (paramObj.calibrateSpanDO === '') paramObj.calibrateSpanDO = undefined;
+        paramObj.calibratorPurgeTime = undefined
+      if (paramObj.calibrateZeoDO === '') paramObj.calibrateZeoDO = undefined
+      if (paramObj.calibrateSpanDO === '') paramObj.calibrateSpanDO = undefined
     },
     onChange(evt) {
-      this.justify();
-      this.$emit('param-changed', JSON.stringify(this.paramObj));
+      this.justify()
+      this.$emit('param-changed', JSON.stringify(this.paramObj))
     },
   },
-});
+})
 </script>

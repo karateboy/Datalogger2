@@ -106,26 +106,26 @@
 }
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import vSelect from 'vue-select';
-import DatePicker from 'vue2-datepicker';
-import 'vue2-datepicker/index.css';
-import 'vue2-datepicker/locale/zh-tw';
-import { mapActions, mapGetters, mapMutations, mapState } from 'vuex';
-import { Monitor } from '@/store/monitors/types';
-import moment from 'moment';
-import axios from 'axios';
+import Vue from 'vue'
+import vSelect from 'vue-select'
+import DatePicker from 'vue2-datepicker'
+import 'vue2-datepicker/index.css'
+import 'vue2-datepicker/locale/zh-tw'
+import { mapActions, mapGetters, mapMutations, mapState } from 'vuex'
+import { Monitor } from '@/store/monitors/types'
+import moment from 'moment'
+import axios from 'axios'
 import {
   faCircle,
   faFerry,
   faSailboat,
-} from '@fortawesome/free-solid-svg-icons';
-import { Position, RecordList } from './types';
+} from '@fortawesome/free-solid-svg-icons'
+import { Position, RecordList } from './types'
 
-const Ripple = require('vue-ripple-directive');
+const Ripple = require('vue-ripple-directive')
 
 interface TraceResult {
-  trace: Array<Position>;
+  trace: Array<Position>
 }
 
 export default Vue.extend({
@@ -140,12 +140,12 @@ export default Vue.extend({
     const range = [
       moment().subtract(1, 'days').startOf('day').valueOf(),
       moment().add(1, 'days').startOf('day').valueOf(),
-    ];
+    ]
 
-    let mapLoaded = false;
+    let mapLoaded = false
     let trace: TraceResult = {
       trace: [],
-    };
+    }
     let mapOption = {
       zoomControl: true,
       mapTypeControl: true,
@@ -153,11 +153,11 @@ export default Vue.extend({
       streetViewControl: false,
       rotateControl: true,
       fullscreenControl: true,
-    };
+    }
     let dataTypes = [
       { txt: '小時資料', id: 'hour' },
       { txt: '分鐘資料', id: 'min' },
-    ];
+    ]
 
     return {
       form: {
@@ -170,41 +170,41 @@ export default Vue.extend({
       mapOption,
       mapLoaded,
       selectedMarker: -1,
-    };
+    }
   },
   computed: {
     ...mapState('monitors', ['monitors']),
     ...mapGetters('monitors', ['mMap', 'monitorOfNoEPA']),
     ...mapGetters('monitorTypes', ['mtMap', 'activatedMonitorTypes']),
     shipRouteTitle(): string {
-      if (!this.form.monitor) return '';
+      if (!this.form.monitor) return ''
 
-      let mCase = this.mMap.get(this.form.monitor) as Monitor;
-      let start = moment(this.form.range[0]).format('lll');
-      let end = moment(this.form.range[1]).format('lll');
-      return `${mCase.desc}${start}至${end}`;
+      let mCase = this.mMap.get(this.form.monitor) as Monitor
+      let start = moment(this.form.range[0]).format('lll')
+      let end = moment(this.form.range[1]).format('lll')
+      return `${mCase.desc}${start}至${end}`
     },
     displayRoute(): boolean {
-      return this.mapLoaded && this.trace.trace.length > 0;
+      return this.mapLoaded && this.trace.trace.length > 0
     },
     mapCenter(): Position {
       if (this.trace.trace.length === 0) {
-        console.info('mapCenter default is returned!');
+        console.info('mapCenter default is returned!')
         if (this.form.monitor !== '') {
-          let monitor = this.mMap.get(this.form.monitor) as Monitor;
+          let monitor = this.mMap.get(this.form.monitor) as Monitor
           return {
             lat: monitor.lat ?? 23.587100069188324,
             lng: monitor.lng ?? 121.14727819361042,
-          };
-        } else return { lat: 23.587100069188324, lng: 121.14727819361042 };
+          }
+        } else return { lat: 23.587100069188324, lng: 121.14727819361042 }
       }
 
-      let headPos = this.trace.trace[0];
-      console.info('mapCenter', this.trace.trace[0]);
-      return { lat: headPos.lat, lng: headPos.lng };
+      let headPos = this.trace.trace[0]
+      console.info('mapCenter', this.trace.trace[0])
+      return { lat: headPos.lat, lng: headPos.lng }
     },
     masterShipIcon(): any {
-      if (!this.mapLoaded) return {};
+      if (!this.mapLoaded) return {}
 
       return {
         path: faFerry.icon[4] as string,
@@ -217,10 +217,10 @@ export default Vue.extend({
         strokeWeight: 1,
         strokeColor: '#ffffff',
         scale: 0.05,
-      };
+      }
     },
     traceIcon(): any {
-      if (!this.mapLoaded) return {};
+      if (!this.mapLoaded) return {}
 
       return {
         path: faCircle.icon[4] as string,
@@ -233,51 +233,51 @@ export default Vue.extend({
         strokeWeight: 1,
         strokeColor: 'red',
         scale: 0.01,
-      };
+      }
     },
   },
   async mounted() {
-    await this.fetchMonitors();
-    await this.fetchMonitorTypes();
+    await this.fetchMonitors()
+    await this.fetchMonitorTypes()
 
     if (this.monitors.length !== 0) {
-      this.form.monitor = this.monitors[0]._id;
+      this.form.monitor = this.monitors[0]._id
     }
 
     this.$gmapApiPromiseLazy().then(() => {
-      this.mapLoaded = true;
-    });
+      this.mapLoaded = true
+    })
   },
   methods: {
     ...mapActions('monitors', ['fetchMonitors']),
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapMutations(['setLoading']),
     async query() {
-      const url = `/TraceQuery/${this.form.monitor}/${this.form.dataType}/${this.form.range[0]}/${this.form.range[1]}`;
-      this.selectedMarker = -1;
+      const url = `/TraceQuery/${this.form.monitor}/${this.form.dataType}/${this.form.range[0]}/${this.form.range[1]}`
+      this.selectedMarker = -1
       try {
-        this.setLoading({ loading: true });
-        let res = await axios.get(url);
+        this.setLoading({ loading: true })
+        let res = await axios.get(url)
         if (res.status === 200) {
-          this.trace = res.data as TraceResult;
+          this.trace = res.data as TraceResult
           if (this.trace.trace.length === 0)
             this.$bvToast.toast('無資料', {
               title: '查詢結果',
               variant: 'success',
               autoHideDelay: 2000,
-            });
+            })
         }
       } catch (err) {
-        console.error(`${err}`);
+        console.error(`${err}`)
       } finally {
-        this.setLoading({ loading: false });
+        this.setLoading({ loading: false })
       }
     },
 
     getRecordIcon(recordList: RecordList): object {
-      if (!this.mapLoaded) return {};
+      if (!this.mapLoaded) return {}
 
-      const fillColor = 'white';
+      const fillColor = 'white'
       return {
         path: faCircle.icon[4] as string,
         fillColor,
@@ -289,15 +289,15 @@ export default Vue.extend({
         strokeWeight: 0,
         strokeColor: '#000000',
         scale: this.form.dataType === 'hour' ? 0.06 : 0.04,
-      };
+      }
     },
     getRecordPos(recordList: RecordList): any {
       let latRecord = recordList.mtDataList.find(
         mtData => mtData.mtName === 'LAT',
-      );
+      )
       let lngRecord = recordList.mtDataList.find(
         mtData => mtData.mtName === 'LNG',
-      );
+      )
 
       if (
         latRecord === undefined ||
@@ -305,18 +305,18 @@ export default Vue.extend({
         lngRecord === undefined ||
         lngRecord.value === undefined
       )
-        return {};
+        return {}
 
       return {
         lat: latRecord.value,
         lng: lngRecord.value,
-      };
+      }
     },
     getTraceTitle(pos: Position): string {
-      if (pos === undefined) return '';
-      let dt = pos.date;
-      return `${moment(dt).format('lll')}`;
+      if (pos === undefined) return ''
+      let dt = pos.date
+      return `${moment(dt).format('lll')}`
     },
   },
-});
+})
 </script>

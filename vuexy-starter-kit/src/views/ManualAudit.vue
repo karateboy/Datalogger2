@@ -161,14 +161,14 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import DatePicker from 'vue2-datepicker';
-import 'vue2-datepicker/index.css';
-import 'vue2-datepicker/locale/zh-tw';
-const Ripple = require('vue-ripple-directive');
-import { mapState, mapGetters, mapActions, mapMutations } from 'vuex';
-import moment from 'moment';
-import axios from 'axios';
+import Vue from 'vue'
+import DatePicker from 'vue2-datepicker'
+import 'vue2-datepicker/index.css'
+import 'vue2-datepicker/locale/zh-tw'
+const Ripple = require('vue-ripple-directive')
+import { mapState, mapGetters, mapActions, mapMutations } from 'vuex'
+import moment from 'moment'
+import axios from 'axios'
 
 export default Vue.extend({
   components: {
@@ -182,7 +182,7 @@ export default Vue.extend({
     const range = [
       moment().subtract(1, 'days').minute(0).second(0).millisecond(0).valueOf(),
       moment().minute(0).second(0).millisecond(0).valueOf(),
-    ];
+    ]
     return {
       dataTypes: [
         { txt: '小時資料', id: 'hour' },
@@ -216,7 +216,7 @@ export default Vue.extend({
       columns: Array<any>(),
       rows: Array<any>(),
       currentPage: 1,
-    };
+    }
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
@@ -224,35 +224,35 @@ export default Vue.extend({
     ...mapGetters('monitorTypes', ['mtMap']),
     ...mapGetters('monitors', ['mMap']),
     resultTitle(): string {
-      return `總共${this.rows.length}筆`;
+      return `總共${this.rows.length}筆`
     },
 
     canAudit() {
-      let auditCount = 0;
+      let auditCount = 0
       for (const item of this.rows) {
         if (item.include) {
-          auditCount++;
+          auditCount++
         }
       }
-      if (auditCount === 0) return false;
+      if (auditCount === 0) return false
 
       if (this.form2.reason === '' && this.form2.statusCode !== '0') {
-        return false;
+        return false
       }
 
-      return true;
+      return true
     },
   },
   async mounted() {
-    await this.fetchMonitorTypes();
-    await this.fetchMonitors();
+    await this.fetchMonitorTypes()
+    await this.fetchMonitors()
 
     if (this.monitors.length !== 0) {
-      this.form.monitors.push(this.monitors[0]._id);
+      this.form.monitors.push(this.monitors[0]._id)
     }
 
     if (this.monitorTypes.length !== 0) {
-      this.form.monitorTypes.push('PM25');
+      this.form.monitorTypes.push('PM25')
     }
   },
   methods: {
@@ -260,76 +260,76 @@ export default Vue.extend({
     ...mapActions('monitors', ['fetchMonitors']),
     ...mapMutations(['setLoading']),
     async query() {
-      this.setLoading({ loading: true });
+      this.setLoading({ loading: true })
       try {
-        this.display = true;
-        this.rows = [];
-        this.columns = this.getColumns();
-        const monitors = this.form.monitors.join(':');
-        const monitorTypes = this.form.monitorTypes.join(':');
-        const url = `/HistoryReport/${monitors}/${monitorTypes}/${this.form.dataType}/false/${this.form.range[0]}/${this.form.range[1]}`;
-        const ret = await axios.get(url);
-        this.rows.splice(0, this.rows.length);
+        this.display = true
+        this.rows = []
+        this.columns = this.getColumns()
+        const monitors = this.form.monitors.join(':')
+        const monitorTypes = this.form.monitorTypes.join(':')
+        const url = `/HistoryReport/${monitors}/${monitorTypes}/${this.form.dataType}/false/${this.form.range[0]}/${this.form.range[1]}`
+        const ret = await axios.get(url)
+        this.rows.splice(0, this.rows.length)
         for (const row of ret.data.rows) {
-          row.dateStr = moment(row.date).format('lll');
-          row.include = false;
-          this.rows.push(row);
+          row.dateStr = moment(row.date).format('lll')
+          row.include = false
+          this.rows.push(row)
         }
       } catch (err) {
-        this.$bvModal.msgBoxOk(`${err}`);
-        console.error(err);
+        this.$bvModal.msgBoxOk(`${err}`)
+        console.error(err)
       } finally {
-        this.setLoading({ loading: false });
+        this.setLoading({ loading: false })
       }
     },
     cellDataTd(i: number) {
       return (_value: any, _key: any, item: any) =>
-        item.cellData[i].cellClassName;
+        item.cellData[i].cellClassName
     },
     getMtDesc(mt: string) {
-      const mtCase = this.mtMap.get(mt);
-      return `${mtCase.desp}(${mtCase.unit})`;
+      const mtCase = this.mtMap.get(mt)
+      return `${mtCase.desp}(${mtCase.unit})`
     },
     getColumns() {
-      const ret = [];
+      const ret = []
       ret.push({
         key: 'include',
         label: '選擇',
-      });
+      })
       ret.push({
         key: 'dateStr',
         label: '時間',
-      });
-      let i = 0;
+      })
+      let i = 0
       for (const mt of this.form.monitorTypes) {
         for (const m of this.form.monitors) {
-          const mCase = this.mMap.get(m);
+          const mCase = this.mMap.get(m)
           ret.push({
             key: `cellData[${i}].v`,
             label: `${mCase.desc}`,
             tdClass: this.cellDataTd(i),
-          });
-          i++;
+          })
+          i++
         }
       }
 
-      return ret;
+      return ret
     },
     audit() {
       // case class ManualAuditParam(reason: String, updateList: Seq[UpdateRecordParam])
       // case class UpdateRecordParam(time: Long, mt:String, status: String)
-      const updateList = [];
+      const updateList = []
       for (const item of this.rows) {
         if (item.include) {
           for (let i = 0; i < item.cellData.length; i++) {
-            const cellData = item.cellData[i];
+            const cellData = item.cellData[i]
             if (cellData.v !== '-') {
-              const status = this.form2.statusCode + cellData.status.substr(1);
+              const status = this.form2.statusCode + cellData.status.substr(1)
               updateList.push({
                 time: item.date,
                 mt: this.form.monitorTypes[i],
                 status,
-              });
+              })
             }
           }
         }
@@ -337,27 +337,27 @@ export default Vue.extend({
       const param = {
         reason: this.form2.reason,
         updateList,
-      };
+      }
       axios.put(`/Record/${this.form.dataType}`, param).then(res => {
-        const ret = res.data;
+        const ret = res.data
         if (ret.ok) {
-          this.$bvModal.msgBoxOk('成功');
-          this.query();
+          this.$bvModal.msgBoxOk('成功')
+          this.query()
         }
-      });
+      })
     },
     canInclude(item: any) {
       for (const cellData of item.cellData) {
-        if (cellData.v == '-') return false;
+        if (cellData.v == '-') return false
       }
 
-      return true;
+      return true
     },
     selectAll() {
       for (let item of this.rows) {
-        item.include = !item.include;
+        item.include = !item.include
       }
     },
   },
-});
+})
 </script>

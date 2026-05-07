@@ -83,7 +83,7 @@
 </template>
 
 <script>
-import { BButton } from 'bootstrap-vue';
+import { BButton } from 'bootstrap-vue'
 
 export default {
   name: 'VxTour',
@@ -96,5 +96,5 @@ export default {
       type: Array,
     },
   },
-};
+}
 </script>

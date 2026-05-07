@@ -70,11 +70,11 @@
   </b-card>
 </template>
 <script>
-import Vue from 'vue';
-import axios from 'axios';
-const Ripple = require('vue-ripple-directive');
-import Group from './Group.vue';
-import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
+import Vue from 'vue'
+import axios from 'axios'
+const Ripple = require('vue-ripple-directive')
+import Group from './Group.vue'
+import ToastificationContent from '@core/components/toastification/ToastificationContent.vue'
 
 export default Vue.extend({
   components: {
@@ -84,7 +84,7 @@ export default Vue.extend({
     Ripple,
   },
   data() {
-    const groupList = [];
+    const groupList = []
     const fields = [
       {
         key: 'selected',
@@ -100,68 +100,68 @@ export default Vue.extend({
         label: '顯示名稱',
         sortable: true,
       },
-    ];
+    ]
 
     return {
       fields,
       groupList,
       isNew: true,
       selected: [],
-    };
+    }
   },
   computed: {
     modalTitle() {
-      if (this.isNew) return '新增群組';
+      if (this.isNew) return '新增群組'
 
-      return '更新群組';
+      return '更新群組'
     },
     group() {
-      return this.selected[0];
+      return this.selected[0]
     },
   },
   mounted() {
-    this.getGroupList();
+    this.getGroupList()
   },
 
   methods: {
     newGroup() {
-      this.isNew = true;
-      this.$bvModal.show('groupModal');
+      this.isNew = true
+      this.$bvModal.show('groupModal')
     },
     updateGroup() {
-      this.isNew = false;
-      this.$bvModal.show('groupModal');
+      this.isNew = false
+      this.$bvModal.show('groupModal')
     },
     deleteGroup() {
       this.$bvModal
         .msgBoxConfirm('是否要刪除群組?')
         .then(ret => {
           if (ret) {
-            this.delGroup(this.selected[0]._id);
+            this.delGroup(this.selected[0]._id)
           }
         })
         .catch(err => {
-          throw Error(err);
-        });
+          throw Error(err)
+        })
     },
     getGroupList() {
       axios
         .get('/Groups')
         .then(res => {
-          this.groupList = res.data;
+          this.groupList = res.data
         })
         .catch(err => {
-          throw new Error(err);
-        });
+          throw new Error(err)
+        })
     },
     onGroupSelected(items) {
-      this.selected = items;
+      this.selected = items
     },
     delGroup(id) {
       axios
         .delete(`/Group/${id}`)
         .then(res => {
-          const ret = res.data;
+          const ret = res.data
           if (ret.ok) {
             this.$toast({
               component: ToastificationContent,
@@ -169,7 +169,7 @@ export default Vue.extend({
                 title: '成功',
                 icon: 'UserIcon',
               },
-            });
+            })
           } else {
             this.$toast({
               component: ToastificationContent,
@@ -177,24 +177,24 @@ export default Vue.extend({
                 title: '刪除失敗',
                 icon: 'UserIcon',
               },
-            });
+            })
           }
-          this.getGroupList();
+          this.getGroupList()
         })
         .catch(err => {
-          throw new Error(err);
-        });
+          throw new Error(err)
+        })
     },
     onUpdate() {
-      this.$bvModal.hide('groupModal');
-      this.getGroupList();
+      this.$bvModal.hide('groupModal')
+      this.getGroupList()
     },
     onRefresh() {
-      this.getGroupList();
+      this.getGroupList()
     },
     onDeleted() {
-      this.getGroupList();
+      this.getGroupList()
     },
   },
-});
+})
 </script>

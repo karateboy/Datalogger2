@@ -1,4 +1,4 @@
-import { getCurrentInstance } from '@vue/composition-api';
+import { getCurrentInstance } from '@vue/composition-api'
 
 /**
  * Returns ability result if ACL is configured or else just return true
@@ -8,9 +8,9 @@ import { getCurrentInstance } from '@vue/composition-api';
  * @param {String} subject CASL Subject // https://casl.js.org/v4/en/guide/intro#basics
  */
 export const can = (action, subject) => {
-  const vm = getCurrentInstance().proxy;
-  return vm.$can ? vm.$can(action, subject) : true;
-};
+  const vm = getCurrentInstance().proxy
+  return vm.$can ? vm.$can(action, subject) : true
+}
 
 /**
  * Check if user can view item based on it's ability
@@ -18,7 +18,7 @@ export const can = (action, subject) => {
  * @param {Object} item navigation object item
  */
 export const canViewVerticalNavMenuLink = item =>
-  can(item.action, item.resource);
+  can(item.action, item.resource)
 
 /**
  * Check if user can view item based on it's ability
@@ -28,15 +28,15 @@ export const canViewVerticalNavMenuLink = item =>
 // eslint-disable-next-line arrow-body-style
 export const canViewVerticalNavMenuGroup = item => {
   // ! This same logic is used in canViewHorizontalNavMenuGroup and canViewHorizontalNavMenuHeaderGroup. So make sure to update logic in them as well
-  const hasAnyVisibleChild = item.children.some(i => can(i.action, i.resource));
+  const hasAnyVisibleChild = item.children.some(i => can(i.action, i.resource))
 
   // If resource and action is defined in item => Return based on children visibility (Hide group if no child is visible)
   // Else check for ability using provided resource and action along with checking if has any visible child
   if (!(item.action && item.resource)) {
-    return hasAnyVisibleChild;
+    return hasAnyVisibleChild
   }
-  return can(item.action, item.resource) && hasAnyVisibleChild;
-};
+  return can(item.action, item.resource) && hasAnyVisibleChild
+}
 
 /**
  * Check if user can view item based on it's ability
@@ -44,7 +44,7 @@ export const canViewVerticalNavMenuGroup = item => {
  * @param {Object} item navigation object item
  */
 export const canViewVerticalNavMenuHeader = item =>
-  can(item.action, item.resource);
+  can(item.action, item.resource)
 
 /**
  * Check if user can view item based on it's ability
@@ -52,7 +52,7 @@ export const canViewVerticalNavMenuHeader = item =>
  * @param {Object} item navigation object item
  */
 export const canViewHorizontalNavMenuLink = item =>
-  can(item.action, item.resource);
+  can(item.action, item.resource)
 
 /**
  * Check if user can view item based on it's ability
@@ -60,7 +60,7 @@ export const canViewHorizontalNavMenuLink = item =>
  * @param {Object} item navigation object item
  */
 export const canViewHorizontalNavMenuHeaderLink = item =>
-  can(item.action, item.resource);
+  can(item.action, item.resource)
 
 /**
  * Check if user can view item based on it's ability
@@ -70,15 +70,15 @@ export const canViewHorizontalNavMenuHeaderLink = item =>
 // eslint-disable-next-line arrow-body-style
 export const canViewHorizontalNavMenuGroup = item => {
   // ? Same logic as canViewVerticalNavMenuGroup
-  const hasAnyVisibleChild = item.children.some(i => can(i.action, i.resource));
+  const hasAnyVisibleChild = item.children.some(i => can(i.action, i.resource))
 
   // If resource and action is defined in item => Return based on children visibility (Hide group if no child is visible)
   // Else check for ability using provided resource and action along with checking if has any visible child
   if (!(item.action && item.resource)) {
-    return hasAnyVisibleChild;
+    return hasAnyVisibleChild
   }
-  return can(item.action, item.resource) && hasAnyVisibleChild;
-};
+  return can(item.action, item.resource) && hasAnyVisibleChild
+}
 
 // eslint-disable-next-line arrow-body-style
 export const canViewHorizontalNavMenuHeaderGroup = item => {
@@ -90,13 +90,13 @@ export const canViewHorizontalNavMenuHeaderGroup = item => {
     // Call ACL function based on grp/link
     return grpOrItem.children
       ? canViewHorizontalNavMenuGroup(grpOrItem)
-      : canViewHorizontalNavMenuLink(grpOrItem);
-  });
+      : canViewHorizontalNavMenuLink(grpOrItem)
+  })
 
   // If resource and action is defined in item => Return based on children visibility (Hide group if no child is visible)
   // Else check for ability using provided resource and action along with checking if has any visible child
   if (!(item.action && item.resource)) {
-    return hasAnyVisibleChild;
+    return hasAnyVisibleChild
   }
-  return can(item.action, item.resource) && hasAnyVisibleChild;
-};
+  return can(item.action, item.resource) && hasAnyVisibleChild
+}
