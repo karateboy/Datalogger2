@@ -269,7 +269,7 @@ class Query @Inject()(recordOp: RecordDB,
     }
   }
 
-  private def trendHelper(monitors: Seq[String], monitorTypes: Seq[String], includeRaw: Boolean, tabType: TableType#Value,
+  def trendHelper(monitors: Seq[String], monitorTypes: Seq[String], includeRaw: Boolean, tabType: TableType#Value,
                           reportUnit: ReportUnit.Value, start: DateTime, end: DateTime, showActual: Boolean)(statusFilter: MonitorStatusFilter.Value): HighchartData = {
     val period: Period =
       reportUnit match {
