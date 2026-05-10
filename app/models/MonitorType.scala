@@ -97,6 +97,7 @@ object MonitorType {
   val LEQZ = "LEQZ"
 
   var rangeOrder = 0
+  val SIGNAL = "SIGNAL"
   var signalOrder = 1000
 
   //Calculated types

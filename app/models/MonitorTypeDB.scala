@@ -157,19 +157,27 @@ trait MonitorTypeDB {
 
   def nonCalculatedMeasuringList: List[String] = measuringList.filter(!IsCalculated(_))
 
-  def addMeasuring(mt: String, instrumentId: String, append: Boolean, recordDB: RecordDB): Future[UpdateResult] = {
-    recordDB.ensureMonitorType(mt)
-    synchronized {
-      if (!map.contains(mt)) {
-        val mtCase = defaultMonitorTypes.find(_._id == mt).getOrElse(rangeType(mt, mt, "??", 2))
-        mtCase.addMeasuring(instrumentId, append)
-        upsertMonitorType(mtCase)
-      } else {
-        val mtCase = map(mt)
-        mtCase.addMeasuring(instrumentId, append)
-        upsertItemFuture(mtCase)
+  def addMeasuring(mt: String, instrumentId: String, analog: Boolean, recordDB: RecordDB): Unit = {
+    val newMtCase =
+      synchronized {
+        if (!map.contains(mt)) {
+          val mtCase = defaultMonitorTypes.find(_._id == mt)
+            .getOrElse(if (analog)
+              rangeType(mt, mt, "??", 2)
+            else
+              signalType(mt, mt))
+          mtCase.addMeasuring(instrumentId, append = analog)
+          upsertMonitorType(mtCase)
+          mtCase
+        } else {
+          val mtCase = map(mt)
+          mtCase.addMeasuring(instrumentId, append = analog)
+          upsertItemFuture(mtCase)
+          mtCase
+        }
       }
-    }
+    if (!newMtCase.signalType)
+      recordDB.ensureMonitorType(newMtCase._id)
   }
 
   def upsertMonitorType(mt: MonitorType): Future[UpdateResult] = {
