@@ -636,7 +636,6 @@ class ExcelUtility @Inject()
           }
 
           val cell = thisRow.createCell(colIdx + 1)
-          cell.setCellStyle(styles(colIdx))
           for (v <- pair._2 if !v.isNaN) {
             val d = BigDecimal(v).setScale(precision(colIdx), RoundingMode.HALF_UP)
             cell.setCellValue(d.doubleValue())

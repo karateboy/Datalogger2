@@ -1171,10 +1171,10 @@ class DataCollectManager @Inject()(config: Configuration,
           ReportUnit.FiveMin, start, start.plusDays(1), showActual = true)(MonitorStatusFilter.ValidData)
 
         import java.nio.file._
-        val precisionList = Array(2, 2)
+        val precisionList = mtList.map(monitorTypeOp.map(_).prec).toArray
         val srcPath = excelUtility.export5MinChart(chart, precision = precisionList).toPath
         val outputDir = Paths.get(LoggerConfig.config.exportPath)
-        val dayName = start.toString(s"YYYYMMDD")
+        val dayName = start.toString(s"YYYYMMdd")
         val target = outputDir.resolve(s"$dayName.xlsx")
 
         Files.copy(srcPath, target, StandardCopyOption.REPLACE_EXISTING)
