@@ -37,7 +37,7 @@ class ExcelUtility @Inject()
     exportChartData(chart, precArray, showSec)
   }
 
-  def exportChartData(chart: HighchartData, precision: Array[Int], showSec: Boolean) = {
+  def exportChartData(chart: HighchartData, precision: Array[Int], showSec: Boolean): File = {
     val (reportFilePath, pkg, wb) = prepareTemplate("chart_export.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
     val format = wb.createDataFormat();
@@ -577,4 +577,76 @@ class ExcelUtility @Inject()
       }
     }
   }.toList
+
+  def export5MinChart(chart: HighchartData, precision: Array[Int]): File = {
+    val (reportFilePath, pkg, wb) = prepareTemplate("daily5minReport.xlsx")
+    val evaluator = wb.getCreationHelper().createFormulaEvaluator()
+    val format = wb.createDataFormat();
+
+    val sheet = wb.getSheetAt(0)
+
+    val styles = precision.map { prec =>
+      val format_str: String = if (prec != 0)
+        "0." + "0" * prec
+      else
+        "0"
+
+      val style = wb.createCellStyle();
+      style.setDataFormat(format.getFormat(format_str))
+      style
+    }
+
+    // Categories data
+    if (chart.xAxis.categories.isDefined) {
+      logger.info("with xAxis categories")
+      val timeList = chart.xAxis.categories.get
+      for ((timeStr, rowIdx) <- timeList.zipWithIndex) {
+        val thisRow = sheet.createRow(rowIdx + 3)
+        thisRow.createCell(0).setCellValue(timeStr)
+
+        for ((series, colIdx) <- chart.series.zipWithIndex) {
+          val cell = thisRow.createCell(1 + colIdx * 2)
+          cell.setCellStyle(styles(colIdx))
+          val pair = series.data(rowIdx)
+          val statusOpt = series.statusList(rowIdx)
+          for (v <- pair._2 if !v.isNaN) {
+            val d = BigDecimal(v).setScale(precision(colIdx), RoundingMode.HALF_UP)
+            cell.setCellValue(d.doubleValue())
+          }
+          for (status <- statusOpt) {
+            val statusCell = thisRow.createCell(1 + colIdx * 2 + 1)
+            statusCell.setCellValue(status)
+          }
+        }
+      }
+    } else {
+      logger.info("no xAxis categories")
+      val rowMax = chart.series.map(s => s.data.length).max
+      for (row <- 1 to rowMax) {
+        val thisRow = sheet.createRow(row + 2)
+        for {
+          (series, colIdx) <- chart.series.zipWithIndex
+        } {
+          val reverseData = series.data.reverse
+          val pair = reverseData(row - 1)
+          if (colIdx == 0) {
+            val timeCell = thisRow.createCell(0)
+            val dt = new DateTime(pair._1)
+            timeCell.setCellValue(dt.toString("YYYY/MM/dd HH:mm"))
+          }
+
+          val cell = thisRow.createCell(colIdx + 1)
+          cell.setCellStyle(styles(colIdx))
+          for (v <- pair._2 if !v.isNaN) {
+            val d = BigDecimal(v).setScale(precision(colIdx), RoundingMode.HALF_UP)
+            cell.setCellValue(d.doubleValue())
+          }
+        }
+      }
+    }
+
+    finishExcel(reportFilePath, pkg, wb)
+  }
+
+
 }

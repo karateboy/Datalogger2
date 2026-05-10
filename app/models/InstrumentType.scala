@@ -93,11 +93,11 @@ class InstrumentTypeOp @Inject()
 
   import Protocol._
 
-  implicit val prtocolWrite = Json.writes[ProtocolInfo]
-  implicit val write = Json.writes[InstrumentTypeInfo]
+  implicit val prtocolWrite: OWrites[ProtocolInfo] = Json.writes[ProtocolInfo]
+  implicit val write: OWrites[InstrumentTypeInfo] = Json.writes[InstrumentTypeInfo]
 
-  val tcpModbusDeviceTypeMap: Map[String, InstrumentType] =
-    TcpModbusDrv2.getInstrumentTypeList(environment, tcpModbusFactory, monitorTypeOp)
+  private val tcpModbusDeviceTypeMap: Map[String, InstrumentType] =
+    TcpModbusDrv2.getInstrumentTypeList(environment, tcpModbusFactory)
       .map(dt => dt.id -> dt).toMap
 
   private val akDeviceTypeMap: Map[String, InstrumentType] =
@@ -149,12 +149,8 @@ class InstrumentTypeOp @Inject()
   private val otherMap = otherDeviceList.map(dt => dt.id -> dt).toMap
   val map: Map[String, InstrumentType] = tcpModbusDeviceTypeMap ++ akDeviceTypeMap ++ otherMap
 
-  val DoInstruments: Seq[InstrumentType] = otherDeviceList.filter(_.driver.isDoInstrument)
+  val DoInstruments: Seq[InstrumentType] = map.values.filter(_.driver.isDoInstrument).toSeq
   var count = 0
-
-  def getInstInfoPair(instType: InstrumentType): (String, InstrumentType) = {
-    instType.id -> instType
-  }
 
   def start(instType: String, id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext): ActorRef = {
     val actorName = s"${instType}_$count"

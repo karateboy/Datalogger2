@@ -2,6 +2,7 @@ package models
 
 import akka.actor._
 import com.github.nscala_time.time.Imports._
+import controllers.ReportUnit
 import models.Calibration.{CalibrationListMap, emptyCalibrationListMap, findTargetCalibrationMB}
 import models.ForwardManager.{ForwardHour, ForwardHourRecord, ForwardMin, ForwardMinRecord}
 import models.ModelHelper._
@@ -11,6 +12,7 @@ import org.mongodb.scala.result.UpdateResult
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
 
+import java.io.File
 import javax.inject._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -112,6 +114,8 @@ object DataCollectManager {
   private case object UpdateHourAccumulatedRain
 
   case object CheckStatus
+
+  case class ExportDaily5MinReport(dateTime: DateTime)
 
   private def updateEffectiveRatio(sysConfig: SysConfigDB): Unit = {
     for (ratio <- sysConfig.getEffectiveRatio)
@@ -387,7 +391,8 @@ class DataCollectManager @Inject()(config: Configuration,
                                    calibrationConfigDB: CalibrationConfigDB,
                                    forwardManagerFactory: ForwardManager.Factory,
                                    alarmRuleDb: AlarmRuleDb,
-                                   tableType: TableType) extends Actor with InjectedActorSupport {
+                                   tableType: TableType,
+                                   excelUtility: ExcelUtility) extends Actor with InjectedActorSupport {
 
   import DataCollectManager._
   val logger = Logger(this.getClass)
@@ -458,6 +463,9 @@ class DataCollectManager @Inject()(config: Configuration,
   self ! ReloadAlarmRule
 
   self ! UpdateHourAccumulatedRain
+
+  if(LoggerConfig.config.autoExport)
+    self ! ExportDaily5MinReport(DateTime.yesterday().withTimeAtStartOfDay())
 
   logger.info("DataCollect manager started")
 
@@ -945,6 +953,9 @@ class DataCollectManager @Inject()(config: Configuration,
               for (m <- monitorOp.mvList)
                 dataCollectManagerOp.recalculateHourData(monitor = m, current = current)
 
+              if(LoggerConfig.config.autoExport)
+                self ! ExportDaily5MinReport(DateTime.yesterday().withTimeAtStartOfDay())
+
               self ! CheckInstruments
             }
           case Failure(exception) =>
@@ -1151,6 +1162,24 @@ class DataCollectManager @Inject()(config: Configuration,
         val records = recordMap.getOrElse(MonitorType.RAIN, ListBuffer.empty[MtRecord])
         hourAccumulateRain = Some(records.foldLeft(0d)((acc, record) => acc + record.value.getOrElse(0.0)))
       }
+
+    case ExportDaily5MinReport(start) =>
+      {
+        val mtList = LoggerConfig.config.exportMtList
+        // Export 5 min Data excel
+        val chart = dataCollectManagerOp.trendHelper(Seq(Monitor.activeId), mtList, includeRaw = false, tableType.min,
+          ReportUnit.FiveMin, start, start.plusDays(1), showActual = true)(MonitorStatusFilter.ValidData)
+
+        import java.nio.file._
+        val precisionList = Array(2, 2)
+        val srcPath = excelUtility.export5MinChart(chart, precision = precisionList).toPath
+        val outputDir = Paths.get(LoggerConfig.config.exportPath)
+        val dayName = start.toString(s"YYYYMMDD")
+        val target = outputDir.resolve(s"$dayName.xlsx")
+
+        Files.copy(srcPath, target, StandardCopyOption.REPLACE_EXISTING)
+      }
+
   }
 
   override def postStop(): Unit = {
