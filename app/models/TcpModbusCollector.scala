@@ -39,6 +39,15 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
   private val WarnKey = "Warn"
 
 
+  if (modelReg.doDevice) {
+    modelReg.getSignalTypeInfo.foreach(signalTypeInfo => {
+      val (signalType, addr) = signalTypeInfo
+      context.parent ! AddSignalTypeHandler(signalType, bit => {
+        self ! WriteDO(addr, bit)
+      })
+    })
+  }
+
   self ! ConnectHost
 
   @volatile var timerOpt: Option[Cancellable] = None
@@ -327,6 +336,19 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     case TriggerVault(zero, on) =>
       logger.info(s"TriggerVault($zero, $on)")
       Future.successful(triggerVault(zero, on))
+
+    case WriteDO(bit, on) =>
+      if (modelReg.doDevice) {
+        logger.info(s"WriteDo $bit, $on")
+        try {
+          import com.serotonin.modbus4j.locator.BaseLocator
+          val locator = BaseLocator.coilStatus(deviceConfig.slaveID.getOrElse(1), bit)
+          masterOpt.foreach(_.setValue(locator, on))
+        } catch {
+          case ex: Exception =>
+            ModelHelper.logException(ex)
+        }
+      }
   }
 
   def triggerVault(zero: Boolean, on: Boolean): Unit = {
@@ -339,6 +361,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
       master.setValue(locator, on)
     }
   }
+
 
   def startCalibration(calibrationType: CalibrationType, monitorTypes: List[String]): Unit = {
     logger.info(s"start calibrating ${monitorTypes.mkString(",")}")

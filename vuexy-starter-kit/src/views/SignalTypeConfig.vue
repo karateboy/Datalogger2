@@ -107,6 +107,7 @@ import Vue from 'vue'
 const Ripple = require('vue-ripple-directive')
 import axios from 'axios'
 import { MonitorType } from './types'
+import ToastificationContent from '@/@core/components/toastification/ToastificationContent.vue'
 
 interface EditMonitorType extends MonitorType {
   dirty?: boolean
@@ -270,7 +271,7 @@ export default Vue.extend({
         signalType: true,
       }
       try {
-        const resp = await axios.post(`/MonitorType/${mt._id}`, mt)
+        const resp = await axios.post('/MonitorType', mt)
         if (resp.status === 200) this.getSignalTypes()
       } catch (err) {
         throw new Error('failed to get signal types')
@@ -296,6 +297,14 @@ export default Vue.extend({
     async setMonitorTypeValue(mt: string, bit: boolean) {
       try {
         const resp = await axios.get(`/SetSignal/${mt}/${bit}`)
+        this.$toast({
+          component: ToastificationContent,
+          props: {
+            title: '成功',
+            icon: 'EditIcon',
+            variant: 'success',
+          },
+        })
       } catch (err) {
         throw new Error('failed to toggle mt')
       }
