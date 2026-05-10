@@ -1174,7 +1174,7 @@ class DataCollectManager @Inject()(config: Configuration,
         val precisionList = Array(2, 2)
         val srcPath = excelUtility.export5MinChart(chart, precision = precisionList).toPath
         val outputDir = Paths.get(LoggerConfig.config.exportPath)
-        val dayName = start.toString(s"YYYYMMDD")
+        val dayName = start.toString(s"YYYYMMdd")
         val target = outputDir.resolve(s"$dayName.xlsx")
 
         Files.copy(srcPath, target, StandardCopyOption.REPLACE_EXISTING)
