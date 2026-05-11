@@ -482,7 +482,7 @@ class DataCollectManager @Inject()(config: Configuration,
         for (std_law <- mtCase.std_law; v <- value) {
           if (v > std_law) {
             val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, value)}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
-            alarmOp.log(alarmOp.src(mt), Alarm.Level.INFO, msg)
+            alarmOp.log(alarmOp.src(mt), Alarm.Level.ERR, msg)
             overThreshold = true
             mtCase.overLawSignalType.foreach(signalType => {
               self ! WriteSignal(signalType, bit = true)

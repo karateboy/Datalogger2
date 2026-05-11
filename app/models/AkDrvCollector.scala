@@ -124,7 +124,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
             comm.clearBuffer = true;
             logger.error(ex.getMessage, ex)
             if (connected) {
-              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, s"${ex.getMessage}")
             }
 
         } finally {
@@ -159,7 +159,7 @@ class AkDrvCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
           } catch {
             case ex: Exception =>
               logger.error(ex.getMessage, ex)
-              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"無法連接:${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, s"無法連接:${ex.getMessage}")
               import scala.concurrent.duration._
 
               context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, OpenCom)

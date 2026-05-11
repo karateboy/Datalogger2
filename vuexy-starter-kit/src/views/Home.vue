@@ -43,6 +43,17 @@
         <div :id="`history_${mt}`"></div>
       </b-card>
     </b-col>
+    <b-col cols="12">
+      <b-card>
+        <b-table
+          striped
+          hover
+          :fields="alarmColumns"
+          :items="alarms"
+          :tbody-tr-class="rowClass"
+        />
+      </b-card>
+    </b-col>
   </b-row>
 </template>
 <style>
@@ -181,7 +192,57 @@ export default Vue.extend({
       fullscreenControl: true,
     }
     let recordLists = Array<DisplayRecordList>()
+    const alarmColumns = [
+      {
+        key: 'time',
+        label: '時間',
+        sortable: true,
+        formatter: (v: number) => moment(v).format('lll'),
+      },
+      {
+        key: 'level',
+        label: '等級',
+        sortable: true,
+        formatter: (v: number) => {
+          switch (v) {
+            case 1:
+              return '資訊'
 
+            case 2:
+              return '警告'
+
+            case 3:
+              return '錯誤'
+          }
+        },
+      },
+      {
+        key: 'src',
+        label: '來源',
+        sortable: true,
+        formatter: (src: string) => {
+          let tokens = src.split(':')
+          switch (tokens[0]) {
+            case 'I':
+              return `設備:${tokens[1]}`
+
+            case 'T':
+              return `測項:${tokens[1]}`
+
+            case 'S':
+              if (tokens[1] === 'System') return `系統`
+              else return `系統:${tokens[1]}`
+            default:
+              return src
+          }
+        },
+      },
+      {
+        key: 'desc',
+        label: '詳細資訊',
+        sortable: true,
+      },
+    ]
     return {
       maxPoints: 30,
       fields,
@@ -200,6 +261,8 @@ export default Vue.extend({
       recordLists,
       infoWinIndex,
       mapOption,
+      alarms: [],
+      alarmColumns,
     }
   },
   computed: {
@@ -265,8 +328,8 @@ export default Vue.extend({
       this.getMonitorRealtimeData()
     }, 60000)
 
-    this.getCdxConfig()
-    this.initRealtimeChart()
+    this.getAlarm();
+    this.initRealtimeChart();
   },
   beforeDestroy() {
     clearInterval(this.refreshTimer)
@@ -565,6 +628,19 @@ export default Vue.extend({
         highcharts.chart(`rose_${mt}`, ret)
       } catch (err) {
       } finally {
+      }
+    },
+    async getAlarm() {
+      try {
+        const range = [
+          moment().subtract(2, 'days').valueOf(),
+          moment().valueOf(),
+        ]
+        const url = `/AlarmReport/3/${range[0]}/${range[1]}`
+        const res = await axios.get(url)
+        this.alarms = res.data
+      } catch (err) {
+        console.error(`${err}`)
       }
     },
     async getCdxUploadEvents() {
