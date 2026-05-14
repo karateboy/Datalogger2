@@ -56,9 +56,11 @@ class ExcelUtility @Inject()
     maintenanceStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND)
 
     for ((series, colIdx) <- chart.series.zipWithIndex) {
-      headerRow.createCell(1 + 2 * colIdx).setCellValue(series.name)
-      if (series.statusList.nonEmpty)
+      if (series.statusList.nonEmpty) {
+        headerRow.createCell(1 + 2 * colIdx).setCellValue(series.name)
         headerRow.createCell(1 + 2 * colIdx + 1).setCellValue("狀態碼")
+      } else
+        headerRow.createCell(1 + colIdx).setCellValue(series.name)
     }
 
     val styles = precision.map { prec =>
@@ -111,7 +113,12 @@ class ExcelUtility @Inject()
               timeCell.setCellValue(dt.toString("YYYY/MM/dd HH:mm:ss"))
           }
 
-          val cell = thisRow.createCell(colIdx * 2 + 1)
+          val cell =
+            if (series.statusList.nonEmpty)
+              thisRow.createCell(colIdx * 2 + 1)
+            else
+              thisRow.createCell(colIdx + 1)
+
           cell.setCellStyle(styles(colIdx % styles.length))
           for (v <- pair._2 if !v.isNaN) {
             val d = BigDecimal(v).setScale(precision(colIdx % precision.length), RoundingMode.HALF_UP)

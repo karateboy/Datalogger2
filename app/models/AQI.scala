@@ -1,6 +1,7 @@
 package models
 
 import com.github.nscala_time.time.Imports._
+import models.ModelHelper.{getPeriods, waitReadyResult}
 import play.api.Logger
 
 import scala.collection.mutable
@@ -22,6 +23,7 @@ case class AqiReport(aqi: Option[Double], sub_map: Map[AqiMonitorType, AqiSubRep
 
 object AQI {
   val logger: Logger = Logger(this.getClass)
+
   final case object O3_8hr extends AqiMonitorType
 
   final case object O3 extends AqiMonitorType
@@ -57,7 +59,7 @@ object AQI {
     SO2_24hr -> "SO2(ppb) 24小時平均值",
     NO2 -> "NO2(ppb) 小時平均值")
 
-  val mtMap: mutable.Map[AqiMonitorType, String] = mutable.Map(
+  val aqiMtMap: mutable.Map[AqiMonitorType, String] = mutable.Map(
     O3_8hr -> MonitorType.O3,
     O3 -> MonitorType.O3,
     pm25 -> MonitorType.PM25,
@@ -72,11 +74,11 @@ object AQI {
       logger.error(s"AQI type mapping length not equal!")
     } else
       for ((k, v) <- aqiMonitorType.zip(monitorTypes)) {
-        mtMap.update(k, v)
+        aqiMtMap.update(k, v)
       }
   }
 
-  def mtList: Set[String] = mtMap.values.toSet
+  private def aqiMtList: Set[String] = aqiMtMap.values.toSet
 
   def getAqiExplain(report: AqiReport)(monitorTypeDB: MonitorTypeDB): AqiExplainReport = {
     val value = AqiExplain(report.aqi.map(_.toInt.toString).getOrElse("-"), "",
@@ -86,7 +88,7 @@ object AQI {
         val (aqiMt, subReport) = pair
         if (aqiMt == O3_8hr || aqiMt == O3)
           AqiSubExplain(getAqiMonitorTypeName(aqiMt), AqiExplain(subReport.aqi.map(_.toInt.toString).getOrElse("-"),
-            monitorTypeDB.format(mtMap(aqiMt), subReport.value.map(_ / 1000), Some(3)),
+            monitorTypeDB.format(aqiMtMap(aqiMt), subReport.value.map(_ / 1000)),
             subReport.aqi.map(getAqiLevel).getOrElse("")))
         else {
           val precision = if (aqiMt == pm10) Some(0)
@@ -97,7 +99,7 @@ object AQI {
 
 
           AqiSubExplain(getAqiMonitorTypeName(aqiMt), AqiExplain(subReport.aqi.map(_.toInt.toString).getOrElse("-"),
-            monitorTypeDB.format(mtMap(aqiMt), subReport.value, precision),
+            monitorTypeDB.format(aqiMtMap(aqiMt), subReport.value),
             subReport.aqi.map(getAqiLevel).getOrElse("")))
         }
       })
@@ -303,9 +305,9 @@ object AQI {
           } else if (v <= 30.4f) {
             (v - 15.5f) * 99 / (30.4f - 15.5f) + 201
           } else if (v <= 40.4f) {
-            (v - 30.5f) * 99 / (40.4f - 30.4f) + 301
+            (v - 30.5f) * 99 / (40.4f - 30.5f) + 301
           } else {
-            (v - 40.5f) * 99 / (604f - 50.4f) + 401
+            (v - 40.5f) * 99 / (604f - 40.5f) + 401
           }
         result.setScale(0, BigDecimal.RoundingMode.HALF_UP).doubleValue()
       }
@@ -322,7 +324,7 @@ object AQI {
           if (v <= 8) {
             v * 50 / 8
           } else if (v <= 65f) {
-            (v - 8) * 49 / (65f - 8f) + 51
+            (v - 9) * 49 / (65f - 9f) + 51
           } else if (v <= 160f) {
             (v - 66f) * 49 / (160f - 66f) + 101
           } else {
@@ -426,7 +428,7 @@ object AQI {
       val dayMap = mutable.Map.empty[String, ListBuffer[Option[MtRecord]]]
       for {recordList <- recordLists
            mtMap = recordList.mtMap
-           mt <- mtList} {
+           mt <- aqiMtList} {
 
         val lb = dayMap.getOrElseUpdate(mt, ListBuffer.empty[Option[MtRecord]])
         lb.append(mtMap.get(mt))
@@ -437,7 +439,7 @@ object AQI {
   }
 
   private def getDailyAQI(dayStartHour: Int,
-                                        map: mutable.Map[String, ListBuffer[Option[MtRecord]]]): AqiReport = {
+                          map: mutable.Map[String, ListBuffer[Option[MtRecord]]]): AqiReport = {
 
     def getValidValues(mt: String, start: Int, end: Int): List[Double] = {
       val mtRecords: Iterable[Option[MtRecord]] = map.get(mt).map(lb => lb.slice(start, end)).getOrElse(ListBuffer.empty[Option[MtRecord]])
