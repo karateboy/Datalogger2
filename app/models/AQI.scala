@@ -360,26 +360,16 @@ object AQI {
   }
 
   def getRealtimeAqiTrend(m: String, start: DateTime, end: DateTime)(implicit recordDB: RecordDB): Future[Map[DateTime, AqiReport]] = {
-
-    for (recordLists <- recordDB.getRecordListFuture(recordDB.HourCollection)(start.minusDays(1), end, Seq(m))) yield {
-      val recordMap = mutable.Map.empty[String, ListBuffer[Option[MtRecord]]]
-      for {recordlist <- recordLists
-           mtMap = recordlist.mtMap
-           mt <- mtList
-           } {
-
-        val lb = recordMap.getOrElseUpdate(mt, ListBuffer.empty[Option[MtRecord]])
-        lb.append(mtMap.get(mt))
+    val duration = new Duration(start, end)
+    val futures =
+      for {
+        hr <- 24 to (24 + duration.getStandardDays.toInt * 24)
+        time = start + (hr - 24).hour
+      } yield {
+        getMonitorRealtimeAQI(m, time).map(ret=>time->ret)
       }
-      val duration = new Duration(start, end)
-      val pairs =
-        for {
-          hr <- 24 to (24 + duration.getStandardDays.toInt * 24)
-        } yield {
-          start + (hr - 24).hour -> getRealtimeAQI(hr, recordMap)
-        }
-      pairs.toMap
-    }
+
+    Future.sequence(futures).map(_.toMap)
   }
 
   private def getRealtimeAQI(thisHour: Int,
