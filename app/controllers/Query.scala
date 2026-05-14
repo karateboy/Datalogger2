@@ -1219,7 +1219,11 @@ class Query @Inject()(recordOp: RecordDB,
     security.Authenticated.async {
       val monitors = monitorStr.split(':')
       val start = new DateTime(startNum).withTimeAtStartOfDay()
-      val end = new DateTime(endNum).withTimeAtStartOfDay() + 1.day
+      val end = if(isDailyAqi)
+        new DateTime(endNum).withTimeAtStartOfDay() + 1.day
+      else
+        new DateTime(endNum).withMinuteOfHour(0)
+
       val outputType = OutputType.withName(outputTypeStr)
       val myTableType = tableType.withName(tab)
 
