@@ -223,8 +223,12 @@ export default Vue.extend({
         label: '順序',
       },
       {
+        key: 'span',
+        label: 'H Alarm',
+      },
+      {
         key: 'std_law',
-        label: '法規值',
+        label: 'HH Alarm',
       },
       {
         key: 'overLawSignalType',

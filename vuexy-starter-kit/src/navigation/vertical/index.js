@@ -70,10 +70,6 @@ export default [
         route: 'monitor-type-config',
       },
       {
-        title: '警報規則管理',
-        route: 'alarm-rule-config',
-      },
-      {
         title: '數位訊號管理',
         route: 'signal-type-config',
       },
@@ -84,10 +80,6 @@ export default [
       {
         title: '群組管理',
         route: 'group-management',
-      },
-      {
-        title: '參數設定',
-        route: 'system-config',
       },
     ],
   },
