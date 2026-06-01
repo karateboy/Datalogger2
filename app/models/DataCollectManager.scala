@@ -397,7 +397,6 @@ class DataCollectManager @Inject()(config: Configuration,
   import DataCollectManager._
   val logger = Logger(this.getClass)
 
-  logger.info(s"logger config = $LoggerConfig")
   DataCollectManager.updateEffectiveRatio(sysConfig)
   HourCalculationRule.init(sysConfig)
 

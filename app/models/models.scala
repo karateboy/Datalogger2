@@ -12,6 +12,15 @@ import scala.language.implicitConversions
 /**
  * @author user
  */
+trait Stringification { self: Product =>
+  override def toString: String = {
+    s"${getClass.getName} =>\n" +
+    getClass.getDeclaredFields
+      .zip(productIterator.toSeq)
+      .map { case (a, b) => s"${a.getName}=$b" }
+      .mkString(", ")
+  }
+}
 
 object ModelHelper {
   private val logger: Logger = Logger(this.getClass)
