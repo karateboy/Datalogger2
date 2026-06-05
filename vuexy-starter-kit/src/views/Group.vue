@@ -127,10 +127,17 @@ export default Vue.extend({
         },
       },
       {
-        text: '資料',
+        text: '數據查詢',
         value: {
           action: 'read',
           subject: 'Data',
+        },
+      },
+      {
+        text: '報表查詢',
+        value: {
+          action: 'read',
+          subject: 'Report',
         },
       },
       {
@@ -144,7 +151,7 @@ export default Vue.extend({
         text: '系統管理',
         value: {
           action: 'set',
-          subject: 'Alarm',
+          subject: 'SystemSettings',
         },
       },
     ]

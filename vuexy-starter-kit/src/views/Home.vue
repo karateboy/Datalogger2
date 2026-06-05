@@ -165,7 +165,7 @@ export default Vue.extend({
     const fields = [
       {
         key: 'index',
-        label: '序號',
+        label: '#',
       },
       {
         key: 'desp',
