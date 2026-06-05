@@ -35,8 +35,7 @@ class OpenDataReceiver @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: Monito
 
     epaMonitors.foreach(monitorOp.ensure)
     monitorTypeOp.epaToMtMap.values.foreach(mt => {
-      monitorTypeOp.ensure(mt)
-      recordOp.ensureMonitorType(mt)
+      monitorTypeOp.ensureRangeType(mt, recordOp)
     })
   }
 
@@ -93,11 +92,10 @@ class OpenDataReceiver @Inject()(monitorTypeOp: MonitorTypeDB, monitorOp: Monito
             //Ensure monitorType
             val mtSet = Set.empty[String] ++ recordLists.flatMap(_.mtDataList.map(_.mtName))
             mtSet.foreach(mt => {
-              monitorTypeOp.ensure(mt)
-              recordOp.ensureMonitorType(mt)
+              monitorTypeOp.ensureRangeType(mt, recordOp)
             })
-            recordOp.upsertManyRecords(recordOp.HourCollection)(recordLists)
-            recordOp.upsertManyRecords(recordOp.MinCollection)(recordLists)
+            recordOp.upsertManyRecordsChecked(recordOp.HourCollection)(recordLists)
+            recordOp.upsertManyRecordsChecked(recordOp.MinCollection)(recordLists)
             true
           }
         )

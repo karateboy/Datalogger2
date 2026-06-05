@@ -25,7 +25,7 @@ class ExcelUtility @Inject()
   val logger: Logger = Logger(this.getClass)
   val docRoot = environment.rootPath + "/report_template/"
 
-  def exportChartData(chart: HighchartData, monitorTypes: Array[String], showSec: Boolean): File = {
+  def exportChartData(chart: HighchartData, monitorTypes: Seq[String], showSec: Boolean): File = {
     val precArray = monitorTypes.map { mt =>
       if (monitorTypeOp.map.contains(mt))
         monitorTypeOp.map(mt).prec
@@ -34,10 +34,10 @@ class ExcelUtility @Inject()
         monitorTypeOp.map(realType).prec
       }
     }
-    exportChartData(chart, precArray, showSec)
+    exportChartDataWithPrecision(chart, precArray, showSec)
   }
 
-  def exportChartData(chart: HighchartData, precision: Array[Int], showSec: Boolean): File = {
+  def exportChartDataWithPrecision(chart: HighchartData, precision: Seq[Int], showSec: Boolean): File = {
     val (reportFilePath, pkg, wb) = prepareTemplate("chart_export.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
     val format = wb.createDataFormat();
@@ -56,9 +56,11 @@ class ExcelUtility @Inject()
     maintenanceStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND)
 
     for ((series, colIdx) <- chart.series.zipWithIndex) {
-      headerRow.createCell(1 + 2 * colIdx).setCellValue(series.name)
-      if (series.statusList.nonEmpty)
+      if (series.statusList.nonEmpty) {
+        headerRow.createCell(1 + 2 * colIdx).setCellValue(series.name)
         headerRow.createCell(1 + 2 * colIdx + 1).setCellValue("狀態碼")
+      } else
+        headerRow.createCell(1 + colIdx).setCellValue(series.name)
     }
 
     val styles = precision.map { prec =>
@@ -111,10 +113,15 @@ class ExcelUtility @Inject()
               timeCell.setCellValue(dt.toString("YYYY/MM/dd HH:mm:ss"))
           }
 
-          val cell = thisRow.createCell(colIdx * 2 + 1)
-          cell.setCellStyle(styles(colIdx))
+          val cell =
+            if (series.statusList.nonEmpty)
+              thisRow.createCell(colIdx * 2 + 1)
+            else
+              thisRow.createCell(colIdx + 1)
+
+          cell.setCellStyle(styles(colIdx % styles.length))
           for (v <- pair._2 if !v.isNaN) {
-            val d = BigDecimal(v).setScale(precision(colIdx), RoundingMode.HALF_UP)
+            val d = BigDecimal(v).setScale(precision(colIdx % precision.length), RoundingMode.HALF_UP)
             cell.setCellValue(d.doubleValue())
             if (series.statusList.nonEmpty)
               for (status <- series.statusList(row - 1)) {

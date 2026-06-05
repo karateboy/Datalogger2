@@ -106,6 +106,26 @@
             </b-form-group>
           </b-col>
           <b-col cols="6">
+            <b-form-group label="Y軸最小值" label-for="YMin" label-cols-md="3">
+              <b-form-input
+                id="YMin"
+                v-model.number="form.YMin"
+                type="number"
+                step="1"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="6">
+            <b-form-group label="Y軸最大值" label-for="YMax" label-cols-md="3">
+              <b-form-input
+                id="YMax"
+                v-model.number="form.YMax"
+                type="number"
+                step="1"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="6">
             <b-form-group
               label="資料區間"
               label-for="dataRange"
@@ -172,6 +192,7 @@ import useAppConfig from '../@core/app-config/useAppConfig'
 import moment from 'moment'
 import axios from 'axios'
 import highcharts from 'highcharts'
+import { HistoryTrendParam } from './types'
 
 export default Vue.extend({
   components: {
@@ -233,6 +254,8 @@ export default Vue.extend({
         chartType: 'line',
         range,
         includeRaw,
+        YMax: undefined,
+        YMin: 0,
       },
     }
   },
@@ -305,13 +328,20 @@ export default Vue.extend({
 
       this.setLoading({ loading: true })
       this.display = true
-      const monitors = this.form.monitors.join(':')
-      const url = `/HistoryTrend/${monitors}/${this.form.monitorTypes.join(
-        ':',
-      )}/${this.form.includeRaw}/${this.form.dataType}/${
-        this.form.reportUnit
-      }/${this.form.statusFilter}/${this.form.range[0]}/${this.form.range[1]}`
-      const res = await axios.get(url)
+
+      let param: HistoryTrendParam = {
+        monitors: this.form.monitors,
+        monitorTypes: this.form.monitorTypes,
+        raw: this.form.includeRaw,
+        tab: this.form.dataType,
+        unit: this.form.reportUnit,
+        filter: this.form.statusFilter,
+        start: this.form.range[0],
+        end: this.form.range[1],
+        output: 'html',
+      }
+
+      const res = await axios.post('/GetHistoryTrend', param)
       const ret = res.data
 
       this.setLoading({ loading: false })
@@ -357,7 +387,22 @@ export default Vue.extend({
           week: '%b%e日',
           month: '%y年%b',
         }
+        let yAxisArray = ret.yAxis as Array<highcharts.YAxisOptions>
+        for (let yAxis of yAxisArray) {
+          if (typeof this.form.YMax === 'number') yAxis.max = this.form.YMax
 
+          if (typeof this.form.YMin === 'number') yAxis.min = this.form.YMin
+
+          yAxis.gridLineColor = '#666666'
+          yAxis.lineColor = '#000000'
+          yAxis.tickColor = '#000000'
+          yAxis.labels = {
+            style: {
+              color: '#000000',
+              fontSize: '1rem',
+            },
+          }
+        }
         ret.plotOptions = {
           scatter: {
             tooltip: {
@@ -372,16 +417,29 @@ export default Vue.extend({
       highcharts.chart('chart_container', ret)
     },
     async downloadExcel() {
-      const baseUrl =
-        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/'
-      const monitors = this.form.monitors.join(':')
-      const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
-        ':',
-      )}/${this.form.includeRaw}/${this.form.dataType}/${
-        this.form.reportUnit
-      }/${this.form.statusFilter}/${this.form.range[0]}/${this.form.range[1]}`
+      let param: HistoryTrendParam = {
+        monitors: this.form.monitors,
+        monitorTypes: this.form.monitorTypes,
+        raw: this.form.includeRaw,
+        tab: this.form.dataType,
+        unit: this.form.reportUnit,
+        filter: this.form.statusFilter,
+        start: this.form.range[0],
+        end: this.form.range[1],
+        output: 'excel',
+      }
 
-      window.open(url)
+      const res = await axios.post('/GetHistoryTrend', param, {
+        responseType: 'blob',
+      })
+
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const link = document.createElement('a')
+      link.href = url
+      const fileName = 'chat.xlsx'
+      link.setAttribute('download', fileName)
+      document.body.appendChild(link)
+      link.click()
     },
   },
 })

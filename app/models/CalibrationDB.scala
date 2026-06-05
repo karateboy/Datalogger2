@@ -12,7 +12,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 
-case class Calibration(monitorType: String,
+case class Calibration(monitor:Option[String],
+                       monitorType: String,
                        startTime: Date,
                        endTime: Date,
                        zero_val: Option[Double],
@@ -114,20 +115,20 @@ trait CalibrationDB {
   implicit val reads: Reads[Calibration] = Json.reads[Calibration]
   implicit val writes: OWrites[Calibration] = Json.writes[Calibration]
 
-  def calibrationReport(start: DateTime, end: DateTime): Seq[Calibration]
+  def calibrationReport(start: DateTime, end: DateTime)(monitor:String): Seq[Calibration]
 
-  def calibrationReportFuture(start: DateTime, end: DateTime): Future[Seq[Calibration]]
+  def calibrationReportFuture(start: DateTime, end: DateTime)(monitor:String): Future[Seq[Calibration]]
 
-  def calibrationReportFuture(start: DateTime): Future[Seq[Calibration]]
+  def calibrationReportFuture(start: DateTime)(monitor:String): Future[Seq[Calibration]]
 
-  def calibrationReport(mt: String, start: DateTime, end: DateTime): Seq[Calibration]
+  def calibrationReport(mt: String, start: DateTime, end: DateTime)(monitor:String): Seq[Calibration]
 
-  def getCalibrationListMapFuture(startDate: DateTime, endDate: DateTime)
+  def getCalibrationListMapFuture(startDate: DateTime, endDate: DateTime)(monitor:String)
                                  (implicit monitorTypeOp: MonitorTypeDB): Future[CalibrationListMap] = {
     val begin = startDate - 3.day
     val end = endDate
 
-    val f = calibrationReportFuture(begin, end)
+    val f = calibrationReportFuture(begin, end)(monitor)
     f.failed.foreach(errorHandler)
     for (calibrationList <- f)
       yield {

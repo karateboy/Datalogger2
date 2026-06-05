@@ -138,7 +138,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
     val tokens = file.getName.split("\\.")
 
     val mtName = s"${tokens(0)}${config.postfix}"
-    monitorTypeOp.ensure(mtName)
+    monitorTypeOp.ensureRangeType(mtName, recordOp)
 
     val reader = CSVReader.open(file)
     var dataBegin = Instant.MAX
@@ -186,7 +186,7 @@ class SpectrumReader(config: SpectrumReaderConfig, sysConfig: SysConfigDB,
 
     reader.close()
     if (docs.nonEmpty) {
-      for (ret <- recordOp.upsertManyRecords(recordOp.MinCollection)(docs)) yield
+      for (ret <- recordOp.upsertManyRecordsChecked(recordOp.MinCollection)(docs)) yield
         Some(ParseResult(getLastModified(file).toInstant, dataBegin, dataEnd, mtName))
     } else
       Future {

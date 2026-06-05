@@ -1,0 +1,6 @@
+allowBuilds:
+  '@scarf/scarf': true
+  esbuild: true
+  msw: true
+  unrs-resolver: true
+  vue-demi: true

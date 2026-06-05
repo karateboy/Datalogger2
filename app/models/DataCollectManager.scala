@@ -48,6 +48,8 @@ object DataCollectManager {
 
   case class WriteSignal(mtId: String, bit: Boolean)
 
+  case class ToggleSignal(mtId:String, delay:Int)
+
   private case object CheckInstruments
 
   private case class UpdateCalibrationMap(map: CalibrationListMap)
@@ -238,9 +240,10 @@ object DataCollectManager {
     }
   }
 
-  def calculateHourAvgMap(mtMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]],
-                          alwaysValid: Boolean,
-                          monitorTypeDB: MonitorTypeDB): mutable.Iterable[MtRecord] = {
+  def calculateAvgMap(mtMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]],
+                      alwaysValid: Boolean,
+                      monitorTypeDB: MonitorTypeDB,
+                      dailyAvg: Boolean = false): mutable.Iterable[MtRecord] = {
     for {
       (mt, statusMap) <- mtMap
       totalSize = statusMap.map {
@@ -328,13 +331,13 @@ object DataCollectManager {
               Some(values.sum)
 
             case MonitorType.PM10 =>
-              if (LoggerConfig.config.pm25HourAvgUseLastRecord)
+              if (!dailyAvg && LoggerConfig.config.pm25HourAvgUseLastRecord)
                 Some(values.last)
               else
                 Some(values.sum / values.length)
 
             case MonitorType.PM25 =>
-              if (LoggerConfig.config.pm25HourAvgUseLastRecord)
+              if (!dailyAvg && LoggerConfig.config.pm25HourAvgUseLastRecord)
                 Some(values.last)
               else
                 Some(values.sum / values.length)
@@ -378,6 +381,7 @@ object DataCollectManager {
 
 @Singleton
 class DataCollectManager @Inject()(config: Configuration,
+                                   environment: Environment,
                                    recordOp: RecordDB,
                                    monitorTypeOp: MonitorTypeDB,
                                    monitorOp: MonitorDB,
@@ -403,6 +407,13 @@ class DataCollectManager @Inject()(config: Configuration,
   for (aqiMonitorTypes <- sysConfig.getAqiMonitorTypes)
     AQI.updateAqiTypeMapping(aqiMonitorTypes)
 
+  // ensure calculated types
+  MonitorType.calculatedMonitorTypes.foreach(monitorTypeOp.ensureRangeType(_, recordOp))
+
+  // ensure daily avg monitor types
+  MonitorType.DailyAvgTargetMonitorTypes.foreach(monitorTypeOp.ensureRangeType(_, recordOp))
+
+
   val timer: Cancellable = {
     import scala.concurrent.duration._
     //Try to trigger at 30 sec
@@ -424,8 +435,8 @@ class DataCollectManager @Inject()(config: Configuration,
 
   private val readerList: List[ActorRef] = startReaders()
   private val forwardManagerOpt: Option[ActorRef] =
-    for (serverConfig <- ForwardManager.getConfig(config)) yield
-      injectedChild(forwardManagerFactory(serverConfig.server, serverConfig.monitor), "forwardManager")
+    for (serverConfig <- ForwardManager.getConfig(config, monitorOp)) yield
+      injectedChild(forwardManagerFactory(serverConfig), "forwardManager")
 
   private def startReaders(): List[ActorRef] = {
     val readers: ListBuffer[ActorRef] = ListBuffer.empty[ActorRef]
@@ -437,6 +448,10 @@ class DataCollectManager @Inject()(config: Configuration,
       readers.append(readerRef)
 
     for (readerRef <- VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
+      readers.append(readerRef)
+
+    for(readerRef <- ImsReader.start(config, context.system, monitorTypeOp = monitorTypeOp, recordOp = recordOp,
+      dataCollectManager = self, dataCollectManagerOp = dataCollectManagerOp, environment = environment))
       readers.append(readerRef)
 
     readers.toList
@@ -484,7 +499,10 @@ class DataCollectManager @Inject()(config: Configuration,
             alarmOp.log(alarmOp.src(mt), Alarm.Level.ERR, msg)
             overThreshold = true
             mtCase.overLawSignalType.foreach(signalType => {
-              self ! WriteSignal(signalType, bit = true)
+              if(mtCase.span.isEmpty)
+                self ! WriteSignal(signalType, bit = true)
+              else
+                self ! ToggleSignal(signalType, mtCase.span.get.toInt)
             })
           }
         }
@@ -788,7 +806,7 @@ class DataCollectManager @Inject()(config: Configuration,
 
       val now = DateTime.now()
       //Update Calibration Map
-      for (map <- calibrationDB.getCalibrationListMapFuture(now.minusDays(2), now)(monitorTypeOp)) {
+      for (map <- calibrationDB.getCalibrationListMapFuture(now.minusDays(2), now)(Monitor.activeId)(monitorTypeOp)) {
         self ! UpdateCalibrationMap(map)
       }
 
@@ -854,7 +872,7 @@ class DataCollectManager @Inject()(config: Configuration,
 
           val sortedDocs = docs.toSeq.sortBy { x => x._1 } map (_._2)
           if (sortedDocs.nonEmpty)
-            recordOp.insertManyRecord(recordOp.SecCollection)(sortedDocs)
+            recordOp.insertManyRecordChecked(recordOp.SecCollection)(sortedDocs)
         }
       }
 
@@ -930,7 +948,7 @@ class DataCollectManager @Inject()(config: Configuration,
         val alarms = alarmRuleDb.checkAlarm(tableType.min, recordList, alarmRules)(monitorOp, monitorTypeOp, alarmOp)
         alarms.foreach(ar => alarmOp.log(ar.src, ar.level, ar.desc, 0))
 
-        val f = recordOp.upsertRecord(recordOp.MinCollection)(recordList)
+        val f = recordOp.upsertRecordChecked(recordOp.MinCollection)(recordList)
         f onComplete {
           case Success(_) =>
             self ! ForwardMin
@@ -1125,6 +1143,14 @@ class DataCollectManager @Inject()(config: Configuration,
       for (handler <- handlerMap.values)
         handler(bit)
 
+    case ToggleSignal(mtId, delay) =>
+      // Trigger only when signalMap is empty or is false
+      if(!signalDataMap.contains(mtId) || !signalDataMap(mtId)._2){
+        self ! WriteSignal(mtId, bit = true)
+        context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(delay, SECONDS),
+          self, WriteSignal(mtId, bit = false))
+      }
+
     case ReportSignalData(dataList) =>
       dataList.foreach(signalData => monitorTypeOp.logDiMonitorType(alarmOp, signalData.mt, signalData.value))
       val updateMap: Map[String, (DateTime, Boolean)] = dataList.map(signal => {
@@ -1139,11 +1165,15 @@ class DataCollectManager @Inject()(config: Configuration,
       val f = recordOp.getMtRecordMapFuture(recordOp.MinCollection)(Monitor.activeId, monitorTypeOp.measuringList,
         now.minusHours(1), now)
       for (minRecordMap <- f) {
+        val exDataLossRecordMap = minRecordMap.map(pair=>{
+          val (mt, mtRecords) = pair
+          mt->mtRecords.filter(_.status != MonitorStatus.DataLost)
+        })
         for (kv <- instrumentMap) {
           val (instID, instParam) = kv;
           if (instParam.mtList.filter(mt => !monitorTypeOp.map(mt).signalType)
-            .exists(mt => !minRecordMap.contains(mt) ||
-              minRecordMap.contains(mt) && minRecordMap(mt).size < 45)) {
+            .exists(mt => !exDataLossRecordMap.contains(mt) ||
+              exDataLossRecordMap.contains(mt) && exDataLossRecordMap(mt).size < 45)) {
             logger.error(s"$instID has less than 45 minRecords. Restart $instID")
             alarmOp.log(alarmOp.srcInstrumentID(instID), Alarm.Level.ERR, s"$instID 每小時分鐘資料小於45筆. 重新啟動 $instID 設備")
             self ! RestartInstrument(instID)

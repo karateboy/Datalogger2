@@ -58,7 +58,7 @@ class UpsCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monito
   val logger: Logger = Logger(getClass)
   import DataCollectManager._
 
-  monitorTypeOp.ensure(monitorTypeOp.signalType(UPS_SHUTDOWN, "中斷UPS電源"))
+  monitorTypeOp.ensureSignalType(monitorTypeOp.signalType(UPS_SHUTDOWN, "中斷UPS電源"))
 
   context.parent ! AddSignalTypeHandler(UPS_SHUTDOWN, bit=>{
     self ! WriteSignal(UPS_SHUTDOWN, bit)

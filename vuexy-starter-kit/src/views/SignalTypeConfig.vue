@@ -17,6 +17,14 @@
         <template #cell(desp)="row">
           <b-form-input v-model="row.item.desp" @change="markDirty(row.item)" />
         </template>
+        <template #cell(span)="row">
+          <b-form-input
+            v-model.number="row.item.span"
+            type="number"
+            size="sm"
+            @change="markDirty(row.item)"
+          />
+        </template>
         <template #cell(value)="row">
           {{ getMonitorTypeValue(row.item._id) }}
         </template>
@@ -125,6 +133,10 @@ export default Vue.extend({
         key: 'desp',
         label: '名稱',
         sortable: true,
+      },
+      {
+        key: 'span',
+        label: '持續時間(秒)',
       },
       {
         key: 'value',

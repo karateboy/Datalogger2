@@ -2,39 +2,62 @@
   <div>
     <b-card>
       <b-form @submit.prevent>
-        <b-form-group label="測點" label-for="monitor" label-cols-md="3">
-          <v-select
-            id="monitor"
-            v-model="form.monitor"
-            label="desc"
-            :reduce="mt => mt._id"
-            :options="monitors"
-          />
-        </b-form-group>
-        <b-form-group label="資料種類" label-for="dataType" label-cols-md="3">
-          <v-select
-            id="dataType"
-            v-model="form.dataType"
-            label="txt"
-            :reduce="dt => dt.id"
-            :options="dataTypes"
-          />
-        </b-form-group>
-        <b-form-group
-          label="監測資料區間"
-          label-for="dataRange"
-          label-cols-md="3"
-        >
-          <date-picker
-            id="dataRange"
-            v-model="form.range"
-            :range="true"
-            type="datetime"
-            format="YYYY-MM-DD HH:mm"
-            value-type="timestamp"
-            :show-second="false"
-          />
-        </b-form-group>
+        <b-row>
+          <b-col cols="6">
+            <b-form-group label="測點" label-for="monitor" label-cols-md="3">
+              <v-select
+                id="monitor"
+                v-model="form.monitor"
+                label="desc"
+                :reduce="mt => mt._id"
+                :options="monitors"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="6">
+            <b-form-group
+              label="資料種類"
+              label-for="dataType"
+              label-cols-md="3"
+            >
+              <v-select
+                id="dataType"
+                v-model="form.dataType"
+                label="txt"
+                :reduce="dt => dt.id"
+                :options="dataTypes"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="6">
+            <b-form-group
+              label="監測資料區間"
+              label-for="dataRange"
+              label-cols-md="3"
+            >
+              <date-picker
+                id="dataRange"
+                v-model="form.range"
+                :range="true"
+                type="datetime"
+                format="YYYY-MM-DD HH:mm"
+                value-type="timestamp"
+                :show-second="false"
+              />
+            </b-form-group>
+          </b-col>
+          <b-col cols="6">
+            <b-form-group label="方向" label-for="direction" label-cols-md="3">
+              <b-form-select
+                v-model="form.backward"
+                :options="directions"
+              ></b-form-select>
+            </b-form-group>
+          </b-col>
+          <b-col cols="6"></b-col>
+          <b-col cols="6"></b-col>
+        </b-row>
+
         <b-row>
           <b-col offset-md="3">
             <b-button
@@ -81,7 +104,8 @@
               :position="mapCenter"
               :clickable="true"
             />
-            <GmapPolyline stroke-color="red" :path="trace.trace" />
+            <GmapPolyline :path="trace.trace" />
+
             <GmapMarker
               v-for="(pos, markerIdx) in trace.trace"
               :key="`marker${markerIdx}`"
@@ -159,13 +183,20 @@ export default Vue.extend({
       { txt: '分鐘資料', id: 'min' },
     ]
 
+    const directions = [
+      { text: '回推', value: true },
+      { text: '傳輸', value: false },
+    ]
+
     return {
       form: {
         monitor: '',
         dataType: 'hour',
         range,
+        backward: true,
       },
       dataTypes,
+      directions,
       trace,
       mapOption,
       mapLoaded,
@@ -224,14 +255,14 @@ export default Vue.extend({
 
       return {
         path: faCircle.icon[4] as string,
-        fillColor: 'red',
+        fillColor: this.form.backward ? 'red' : 'blue',
         fillOpacity: 1,
         anchor: new google.maps.Point(
           faCircle.icon[0] / 2, // width
           faCircle.icon[1] / 2, // height
         ),
         strokeWeight: 1,
-        strokeColor: 'red',
+        strokeColor: this.form.backward ? 'red' : 'blue',
         scale: 0.01,
       }
     },
@@ -253,7 +284,7 @@ export default Vue.extend({
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapMutations(['setLoading']),
     async query() {
-      const url = `/TraceQuery/${this.form.monitor}/${this.form.dataType}/${this.form.range[0]}/${this.form.range[1]}`
+      const url = `/TraceQuery/${this.form.monitor}/${this.form.dataType}/${this.form.backward}/${this.form.range[0]}/${this.form.range[1]}`
       this.selectedMarker = -1
       try {
         this.setLoading({ loading: true })

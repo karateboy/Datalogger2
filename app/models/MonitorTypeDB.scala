@@ -19,17 +19,50 @@ trait MonitorTypeDB {
     rangeType(SO2, "二氧化硫", "ppb", 2),
     rangeType(NOX, "氮氧化物", "ppb", 2),
     rangeType(NO2, "二氧化氮", "ppb", 2),
+    rangeType(NO, "一氧化氮", "ppb", 2),
+    rangeType(NOY, "NOY", "ppb", 2),
+    rangeType(NOY_NO, "NOY-NO", "ppb", 2),
     rangeType(CO, "一氧化碳", "ppm", 2),
+    rangeType(CO2, "二氧化碳", "ppm", 2),
     rangeType(O3, "臭氧", "ppb", 2),
+    rangeType(THC, "總碳氫化合物", "ppm", 2),
+    rangeType(TS, "總硫", "ppb", 2),
     rangeType(CH4, "甲烷", "ppm", 2),
+    rangeType(NMHC, "非甲烷碳氫化合物", "ppm", 2),
     rangeType(NH3, "氨", "ppb", 2),
+    rangeType("TSP", "TSP", "μg/m3", 2),
+    rangeType(PM10, "PM10懸浮微粒", "μg/m3", 2),
+    rangeType(PM25, "PM2.5細懸浮微粒", "μg/m3", 2),
+    rangeType(WIN_SPEED, "風速", "m/sec", 2),
+    rangeType(WIN_DIRECTION, "風向", "degrees", 2),
+    rangeType(WS_SPEED, "風速(算術平均)", "m/sec", 2),
     rangeType(TEMP, "溫度", "℃", 2),
     rangeType(HUMID, "濕度", "%", 2),
     rangeType(PRESS, "氣壓", "hPa", 2),
+    rangeType(RAIN, "雨量", "mm/h", 2),
+    rangeType(LAT, "緯度", "度", 5),
+    rangeType(LNG, "經度", "度", 5),
+    rangeType("RT", "室內溫度", "℃", 1),
     rangeType("O2", "氧氣 ", "%", 1),
-    rangeType(FLOW, "採樣流量", "m3/s", 1)
+    rangeType(SOLAR, "日照", "W/m2", 2),
+    rangeType(CH2O, "CH2O", "ppb", 2),
+    rangeType(TVOC, "TVOC", "ppb", 2),
+    rangeType(NOISE, "NOISE", "dB", 2),
+    rangeType(H2S, "H2S", "ppb", 2),
+    rangeType(H2, "H2", "ppb", 2),
+    rangeType(LEQA, "LeqA", "dB", 2, accumulated = true),
+    rangeType(LEQZ, "LeqZ", "dB", 2, accumulated = true),
+    rangeType(LDN, "LDN", "dB", 2, accumulated = true),
+    rangeType(WD10, "前10分風向向量平均", "degrees", 2),
+    rangeType(WS10, "前10分風速算術平均", "m/sec", 2),
+    rangeType(PM10D, "前24小時PM10平均", "μg/m3", 2),
+    rangeType(PM25D, "前24小時PM2.5平均", "μg/m3", 2),
     /////////////////////////////////////////////////////
-  )
+    signalType(DOOR, "門禁"),
+    signalType(SMOKE, "煙霧"),
+    signalType(FLOW, "採樣流量"),
+    signalType("SPRAY", "灑水"))
+
 
   private val mtEpaIdMap: Map[String, String] = Map(
     MonitorType.TEMP -> "14",
@@ -88,15 +121,27 @@ trait MonitorTypeDB {
     rangeList = mtListFromDb.filter { mt => !mt.signalType }.sortBy(_.order) map (mt => mt._id)
     signalList = mtListFromDb.filter { mt => mt.signalType }.sortBy(_.order) map (mt => mt._id)
 
-    // ensure calculated types
-    for (mt <- calculatedMonitorTypes)
-      ensure(mt)
   }
 
   def getList: List[MonitorType]
 
-  def ensure(id: String): Unit =
+  private def ensure(mtCase:MonitorType): Unit ={
     synchronized {
+      if (!map.contains(mtCase._id)) {
+        mtCase.measuringBy = Some(List.empty[String])
+        upsertMonitorType(mtCase)
+      } else {
+        if (mtCase.measuringBy.isEmpty) {
+          mtCase.measuringBy = Some(List.empty[String])
+          upsertMonitorType(mtCase)
+        }
+      }
+    }
+  }
+
+  def ensureRangeType(id: String, recordDB: RecordDB): Unit =
+    synchronized {
+      recordDB.ensureMonitorType(id)
       if (!map.contains(id)) {
         val mt = defaultMonitorTypes.find(_._id == id).getOrElse(rangeType(id, id, "??", 2))
         mt.measuringBy = Some(List.empty[String])
@@ -110,19 +155,12 @@ trait MonitorTypeDB {
       }
     }
 
-  def ensure(mtCase: MonitorType): Unit = {
-    synchronized {
-      if (!map.contains(mtCase._id)) {
-        mtCase.measuringBy = Some(List.empty[String])
-        upsertMonitorType(mtCase)
-      } else {
-        if (mtCase.measuringBy.isEmpty) {
-          mtCase.measuringBy = Some(List.empty[String])
-          upsertMonitorType(mtCase)
-        }
-      }
-    }
+  def ensureRangeType(mtCase: MonitorType, recordDB: RecordDB): Unit = {
+    recordDB.ensureMonitorType(mtCase._id)
+    ensure(mtCase)
   }
+
+  def ensureSignalType(mtCase: MonitorType): Unit = ensure(mtCase)
 
   def rangeType(_id: String, desp: String, unit: String, prec: Int, accumulated: Boolean = false, acoustic: Boolean = false): MonitorType = {
     rangeOrder += 1
@@ -252,15 +290,7 @@ trait MonitorTypeDB {
           true
         else
           false
-
-    val overInternal =
-      for (std <- mtCase.span; v <- vOpt) yield
-        if (v > std)
-          true
-        else
-          false
-
-    (overInternal.getOrElse(false), overLaw.getOrElse(false))
+    (overLaw.getOrElse(false), overLaw.getOrElse(false))
   }
 
   def getMinMtRecordByRawValue(mt: String, rawValue: Option[Double], status: String)(mOpt: Option[Double], bOpt: Option[Double]): MtRecord = {
