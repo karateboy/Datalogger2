@@ -151,12 +151,12 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
 
     for ((st, idx) <- statusTypeList.zipWithIndex) {
       if (st.key.startsWith(Input64Key)) {
-        logger.info(s"sending input64 request ${st.addr}")
+        logger.debug(s"sending input64 request ${st.addr}")
         batch.addLocator(idx, BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode64))
       } else if (st.key.startsWith(InputKey)) {
         batch.addLocator(idx, BaseLocator.inputRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode))
       } else if (st.key.startsWith(Holding64Key)) {
-        logger.info(s"sending holding64 request ${st.addr}")
+        logger.debug(s"sending holding64 request ${st.addr}")
         batch.addLocator(idx, BaseLocator.holdingRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode64))
       } else if (st.key.startsWith(HoldingKey)) {
         batch.addLocator(idx, BaseLocator.holdingRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode))
@@ -230,7 +230,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
           case ex: Exception =>
             logger.error(s"$instId:$desc=>${ex.getMessage}", ex)
             if (connected)
-              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, s"${ex.getMessage}")
 
             connected = false
         } finally {
@@ -296,7 +296,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
           } catch {
             case ex: Exception =>
               logger.error(s"$instId:${desc}=>${ex.getMessage}", ex)
-              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"無法連接:${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, s"無法連接:${ex.getMessage}")
 
               if (master != null)
                 master.destroy()

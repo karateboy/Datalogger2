@@ -1,6 +1,6 @@
 package models
 
-import play.api.Configuration
+import play.api.{Configuration, Logger}
 
 case class LoggerConfig(storeSecondData: Boolean,
                         selfMonitor: Boolean,
@@ -12,13 +12,15 @@ case class LoggerConfig(storeSecondData: Boolean,
                         alertEmail: Boolean,
                         autoExport: Boolean,
                         exportMtList: Seq[String],
-                        exportPath: String)
+                        exportPath: String) extends Stringification
 
 object LoggerConfig {
   var config: LoggerConfig = _
+  val logger = Logger(getClass)
 
   def init(configuration: Configuration): Unit = {
     config = getConfig(configuration)
+    logger.info(config.toString)
   }
 
   private def getConfig(configuration: Configuration): LoggerConfig = {
