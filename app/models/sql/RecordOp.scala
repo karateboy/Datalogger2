@@ -222,7 +222,7 @@ class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
         mtList map mtMap
     }
 
-  override def upsertManyRecords(colName: String)(records: Seq[RecordList])(): Future[BulkWriteResult] = {
+  override def upsertManyRecords(colName: String)(records: Seq[RecordList]): Future[BulkWriteResult] = {
     val futures = records.map(recordList => upsertRecord(colName)(recordList))
     for (_ <- Future.sequence(futures)) yield
       BulkWriteResult.unacknowledged()

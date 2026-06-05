@@ -38,13 +38,13 @@ class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mail
          """.map(mapper).list().apply()
     }
 
-  override def getAlarmsFuture(start: Date, end: Date): Future[Seq[Alarm]] = {
+  override def getAlarmsFuture(start: Date, end: Date)(monitor:String): Future[Seq[Alarm]] = {
     implicit val session: DBSession = ReadOnlyAutoSession
     Future {
       sql"""
           SELECT *
           FROM [dbo].[alarms]
-          Where time >= $start and time < $end
+          Where time >= $start and time < $end and [monitor] = $monitor
           Order by time desc
          """.map(mapper).list().apply()
     }
@@ -56,10 +56,12 @@ class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mail
     Alarm(rs.timestamp("time"),
       rs.string("src"),
       rs.int("level"),
-      rs.string("desc"))
+      rs.string("desc"),
+      rs.stringOpt("monitor")
+    )
 
   override def log(src: String, level: Int, desc: String, coldPeriod: Int = 30): Unit = {
-    val ar = Alarm(Date.from(Instant.now), src, level, desc)
+    val ar = Alarm(Date.from(Instant.now), src, level, desc, Some(Monitor.activeId))
     logFilter(ar, coldPeriod)
   }
 
@@ -110,6 +112,7 @@ class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mail
       sql"""
            CREATE TABLE [dbo].[alarms](
 	                      [id] [bigint] IDENTITY(1,1) NOT NULL,
+                        [monitor] [nvarchar](50) NOT NULL,
 	                      [time] [datetime2](7) NOT NULL,
 	                      [src] [nvarchar](50) NOT NULL,
 	                      [level] [int] NOT NULL,
@@ -119,6 +122,14 @@ class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mail
 	              [id] ASC
               )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
           ) ON [PRIMARY]
+           """.execute().apply()
+    }
+    val columns = sqlServer.getColumnNames(tabName)
+    if(!columns.contains("monitor")){
+      val activeId = SQLSyntax.createUnsafely(s"${Monitor.activeId}")
+      sql"""
+           ALTER TABLE [dbo].[alarms]
+           ADD [monitor] [nvarchar](50) NOT NULL DEFAULT '$activeId';
            """.execute().apply()
     }
   }

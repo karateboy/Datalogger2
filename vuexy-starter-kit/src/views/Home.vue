@@ -32,6 +32,24 @@
       </b-card>
     </b-col>
     <b-col
+      v-if="cdxConfig.enable"
+      cols="12"
+      lg="6"
+      md="6"
+      style="max-height: 400px"
+      xl="6"
+    >
+      <b-table
+        :fields="cdxUploadColumns"
+        :items="cdxUploadLogs"
+        :tbody-tr-class="rowClass"
+        responsive
+        small
+        sticky-header
+        striped
+      />
+    </b-col>
+    <b-col
       v-for="mt in userInfo.monitorTypeOfInterest"
       :key="mt"
       cols="12"
@@ -43,15 +61,63 @@
         <div :id="`history_${mt}`"></div>
       </b-card>
     </b-col>
-    <b-col cols="12">
-      <b-card>
-        <b-table
-          striped
-          hover
-          :fields="alarmColumns"
-          :items="alarms"
-          :tbody-tr-class="rowClass"
-        />
+    <b-col
+      v-for="mt in windRoseList"
+      :key="`rose${mt}`"
+      cols="12"
+      lg="4"
+      md="6"
+      xl="3"
+    >
+      <b-card
+        :header="`${getMtName(mt)}玫瑰圖`"
+        border-variant="success"
+        header-bg-variant="success"
+        header-class="h4 display text-center"
+        header-text-variant="white"
+      >
+        <div :id="`rose_${mt}`">尚無資料</div>
+      </b-card>
+    </b-col>
+    <b-col v-if="userInfo.windField" cols="12">
+      <b-card border-variant="primary" no-body>
+        <div class="map_container">
+          <GmapMap
+            ref="map"
+            :center="getMapCenter()"
+            :options="mapOption"
+            :zoom="14"
+            class="map_canvas"
+            map-type-id="hybrid"
+          >
+            <div v-if="mapLoaded">
+              <div
+                v-for="recordList in activeRecordList"
+                :key="recordList._id.monitor"
+              >
+                <GmapMarker
+                  :clickable="false"
+                  :icon="getCircleIcon(recordList)"
+                  :position="getSudoMonitorPos(recordList._id.monitor)"
+                />
+                <GmapMarker
+                  :clickable="true"
+                  :icon="getWindIcon(recordList)"
+                  :label="{
+                    text: `${geMtRecordValue(recordList, 'WD_SPEED')}`,
+                    className:
+                      'map-label bg-white rounded border border-primary',
+                    color: 'black',
+                    fontSize: '14px',
+                    fontWeight: '400',
+                  }"
+                  :position="getSudoMonitorPos(recordList._id.monitor)"
+                  :title="getSudoMonitorName(recordList._id.monitor)"
+                />
+              </div>
+            </div>
+          </GmapMap>
+        </div>
       </b-card>
     </b-col>
   </b-row>
@@ -192,57 +258,7 @@ export default Vue.extend({
       fullscreenControl: true,
     }
     let recordLists = Array<DisplayRecordList>()
-    const alarmColumns = [
-      {
-        key: 'time',
-        label: '時間',
-        sortable: true,
-        formatter: (v: number) => moment(v).format('lll'),
-      },
-      {
-        key: 'level',
-        label: '等級',
-        sortable: true,
-        formatter: (v: number) => {
-          switch (v) {
-            case 1:
-              return '資訊'
 
-            case 2:
-              return '警告'
-
-            case 3:
-              return '錯誤'
-          }
-        },
-      },
-      {
-        key: 'src',
-        label: '來源',
-        sortable: true,
-        formatter: (src: string) => {
-          let tokens = src.split(':')
-          switch (tokens[0]) {
-            case 'I':
-              return `設備:${tokens[1]}`
-
-            case 'T':
-              return `測項:${tokens[1]}`
-
-            case 'S':
-              if (tokens[1] === 'System') return `系統`
-              else return `系統:${tokens[1]}`
-            default:
-              return src
-          }
-        },
-      },
-      {
-        key: 'desc',
-        label: '詳細資訊',
-        sortable: true,
-      },
-    ]
     return {
       maxPoints: 30,
       fields,
@@ -261,8 +277,6 @@ export default Vue.extend({
       recordLists,
       infoWinIndex,
       mapOption,
-      alarms: [],
-      alarmColumns,
     }
   },
   computed: {
@@ -328,8 +342,8 @@ export default Vue.extend({
       this.getMonitorRealtimeData()
     }, 60000)
 
-    this.getAlarm();
-    this.initRealtimeChart();
+    this.getCdxConfig()
+    this.initRealtimeChart()
   },
   beforeDestroy() {
     clearInterval(this.refreshTimer)
@@ -630,19 +644,6 @@ export default Vue.extend({
       } finally {
       }
     },
-    async getAlarm() {
-      try {
-        const range = [
-          moment().subtract(2, 'days').valueOf(),
-          moment().valueOf(),
-        ]
-        const url = `/AlarmReport/3/${range[0]}/${range[1]}`
-        const res = await axios.get(url)
-        this.alarms = res.data
-      } catch (err) {
-        console.error(`${err}`)
-      }
-    },
     async getCdxUploadEvents() {
       try {
         const range = [
@@ -682,10 +683,13 @@ export default Vue.extend({
       }
     },
     getMapCenter(): any {
-      return {
-        lat: this.activeMonitors[0].lat,
-        lng: this.activeMonitors[0].lng,
-      }
+      if (this.activeMonitors[0].lat && this.activeMonitors[0].lng)
+        return {
+          lat: this.activeMonitors[0].lat,
+          lng: this.activeMonitors[0].lng,
+        }
+
+      return { lat: 25.034556283782745, lng: 121.56198451016448 }
     },
     getWindIcon(recordList: RecordList) {
       let mtData = recordList.mtDataList.find(

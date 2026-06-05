@@ -72,7 +72,7 @@ class Cdx @Inject()(cdxUploader: CdxUploader,
   def CdxUploadData(startNum:Long, endNum:Long): Action[AnyContent] = security.Authenticated.async {
     val start = new DateTime(startNum)
     val end = new DateTime(endNum)
-    val recordFuture = recordDB.getRecordListFuture(recordDB.HourCollection)(start, end)
+    val recordFuture = recordDB.getRecordListFuture(recordDB.HourCollection)(start, end, Seq(Monitor.activeId))
     val uploadPath = environment.rootPath.toPath.resolve("cdxUpload")
     for{records<-recordFuture
         cdxConfig <- sysConfigDB.getCdxConfig
@@ -86,7 +86,7 @@ class Cdx @Inject()(cdxUploader: CdxUploader,
   def newTaipeiOpenDataUpload(startNum:Long, endNum:Long): Action[AnyContent] = security.Authenticated.async {
     val start = new DateTime(startNum)
     val end = new DateTime(endNum)
-    val recordFuture = recordDB.getRecordListFuture(recordDB.HourCollection)(start, end)
+    val recordFuture = recordDB.getRecordListFuture(recordDB.HourCollection)(start, end, Seq(Monitor.activeId))
     for{records<-recordFuture
         cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes
         } yield {

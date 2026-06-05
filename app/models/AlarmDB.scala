@@ -5,7 +5,7 @@ import play.api.libs.json.{Json, OWrites}
 import java.util.Date
 import scala.concurrent.Future
 
-case class Alarm(time: Date, src: String, level: Int, desc: String)
+case class Alarm(time: Date, src: String, level: Int, desc: String, monitor:Option[String])
 
 object Alarm {
   object Level {
@@ -35,7 +35,7 @@ trait AlarmDB {
 
   implicit val write: OWrites[Alarm] = Json.writes[Alarm]
 
-  def getAlarmsFuture(start: Date, end: Date): Future[Seq[Alarm]]
+  def getAlarmsFuture(start: Date, end: Date)(monitor:String): Future[Seq[Alarm]]
 
   def log(src: String, level: Int, desc: String, coldPeriod: Int = 30): Unit
 

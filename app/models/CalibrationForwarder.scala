@@ -13,23 +13,23 @@ import scala.concurrent.duration.{FiniteDuration, SECONDS}
 
 object CalibrationForwarder {
   trait Factory {
-    def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String): Actor
+    def apply(@Assisted("server") server: String, @Assisted("monitors") monitors: Seq[String]): Actor
   }
 }
 
 class CalibrationForwarder @Inject()
 (ws: WSClient, calibrationOp: CalibrationDB)
-(@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
+(@Assisted("server") server: String, @Assisted("monitors") monitors: Seq[String]) extends Actor {
   val logger: Logger = Logger(this.getClass)
 
   import ForwardManager._
   import calibrationOp._
 
-  logger.info(s"CalibrationForwarder started $server/$monitor")
+  logger.info(s"CalibrationForwarder started $server monitor=${monitors.mkString(",")}")
 
-  def receive = handler(None)
+  def receive: Receive = handler(Map.empty)
 
-  def checkLatest = {
+  def checkLatest(monitor:String)(monitorLatestMap:Map[String, Long]): Unit = {
     val url = s"http://$server/CalibrationRecordRange/$monitor"
     val f = ws.url(url).get().map {
       response =>
@@ -47,39 +47,43 @@ class CalibrationForwarder @Inject()
                 new DateTime(latest.time)
               }
 
-            context become handler(Some(serverLatest.getMillis))
-            uploadCalibration(serverLatest.getMillis)
+            val newMap = monitorLatestMap + (monitor->serverLatest.getMillis)
+            context become handler(newMap)
+            uploadCalibration(monitor, serverLatest.getMillis)(newMap)
           })
     }
-    FiniteDuration(1, SECONDS)
   }
 
-  def uploadCalibration(latestCalibration: Long) = {
-    val recordFuture = calibrationOp.calibrationReportFuture(new DateTime(latestCalibration + 1))
+  private def uploadCalibration(monitor:String, latestCalibration: Long)(monitorLatestMap:Map[String, Long]): Unit = {
+    val recordFuture = calibrationOp.calibrationReportFuture(new DateTime(latestCalibration + 1))(monitor)
     for (records <- recordFuture) {
       if (records.nonEmpty) {
         val url = s"http://$server/CalibrationRecord/$monitor"
         val f = ws.url(url).put(Json.toJson(records))
-        f.foreach(_=> context become handler(Some(records.last.startTime.getTime)))
+        f.foreach(_=> context become handler(monitorLatestMap + (monitor->records.last.startTime.getTime)))
         f.failed.foreach(ex => {
-          context become handler(None)
+          context become handler(monitorLatestMap - monitor)
           ModelHelper.logException(ex)
         })
       }
     }
   }
 
-  def handler(latestCalibrationOpt: Option[Long]): Receive = {
+  def handler(monitorLatestMap:Map[String, Long]): Receive = {
     case ForwardCalibration =>
-      try {
-        if (latestCalibrationOpt.isEmpty)
-          checkLatest
-        else
-          uploadCalibration(latestCalibrationOpt.get)
-      } catch {
-        case ex: Throwable =>
-          ModelHelper.logException(ex)
-          context become handler(None)
-      }
+
+        monitors.foreach(monitor=>{
+          try{
+            if (monitorLatestMap.contains(monitor))
+              uploadCalibration(monitor, monitorLatestMap(monitor))(monitorLatestMap)
+            else
+              checkLatest(monitor)(monitorLatestMap)
+          }catch {
+            case ex: Throwable =>
+              ModelHelper.logException(ex)
+              context become handler(monitorLatestMap - monitor)
+          }
+        })
+
   }
 }
