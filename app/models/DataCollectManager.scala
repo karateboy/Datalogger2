@@ -115,9 +115,7 @@ object DataCollectManager {
 
   private case object UpdateHourAccumulatedRain
 
-  case object CheckStatus
-
-  case class ExportDaily5MinReport(dateTime: DateTime)
+  private case class ExportDaily5MinReport(dateTime: DateTime)
 
   private def updateEffectiveRatio(sysConfig: SysConfigDB): Unit = {
     for (ratio <- sysConfig.getEffectiveRatio)
