@@ -21,7 +21,6 @@ import store from './store'
 import App from './App.vue'
 import { ValidationProvider } from 'vee-validate'
 import vSelect from 'vue-select'
-import GmapVue from 'gmap-vue'
 
 // Global Components
 import './global-components'
@@ -143,16 +142,11 @@ router.beforeEach((to, from, next) => {
   }
 })
 
-Vue.use(GmapVue, {
-  load: {
-    key: 'AIzaSyBedM4POn2tywGFC81jAIGuYEPPYc9OpGU',
-    libraries: 'visualization', // This is required if you use the Autocomplete plugin
-    v: '3.26',
-  },
-  installComponents: true,
-})
+import { i18n } from '@/i18n'
+
 new Vue({
   router,
   store,
+  i18n,
   render: h => h(App),
 }).$mount('#app')

@@ -1,0 +1,18 @@
+{
+  "title": "監測系統",
+  "Realtime": "即時資訊",
+  "Dashboard": "儀錶板",
+  "DataQuery": "數據查詢",
+  "HistoryData": "歷史資料",
+  "TrendChart": "趨勢圖",
+  "AlarmQuery": "警報",
+  "Report": "報表",
+  "System": "系統管理",
+  "Instrument": "儀器管理",
+  "MonitorTypeConfig": "測項管理",
+  "AlarmRule": "警報規則",
+  "DI/DO": "數位訊號管理",
+  "UserManagement": "使用者管理",
+  "GroupManagement": "群組管理",
+  "SystemConfig": "參數設定"
+}

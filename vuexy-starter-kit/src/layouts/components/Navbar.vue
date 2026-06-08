@@ -14,9 +14,30 @@
       class="bookmark-wrapper align-items-center flex-grow-1 d-none d-lg-flex"
     >
       <dark-Toggler class="d-none d-lg-block" />
-      <h2 class="m-0">環境資料蒐集系統&nbsp;&nbsp;&nbsp;</h2>
+      <h2 class="m-0">{{ $t('title') }}</h2>
       <sub class="text-muted">{{ version }}</sub>
     </div>
+
+    <b-navbar-nav class="nav align-items-center ml-auto">
+      <b-nav-item-dropdown
+        right
+        toggle-class="d-flex align-items-center dropdown-user-link"
+        class="dropdown-user"
+      >
+        <template #button-content> LANG </template>
+
+        <b-dropdown-item
+          v-for="lang in languages"
+          :key="lang.value"
+          link-class="d-flex align-items-center"
+          @click="changeLang(lang)"
+        >
+          <feather-icon size="16" icon="LogOutIcon" class="mr-50" />
+          <span>{{ lang.label }}</span>
+        </b-dropdown-item>
+        <b-dropdown-divider />
+      </b-nav-item-dropdown>
+    </b-navbar-nav>
 
     <b-navbar-nav class="nav align-items-center ml-auto">
       <b-nav-item-dropdown
@@ -39,26 +60,6 @@
             badge-variant="success"
           />
         </template>
-
-        <b-dropdown-item link-class="d-flex align-items-center">
-          <feather-icon size="16" icon="UserIcon" class="mr-50" />
-          <span>Profile</span>
-        </b-dropdown-item>
-
-        <b-dropdown-item link-class="d-flex align-items-center">
-          <feather-icon size="16" icon="MailIcon" class="mr-50" />
-          <span>Inbox</span>
-        </b-dropdown-item>
-
-        <b-dropdown-item link-class="d-flex align-items-center">
-          <feather-icon size="16" icon="CheckSquareIcon" class="mr-50" />
-          <span>Task</span>
-        </b-dropdown-item>
-
-        <b-dropdown-item link-class="d-flex align-items-center">
-          <feather-icon size="16" icon="MessageSquareIcon" class="mr-50" />
-          <span>Chat</span>
-        </b-dropdown-item>
 
         <b-dropdown-divider />
 
@@ -89,7 +90,12 @@ export default {
     },
   },
   data() {
+    const languages = [
+      { value: 'en', label: 'English' },
+      { value: 'zh', label: '中文' },
+    ]
     return {
+      languages,
       version: '1.0.0',
     }
   },
@@ -114,6 +120,11 @@ export default {
         jscookie.remove('authentication')
         this.$router.push('/login')
       })
+    },
+    changeLang(lang) {
+      console.log(this.$i18n)
+      localStorage.setItem('locale', lang.value)
+      this.$i18n.locale = lang.value
     },
   },
 }

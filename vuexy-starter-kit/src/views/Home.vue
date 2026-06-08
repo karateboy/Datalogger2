@@ -32,24 +32,6 @@
       </b-card>
     </b-col>
     <b-col
-      v-if="cdxConfig.enable"
-      cols="12"
-      lg="6"
-      md="6"
-      style="max-height: 400px"
-      xl="6"
-    >
-      <b-table
-        :fields="cdxUploadColumns"
-        :items="cdxUploadLogs"
-        :tbody-tr-class="rowClass"
-        responsive
-        small
-        sticky-header
-        striped
-      />
-    </b-col>
-    <b-col
       v-for="mt in userInfo.monitorTypeOfInterest"
       :key="mt"
       cols="12"
@@ -59,65 +41,6 @@
     >
       <b-card border-variant="primary">
         <div :id="`history_${mt}`"></div>
-      </b-card>
-    </b-col>
-    <b-col
-      v-for="mt in windRoseList"
-      :key="`rose${mt}`"
-      cols="12"
-      lg="4"
-      md="6"
-      xl="3"
-    >
-      <b-card
-        :header="`${getMtName(mt)}玫瑰圖`"
-        border-variant="success"
-        header-bg-variant="success"
-        header-class="h4 display text-center"
-        header-text-variant="white"
-      >
-        <div :id="`rose_${mt}`">尚無資料</div>
-      </b-card>
-    </b-col>
-    <b-col v-if="userInfo.windField" cols="12">
-      <b-card border-variant="primary" no-body>
-        <div class="map_container">
-          <GmapMap
-            ref="map"
-            :center="getMapCenter()"
-            :options="mapOption"
-            :zoom="14"
-            class="map_canvas"
-            map-type-id="hybrid"
-          >
-            <div v-if="mapLoaded">
-              <div
-                v-for="recordList in activeRecordList"
-                :key="recordList._id.monitor"
-              >
-                <GmapMarker
-                  :clickable="false"
-                  :icon="getCircleIcon(recordList)"
-                  :position="getSudoMonitorPos(recordList._id.monitor)"
-                />
-                <GmapMarker
-                  :clickable="true"
-                  :icon="getWindIcon(recordList)"
-                  :label="{
-                    text: `${geMtRecordValue(recordList, 'WD_SPEED')}`,
-                    className:
-                      'map-label bg-white rounded border border-primary',
-                    color: 'black',
-                    fontSize: '14px',
-                    fontWeight: '400',
-                  }"
-                  :position="getSudoMonitorPos(recordList._id.monitor)"
-                  :title="getSudoMonitorName(recordList._id.monitor)"
-                />
-              </div>
-            </div>
-          </GmapMap>
-        </div>
       </b-card>
     </b-col>
   </b-row>
@@ -299,32 +222,12 @@ export default Vue.extend({
     activeMonitors(): Array<Monitor> {
       return this.monitors.filter((m: Monitor) => m._id === this.activeID)
     },
-    activeRecordList(): Array<DisplayRecordList> {
-      return this.recordLists.filter(rl => rl._id.monitor === this.activeID)
-    },
   },
   async mounted() {
     const { skin } = useAppConfig()
     if (skin.value == 'dark') {
       darkTheme(highcharts)
     }
-
-    this.$gmapApiPromiseLazy().then(() => {
-      this.mapLoaded = true
-      console.info('Google map api loaded', this.$refs.map)
-      /*
-      let latlng = Array<google.maps.LatLng>();
-      for (let m of this.activeMonitors) {
-        if (m.lat && m.lng) latlng.push(new google.maps.LatLng(m.lat, m.lng));
-      }
-
-      let bounds = new google.maps.LatLngBounds();
-      for (let i = 0; i < latlng.length; i++) {
-        bounds.extend(latlng[i]);
-      }
-      this.$refs.map.fitBounds(bounds);
-       */
-    })
 
     await this.fetchMonitors()
     await this.getActiveID()
@@ -334,15 +237,12 @@ export default Vue.extend({
 
     const me = this
     for (const mt of this.userInfo.monitorTypeOfInterest) me.query(mt)
-    for (const mt of me.windRoseList) me.queryWindRose(mt)
 
     this.mtInterestTimer = setInterval(() => {
       for (const mt of me.userInfo.monitorTypeOfInterest) me.query(mt)
-      for (const mt of me.windRoseList) me.queryWindRose(mt)
       this.getMonitorRealtimeData()
     }, 60000)
 
-    this.getCdxConfig()
     this.initRealtimeChart()
   },
   beforeDestroy() {
@@ -355,7 +255,6 @@ export default Vue.extend({
     ...mapActions('user', ['getUserInfo']),
     async refresh(): Promise<void> {
       await this.plotLatestData()
-      await this.getCdxUploadEvents()
     },
     async plotLatestData(): Promise<void> {
       await this.getRealtimeStatus()
@@ -447,9 +346,6 @@ export default Vue.extend({
           this.chartSeries.push(series)
         }
       }
-      // Make last yAxis oppsite
-      //yAxisList[yAxisList.length - 1].opposite = true;
-      //console.log(yAxisList);
 
       const me = this
       const pointFormatter = function pointFormatter(this: any) {
@@ -583,82 +479,6 @@ export default Vue.extend({
       }
       highcharts.chart(`history_${mt}`, ret)
     },
-    getMtName(mt: string): string {
-      let mtInfo = this.mtMap.get(mt) as MonitorType
-      if (mtInfo !== undefined) return mtInfo.desp
-      else return ''
-    },
-    async queryWindRose(mt: string) {
-      const now = new Date().getTime()
-      const oneHourBefore = now - 60 * 60 * 1000
-
-      try {
-        const url = `/WindRose/${this.activeID}/${mt}/min/16/${oneHourBefore}/${now}`
-        const res = await axios.get(url)
-        const ret = res.data
-        ret.pane = {
-          size: '90%',
-        }
-
-        ret.yAxis = {
-          min: 0,
-          endOnTick: false,
-          showLastLabel: true,
-          title: {
-            text: '頻率 (%)',
-          },
-          labels: {
-            formatter(this: any) {
-              return this.value + '%'
-            },
-          },
-          reversedStacks: false,
-        }
-
-        ret.tooltip = {
-          valueDecimals: 2,
-          valueSuffix: '%',
-        }
-
-        ret.plotOptions = {
-          series: {
-            stacking: 'normal',
-            shadow: false,
-            groupPadding: 0,
-            pointPlacement: 'on',
-          },
-        }
-
-        ret.exporting = {
-          enabled: false,
-        }
-        ret.credits = {
-          enabled: false,
-          href: 'http://www.wecc.com.tw/',
-        }
-
-        ret.title.x = -70
-        highchartMore(highcharts)
-        highcharts.chart(`rose_${mt}`, ret)
-      } catch (err) {
-      } finally {
-      }
-    },
-    async getCdxUploadEvents() {
-      try {
-        const range = [
-          moment().subtract(7, 'days').valueOf(),
-          moment().valueOf(),
-        ]
-        let src = 'S:CDX'
-        let res = await axios.get(`/Alarms/${src}/1/${range[0]}/${range[1]}`)
-        if (res.status === 200) {
-          this.cdxUploadLogs = res.data.slice(0, 5)
-        }
-      } catch (err) {
-        throw new Error(`$err`)
-      }
-    },
     async getCdxConfig() {
       try {
         let ret = await axios.get('/CdxConfig')
@@ -682,48 +502,9 @@ export default Vue.extend({
           return 'table-danger'
       }
     },
-    getMapCenter(): any {
-      if (this.activeMonitors[0].lat && this.activeMonitors[0].lng)
-        return {
-          lat: this.activeMonitors[0].lat,
-          lng: this.activeMonitors[0].lng,
-        }
-
-      return { lat: 25.034556283782745, lng: 121.56198451016448 }
-    },
-    getWindIcon(recordList: RecordList) {
-      let mtData = recordList.mtDataList.find(
-        mtData => mtData.mtName === 'WD_DIR',
-      )
-      return {
-        path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-        fillColor: 'red',
-        fillOpacity: 1,
-        rotation: mtData?.value,
-        scale: 5.5,
-        strokeColor: 'white',
-        strokeWeight: 0.5,
-      }
-    },
-    getCircleIcon(recordList: RecordList) {
-      let mtData = recordList.mtDataList.find(
-        mtData => mtData.mtName === 'WD_DIR',
-      )
-      return {
-        path: google.maps.SymbolPath.CIRCLE,
-        anchor: new google.maps.Point(0, 1),
-        fillColor: 'white',
-        fillOpacity: 1,
-        rotation: mtData?.value,
-        scale: 15,
-        strokeColor: 'black',
-        strokeWeight: 1,
-      }
-    },
     async getMonitorRealtimeData() {
       const ret = await axios.get('/LatestMonitorData')
       let data = ret.data as LatestMonitorData
-      console.info('getMonitorRealtimeData()', data)
       this.recordLists = data.monitorData
       for (let recordList of this.recordLists) {
         recordList.recordMap = new Map<string, MtRecord>()
@@ -731,31 +512,6 @@ export default Vue.extend({
           recordList.recordMap.set(mtData.mtName, mtData)
         }
       }
-    },
-    getSudoMonitorName(_id: string): string {
-      if (this.mMap.has(_id)) {
-        let m = this.mMap.get(_id) as Monitor
-        return m.desc
-      }
-
-      return `${_id}`
-    },
-    getSudoMonitorPos(_id: string): any {
-      const monitor = this.mMap.get(_id) as Monitor
-      if (monitor && monitor.lat && monitor.lng) {
-        return { lat: monitor.lat, lng: monitor.lng }
-      }
-
-      console.info(`Monitor ${_id} has no lat/lng`)
-      return this.getMapCenter()
-    },
-    geMtRecordValue(recordList: DisplayRecordList, mt: string): string {
-      let mtRecord = recordList?.recordMap!.get(mt)
-      let mtCase = this.mtMap.get(mt) as MonitorType
-      if (mtRecord === undefined || mtRecord.value === undefined)
-        return `N/A ${mtCase.unit}`
-
-      return `${mtRecord.value.toFixed(mtCase.prec)} ${mtCase.unit}`
     },
   },
 })

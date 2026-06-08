@@ -1,0 +1,18 @@
+{
+  "title": "DAHS",
+  "Realtime": "Realtime",
+  "Dashboard": "Dashboard",
+  "DataQuery": "Data Query",
+  "HistoryData": "History Data",
+  "TrendChart": "Trend Chart",
+  "AlarmQuery": "Alarm",
+  "Report":"Report",
+  "System": "System",
+  "Instrument": "Instrument",
+  "MonitorTypeConfig": "Monitor Type Config",
+  "AlarmRule": "Alarm Rules",
+  "DI/DO": "Digital Input/Output",
+  "UserManagement": "User Management",
+  "GroupManagement": "Group Management",
+  "SystemConfig": "System Config"
+}
