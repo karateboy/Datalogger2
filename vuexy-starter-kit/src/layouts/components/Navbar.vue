@@ -24,7 +24,9 @@
         toggle-class="d-flex align-items-center dropdown-user-link"
         class="dropdown-user"
       >
-        <template #button-content> LANG </template>
+        <template #button-content>
+          <feather-icon size="16" icon="GlobeIcon" class="mr-50" />
+        </template>
 
         <b-dropdown-item
           v-for="lang in languages"
@@ -32,10 +34,8 @@
           link-class="d-flex align-items-center"
           @click="changeLang(lang)"
         >
-          <feather-icon size="16" icon="LogOutIcon" class="mr-50" />
           <span>{{ lang.label }}</span>
         </b-dropdown-item>
-        <b-dropdown-divider />
       </b-nav-item-dropdown>
     </b-navbar-nav>
 
@@ -122,7 +122,6 @@ export default {
       })
     },
     changeLang(lang) {
-      console.log(this.$i18n)
       localStorage.setItem('locale', lang.value)
       this.$i18n.locale = lang.value
     },

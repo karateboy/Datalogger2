@@ -55,10 +55,6 @@ export default [
         route: 'monitor-type-config',
       },
       {
-        title: 'AlarmRule',
-        route: 'alarm-rule-config',
-      },
-      {
         title: 'DI/DO',
         route: 'signal-type-config',
       },

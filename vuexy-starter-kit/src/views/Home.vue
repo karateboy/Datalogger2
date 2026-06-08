@@ -4,7 +4,7 @@
       <b-card
         border-variant="primary"
         class="text-center"
-        header="即時監測資訊"
+        :header="$t('realtimeData')"
         header-bg-variant="primary"
         header-class="h4 display text-center"
         header-text-variant="white"
@@ -60,19 +60,10 @@
 import Vue from 'vue'
 import { mapActions, mapGetters, mapState } from 'vuex'
 import axios from 'axios'
-import {
-  CdxConfig,
-  MonitorType,
-  MonitorTypeStatus,
-  MtRecord,
-  RecordList,
-} from './types'
+import { MonitorType, MonitorTypeStatus, MtRecord, RecordList } from './types'
 import highcharts from 'highcharts'
 import darkTheme from 'highcharts/themes/dark-unica'
 import useAppConfig from '../@core/app-config/useAppConfig'
-import highchartMore from 'highcharts/highcharts-more'
-import moment from 'moment'
-import { Monitor } from '@/store/monitors/types'
 
 interface LatestMonitorData {
   monitorTypes: Array<string>
@@ -85,121 +76,18 @@ interface DisplayRecordList extends RecordList {
 
 export default Vue.extend({
   data() {
-    const fields = [
-      {
-        key: 'index',
-        label: '序號',
-      },
-      {
-        key: 'desp',
-        label: '測項',
-      },
-      {
-        key: 'value',
-        label: '測值',
-        formatter: (value: string, key: string, item: MonitorTypeStatus) => {
-          const v = parseFloat(item.value)
-          if (isNaN(v)) return `-`
-          else return `${item.value}`
-        },
-      },
-      {
-        key: 'unit',
-        label: '單位',
-      },
-      {
-        key: 'status',
-        label: '狀態',
-        tdClass: (value: string, key: string, item: MonitorTypeStatus) => {
-          return item.classStr
-        },
-      },
-    ]
     let chart: any
     chart = null
-    const cdxUploadColumns = [
-      {
-        key: 'time',
-        label: '時間',
-        sortable: true,
-        formatter: (v: number) => moment(v).format('lll'),
-      },
-      {
-        key: 'level',
-        label: '等級',
-        sortable: true,
-        formatter: (v: number) => {
-          switch (v) {
-            case 1:
-              return '資訊'
-
-            case 2:
-              return '警告'
-
-            case 3:
-              return '錯誤'
-          }
-        },
-        tdClass: (v: number) => {
-          switch (v) {
-            case 1:
-              return 'success'
-
-            case 2:
-              return 'warning'
-
-            case 3:
-              return 'danger'
-          }
-        },
-      },
-      {
-        key: 'desc',
-        label: '詳細資訊',
-        sortable: true,
-      },
-    ]
-    let cdxConfig: CdxConfig = {
-      enable: false,
-      user: '',
-      password: '',
-      siteCounty: '',
-      siteID: '',
-    }
-
-    let infoWindowContent = new Map<string, string>()
-    let infoWindowPos = new Map<string, any>()
-    let infoWinOpen = new Map<string, boolean>()
-    let infoWinIndex = new Map<string, number>()
-    let mapLoaded = false
-    let mapOption = {
-      zoomControl: true,
-      mapTypeControl: true,
-      scaleControl: true,
-      streetViewControl: true,
-      rotateControl: true,
-      fullscreenControl: true,
-    }
     let recordLists = Array<DisplayRecordList>()
 
     return {
       maxPoints: 30,
-      fields,
       refreshTimer: 0,
       mtInterestTimer: 0,
       realTimeStatus: Array<MonitorTypeStatus>(),
       chartSeries: Array<highcharts.SeriesOptionsType>(),
       chart,
-      cdxConfig,
-      cdxUploadColumns,
-      cdxUploadLogs: [],
-      infoWindowContent,
-      infoWindowPos,
-      infoWinOpen,
-      mapLoaded,
       recordLists,
-      infoWinIndex,
-      mapOption,
     }
   },
   computed: {
@@ -212,15 +100,43 @@ export default Vue.extend({
       const { skin } = useAppConfig()
       return skin
     },
-    windRoseList(): Array<string> {
-      let mtInterest = this.userInfo.monitorTypeOfInterest as Array<string>
-      return mtInterest.filter(mt => mt !== 'WD_DIR')
-    },
     isRealtimeMeasuring(): boolean {
       return this.realTimeStatus.length !== 0
     },
-    activeMonitors(): Array<Monitor> {
-      return this.monitors.filter((m: Monitor) => m._id === this.activeID)
+    fields():Array<any> {
+      return [
+        {
+          key: 'index',
+          label: '#',
+        },
+        {
+          key: 'desp',
+          label: this.$i18n.t('monitorType'),
+        },
+        {
+          key: 'value',
+          label: this.$i18n.t('value'),
+          formatter: (value: string, key: string, item: MonitorTypeStatus) => {
+            const v = parseFloat(item.value)
+            if (isNaN(v)) return `-`
+            else return `${item.value}`
+          },
+        },
+        {
+          key: 'unit',
+          label: this.$i18n.t('unit'),
+        },
+        {
+          key: 'status',
+          label: this.$i18n.t('status'),
+          tdClass: (value: string, key: string, item: MonitorTypeStatus) => {
+            return item.classStr
+          },
+          formatter: (value: string, key: string, item: MonitorTypeStatus) => {
+            return this.$i18n.t(value);
+          },
+        },
+      ]
     },
   },
   async mounted() {
@@ -422,7 +338,7 @@ export default Vue.extend({
       }
 
       let mtInfo = this.mtMap.get(mt) as MonitorType
-      ret.title!.text = `${mtInfo.desp}分鐘趨勢圖`
+      ret.title!.text = `${mtInfo.desp} 趨勢圖`
 
       ret.colors = [
         '#7CB5EC',
@@ -478,16 +394,6 @@ export default Vue.extend({
         enabled: false,
       }
       highcharts.chart(`history_${mt}`, ret)
-    },
-    async getCdxConfig() {
-      try {
-        let ret = await axios.get('/CdxConfig')
-        if (ret.status === 200) {
-          this.cdxConfig = ret.data
-        }
-      } catch (err) {
-        throw new Error(`$err`)
-      }
     },
     rowClass(item: any, type: any) {
       if (!item || type !== 'row') return

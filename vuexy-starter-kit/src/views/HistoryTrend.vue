@@ -4,21 +4,8 @@
       <b-form @submit.prevent>
         <b-row>
           <b-col cols="6">
-            <b-form-group label="測點" label-for="monitor" label-cols-md="3">
-              <v-select
-                id="monitor"
-                v-model="form.monitors"
-                label="desc"
-                :reduce="mt => mt._id"
-                :options="monitors"
-                :close-on-select="false"
-                multiple
-              />
-            </b-form-group>
-          </b-col>
-          <b-col cols="6">
             <b-form-group
-              label="測項"
+              :label="$t('monitorType')"
               label-for="monitorType"
               label-cols-md="3"
             >
@@ -31,23 +18,11 @@
                 :close-on-select="false"
                 multiple
               />
-              <b-form-checkbox v-model="form.includeRaw"
-                >顯示原始值</b-form-checkbox
-              >
             </b-form-group>
-            <b-button
-              v-for="mtg in monitorTypeGroups"
-              :key="mtg._id"
-              class="bg-gradient-success m-50"
-              size="sm"
-              @click="form.monitorTypes = mtg.mts"
-            >
-              {{ mtg.name }}
-            </b-button>
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="資料種類"
+              :label="$t('dataType')"
               label-for="dataType"
               label-cols-md="3"
             >
@@ -56,13 +31,13 @@
                 v-model="form.dataType"
                 label="txt"
                 :reduce="dt => dt.id"
-                :options="dataTypes"
+                :options="translateDataTypes"
               />
             </b-form-group>
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="時間單位"
+              :label="$t('timeUnit')"
               label-for="reportUnit"
               label-cols-md="3"
             >
@@ -77,57 +52,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="狀態"
-              label-for="statusFilter"
-              label-cols-md="3"
-            >
-              <v-select
-                id="statusFilter"
-                v-model="form.statusFilter"
-                label="txt"
-                :reduce="dt => dt.id"
-                :options="statusFilters"
-              />
-            </b-form-group>
-          </b-col>
-          <b-col cols="6">
-            <b-form-group
-              label="圖表類型"
-              label-for="chartType"
-              label-cols-md="3"
-            >
-              <v-select
-                id="chartType"
-                v-model="form.chartType"
-                label="desc"
-                :reduce="ct => ct.type"
-                :options="chartTypes"
-              />
-            </b-form-group>
-          </b-col>
-          <b-col cols="6">
-            <b-form-group label="Y軸最小值" label-for="YMin" label-cols-md="3">
-              <b-form-input
-                id="YMin"
-                v-model.number="form.YMin"
-                type="number"
-                step="1"
-              />
-            </b-form-group>
-          </b-col>
-          <b-col cols="6">
-            <b-form-group label="Y軸最大值" label-for="YMax" label-cols-md="3">
-              <b-form-input
-                id="YMax"
-                v-model.number="form.YMax"
-                type="number"
-                step="1"
-              />
-            </b-form-group>
-          </b-col>
-          <b-col cols="6">
-            <b-form-group
-              label="資料區間"
+              :label="$t('dataRange')"
               label-for="dataRange"
               label-cols-md="3"
             >
@@ -151,7 +76,7 @@
               class="mr-1"
               @click="query"
             >
-              查詢
+              {{ $t('query') }}
             </b-button>
             <b-button
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
@@ -160,7 +85,7 @@
               class="mr-1"
               @click="downloadExcel"
             >
-              下載Excel
+              {{ $t('downloadExcel') }}
             </b-button>
           </b-col>
         </b-row>
@@ -265,24 +190,27 @@ export default Vue.extend({
     ...mapGetters('monitorTypes', ['activatedMonitorTypes']),
     ...mapState('monitors', ['monitors']),
     ...mapGetters('tables', ['dataTypes']),
-    reportUnits() {
+    reportUnits(): Array<any> {
       const minReportTypes = [
-        { txt: '秒', id: 'Sec' },
-        { txt: '分', id: 'Min' },
-        { txt: '五分', id: 'FiveMin' },
-        { txt: '六分', id: 'SixMin' },
-        { txt: '十分', id: 'TenMin' },
-        { txt: '十五分', id: 'FifteenMin' },
+        { txt: 'Min', id: 'Min' },
+        { txt: '5 Min', id: 'FiveMin' },
+        { txt: '6 Min', id: 'SixMin' },
+        { txt: '10 Min', id: 'TenMin' },
+        { txt: '15 Min', id: 'FifteenMin' },
       ]
       const HourReportTypes = [
-        { txt: '小時', id: 'Hour' },
-        { txt: '天', id: 'Day' },
-        { txt: '月', id: 'Month' },
-        { txt: '季', id: 'Quarter' },
-        { txt: '年', id: 'Year' },
+        { txt: 'Hour', id: 'Hour' },
+        { txt: 'Day', id: 'Day' },
+        { txt: 'Month', id: 'Month' },
       ]
 
       return this.form.reportUnit === 'Hour' ? HourReportTypes : minReportTypes
+    },
+    translateDataTypes(): Array<any> {
+      return [
+        { id: 'hour', txt: this.$i18n.t('hourData') },
+        { id: 'min', txt: this.$i18n.t('minData') },
+      ]
     },
   },
   watch: {
@@ -345,6 +273,7 @@ export default Vue.extend({
       const ret = res.data
 
       this.setLoading({ loading: false })
+      ret.title!.text = ""
       if (this.form.chartType !== 'boxplot') {
         ret.chart = {
           type: this.form.chartType,
@@ -356,7 +285,7 @@ export default Vue.extend({
 
         const pointFormatter = function pointFormatter(this: any) {
           const d = new Date(this.x)
-          return `${d.toLocaleString()}:${Math.round(this.y)}度`
+          return `${d.toLocaleString()}:${Math.round(this.y)}`
         }
 
         ret.colors = [
@@ -382,11 +311,7 @@ export default Vue.extend({
           href: 'http://www.wecc.com.tw/',
         }
         ret.xAxis.type = 'datetime'
-        ret.xAxis.dateTimeLabelFormats = {
-          day: '%b%e日',
-          week: '%b%e日',
-          month: '%y年%b',
-        }
+
         let yAxisArray = ret.yAxis as Array<highcharts.YAxisOptions>
         for (let yAxis of yAxisArray) {
           if (typeof this.form.YMax === 'number') yAxis.max = this.form.YMax
@@ -411,7 +336,7 @@ export default Vue.extend({
           },
         }
         ret.time = {
-          timezoneOffset: -480,
+          timezoneOffset: -420,
         }
       }
       highcharts.chart('chart_container', ret)

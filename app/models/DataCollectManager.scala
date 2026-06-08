@@ -763,9 +763,9 @@ class DataCollectManager @Inject()(config: Configuration,
             mtd =>
               if (mtd.status == MonitorStatus.NormalStat) {
                 val mtCase = monitorTypeOp.map(mtd.mt)
-                if (mtd.value < mtCase.more.getOrElse(MonitorTypeMore()).rangeMin.getOrElse(Double.MinValue))
-                  mtd.copy(status = MonitorStatus.BelowNormalStat)
-                else if (mtd.value > mtCase.more.getOrElse(MonitorTypeMore()).rangeMax.getOrElse(Double.MaxValue))
+                if (mtd.value > mtCase.span.getOrElse(Double.MaxValue))
+                  mtd.copy(status = MonitorStatus.HighAlarmStat)
+                else if (mtd.value > mtCase.std_law.getOrElse(Double.MaxValue))
                   mtd.copy(status = MonitorStatus.OverNormalStat)
                 else
                   mtd
@@ -1191,20 +1191,26 @@ class DataCollectManager @Inject()(config: Configuration,
       }
 
     case ExportDaily5MinReport(start) =>
-      logger.info(s"Export $start 5 min report")
-      val mtList = LoggerConfig.config.exportMtList
-      // Export 5 min Data excel
-      val chart = dataCollectManagerOp.trendHelper(Seq(Monitor.activeId), mtList, includeRaw = false, tableType.min,
-        ReportUnit.FiveMin, start, start.plusDays(1), showActual = true)(MonitorStatusFilter.ValidData)
+      try{
+        logger.info(s"Export $start 5 min report")
+        val mtList = LoggerConfig.config.exportMtList
+        // Export 5 min Data excel
+        val chart = dataCollectManagerOp.trendHelper(Seq(Monitor.activeId), mtList, includeRaw = false, tableType.min,
+          ReportUnit.FiveMin, start, start.plusDays(1), showActual = true)(MonitorStatusFilter.ValidData)
 
-      import java.nio.file._
-      val precisionList = mtList.map(monitorTypeOp.map(_).prec).toArray
-      val srcPath = excelUtility.export5MinChart(chart, precision = precisionList).toPath
-      val outputDir = Paths.get(LoggerConfig.config.exportPath)
-      val dayName = start.toString(s"YYYYMMdd")
-      val target = outputDir.resolve(s"$dayName.xlsx")
+        import java.nio.file._
+        val precisionList = mtList.map(monitorTypeOp.map(_).prec).toArray
+        val srcPath = excelUtility.export5MinChart(chart, precision = precisionList).toPath
+        val outputDir = Paths.get(LoggerConfig.config.exportPath)
+        val dayName = start.toString(s"YYYYMMdd")
+        val target = outputDir.resolve(s"$dayName.xlsx")
 
-      Files.copy(srcPath, target, StandardCopyOption.REPLACE_EXISTING)
+        Files.copy(srcPath, target, StandardCopyOption.REPLACE_EXISTING)
+      }catch{
+        case ex:Throwable=>
+          errorHandler(ex)
+      }
+
 
   }
 
