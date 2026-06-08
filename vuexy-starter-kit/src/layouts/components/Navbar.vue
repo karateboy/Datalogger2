@@ -93,6 +93,7 @@ export default {
     const languages = [
       { value: 'en', label: 'English' },
       { value: 'zh', label: '中文' },
+      { value: 'vn', label: 'Tiếng Việt' },
     ]
     return {
       languages,

@@ -170,7 +170,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
           f onComplete {
             case Success(_) =>
               manager ! ForwardHour
-              for {cdxConfig <- sysConfigDB.getCdxConfig if monitor == Monitor.activeId
+              for {cdxConfig <- sysConfigDB.getCdxConfig if monitor == Monitor.activeId && cdxConfig.enable
                    cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes} {
                 cdxUploader.upload(recordList = defaultHourRecordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
                 newTaipeiOpenData.upload(defaultHourRecordList, cdxMtConfigs)

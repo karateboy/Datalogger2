@@ -41,5 +41,17 @@
   "NotActivated": "Not Activated",
   "timeUnit": "Time Unit",
   "hourData": "Hour Data",
-  "minData": "Min Data"
+  "minData": "Min Data",
+  "Password": "Password",
+  "Login": "Login",
+  "AlarmLevel": "Alarm Level",
+  "time": "time",
+  "level": "level",
+  "details": "details",
+  "ReportType": "Report Type",
+  "date": "Date",
+  "reports": {
+    "daily": "Daily Report",
+    "monthly": "Monthly Report"
+  }
 }

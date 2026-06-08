@@ -31,7 +31,7 @@
                 v-model="form.dataType"
                 label="txt"
                 :reduce="dt => dt.id"
-                :options="dataTypes"
+                :options="translateDataTypes"
               />
             </b-form-group>
           </b-col>
@@ -76,7 +76,7 @@
         </b-row>
       </b-form>
     </b-card>
-    <b-card v-show="display" :title="resultTitle">
+    <b-card v-show="display">
       <b-table
         striped
         hover
@@ -169,6 +169,12 @@ export default Vue.extend({
       if (this.form.includeRaw) return 2 * this.form.monitors.length
 
       return this.form.monitors.length
+    },
+    translateDataTypes(): Array<any> {
+      return [
+        { id: 'hour', txt: this.$i18n.t('hourData') },
+        { id: 'min', txt: this.$i18n.t('minData') },
+      ]
     },
   },
   watch: {},

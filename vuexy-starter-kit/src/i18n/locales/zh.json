@@ -41,5 +41,17 @@
   "NotActivated": "未啟動",
   "timeUnit": "時間單位",
   "hourData": "小時資料",
-  "minData": "分鐘資料"
+  "minData": "分鐘資料",
+  "Password": "密碼",
+  "Login": "登入",
+  "AlarmLevel": "警報等級",
+  "time": "時間",
+  "level": "等級",
+  "details": "詳細內容",
+  "ReportType": "報表種類",
+  "date": "日期",
+  "reports": {
+    "daily": "日報",
+    "monthly": "月報"
+  }
 }
