@@ -53,5 +53,7 @@
   "reports": {
     "daily": "日報",
     "monthly": "月報"
-  }
+  },
+  "testAlarm": "測試警報",
+  "stopAlarm": "停止警報"
 }

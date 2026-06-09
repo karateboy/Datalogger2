@@ -98,6 +98,13 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! ToggleSignal(mtId, delay)
   }
 
+  def setAlarm(bit:Boolean): Unit = {
+    monitorTypeDb.rangeList.foreach(mt=>{
+      for(signalType<-monitorTypeDb.map(mt).overLawSignalType){
+        manager ! WriteSignal(signalType, bit = bit)
+      }
+    })
+  }
   def updateStatusMap(mtRecord: MtRecord, mtMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]]): Unit = {
     val statusMap = mtMap.getOrElseUpdate(mtRecord.mtName, mutable.Map.empty[String, ListBuffer[MtRecord]])
     val tagInfo = MonitorStatus.getTagInfo(mtRecord.status)

@@ -151,7 +151,7 @@
             class="mr-1"
             @click="save"
           >
-            $t("save")
+            {{ $t('save') }}
           </b-button>
           <b-button
             v-ripple.400="'rgba(186, 191, 199, 0.15)'"
@@ -160,7 +160,7 @@
             class="mr-1"
             @click="getMonitorTypes"
           >
-            $t("cancel")
+            {{ $t('cancel') }}
           </b-button>
           <b-button
             v-ripple.400="'rgba(255, 255, 255, 0.15)'"
@@ -168,7 +168,7 @@
             class="mr-1"
             @click="removeMt"
           >
-            $t("delete")
+            {{ $t('delete') }}
           </b-button>
         </b-col>
       </b-row>

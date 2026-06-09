@@ -14,6 +14,10 @@
     </b-col>
     <b-col v-if="isRealtimeMeasuring" class="text-center" lg="3">
       <b-card border-variant="primary" no-body>
+        <div class="text-center">
+          <b-button small variant="primary" class="m-1" @click="testAlarm">{{$t('testAlarm')}}</b-button>
+          <b-button small variant="info" class="m-1" @click="stopAlarm">{{$t('stopAlarm')}}</b-button>
+        </div>
         <b-table
           :fields="fields"
           :items="realTimeStatus"
@@ -103,7 +107,7 @@ export default Vue.extend({
     isRealtimeMeasuring(): boolean {
       return this.realTimeStatus.length !== 0
     },
-    fields():Array<any> {
+    fields(): Array<any> {
       return [
         {
           key: 'index',
@@ -133,7 +137,7 @@ export default Vue.extend({
             return item.classStr
           },
           formatter: (value: string, key: string, item: MonitorTypeStatus) => {
-            return this.$i18n.t(value);
+            return this.$i18n.t(value)
           },
         },
       ]
@@ -419,6 +423,20 @@ export default Vue.extend({
         }
       }
     },
+    async testAlarm(){
+      try{
+        await axios.get('/testAlarm')
+      }catch(error){
+        console.log(error)
+      }
+    },
+    async stopAlarm(){
+      try{
+        await axios.get('/stopAlarm')
+      }catch(error){
+        console.log(error)
+      }
+    }
   },
 })
 </script>

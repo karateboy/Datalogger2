@@ -1,6 +1,8 @@
 package controllers
 
+import models.{AlarmSound, DataCollectManagerOp}
 import play.api.Logger
+import play.api.libs.json.Json
 import play.api.mvc.Security._
 import play.api.mvc._
 
@@ -9,7 +11,10 @@ import scala.concurrent._
 
 case class UserInfo(id: String, name: String, group: String, isAdmin: Boolean)
 
-class Security @Inject()(cc: ControllerComponents, implicit val ec: ExecutionContext) extends AbstractController(cc) {
+class Security @Inject()(cc: ControllerComponents,
+                         alarmSound: AlarmSound,
+                         dataCollectManagerOp: DataCollectManagerOp,
+                         implicit val ec: ExecutionContext) extends AbstractController(cc) {
   val idKey = "ID"
   val nameKey = "Name"
   val adminKey = "Admin"
@@ -43,4 +48,16 @@ class Security @Inject()(cc: ControllerComponents, implicit val ec: ExecutionCon
 
   def Authenticated: AuthenticatedBuilder[UserInfo]
   = new AuthenticatedBuilder(userinfo = getUserinfo, defaultParser = parse.defaultBodyParser)
+
+  def testAlarm(): Action[AnyContent] = Authenticated {
+    alarmSound.play()
+    dataCollectManagerOp.setAlarm(true)
+    Ok(Json.toJson("ok" -> true))
+  }
+
+  def stopAlarm(): Action[AnyContent] = Authenticated {
+    alarmSound.stop()
+    dataCollectManagerOp.setAlarm(false)
+    Ok(Json.toJson("ok" -> true))
+  }
 }

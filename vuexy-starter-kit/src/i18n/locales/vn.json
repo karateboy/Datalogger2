@@ -11,7 +11,7 @@
   "Instrument": "Thiết bị",
   "MonitorTypeConfig": "Cấu hình loại giám sát",
   "AlarmRule": "Quy tắc cảnh báo",
-  "DI/DO": "Đầu vào/đầu ra kỹ thuật số",
+  "DI/DO": "Đầu vào/đầu ra số",
   "UserManagement": "Quản lý người dùng",
   "GroupManagement": "Quản lý nhóm",
   "SystemConfig": "Cấu hình hệ thống",
@@ -34,8 +34,8 @@
   "Normal": "Bình thường",
   "OverStandard": "Cảnh báo HH",
   "HighAlarm": "Cảnh báo cao",
-  "ZeroCalibration": "Hiệu chuẩn zero",
-  "SpanCalibration": "Hiệu chuẩn dải",
+  "ZeroCalibration": "Hiệu chuẩn không",
+  "SpanCalibration": "Hiệu chuẩn phạm vi",
   "MaintainStat": "Bảo trì",
   "DataLost": "Mất dữ liệu",
   "NotActivated": "Chưa kích hoạt",
@@ -44,7 +44,7 @@
   "minData": "Dữ liệu phút",
   "Password": "Mật khẩu",
   "Login": "Đăng nhập",
-  "AlarmLevel": "Cấp cảnh báo",
+  "AlarmLevel": "Mức cảnh báo",
   "time": "thời gian",
   "level": "cấp độ",
   "details": "chi tiết",
@@ -53,5 +53,7 @@
   "reports": {
     "daily": "Báo cáo hàng ngày",
     "monthly": "Báo cáo hàng tháng"
-  }
+  },
+  "testAlarm": "Kiểm tra cảnh báo",
+  "stopAlarm": "Dừng cảnh báo"
 }

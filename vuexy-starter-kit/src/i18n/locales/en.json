@@ -53,5 +53,7 @@
   "reports": {
     "daily": "Daily Report",
     "monthly": "Monthly Report"
-  }
+  },
+  "testAlarm": "Test Alarm",
+  "stopAlarm": "Stop Alarm"
 }

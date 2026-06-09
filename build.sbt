@@ -1,5 +1,5 @@
 name := """DataLogger2"""
-val mainVersion = "2.8.111"
+val mainVersion = "2.8.112"
 val distVersion = "-CWMS-fiber"
 version := s"$mainVersion$distVersion"
 
