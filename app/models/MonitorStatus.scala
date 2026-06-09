@@ -32,7 +32,7 @@ case class TagInfo(statusType: StatusType.Value, auditRule: Option[Char], id: St
 object MonitorStatus {
   val NormalStat = "010"
   val OverNormalStat = "011"
-  val BelowNormalStat = "012"
+  val HighAlarmStat = "012"
   val ZeroCalibrationStat = "020"
   val SpanCalibrationStat = "021"
   val CalibrationDeviation = "022"
@@ -104,7 +104,7 @@ object MonitorStatus {
 
   def isValid(s: String): Boolean = {
     val tagInfo = getTagInfo(s)
-    val VALID_STATS = List(NormalStat, OverNormalStat, BelowNormalStat).map(getTagInfo)
+    val VALID_STATS = List(NormalStat, OverNormalStat, HighAlarmStat).map(getTagInfo)
 
     tagInfo.statusType match {
       case StatusType.Internal =>

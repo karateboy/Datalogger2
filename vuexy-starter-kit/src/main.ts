@@ -21,7 +21,6 @@ import store from './store'
 import App from './App.vue'
 import { ValidationProvider } from 'vee-validate'
 import vSelect from 'vue-select'
-import GmapVue from 'gmap-vue'
 
 // Global Components
 import './global-components'
@@ -41,73 +40,6 @@ moment.locale('zh_tw')
 ex(Highcharts)
 csv(Highcharts)
 offlineExport(Highcharts)
-const colors = [
-  '#00FF00',
-  '#FFD700',
-  '#6495ED',
-  '#FF4500',
-  '#800080',
-  '#800000',
-  '#FF9655',
-  '#FFF263',
-  '#6AF9C4',
-]
-Highcharts.setOptions({
-  lang: {
-    contextButtonTitle: '圖表功能表',
-    downloadJPEG: '下載JPEG',
-    downloadPDF: '下載PDF',
-    downloadPNG: '下載PNG',
-    downloadSVG: '下載SVG',
-    downloadCSV: '下載CSV',
-    downloadXLS: '下載XLS',
-    drillUpText: '回到{series.name}.',
-    noData: '無資料',
-    months: [
-      '1月',
-      '2月',
-      '3月',
-      '4月',
-      '5月',
-      '6月',
-      '7月',
-      '8月',
-      '9月',
-      '10月',
-      '11月',
-      '12月',
-    ],
-    printChart: '列印圖表',
-    resetZoom: '重設放大區間',
-    resetZoomTitle: '回到原圖大小',
-    shortMonths: [
-      '1月',
-      '2月',
-      '3月',
-      '4月',
-      '5月',
-      '6月',
-      '7月',
-      '8月',
-      '9月',
-      '10月',
-      '11月',
-      '12月',
-    ],
-    viewFullscreen: '全螢幕檢視',
-    viewData: '檢視資料表',
-    weekdays: [
-      '星期日',
-      '星期一',
-      '星期二',
-      '星期三',
-      '星期四',
-      '星期五',
-      '星期六',
-    ],
-  },
-  colors,
-})
 
 Vue.use(VueFormWizard)
 Vue.component('VSelect', vSelect)
@@ -143,16 +75,11 @@ router.beforeEach((to, from, next) => {
   }
 })
 
-Vue.use(GmapVue, {
-  load: {
-    key: 'AIzaSyBedM4POn2tywGFC81jAIGuYEPPYc9OpGU',
-    libraries: 'visualization', // This is required if you use the Autocomplete plugin
-    v: '3.26',
-  },
-  installComponents: true,
-})
+import { i18n } from '@/i18n'
+
 new Vue({
   router,
   store,
+  i18n,
   render: h => h(App),
 }).$mount('#app')

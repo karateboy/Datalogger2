@@ -1,6 +1,6 @@
 <template>
   <div>
-    <b-card title="測項管理" class="text-center">
+    <b-card :title="$t('MonitorTypeConfig')" class="text-center">
       <b-table
         small
         responsive
@@ -151,7 +151,7 @@
             class="mr-1"
             @click="save"
           >
-            儲存
+            {{ $t('save') }}
           </b-button>
           <b-button
             v-ripple.400="'rgba(186, 191, 199, 0.15)'"
@@ -160,7 +160,7 @@
             class="mr-1"
             @click="getMonitorTypes"
           >
-            取消
+            {{ $t('cancel') }}
           </b-button>
           <b-button
             v-ripple.400="'rgba(255, 255, 255, 0.15)'"
@@ -168,7 +168,7 @@
             class="mr-1"
             @click="removeMt"
           >
-            刪除
+            {{ $t('delete') }}
           </b-button>
         </b-col>
       </b-row>
@@ -197,104 +197,12 @@ export default Vue.extend({
     Ripple,
   },
   data() {
-    const columns = [
-      {
-        key: '_id',
-        label: '代碼',
-        formatter: (v: string) => {
-          if (v === 'WD_SPEED' || v === 'WD_DIR') return `${v} (向量計算)`
-          else return v
-        },
-      },
-      {
-        key: 'desp',
-        label: '名稱',
-      },
-      {
-        key: 'more.rangeMin',
-        label: '偵測下限',
-      },
-      {
-        key: 'more.rangeMax',
-        label: '偵測上限',
-      },
-      {
-        key: 'unit',
-        label: '單位',
-      },
-      {
-        key: 'prec',
-        label: '小數點位數',
-      },
-      {
-        key: 'order',
-        label: '順序',
-      },
-      {
-        key: 'std_law',
-        label: '法規值',
-      },
-      {
-        key: 'zd_law',
-        label: '零點偏移法規(±)',
-      },
-      {
-        key: 'span',
-        label: '全幅值',
-      },
-      {
-        key: 'span_dev_law',
-        label: '全幅值偏移法規(%)',
-      },
-      {
-        key: 'levelSeq',
-        label: '分級(以逗點分隔)',
-      },
-      {
-        key: 'calbrate',
-        label: '校正回歸',
-        tdClass: { 'text-center': true },
-      },
-      {
-        key: 'fixedM',
-        label: 'slope',
-        tdClass: { 'text-center': true },
-      },
-      {
-        key: 'fixedB',
-        label: 'offset',
-        tdClass: { 'text-center': true },
-      },
-      {
-        key: 'accumulated',
-        label: '累積',
-        tdClass: { 'text-center': true },
-      },
-      {
-        key: 'overLawSignalType',
-        label: '超標數位訊號',
-        tdClass: { 'text-center': true },
-      },
-      {
-        key: 'measuringBy',
-        label: '測量儀器',
-        formatter: (
-          value: null | Array<string>,
-          key: string,
-          item: Array<string>,
-        ) => {
-          if (value !== null) return `${value.join(', ')}`
-          else return ''
-        },
-      },
-    ]
     const monitorTypes = Array<EditMonitorType>()
 
     const signalTypes = Array<MonitorType>()
 
     return {
       display: false,
-      columns,
       monitorTypes,
       signalTypes,
       editingMt: {
@@ -303,6 +211,49 @@ export default Vue.extend({
       selected: Array<MonitorType>(),
       currentPage: 1,
     }
+  },
+  computed: {
+    columns(): Array<any> {
+      return [
+        {
+          key: '_id',
+          label: '',
+          formatter: (v: string) => {
+            if (v === 'WD_SPEED' || v === 'WD_DIR') return `${v} (向量計算)`
+            else return v
+          },
+        },
+        {
+          key: 'desp',
+          label: this.$i18n.t('name'),
+        },
+        {
+          key: 'unit',
+          label: this.$i18n.t('unit'),
+        },
+        {
+          key: 'prec',
+          label: this.$i18n.t('precision'),
+        },
+        {
+          key: 'order',
+          label: this.$i18n.t('order'),
+        },
+        {
+          key: 'std_law',
+          label: 'HH Alarm',
+        },
+        {
+          key: 'span',
+          label: 'H Alarm',
+        },
+        {
+          key: 'overLawSignalType',
+          label: this.$i18n.t('overLawSignalType'),
+          tdClass: { 'text-center': true },
+        },
+      ]
+    },
   },
   async mounted() {
     await this.getMonitorTypes()

@@ -10,18 +10,14 @@ trait MonitorStatusDB {
   val InternalPriorityMax = 100
 
   val defaultStatus: List[MonitorStatus] = List(
-    MonitorStatus(NormalStat, "正常", 11),
-    MonitorStatus(OverNormalStat, "高於偵測極限", 9),
-    MonitorStatus(BelowNormalStat, "低於偵測極限", 10),
-    MonitorStatus(ZeroCalibrationStat, "零點校正", 5),
-    MonitorStatus(SpanCalibrationStat, "全幅校正", 6),
-    MonitorStatus(CalibrationDeviation, "氣象與粒狀物校正", 4),
-    MonitorStatus(Auditing,"查核", 2),
-    MonitorStatus(CalibrationResume, "校正恢復", InternalPriorityMax),
-    MonitorStatus(InvalidDataStat, "無效數據", 7),
-    MonitorStatus(MaintainStat, "維修保養", 3),
-    MonitorStatus(DataLost, "斷線", 8),
-    MonitorStatus(NotActivated, "儀器未啟用", 1))
+    MonitorStatus(NormalStat, "Normal", 11),
+    MonitorStatus(OverNormalStat, "OverStandard", 9),
+    MonitorStatus(HighAlarmStat, "HighAlarm", 10),
+    MonitorStatus(ZeroCalibrationStat, "ZeroCalibration", 5),
+    MonitorStatus(SpanCalibrationStat, "SpanCalibration", 6),
+    MonitorStatus(MaintainStat, "MaintainStat", 3),
+    MonitorStatus(DataLost, "DataLost", 8),
+    MonitorStatus(NotActivated, "NotActivated", 1))
 
   val _map: Map[String, MonitorStatus] = refreshMap()
 

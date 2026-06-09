@@ -48,7 +48,7 @@ object DataCollectManager {
 
   case class WriteSignal(mtId: String, bit: Boolean)
 
-  case class ToggleSignal(mtId:String, delay:Int)
+  case class ToggleSignal(mtId: String, delay: Int)
 
   private case object CheckInstruments
 
@@ -397,6 +397,7 @@ class DataCollectManager @Inject()(config: Configuration,
                                    excelUtility: ExcelUtility) extends Actor with InjectedActorSupport {
 
   import DataCollectManager._
+
   val logger = Logger(this.getClass)
 
   DataCollectManager.updateEffectiveRatio(sysConfig)
@@ -448,7 +449,7 @@ class DataCollectManager @Inject()(config: Configuration,
     for (readerRef <- VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
       readers.append(readerRef)
 
-    for(readerRef <- ImsReader.start(config, context.system, monitorTypeOp = monitorTypeOp, recordOp = recordOp,
+    for (readerRef <- ImsReader.start(config, context.system, monitorTypeOp = monitorTypeOp, recordOp = recordOp,
       dataCollectManager = self, dataCollectManagerOp = dataCollectManagerOp, environment = environment))
       readers.append(readerRef)
 
@@ -476,7 +477,7 @@ class DataCollectManager @Inject()(config: Configuration,
 
   self ! UpdateHourAccumulatedRain
 
-  if(LoggerConfig.config.autoExport)
+  if (LoggerConfig.config.autoExport)
     self ! ExportDaily5MinReport(DateTime.yesterday().withTimeAtStartOfDay())
 
   logger.info("DataCollect manager started")
@@ -493,15 +494,10 @@ class DataCollectManager @Inject()(config: Configuration,
       if (MonitorStatus.isValid(status))
         for (std_law <- mtCase.std_law; v <- value) {
           if (v > std_law) {
-            val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, value)}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
+            val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, value)} HH Alarm (${monitorTypeOp.format(mt, mtCase.std_law)})"
             alarmOp.log(alarmOp.src(mt), Alarm.Level.ERR, msg)
             overThreshold = true
-            mtCase.overLawSignalType.foreach(signalType => {
-              if(mtCase.span.isEmpty)
-                self ! WriteSignal(signalType, bit = true)
-              else
-                self ! ToggleSignal(signalType, mtCase.span.get.toInt)
-            })
+            mtCase.overLawSignalType.foreach(signalType => self ! WriteSignal(signalType, bit = true))
           }
         }
     }
@@ -763,9 +759,9 @@ class DataCollectManager @Inject()(config: Configuration,
             mtd =>
               if (mtd.status == MonitorStatus.NormalStat) {
                 val mtCase = monitorTypeOp.map(mtd.mt)
-                if (mtd.value < mtCase.more.getOrElse(MonitorTypeMore()).rangeMin.getOrElse(Double.MinValue))
-                  mtd.copy(status = MonitorStatus.BelowNormalStat)
-                else if (mtd.value > mtCase.more.getOrElse(MonitorTypeMore()).rangeMax.getOrElse(Double.MaxValue))
+                if (mtd.value > mtCase.span.getOrElse(Double.MaxValue))
+                  mtd.copy(status = MonitorStatus.HighAlarmStat)
+                else if (mtd.value > mtCase.std_law.getOrElse(Double.MaxValue))
                   mtd.copy(status = MonitorStatus.OverNormalStat)
                 else
                   mtd
@@ -968,7 +964,7 @@ class DataCollectManager @Inject()(config: Configuration,
               for (m <- monitorOp.mvList)
                 dataCollectManagerOp.recalculateHourData(monitor = m, current = current)
 
-              if(LoggerConfig.config.autoExport)
+              if (LoggerConfig.config.autoExport)
                 self ! ExportDaily5MinReport(DateTime.yesterday().withTimeAtStartOfDay())
 
               self ! CheckInstruments
@@ -1143,7 +1139,7 @@ class DataCollectManager @Inject()(config: Configuration,
 
     case ToggleSignal(mtId, delay) =>
       // Trigger only when signalMap is empty or is false
-      if(!signalDataMap.contains(mtId) || !signalDataMap(mtId)._2){
+      if (!signalDataMap.contains(mtId) || !signalDataMap(mtId)._2) {
         self ! WriteSignal(mtId, bit = true)
         context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(delay, SECONDS),
           self, WriteSignal(mtId, bit = false))
@@ -1163,9 +1159,9 @@ class DataCollectManager @Inject()(config: Configuration,
       val f = recordOp.getMtRecordMapFuture(recordOp.MinCollection)(Monitor.activeId, monitorTypeOp.measuringList,
         now.minusHours(1), now)
       for (minRecordMap <- f) {
-        val exDataLossRecordMap = minRecordMap.map(pair=>{
+        val exDataLossRecordMap = minRecordMap.map(pair => {
           val (mt, mtRecords) = pair
-          mt->mtRecords.filter(_.status != MonitorStatus.DataLost)
+          mt -> mtRecords.filter(_.status != MonitorStatus.DataLost)
         })
         for (kv <- instrumentMap) {
           val (instID, instParam) = kv;
@@ -1191,20 +1187,26 @@ class DataCollectManager @Inject()(config: Configuration,
       }
 
     case ExportDaily5MinReport(start) =>
-      logger.info(s"Export $start 5 min report")
-      val mtList = LoggerConfig.config.exportMtList
-      // Export 5 min Data excel
-      val chart = dataCollectManagerOp.trendHelper(Seq(Monitor.activeId), mtList, includeRaw = false, tableType.min,
-        ReportUnit.FiveMin, start, start.plusDays(1), showActual = true)(MonitorStatusFilter.ValidData)
+      try {
+        logger.info(s"Export $start 5 min report")
+        val mtList = LoggerConfig.config.exportMtList
+        // Export 5 min Data excel
+        val chart = dataCollectManagerOp.trendHelper(Seq(Monitor.activeId), mtList, includeRaw = false, tableType.min,
+          ReportUnit.FiveMin, start, start.plusDays(1), showActual = true)(MonitorStatusFilter.ValidData)
 
-      import java.nio.file._
-      val precisionList = mtList.map(monitorTypeOp.map(_).prec).toArray
-      val srcPath = excelUtility.export5MinChart(chart, precision = precisionList).toPath
-      val outputDir = Paths.get(LoggerConfig.config.exportPath)
-      val dayName = start.toString(s"YYYYMMdd")
-      val target = outputDir.resolve(s"$dayName.xlsx")
+        import java.nio.file._
+        val precisionList = mtList.map(monitorTypeOp.map(_).prec).toArray
+        val srcPath = excelUtility.export5MinChart(chart, precision = precisionList).toPath
+        val outputDir = Paths.get(LoggerConfig.config.exportPath)
+        val dayName = start.toString(s"YYYYMMdd")
+        val target = outputDir.resolve(s"$dayName.xlsx")
 
-      Files.copy(srcPath, target, StandardCopyOption.REPLACE_EXISTING)
+        Files.copy(srcPath, target, StandardCopyOption.REPLACE_EXISTING)
+      } catch {
+        case ex: Throwable =>
+          errorHandler(ex)
+      }
+
 
   }
 

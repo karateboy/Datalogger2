@@ -5,7 +5,7 @@
         <b-row>
           <b-col cols="6">
             <b-form-group
-              label="報表種類"
+              :label="$t('ReportType')"
               label-for="reportType"
               label-cols-md="3"
             >
@@ -20,7 +20,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="查詢日期"
+              :label="$t('date')"
               label-for="dataRange"
               label-cols-md="3"
             >
@@ -44,16 +44,9 @@
               class="mr-1"
               @click="query"
             >
-              查詢
+              {{ $t('query') }}
             </b-button>
-            <b-button
-              v-ripple.400="'rgba(186, 191, 199, 0.15)'"
-              type="reset"
-              class="mr-1"
-              variant="outline-secondary"
-            >
-              取消
-            </b-button>
+
             <b-button
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
               type="submit"
@@ -61,7 +54,7 @@
               class="mr-1"
               @click="downloadReport"
             >
-              下載Excel
+              {{ $t('downloadExcel') }}
             </b-button>
           </b-col>
         </b-row>
@@ -119,11 +112,6 @@ export default Vue.extend({
     const date = moment().valueOf()
     return {
       display: false,
-      reportTypes: [
-        { id: 'daily', txt: '日報' },
-        { id: 'monthly', txt: '月報' },
-        { id: 'yearly', txt: '年報' },
-      ],
       columns: Array<any>(),
       statRows: Array<any>(),
       rows: Array<RowDataReport>(),
@@ -138,6 +126,12 @@ export default Vue.extend({
       if (this.form.reportType === 'daily') return 'date'
       if (this.form.reportType === 'monthly') return 'month'
       return 'year'
+    },
+    reportTypes(): Array<any> {
+      return [
+        { id: 'daily', txt: this.$i18n.t('reports.daily') },
+        { id: 'monthly', txt: this.$i18n.t('reports.monthly') },
+      ]
     },
   },
   methods: {

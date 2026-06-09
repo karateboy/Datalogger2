@@ -4,21 +4,8 @@
       <b-form @submit.prevent>
         <b-row>
           <b-col cols="6">
-            <b-form-group label="測點" label-for="monitor" label-cols-md="3">
-              <v-select
-                id="monitor"
-                v-model="form.monitors"
-                label="desc"
-                :reduce="mt => mt._id"
-                :options="monitors"
-                :close-on-select="false"
-                multiple
-              />
-            </b-form-group>
-          </b-col>
-          <b-col cols="6">
             <b-form-group
-              label="測項"
+              :label="$t('monitorType')"
               label-for="monitorType"
               label-cols-md="3"
             >
@@ -31,23 +18,11 @@
                 :close-on-select="false"
                 multiple
               />
-              <b-form-checkbox v-model="form.includeRaw"
-                >顯示原始值</b-form-checkbox
-              >
             </b-form-group>
-            <b-button
-              v-for="mtg in monitorTypeGroups"
-              :key="mtg._id"
-              class="bg-gradient-success m-50"
-              size="sm"
-              @click="form.monitorTypes = mtg.mts"
-            >
-              {{ mtg.name }}
-            </b-button>
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="資料種類"
+              :label="$t('dataType')"
               label-for="dataType"
               label-cols-md="3"
             >
@@ -56,13 +31,13 @@
                 v-model="form.dataType"
                 label="txt"
                 :reduce="dt => dt.id"
-                :options="dataTypes"
+                :options="translateDataTypes"
               />
             </b-form-group>
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="資料區間"
+              :label="$t('dataRange')"
               label-for="dataRange"
               label-cols-md="3"
             >
@@ -86,15 +61,7 @@
               class="mr-1"
               @click="query"
             >
-              查詢
-            </b-button>
-            <b-button
-              v-ripple.400="'rgba(186, 191, 199, 0.15)'"
-              type="reset"
-              class="mr-1"
-              variant="outline-secondary"
-            >
-              取消
+              {{ $t('query') }}
             </b-button>
             <b-button
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
@@ -103,13 +70,13 @@
               class="mr-1"
               @click="downloadExcel"
             >
-              下載Excel
+              {{ $t('downloadExcel') }}
             </b-button>
           </b-col>
         </b-row>
       </b-form>
     </b-card>
-    <b-card v-show="display" :title="resultTitle">
+    <b-card v-show="display">
       <b-table
         striped
         hover
@@ -202,6 +169,12 @@ export default Vue.extend({
       if (this.form.includeRaw) return 2 * this.form.monitors.length
 
       return this.form.monitors.length
+    },
+    translateDataTypes(): Array<any> {
+      return [
+        { id: 'hour', txt: this.$i18n.t('hourData') },
+        { id: 'min', txt: this.$i18n.t('minData') },
+      ]
     },
   },
   watch: {},
