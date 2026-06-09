@@ -37,6 +37,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
   private val Holding64Key = "64Holding"
   private val ModeKey = "Mode"
   private val WarnKey = "Warn"
+  private val CoilKey = "Coil"
 
 
   if (modelReg.doDevice) {
@@ -114,6 +115,17 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
       }
     }
 
+    def probeCoilReg(addr: Int, desc: String): Boolean = {
+      try {
+        val locator = BaseLocator.coilStatus(deviceConfig.slaveID.getOrElse(1), addr)
+        masterOpt.get.getValue(locator)
+        true
+      } catch {
+        case _: Throwable =>
+          logger.info(s"Coil $addr $desc is not supported.")
+          false
+      }
+    }
 
     val input =
       for (r <- modelReg.inputs if probeValueReg(r.addr, r.desc, input = true, count = 2)) yield
@@ -139,8 +151,12 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
       for (r <- modelReg.warnings if probeModeReg(r.addr, r.desc))
         yield InstrumentStatusType(key = s"$WarnKey${r.addr}", addr = r.addr, desc = r.desc, unit = "-")
 
+    val coils =
+      for (r <- modelReg.coils if probeCoilReg(r.addr, r.desc))
+        yield InstrumentStatusType(key = s"$CoilKey${r.addr}", addr = r.addr, desc = r.desc, unit = "-")
+
     logger.info("Finish probing.")
-    input ++ input64 ++ holding ++ holding64 ++ modes ++ warns
+    input ++ input64 ++ holding ++ holding64 ++ modes ++ warns ++ coils
   }
 
   def readReg(statusTypeList: List[InstrumentStatusType]): RegValueSet = {
@@ -162,6 +178,8 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
         batch.addLocator(idx, BaseLocator.holdingRegister(deviceConfig.slaveID.getOrElse(1), st.addr, modelReg.byteSwapMode))
       } else if (st.key.startsWith(ModeKey) || st.key.startsWith(WarnKey)) {
         batch.addLocator(idx, BaseLocator.inputStatus(deviceConfig.slaveID.getOrElse(1), st.addr))
+      } else if (st.key.startsWith(CoilKey)) {
+        batch.addLocator(idx, BaseLocator.coilStatus(deviceConfig.slaveID.getOrElse(1), st.addr))
       } else {
         throw new Exception(s"Unexpected key ${st.key}")
       }
@@ -185,14 +203,15 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     val inputs = getRegValues(InputKey)
     val holdings = getRegValues(HoldingKey)
 
-    def getModeValues(key: String): List[RegBool] =
+    def getDigitalValues(key: String): List[RegBool] =
       for {
         st_idx <- statusTypeList.zipWithIndex if st_idx._1.key.startsWith(key)
         idx = st_idx._2
       } yield RegBool(st_idx._1, results.getValue(idx).asInstanceOf[Boolean])
 
-    val modes = getModeValues(ModeKey)
-    val warns = getModeValues(WarnKey)
+    val modes = getDigitalValues(ModeKey)
+    val warns = getDigitalValues(WarnKey)
+    val coils = getDigitalValues(CoilKey)
 
     def getReg64Values(key: String): List[RegDouble] =
       for {
@@ -211,7 +230,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     val input64s = getReg64Values(Input64Key)
     val holding64s = getReg64Values(Holding64Key)
 
-    RegValueSet(inputs, holdings, modes, warns, input64s, holding64s)
+    RegValueSet(inputs, holdings, modes, warns, input64s, holding64s, coils = coils)
   }
 
   import scala.concurrent.{Future, blocking}
@@ -661,6 +680,11 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
         self ! report
     }
 
+    // ReportSignal
+    val signalData = reportSignalData(regValue)
+    logger.debug(s"signalData = ${signalData}")
+    context.parent ! ReportSignalData(signalData)
+
     for ((r, idx) <- regValue.modes.zipWithIndex if r.value) {
       if (oldModelReg.isEmpty || oldModelReg.get.modes(idx).value != r.value)
         alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, r.ist.desc)
@@ -725,12 +749,19 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
       Some(ReportData(monitorTypeData))
   }
 
-  override def postStop(): Unit = {
-    if (timerOpt.isDefined)
-      timerOpt.get.cancel()
-
-    for (master <- masterOpt)
-      master.destroy()
+  private def reportSignalData(regValue: RegValueSet): List[SignalData] = {
+    modelReg.getSignalTypes.zip(regValue.coils).map(pair =>
+      SignalData(pair._1, pair._2.value)
+    )
 
   }
+
+override def postStop(): Unit = {
+  if (timerOpt.isDefined)
+    timerOpt.get.cancel()
+
+  for (master <- masterOpt)
+    master.destroy()
+
+}
 }
