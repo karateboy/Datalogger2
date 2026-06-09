@@ -39,6 +39,15 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
   private val WarnKey = "Warn"
 
 
+  if (modelReg.doDevice) {
+    modelReg.getSignalTypeInfo.foreach(signalTypeInfo => {
+      val (signalType, addr) = signalTypeInfo
+      context.parent ! AddSignalTypeHandler(signalType, bit => {
+        self ! WriteDO(addr, bit)
+      })
+    })
+  }
+
   self ! ConnectHost
 
   @volatile var timerOpt: Option[Cancellable] = None
@@ -221,7 +230,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
           case ex: Exception =>
             logger.error(s"$instId:$desc=>${ex.getMessage}", ex)
             if (connected)
-              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, s"${ex.getMessage}")
 
             connected = false
         } finally {
@@ -256,6 +265,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
               ipParameters.setPort(502);
               logger.info(s"${self.toString()}: connect ${protocol.host.get}")
               master = modbusFactory.createTcpMaster(ipParameters, true)
+              master.setTimeout(10000)
               master.setRetries(1)
               master.setConnected(true)
               master.init();
@@ -287,7 +297,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
           } catch {
             case ex: Exception =>
               logger.error(s"$instId:${desc}=>${ex.getMessage}", ex)
-              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.ERR, s"無法連接:${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, s"無法連接:${ex.getMessage}")
 
               if (master != null)
                 master.destroy()
@@ -326,6 +336,19 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
     case TriggerVault(zero, on) =>
       logger.info(s"TriggerVault($zero, $on)")
       Future.successful(triggerVault(zero, on))
+
+    case WriteDO(bit, on) =>
+      if (modelReg.doDevice) {
+        logger.info(s"WriteDo $bit, $on")
+        try {
+          import com.serotonin.modbus4j.locator.BaseLocator
+          val locator = BaseLocator.coilStatus(deviceConfig.slaveID.getOrElse(1), bit)
+          masterOpt.foreach(_.setValue(locator, on))
+        } catch {
+          case ex: Exception =>
+            ModelHelper.logException(ex)
+        }
+      }
   }
 
   def triggerVault(zero: Boolean, on: Boolean): Unit = {
@@ -338,6 +361,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
       master.setValue(locator, on)
     }
   }
+
 
   def startCalibration(calibrationType: CalibrationType, monitorTypes: List[String]): Unit = {
     logger.info(s"start calibrating ${monitorTypes.mkString(",")}")
@@ -513,7 +537,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
                 val zero = zeroMap.get(mt)
                 val span = spanMap.get(mt)
                 val spanStd = monitorTypeDB.map(mt).span
-                val cal = Calibration(mt, startTime, endTime, zero, spanStd, span)
+                val cal = Calibration(Some(Monitor.activeId), mt, startTime, endTime, zero, spanStd, span)
                 calibrationOp.insertFuture(cal)
               }
             } else {
@@ -522,10 +546,10 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
                 val values = valueMap.get(mt)
                 val cal =
                   if (calibrationType.zero)
-                    Calibration(mt, startTime, endTime, values, None, None)
+                    Calibration(Some(Monitor.activeId), mt, startTime, endTime, values, None, None)
                   else {
                     val spanStd = monitorTypeDB.map(mt).span
-                    Calibration(mt, startTime, endTime, None, spanStd, values)
+                    Calibration(Some(Monitor.activeId), mt, startTime, endTime, None, spanStd, values)
                   }
                 calibrationOp.insertFuture(cal)
               }

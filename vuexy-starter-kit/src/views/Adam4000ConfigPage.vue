@@ -39,14 +39,14 @@
   </div>
 </template>
 <script lang="ts">
-import Adam4017ConfigPage from './Adam4017ConfigPage.vue';
-import Adam4069ConfigPage from './Adam4069ConfigPage.vue';
-import Vue from 'vue';
-import Adam4080ConfigPage from './Adam4080ConfigPage.vue';
+import Adam4017ConfigPage from './Adam4017ConfigPage.vue'
+import Adam4069ConfigPage from './Adam4069ConfigPage.vue'
+import Vue from 'vue'
+import Adam4080ConfigPage from './Adam4080ConfigPage.vue'
 interface Adam4000Module {
-  module: string;
-  address: string;
-  param: string;
+  module: string
+  address: string
+  param: string
 }
 
 export default Vue.extend({
@@ -62,17 +62,17 @@ export default Vue.extend({
     },
   },
   data() {
-    let config = Array<Adam4000Module>();
+    let config = Array<Adam4000Module>()
     config.push({
       module: '4017',
       address: '01',
       param: '',
-    });
+    })
 
     if (this.paramStr !== '{}') {
-      config = JSON.parse(this.paramStr);
+      config = JSON.parse(this.paramStr)
     } else {
-      this.$emit('param-changed', JSON.stringify(config));
+      this.$emit('param-changed', JSON.stringify(config))
     }
 
     return {
@@ -83,22 +83,22 @@ export default Vue.extend({
         { text: 'Adam4069', value: '4069' },
         { text: 'Adam4080', value: '4080' },
       ],
-    };
+    }
   },
   methods: {
     moduleParamChange(module: Adam4000Module, v: string) {
-      module.param = v;
-      this.$emit('param-changed', JSON.stringify(this.config));
+      module.param = v
+      this.$emit('param-changed', JSON.stringify(this.config))
     },
     addModule() {
-      let i = this.config.length;
-      i++;
+      let i = this.config.length
+      i++
       this.config.push({
         module: '4017',
         address: ('00' + i).slice(-2),
         param: '',
-      });
+      })
     },
   },
-});
+})
 </script>

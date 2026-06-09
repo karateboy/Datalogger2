@@ -53,7 +53,17 @@ case class TcpModelReg(data: List[DataReg],
                        multiplier: Float,
                        byteSwapMode: Int,
                        filterRules: Seq[FilterRule],
-                       byteSwapMode64: Int = DataType.EIGHT_BYTE_FLOAT)
+                       byteSwapMode64: Int = DataType.EIGHT_BYTE_FLOAT,
+                       doDevice: Boolean = false) {
+
+  def getSignalTypeInfo: List[(String, Int)] = if (doDevice)
+    coils.map(coil => (s"${MonitorType.SIGNAL}${coil.addr}", coil.addr))
+  else
+    List.empty
+
+  def getSignalTypes: List[String] = getSignalTypeInfo.map(_._1)
+
+}
 
 
 case class TcpModbusDeviceModel(id: String, description: String, tcpModelReg: TcpModelReg, protocols: Seq[String])
@@ -62,14 +72,18 @@ object TcpModbusDrv2 {
   val logger: Logger = Logger(this.getClass)
   val deviceTypeHead = "TcpModbus."
 
-  def getInstrumentTypeList(environment: play.api.Environment, factory: TcpModbusDrv2.Factory, monitorTypeOp: MonitorTypeDB): Array[InstrumentType] = {
+  def getInstrumentTypeList(environment: play.api.Environment, factory: TcpModbusDrv2.Factory): Array[InstrumentType] = {
     val docRoot = environment.rootPath + "/conf/TcpModbus/"
     val files = Option(new File(docRoot).listFiles()).getOrElse(Array.empty[File]).filter(p => p.getName.toLowerCase().endsWith("conf"))
     for (file <- files) yield {
       val device: TcpModbusDeviceModel = getDeviceModel(file)
 
+      val driverOps = new TcpModbusDrv2(s"$deviceTypeHead${device.id}", device.description, device.protocols.toList, device.tcpModelReg)
       InstrumentType(
-        new TcpModbusDrv2(s"${deviceTypeHead}${device.id}", device.description, device.protocols.toList, device.tcpModelReg), factory)
+        driver = driverOps,
+        diFactory = factory,
+        analog = driverOps.isDoInstrument
+      )
     }
   }
 
@@ -106,6 +120,14 @@ object TcpModbusDrv2 {
       case _: Throwable =>
         DataType.EIGHT_BYTE_FLOAT
     }
+
+    val doDevice: Boolean = try {
+      driverConfig.getBoolean("DoDevice")
+    } catch {
+      case _: Throwable =>
+        false
+    }
+
 
     def getAnyRefList(path: String): List[util.ArrayList[Any]] =
       if (!driverConfig.hasPath(path))
@@ -201,7 +223,7 @@ object TcpModbusDrv2 {
     if (filterRules.nonEmpty)
       logger.info(s"$id applies filters=>$filterRules")
 
-    val modelRegs = TcpModelReg(data = dataRegList.toList,
+    val modelRegs = TcpModelReg(data = dataRegList,
       calibrationReg = calibrationReg,
       inputs = inputRegList,
       input64 = input64RegList,
@@ -213,7 +235,8 @@ object TcpModbusDrv2 {
       multiplier = multiplier,
       byteSwapMode = byteSwapMode,
       filterRules = filterRules,
-      byteSwapMode64 = byteSwapMode64)
+      byteSwapMode64 = byteSwapMode64,
+      doDevice = doDevice)
 
     logger.debug(s"Load TcpModbus device model: $id")
     logger.debug(s"  Description: $description")
@@ -271,8 +294,12 @@ class TcpModbusDrv2(_id: String, desp: String, protocols: List[String], tcpModel
         throw new Exception(JsError.toJson(error).toString())
       },
       param => {
-        val mt = tcpModelReg.data.map(_.monitorType)
-        val newParam = DeviceConfig(param.slaveID, param.calibrationTime, Some(mt),
+        val monitorTypes = if (tcpModelReg.doDevice) {
+          tcpModelReg.getSignalTypes
+        } else
+          tcpModelReg.data.map(_.monitorType)
+
+        val newParam = DeviceConfig(param.slaveID, param.calibrationTime, Some(monitorTypes),
           param.raiseTime, param.downTime, param.holdTime,
           param.calibrateZeoSeq, param.calibrateSpanSeq,
           param.calibratorPurgeSeq, param.calibratorPurgeTime,
@@ -285,10 +312,7 @@ class TcpModbusDrv2(_id: String, desp: String, protocols: List[String], tcpModel
 
   override def getMonitorTypes(param: String): List[String] = {
     val config = validateParam(param)
-    if (config.monitorTypes.isDefined)
-      config.monitorTypes.get.toList
-    else
-      List.empty[String]
+    config.monitorTypes.getOrElse(List.empty)
   }
 
   override def getCalibrationTime(param: String): Option[LocalTime] = {

@@ -11,17 +11,13 @@ trait MonitorStatusDB {
 
   val defaultStatus: List[MonitorStatus] = List(
     MonitorStatus(NormalStat, "Normal", 11),
-    MonitorStatus(OverNormalStat, "Over Range", 9),
-    MonitorStatus(BelowNormalStat, "Lower Range", 10),
-    MonitorStatus(ZeroCalibrationStat, "Zero Calibration", 5),
-    MonitorStatus(SpanCalibrationStat, "Span Calibration", 6),
-    MonitorStatus(CalibrationDeviation, "Calibration", 4),
-    MonitorStatus(Auditing,"Audit", 2),
-    MonitorStatus(CalibrationResume, "Calibration Resume", InternalPriorityMax),
-    MonitorStatus(InvalidDataStat, "Invalid", 7),
-    MonitorStatus(MaintainStat, "Maintenance", 3),
-    MonitorStatus(DataLost, "Data Loss", 8),
-    MonitorStatus(NotActivated, "Deactivated", 1))
+    MonitorStatus(OverNormalStat, "OverStandard", 9),
+    MonitorStatus(HighAlarmStat, "HighAlarm", 10),
+    MonitorStatus(ZeroCalibrationStat, "ZeroCalibration", 5),
+    MonitorStatus(SpanCalibrationStat, "SpanCalibration", 6),
+    MonitorStatus(MaintainStat, "MaintainStat", 3),
+    MonitorStatus(DataLost, "DataLost", 8),
+    MonitorStatus(NotActivated, "NotActivated", 1))
 
   val _map: Map[String, MonitorStatus] = refreshMap()
 
@@ -39,13 +35,13 @@ trait MonitorStatusDB {
       tagInfo.statusType match {
         case StatusType.Auto =>
           val ruleId = tagInfo.auditRule.get.toLower
-          MonitorStatus(key, s"Remark:$ruleId", InternalPriorityMax)
+          MonitorStatus(key, s"自動註記:$ruleId", InternalPriorityMax)
         case StatusType.ManualInvalid =>
           MonitorStatus(key, StatusType.map(StatusType.ManualInvalid), InternalPriorityMax)
         case StatusType.ManualValid =>
           MonitorStatus(key, StatusType.map(StatusType.ManualValid), InternalPriorityMax)
         case StatusType.Internal =>
-          MonitorStatus(key, "Unknown:" + key, InternalPriorityMax)
+          MonitorStatus(key, "未知:" + key, InternalPriorityMax)
       }
     })
   }

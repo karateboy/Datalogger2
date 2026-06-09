@@ -14,7 +14,7 @@ export const heightTransition = {
   data() {
     return {
       trHeight: null,
-    };
+    }
   },
   methods: {
     trAddHeight(val) {
@@ -27,8 +27,8 @@ export const heightTransition = {
       */
       const heightValue = Number(
         this.trHeight.substring(0, this.trHeight.length - 2),
-      );
-      this.trHeight = `${heightValue + Number(val)}px`;
+      )
+      this.trHeight = `${heightValue + Number(val)}px`
     },
     trTrimHeight(val) {
       // Remove height from existing height
@@ -40,8 +40,8 @@ export const heightTransition = {
       */
       const heightValue = Number(
         this.trHeight.substring(0, this.trHeight.length - 2),
-      );
-      this.trHeight = `${heightValue - Number(val)}px`;
+      )
+      this.trHeight = `${heightValue - Number(val)}px`
     },
     trSetHeight(val) {
       // Set height
@@ -52,11 +52,11 @@ export const heightTransition = {
        - What to set height at something for odd usage
        - Incoming value is valid number in `Number` or `String`
       */
-      if (val === null) this.trHeight = 'auto';
-      else this.trHeight = `${Number(val)}px`;
+      if (val === null) this.trHeight = 'auto'
+      else this.trHeight = `${Number(val)}px`
     },
   },
-};
+}
 
 // Ignore below for now. We will remove it when we add more transition in future.
-export const _ = null;
+export const _ = null

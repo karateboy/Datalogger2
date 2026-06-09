@@ -9,14 +9,14 @@
   </div>
 </template>
 <script lang="ts">
-import Vue from 'vue';
-import DataUpload from './DataUpload.vue';
-import DataUpsert from './DataUpsert.vue';
+import Vue from 'vue'
+import DataUpload from './DataUpload.vue'
+import DataUpsert from './DataUpsert.vue'
 
 export default Vue.extend({
   components: {
     DataUpload,
     DataUpsert,
   },
-});
+})
 </script>

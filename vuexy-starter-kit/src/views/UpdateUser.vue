@@ -9,19 +9,19 @@
 }
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import { mapState } from 'vuex';
-import User from './User.vue';
+import Vue from 'vue'
+import { mapState } from 'vuex'
+import User from './User.vue'
 
 export default Vue.extend({
   components: {
     User,
   },
   data() {
-    return {};
+    return {}
   },
   computed: {
     ...mapState(['userinfo']),
   },
-});
+})
 </script>

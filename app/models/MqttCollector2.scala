@@ -151,7 +151,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
         case e: MqttException =>
           logger.error("Unable to set up client: " + e.toString)
           import scala.concurrent.duration._
-          alarmOp.log(alarmOp.instrumentSrc(id), Alarm.Level.ERR, s"無法連接:${e.getMessage}")
+          alarmOp.log(alarmOp.instrumentSrc(id), Alarm.Level.WARN, s"無法連接:${e.getMessage}")
           context.system.scheduler.scheduleOnce(Duration(1, MINUTES), self, CreateClient)
       }
     case ConnectBroker =>
@@ -267,7 +267,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
 
         if (sensorMap.contains(message.id)) {
           val sensor = sensorMap(message.id)
-          val f = recordOp.upsertRecord(recordOp.MinCollection)(RecordList.factory(time.toDate, mtDataList, sensor.monitor))
+          val f = recordOp.upsertRecordChecked(recordOp.MinCollection)(RecordList.factory(time.toDate, mtDataList, sensor.monitor))
           f.failed.foreach(ModelHelper.errorHandler)
         } else {
           monitorDB.upsertMonitor(Monitor(message.id, message.id, Some(message.lat), Some(message.lon)))
@@ -277,7 +277,7 @@ class MqttCollector2 @Inject()(monitorDB: MonitorDB, alarmOp: AlarmDB,
               sensorMap = sensorMap + (message.id -> sensor)
           })
 
-          val f = recordOp.upsertRecord(recordOp.MinCollection)(RecordList.factory(time.toDate, mtDataList, sensor.monitor))
+          val f = recordOp.upsertRecordChecked(recordOp.MinCollection)(RecordList.factory(time.toDate, mtDataList, sensor.monitor))
           f.failed.foreach(errorHandler)
         }
       })

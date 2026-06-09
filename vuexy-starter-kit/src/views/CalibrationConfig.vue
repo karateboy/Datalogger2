@@ -185,11 +185,11 @@
   </b-card>
 </template>
 <script>
-import Vue from 'vue';
-import axios from 'axios';
-import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
+import Vue from 'vue'
+import axios from 'axios'
+import ToastificationContent from '@core/components/toastification/ToastificationContent.vue'
 
-const Ripple = require('vue-ripple-directive');
+const Ripple = require('vue-ripple-directive')
 
 export default Vue.extend({
   components: {
@@ -199,7 +199,7 @@ export default Vue.extend({
     Ripple,
   },
   data() {
-    const instList = [];
+    const instList = []
     const fields = [
       {
         key: 'selected',
@@ -215,7 +215,7 @@ export default Vue.extend({
         label: '儀器ID',
         sortable: true,
         formatter: (value, key, item) => {
-          return item.instrumentIds.join(', ');
+          return item.instrumentIds.join(', ')
         },
       },
       {
@@ -229,22 +229,22 @@ export default Vue.extend({
         sortable: true,
         formatter: (value, key, item) => {
           let monitorTypes = item.instrumentIds.map(instId => {
-            let inst = this.instList.find(inst => inst._id === instId);
+            let inst = this.instList.find(inst => inst._id === instId)
             if (inst) {
-              return inst.monitorTypes;
-            } else return '';
-          });
-          return monitorTypes.join(', ');
+              return inst.monitorTypes
+            } else return ''
+          })
+          return monitorTypes.join(', ')
         },
       },
-    ];
+    ]
 
     let activeConfig = {
       _id: '',
       instrumentIds: [],
       calibrationTime: null,
       pointConfigs: this.getDefaultPointConfigs(),
-    };
+    }
 
     const pointCalibrationFields = [
       {
@@ -283,7 +283,7 @@ export default Vue.extend({
         key: 'deviationAllowance',
         label: '偏差允許(%)',
       },
-    ];
+    ]
     return {
       fields,
       calibrationList: [],
@@ -292,60 +292,60 @@ export default Vue.extend({
       activeConfig,
       instList,
       pointCalibrationFields,
-    };
+    }
   },
   computed: {
     modalTitle() {
-      return this.isNew ? '新增校正' : '更新校正';
+      return this.isNew ? '新增校正' : '更新校正'
     },
     selectedInstrument() {
-      if (!this.isNew && this.selected.length) return this.selected[0].inst;
-      else return {};
+      if (!this.isNew && this.selected.length) return this.selected[0].inst
+      else return {}
     },
     canToggleActivate() {
       return (
         this.selected.length === 1 &&
         (this.selected[0].state !== '啟用中' ||
           this.selected[0].state === '停用中')
-      );
+      )
     },
     toggleActivateName() {
       if (this.selected.length === 1) {
-        if (this.selected[0].state === '停用') return '啟用';
+        if (this.selected[0].state === '停用') return '啟用'
 
-        return '停用';
+        return '停用'
       }
-      return '停用/啟用';
+      return '停用/啟用'
     },
     inststrumentMap() {
-      let map = new Map();
+      let map = new Map()
       this.instList.forEach(inst => {
-        map.set(inst._id, inst.monitorTypes);
-      });
-      return map;
+        map.set(inst._id, inst.monitorTypes)
+      })
+      return map
     },
   },
   async mounted() {
-    await this.getInstList();
-    await this.getCalibrationConfigs();
+    await this.getInstList()
+    await this.getCalibrationConfigs()
   },
 
   methods: {
     async onSubmit(evt) {
-      this.$bvModal.hide('calibrationConfigModal');
+      this.$bvModal.hide('calibrationConfigModal')
       if (this.activeConfig.calibrationTime === '') {
-        this.activeConfig.calibrationTime = null;
+        this.activeConfig.calibrationTime = null
       }
       for (let pointConfig of this.activeConfig.pointConfigs) {
         for (let attr in pointConfig) {
           if (pointConfig[attr] === '') {
-            pointConfig[attr] = undefined;
+            pointConfig[attr] = undefined
           }
         }
       }
 
-      await this.upsertConfig();
-      await this.getCalibrationConfigs();
+      await this.upsertConfig()
+      await this.getCalibrationConfigs()
     },
     getDefaultPointConfigs() {
       return [
@@ -426,7 +426,7 @@ export default Vue.extend({
           fullSpanPercent: 0,
           deviationAllowance: 0,
         },
-      ];
+      ]
     },
     showResult(ok) {
       if (ok) {
@@ -437,7 +437,7 @@ export default Vue.extend({
             icon: 'EditIcon',
             variant: 'success',
           },
-        });
+        })
       } else {
         this.$toast({
           component: ToastificationContent,
@@ -446,38 +446,38 @@ export default Vue.extend({
             icon: 'EditIcon',
             variant: 'danger',
           },
-        });
-        this.getCalibrationConfigs();
+        })
+        this.getCalibrationConfigs()
       }
     },
     async calibrateInstrument() {
       const res = await axios.put(
         `/ExecuteCalibration/${this.selected[0]._id}`,
         {},
-      );
-      this.showResult(res.data.ok);
+      )
+      this.showResult(res.data.ok)
     },
     async resetInstrument() {
       const res = await axios.put(
         `/CancelCalibration/${this.selected[0]._id}`,
         {},
-      );
-      this.showResult(res.data.ok);
+      )
+      this.showResult(res.data.ok)
     },
     newCalibrationConfig() {
-      this.isNew = true;
+      this.isNew = true
       this.activeConfig = {
         _id: `多點校正${this.calibrationList.length + 1}`,
         instrumentIds: [],
         calibrationTime: '01:00:00',
         pointConfigs: this.getDefaultPointConfigs(),
-      };
-      this.$bvModal.show('calibrationConfigModal');
+      }
+      this.$bvModal.show('calibrationConfigModal')
     },
     updateConfig() {
-      this.isNew = false;
-      this.activeConfig = this.selected[0];
-      this.$bvModal.show('calibrationConfigModal');
+      this.isNew = false
+      this.activeConfig = this.selected[0]
+      this.$bvModal.show('calibrationConfigModal')
     },
     deleteConfig() {
       this.$bvModal
@@ -488,19 +488,19 @@ export default Vue.extend({
         })
         .then(ret => {
           if (ret) {
-            this.delConfig(this.selected[0]._id);
+            this.delConfig(this.selected[0]._id)
           }
         })
         .catch(err => {
-          throw Error(err);
-        });
+          throw Error(err)
+        })
     },
     async getCalibrationConfigs() {
-      let res = await axios.get('/CalibrationConfig');
-      this.calibrationList = res.data;
+      let res = await axios.get('/CalibrationConfig')
+      this.calibrationList = res.data
     },
     async upsertConfig() {
-      let res = await axios.post('/CalibrationConfig', this.activeConfig);
+      let res = await axios.post('/CalibrationConfig', this.activeConfig)
       this.$toast({
         component: ToastificationContent,
         props: {
@@ -508,11 +508,11 @@ export default Vue.extend({
           icon: 'UserIcon',
           variant: res.data.ok ? 'success' : 'danger',
         },
-      });
+      })
     },
     async delConfig(id) {
-      let res = await axios.delete(`/CalibrationConfig/${id}`);
-      const ret = res.data;
+      let res = await axios.delete(`/CalibrationConfig/${id}`)
+      const ret = res.data
       if (ret.ok) {
         this.$toast({
           component: ToastificationContent,
@@ -520,7 +520,7 @@ export default Vue.extend({
             title: '成功',
             icon: 'UserIcon',
           },
-        });
+        })
       } else {
         this.$toast({
           component: ToastificationContent,
@@ -528,29 +528,29 @@ export default Vue.extend({
             title: '刪除失敗',
             icon: 'UserIcon',
           },
-        });
+        })
       }
-      await this.getCalibrationConfigs();
+      await this.getCalibrationConfigs()
     },
     onConfigSelected(items) {
-      this.selected = items;
+      this.selected = items
     },
     onUpdate() {
-      this.$bvModal.hide('calibrationConfigModal');
-      this.getCalibrationConfigs();
+      this.$bvModal.hide('calibrationConfigModal')
+      this.getCalibrationConfigs()
     },
     onRefresh() {
-      this.getCalibrationConfigs();
+      this.getCalibrationConfigs()
     },
     onDeleted() {
-      this.getCalibrationConfigs();
+      this.getCalibrationConfigs()
     },
     async getInstList() {
-      let res = await axios.get('/InstrumentInfos');
-      this.instList = res.data;
+      let res = await axios.get('/InstrumentInfos')
+      this.instList = res.data
     },
   },
-});
+})
 </script>
 <style lang="scss">
 @import '@core/scss/vue/libs/vue-wizard.scss';

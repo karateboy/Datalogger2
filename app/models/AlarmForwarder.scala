@@ -15,21 +15,21 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 object AlarmForwarder {
   trait Factory {
-    def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String): Actor
+    def apply(@Assisted("server") server: String, @Assisted("monitors") monitors: Seq[String]): Actor
   }
 }
 
 class AlarmForwarder @Inject()(alarmOp: AlarmDB, ws: WSClient)
-                              (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor {
+                              (@Assisted("server") server: String, @Assisted("monitors") monitors: Seq[String]) extends Actor {
   val logger: Logger = Logger(this.getClass)
 
   import ForwardManager._
 
-  logger.info(s"AlarmForwarder started $server/$monitor")
+  logger.info(s"AlarmForwarder started $server/monitor=${monitors.mkString(",")}")
 
-  def receive = handler(None)
+  def receive: Receive = handler(Map.empty)
 
-  def checkLatest = {
+  def checkLatest(monitor:String)(monitorLatestMap:Map[String, Long]): Unit = {
     val url = s"http://$server/AlarmRecordRange/$monitor"
     val f = ws.url(url).get().map {
       response =>
@@ -47,34 +47,37 @@ class AlarmForwarder @Inject()(alarmOp: AlarmDB, ws: WSClient)
                 new DateTime(latest.time)
               }
 
-            context become handler(Some(serverLatest.getMillis))
-            uploadAlarm(serverLatest.getMillis)
+            val newMap = monitorLatestMap + (monitor->serverLatest.getMillis)
+            context become handler(newMap)
+            uploadAlarm(monitor, serverLatest.getMillis)(newMap)
           })
     }
     f.failed.foreach(errorHandler)
   }
 
-  def uploadAlarm(latestAlarm: Long) = {
+  private def uploadAlarm(monitor:String, latestAlarm: Long)(monitorLatestMap:Map[String, Long]): Unit = {
     import alarmOp.write
-    val recordFuture = alarmOp.getAlarmsFuture(Date.from(Instant.ofEpochMilli(latestAlarm + 1)), new Date())
+    val recordFuture = alarmOp.getAlarmsFuture(Date.from(Instant.ofEpochMilli(latestAlarm + 1)), new Date())(monitor)
     for (alarms <- recordFuture) {
       if (alarms.nonEmpty) {
         val url = s"http://$server/AlarmRecord/$monitor"
         val f = ws.url(url).put(Json.toJson(alarms))
-        f.foreach(_ => context become handler(Some(alarms.last.time.getTime)))
+        f.foreach(_ => context become handler(monitorLatestMap + (monitor->alarms.last.time.getTime)))
         f.failed.foreach(ex => {
-          context become handler(None)
+          context become handler(monitorLatestMap - monitor)
           ModelHelper.logException(ex)
         })
       }
     }
   }
 
-  def handler(latestAlarmOpt: Option[Long]): Receive = {
+  def handler(monitorLatestMap:Map[String, Long]): Receive = {
     case ForwardAlarm =>
-      if (latestAlarmOpt.isEmpty)
-        checkLatest
-      else
-        uploadAlarm(latestAlarmOpt.get)
+      monitors.foreach(monitor=>{
+        if (monitorLatestMap.contains(monitor))
+          uploadAlarm(monitor, monitorLatestMap(monitor))(monitorLatestMap)
+        else
+          checkLatest(monitor)(monitorLatestMap)
+      })
   }
 }

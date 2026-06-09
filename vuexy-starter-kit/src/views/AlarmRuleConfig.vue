@@ -192,36 +192,36 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import axios from 'axios';
-import { mapActions, mapGetters, mapState } from 'vuex';
-import { isNumber } from 'highcharts';
+import Vue from 'vue'
+import axios from 'axios'
+import { mapActions, mapGetters, mapState } from 'vuex'
+import { isNumber } from 'highcharts'
 
-const Ripple = require('vue-ripple-directive');
+const Ripple = require('vue-ripple-directive')
 
 interface AlarmRule {
-  _id: string;
-  monitorTypes: Array<string>;
-  monitors: Array<string>;
-  max?: number;
-  min?: number;
-  alarmLevel: number;
-  enable: boolean;
-  startTime?: string;
-  endTime?: string;
-  tableTypes: Array<string>;
-  messageTemplate?: string;
-  coldPeriod?: number;
+  _id: string
+  monitorTypes: Array<string>
+  monitors: Array<string>
+  max?: number
+  min?: number
+  alarmLevel: number
+  enable: boolean
+  startTime?: string
+  endTime?: string
+  tableTypes: Array<string>
+  messageTemplate?: string
+  coldPeriod?: number
 }
 
 interface EditAlarmRule extends AlarmRule {
-  dirty?: boolean;
+  dirty?: boolean
 }
 const randomString = (num: number) => {
   const characters =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  return Math.random().toString(36).substring(0, num);
-};
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  return Math.random().toString(36).substring(0, num)
+}
 
 export default Vue.extend({
   components: {},
@@ -274,8 +274,8 @@ export default Vue.extend({
         key: 'coldPeriod',
         label: '不重複(分)',
       },
-    ];
-    const alarmRules = Array<EditAlarmRule>();
+    ]
+    const alarmRules = Array<EditAlarmRule>()
 
     return {
       columns,
@@ -290,7 +290,7 @@ export default Vue.extend({
       ],
       alarmRules,
       selected: Array<AlarmRule>(),
-    };
+    }
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
@@ -298,51 +298,51 @@ export default Vue.extend({
     ...mapState('monitors', ['monitors']),
   },
   async mounted() {
-    this.fetchMonitorTypes();
-    this.fetchMonitors();
-    this.getAlarmRules();
+    this.fetchMonitorTypes()
+    this.fetchMonitors()
+    this.getAlarmRules()
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     ...mapActions('monitors', ['fetchMonitors']),
     async getAlarmRules() {
       try {
-        const res = await axios.get('/AlarmRules');
+        const res = await axios.get('/AlarmRules')
         if (res.status === 200) {
-          this.alarmRules = res.data;
+          this.alarmRules = res.data
         }
       } catch (err) {
-        console.error(`${err}`);
+        console.error(`${err}`)
       }
     },
     justify(rule: AlarmRule) {
-      if (!isNumber(rule.max)) rule.max = undefined;
-      if (!isNumber(rule.min)) rule.min = undefined;
-      if (!rule.startTime) rule.startTime = undefined;
-      if (!rule.endTime) rule.endTime = undefined;
-      if (!rule.messageTemplate) rule.messageTemplate = undefined;
+      if (!isNumber(rule.max)) rule.max = undefined
+      if (!isNumber(rule.min)) rule.min = undefined
+      if (!rule.startTime) rule.startTime = undefined
+      if (!rule.endTime) rule.endTime = undefined
+      if (!rule.messageTemplate) rule.messageTemplate = undefined
     },
     save() {
-      const all = Array<Promise<any>>();
+      const all = Array<Promise<any>>()
       for (const rule of this.alarmRules) {
         if (rule.dirty) {
-          this.justify(rule);
-          console.info(rule);
-          all.push(axios.put(`/AlarmRule`, rule));
+          this.justify(rule)
+          console.info(rule)
+          all.push(axios.put(`/AlarmRule`, rule))
         }
       }
 
       Promise.all(all).then(() => {
-        this.getAlarmRules();
-        this.$bvModal.msgBoxOk('成功');
-      });
+        this.getAlarmRules()
+        this.$bvModal.msgBoxOk('成功')
+      })
     },
     markDirty(item: any) {
-      item.dirty = true;
-      console.info(item);
+      item.dirty = true
+      console.info(item)
     },
     onSelected(items: Array<EditAlarmRule>) {
-      this.selected = items;
+      this.selected = items
     },
     newRule() {
       this.alarmRules.push({
@@ -357,26 +357,26 @@ export default Vue.extend({
         tableTypes: ['hour'],
         messageTemplate:
           '$time $monitor $mt超標 $value, $(WD_SPEED), $(WD_DIR)',
-      });
+      })
     },
     async removeRule() {
-      const toBeDeletedRules = this.selected.map(p => p._id);
+      const toBeDeletedRules = this.selected.map(p => p._id)
       const ret = await this.$bvModal.msgBoxConfirm(
         `請確認要刪除${toBeDeletedRules.join(',')}等規則`,
-      );
+      )
 
       if (ret === true) {
         try {
           let allP = toBeDeletedRules.map(_id => {
-            return axios.delete(`/AlarmRule/${_id}`);
-          });
-          await Promise.all(allP);
-          this.getAlarmRules();
+            return axios.delete(`/AlarmRule/${_id}`)
+          })
+          await Promise.all(allP)
+          this.getAlarmRules()
         } catch (err) {
-          throw new Error('Failed to delete rules');
+          throw new Error('Failed to delete rules')
         }
       }
     },
   },
-});
+})
 </script>

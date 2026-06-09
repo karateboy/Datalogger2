@@ -25,7 +25,7 @@ class ExcelUtility @Inject()
   val logger: Logger = Logger(this.getClass)
   val docRoot = environment.rootPath + "/report_template/"
 
-  def exportChartData(chart: HighchartData, monitorTypes: Array[String], showSec: Boolean): File = {
+  def exportChartData(chart: HighchartData, monitorTypes: Seq[String], showSec: Boolean): File = {
     val precArray = monitorTypes.map { mt =>
       if (monitorTypeOp.map.contains(mt))
         monitorTypeOp.map(mt).prec
@@ -34,17 +34,17 @@ class ExcelUtility @Inject()
         monitorTypeOp.map(realType).prec
       }
     }
-    exportChartData(chart, precArray, showSec)
+    exportChartDataWithPrecision(chart, precArray, showSec)
   }
 
-  def exportChartData(chart: HighchartData, precision: Array[Int], showSec: Boolean) = {
+  def exportChartDataWithPrecision(chart: HighchartData, precision: Seq[Int], showSec: Boolean): File = {
     val (reportFilePath, pkg, wb) = prepareTemplate("chart_export.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
     val format = wb.createDataFormat();
 
     val sheet = wb.getSheetAt(0)
     val headerRow = sheet.createRow(0)
-    headerRow.createCell(0).setCellValue("Time")
+    headerRow.createCell(0).setCellValue("時間")
     val calibrationStyle = wb.createCellStyle()
     calibrationStyle.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex)
     calibrationStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND)
@@ -56,9 +56,11 @@ class ExcelUtility @Inject()
     maintenanceStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND)
 
     for ((series, colIdx) <- chart.series.zipWithIndex) {
-      headerRow.createCell(1 + 2 * colIdx).setCellValue(series.name)
-      if (series.statusList.nonEmpty)
-        headerRow.createCell(1 + 2 * colIdx + 1).setCellValue("Status")
+      if (series.statusList.nonEmpty) {
+        headerRow.createCell(1 + 2 * colIdx).setCellValue(series.name)
+        headerRow.createCell(1 + 2 * colIdx + 1).setCellValue("狀態碼")
+      } else
+        headerRow.createCell(1 + colIdx).setCellValue(series.name)
     }
 
     val styles = precision.map { prec =>
@@ -111,10 +113,15 @@ class ExcelUtility @Inject()
               timeCell.setCellValue(dt.toString("YYYY/MM/dd HH:mm:ss"))
           }
 
-          val cell = thisRow.createCell(colIdx * 2 + 1)
-          cell.setCellStyle(styles(colIdx))
+          val cell =
+            if (series.statusList.nonEmpty)
+              thisRow.createCell(colIdx * 2 + 1)
+            else
+              thisRow.createCell(colIdx + 1)
+
+          cell.setCellStyle(styles(colIdx % styles.length))
           for (v <- pair._2 if !v.isNaN) {
-            val d = BigDecimal(v).setScale(precision(colIdx), RoundingMode.HALF_UP)
+            val d = BigDecimal(v).setScale(precision(colIdx % precision.length), RoundingMode.HALF_UP)
             cell.setCellValue(d.doubleValue())
             if (series.statusList.nonEmpty)
               for (status <- series.statusList(row - 1)) {
@@ -182,14 +189,21 @@ class ExcelUtility @Inject()
       abnormalStyles(2)
   }
 
-  def exportDailyReport(dateTime: DateTime, dailyReport: DisplayReport): File = {
-    val (reportFilePath, pkg, wb) = prepareTemplate("dailyReport2.xlsx")
+  def exportDailyReport(dateTime: DateTime, dailyReport: DisplayReport) = {
+    val (reportFilePath, pkg, wb) = prepareTemplate("dailyReport.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()
     val format = wb.createDataFormat()
     val sheet = wb.getSheetAt(0)
     val titleRow = sheet.createRow(0)
     for (i <- 0 to dailyReport.columnNames.size + 1)
       titleRow.createCell(i)
+
+    val statusStyle =
+      for (col <- 0 to 4)
+        yield sheet.getRow(1).getCell(col).getCellStyle
+
+    sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, dailyReport.columnNames.size))
+    titleRow.getCell(0).setCellValue(s"監測日報 ${dateTime.toString("YYYY年MM月dd日")}")
 
     def setValue(cell: Cell, v: String): Unit = {
       try {
@@ -201,28 +215,54 @@ class ExcelUtility @Inject()
       }
     }
 
-    val mtList = Seq("COD", "PH", "TSS", "COLOR", "TP", "BOD", "TSS", "TEMP", "FLOW_OUT", "FLOW_IN", "NH4",
-      "FlowInTotal", "FlowOutTotal", "FT502_IN", "FT007_OUT")
-    for (hr <- 0 to 23) {
-      val row = sheet.getRow(3 + hr)
-      val dateCell = row.getCell(0)
-      dateCell.setCellValue(dateTime.toDate)
-      val timeCell = row.getCell(1)
-      timeCell.setCellValue(s"$hr:00")
-    }
-    for ((mtName, mtIdx) <- mtList.zipWithIndex) {
+    val headerRow = sheet.getRow(2)
+    for ((mtName, mtIdx) <- dailyReport.columnNames.zipWithIndex) {
+      val headerCell = headerRow.createCell(mtIdx + 1)
+      headerCell.setCellValue(mtName)
+      headerCell.setCellStyle(statusStyle(0))
       for (hr <- 0 to 23) {
         val row = sheet.getRow(3 + hr)
-        val cell = row.createCell(mtIdx + 2)
-        val mtDataIndex = dailyReport.mtList.indexOf(mtName)
-
-        if(mtDataIndex >= 0){
-          val mtHrData = dailyReport.rows(hr).cellData(mtDataIndex)
-          setValue(cell, mtHrData.v)
-        }
+        val cell = row.createCell(mtIdx + 1)
+        val mtHrData = dailyReport.rows(hr).cellData(mtIdx)
+        setValue(cell, mtHrData.v)
+        var hasStyle = false
+        mtHrData.cellClassName.foreach(status => {
+          status match {
+            case "calibration_status" =>
+              hasStyle = true
+              cell.setCellStyle(statusStyle(1))
+            case "maintain_status" =>
+              hasStyle = true
+              cell.setCellStyle(statusStyle(2))
+            case "abnormal_status" =>
+              hasStyle = true
+              cell.setCellStyle(statusStyle(3))
+            case "manual_audit_status" =>
+              hasStyle = true
+              cell.setCellStyle(statusStyle(4))
+            case "normal" =>
+              if (!hasStyle)
+                cell.setCellStyle(statusStyle(0))
+            case _ =>
+              if (!hasStyle)
+                cell.setCellStyle(statusStyle(0))
+          }
+        })
       }
     }
-    evaluator.evaluateAll()
+
+    for ((statusRowData, statusIdx) <- dailyReport.statRows.zipWithIndex) {
+      val row = sheet.createRow(statusIdx + 3 + dailyReport.rows.size)
+      val titleCell = row.createCell(0)
+      titleCell.setCellValue(statusRowData.name)
+      titleCell.setCellStyle(statusStyle(0))
+      for (mtIdx <- 0 to dailyReport.columnNames.size - 1) {
+        val valueCell = row.createCell(mtIdx + 1)
+        setValue(valueCell, statusRowData.cellData(mtIdx).v)
+        valueCell.setCellStyle(statusStyle(0))
+      }
+    }
+
     finishExcel(reportFilePath, pkg, wb)
   }
 
@@ -544,4 +584,75 @@ class ExcelUtility @Inject()
       }
     }
   }.toList
+
+  def export5MinChart(chart: HighchartData, precision: Array[Int]): File = {
+    val (reportFilePath, pkg, wb) = prepareTemplate("daily5minReport.xlsx")
+    val evaluator = wb.getCreationHelper().createFormulaEvaluator()
+    val format = wb.createDataFormat();
+
+    val sheet = wb.getSheetAt(0)
+
+    val styles = precision.map { prec =>
+      val format_str: String = if (prec != 0)
+        "0." + "0" * prec
+      else
+        "0"
+
+      val style = wb.createCellStyle();
+      style.setDataFormat(format.getFormat(format_str))
+      style
+    }
+
+    // Categories data
+    if (chart.xAxis.categories.isDefined) {
+      logger.info("with xAxis categories")
+      val timeList = chart.xAxis.categories.get
+      for ((timeStr, rowIdx) <- timeList.zipWithIndex) {
+        val thisRow = sheet.createRow(rowIdx + 3)
+        thisRow.createCell(0).setCellValue(timeStr)
+
+        for ((series, colIdx) <- chart.series.zipWithIndex) {
+          val cell = thisRow.createCell(1 + colIdx * 2)
+          cell.setCellStyle(styles(colIdx))
+          val pair = series.data(rowIdx)
+          val statusOpt = series.statusList(rowIdx)
+          for (v <- pair._2 if !v.isNaN) {
+            val d = BigDecimal(v).setScale(precision(colIdx), RoundingMode.HALF_UP)
+            cell.setCellValue(d.doubleValue())
+          }
+          for (status <- statusOpt) {
+            val statusCell = thisRow.createCell(1 + colIdx * 2 + 1)
+            statusCell.setCellValue(status)
+          }
+        }
+      }
+    } else {
+      logger.info("no xAxis categories")
+      val rowMax = chart.series.map(s => s.data.length).max
+      for (row <- 1 to rowMax) {
+        val thisRow = sheet.createRow(row + 2)
+        for {
+          (series, colIdx) <- chart.series.zipWithIndex
+        } {
+          val reverseData = series.data.reverse
+          val pair = reverseData(row - 1)
+          if (colIdx == 0) {
+            val timeCell = thisRow.createCell(0)
+            val dt = new DateTime(pair._1)
+            timeCell.setCellValue(dt.toString("YYYY/MM/dd HH:mm"))
+          }
+
+          val cell = thisRow.createCell(colIdx + 1)
+          for (v <- pair._2 if !v.isNaN) {
+            val d = BigDecimal(v).setScale(precision(colIdx), RoundingMode.HALF_UP)
+            cell.setCellValue(d.doubleValue())
+          }
+        }
+      }
+    }
+
+    finishExcel(reportFilePath, pkg, wb)
+  }
+
+
 }

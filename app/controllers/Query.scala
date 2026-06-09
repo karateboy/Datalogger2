@@ -269,7 +269,7 @@ class Query @Inject()(recordOp: RecordDB,
     }
   }
 
-  private def trendHelper(monitors: Seq[String], monitorTypes: Seq[String], includeRaw: Boolean, tabType: TableType#Value,
+  def trendHelper(monitors: Seq[String], monitorTypes: Seq[String], includeRaw: Boolean, tabType: TableType#Value,
                           reportUnit: ReportUnit.Value, start: DateTime, end: DateTime, showActual: Boolean)(statusFilter: MonitorStatusFilter.Value): HighchartData = {
     val period: Period =
       reportUnit match {
@@ -459,6 +459,67 @@ class Query @Inject()(recordOp: RecordDB,
       }
 
     chart
+  }
+
+  private case class HistoryTrendParam(monitors: Seq[String],
+                                       monitorTypes: Seq[String],
+                                       raw: Boolean,
+                                       tab: String,
+                                       unit: String,
+                                       filter: String,
+                                       start: Date,
+                                       end: Date,
+                                       output: String)
+
+  def getHistoryTrend: Action[JsValue] = security.Authenticated(parse.json) {
+    implicit request =>
+      implicit val read: Reads[HistoryTrendParam] = Json.reads[HistoryTrendParam]
+      val mResult = request.body.validate[HistoryTrendParam]
+      mResult.fold(
+        error => handleJsonValidateError(error),
+        param => {
+          val myTableType: TableType#Value = tableType.withName(param.tab)
+          val reportUnit = ReportUnit.withName(param.unit)
+          val statusFilter = MonitorStatusFilter.withName(param.filter)
+          val (start, end) =
+            if (reportUnit.id <= ReportUnit.Hour.id) {
+              if (reportUnit == ReportUnit.Hour)
+                (new DateTime(param.start).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0),
+                  new DateTime(param.end).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0))
+              else if (reportUnit == ReportUnit.Sec)
+                (new DateTime(param.start).withMillisOfSecond(0), new DateTime(param.end).withMillisOfSecond(0))
+              else
+                (new DateTime(param.start).withSecondOfMinute(0).withMillisOfSecond(0),
+                  new DateTime(param.end).withSecondOfMinute(0).withMillisOfSecond(0))
+            } else
+              (new DateTime(param.start).withMillisOfDay(0), new DateTime(param.end).withMillisOfDay(0))
+
+          val chart = trendHelper(param.monitors, param.monitorTypes,
+            param.raw, myTableType, reportUnit, start, end, LoggerConfig.config.trendShowActual)(statusFilter)
+
+          val outputType = OutputType.withName(param.output)
+          if (outputType == OutputType.excel) {
+            import java.nio.file.Files
+            val actualMonitorTypes = if (param.raw)
+              param.monitorTypes flatMap (mt => Seq(mt, MonitorType.getRawType(mt)))
+            else
+              param.monitorTypes
+
+            val excelFile = excelUtility.exportChartData(chart, actualMonitorTypes, showSec = true)
+            val downloadFileName =
+              if (chart.downloadFileName.isDefined)
+                chart.downloadFileName.get
+              else
+                chart.title("text")
+
+            Ok.sendFile(excelFile, fileName = _ =>
+              Some(s"$downloadFileName.xlsx"),
+              onClose = () => {
+                Files.deleteIfExists(excelFile.toPath)
+              })
+          } else
+            Results.Ok(Json.toJson(chart))
+        })
   }
 
   private def getPeriodReportMap(monitor: String, mtList: Seq[String],
@@ -679,54 +740,98 @@ class Query @Inject()(recordOp: RecordDB,
       }
   }
 
-  def historyReport(monitorTypeStr: String, tabTypeStr: String,
-                    startNum: Long, endNum: Long) = security.Authenticated.async {
+  private case class HistoryDataParam(monitors: Seq[String],
+                                      monitorTypes: Seq[String],
+                                      raw: Boolean,
+                                      tab: String,
+                                      start: Date,
+                                      end: Date)
+
+  def getHistoryData: Action[JsValue] = security.Authenticated.async(parse.json) {
     implicit request =>
+      implicit val read: Reads[HistoryDataParam] = Json.reads[HistoryDataParam]
+      val mResult = request.body.validate[HistoryDataParam]
+      mResult.fold(
+        error => Future.successful(handleJsonValidateError(error)),
+        param => {
+          val tabType: TableType#Value = tableType.withName(param.tab)
+          val (start, end) =
+            if (tabType == tableType.hour) {
+              val original_start = new DateTime(param.start)
+              val original_end = new DateTime(param.end)
+              (original_start.withMinuteOfHour(0), original_end.withMinute(0) + 1.hour)
+            } else {
+              (new DateTime(param.start), new DateTime(param.end))
+            }
 
-      val monitorTypes = monitorTypeStr.split(':')
-      val tabType = tableType.withName(tabTypeStr)
-      val (start, end) =
-        if (tabType == tableType.hour) {
-          val orignal_start = new DateTime(startNum)
-          val orignal_end = new DateTime(endNum)
+          val resultFuture = recordOp.getRecordListFuture(tableType.mapCollection(tabType))(start, end, param.monitors)
+          val emptyCell = CellData("-", Seq.empty[String])
+          for (recordList <- resultFuture) yield {
+            val timeMtMonitorMap = mutable.Map.empty[DateTime, mutable.Map[String, mutable.Map[String, Seq[CellData]]]]
+            recordList foreach {
+              r =>
+                val stripedTime = new DateTime(r._id.time).withSecondOfMinute(0).withMillisOfSecond(0)
+                val mtMonitorMap = timeMtMonitorMap.getOrElseUpdate(stripedTime, mutable.Map.empty[String, mutable.Map[String, Seq[CellData]]])
+                for (mt <- param.monitorTypes) {
+                  val monitorMap = mtMonitorMap.getOrElseUpdate(mt, mutable.Map.empty[String, Seq[CellData]])
+                  val cellData = if (r.mtMap.contains(mt)) {
+                    val mtRecord = r.mtMap(mt)
+                    val valueCell = CellData(monitorTypeOp.format(mt, mtRecord.value),
+                      monitorTypeOp.getCssClassStr(mtRecord), Some(mtRecord.status))
+                    val rawCell = CellData(monitorTypeOp.format(mt, mtRecord.rawValue),
+                      monitorTypeOp.getCssClassStr(mtRecord), Some(mtRecord.status))
+                    if (param.raw)
+                      Seq(valueCell, rawCell)
+                    else
+                      Seq(valueCell)
+                  } else {
+                    if (param.raw)
+                      Seq(emptyCell, emptyCell)
+                    else
+                      Seq(emptyCell)
+                  }
 
-          (orignal_start.withMinuteOfHour(0), orignal_end.withMinute(0) + 1.hour)
-        } else {
-          val timeStart = new DateTime(startNum)
-          val timeEnd = new DateTime(endNum)
-          val timeDuration = new Duration(timeStart, timeEnd)
-          tabType match {
-            case tableType.min =>
-              if (timeDuration.getStandardMinutes > 60 * 12)
-                (timeStart, timeStart + 12.hour)
-              else
-                (timeStart, timeEnd)
-            case tableType.second =>
-              if (timeDuration.getStandardSeconds > 60 * 60)
-                (timeStart, timeStart + 1.hour)
-              else
-                (timeStart, timeEnd)
+                  monitorMap.update(r._id.monitor, cellData)
+                }
+            }
+            val timeList = timeMtMonitorMap.keys.toList.sorted
+            val timeRows: Seq[RowData] = for (time <- timeList) yield {
+              val mtMonitorMap = timeMtMonitorMap(time)
+              var cellDataList = Seq.empty[CellData]
+              for {
+                mt <- param.monitorTypes
+                m <- param.monitors
+              } {
+                val monitorMap = mtMonitorMap(mt)
+                if (monitorMap.contains(m))
+                  cellDataList = cellDataList ++ mtMonitorMap(mt)(m)
+                else {
+                  if (param.raw)
+                    cellDataList = cellDataList ++ Seq(emptyCell, emptyCell)
+                  else
+                    cellDataList = cellDataList ++ Seq(emptyCell)
+                }
+              }
+              RowData(time.getMillis, cellDataList)
+            }
+
+            val columnNames = param.monitorTypes flatMap { mt => {
+              for (mtCase <- monitorTypeOp.map.get(mt)) yield
+                if (param.raw)
+                  Seq(mtCase.desp, s"${mtCase.desp} 原始值")
+                else
+                  Seq(mtCase.desp)
+            }
+            }
+            Ok(Json.toJson(DataTab(columnNames.flatten, timeRows)))
           }
-        }
-      val timeList = tabType match {
-        case tableType.hour =>
-          getPeriods(start, end, 1.hour)
-        case tableType.min =>
-          getPeriods(start, end, 1.minute)
-        case tableType.second =>
-          getPeriods(start, end, 1.second)
-      }
-
-      val f = recordOp.getRecordListFuture(tableType.mapCollection(tabType))(start, end)
-
-      for (recordList <- f) yield
-        Ok(Json.toJson(recordList))
+        })
   }
 
   def calibrationReport(startNum: Long, endNum: Long): Action[AnyContent] = security.Authenticated {
     import calibrationOp.writes
     val (start, end) = (new DateTime(startNum), new DateTime(endNum))
-    val report: Seq[Calibration] = calibrationOp.calibrationReport(start, end)
+    val report: Seq[Calibration] = calibrationOp.calibrationReport(start, end)(Monitor.activeId)
     Ok(Json.toJson(report))
   }
 
@@ -835,7 +940,7 @@ class Query @Inject()(recordOp: RecordDB,
 
       val startTime = new DateTime(start)
       val endTime = new DateTime(end)
-      val recordListF = recordOp.getRecordListFuture(recordOp.HourCollection)(startTime, endTime)
+      val recordListF = recordOp.getRecordListFuture(recordOp.HourCollection)(startTime, endTime, Seq(Monitor.activeId))
       for (recordList <- recordListF) yield {
         Ok(Json.toJson(recordList))
       }
@@ -846,7 +951,7 @@ class Query @Inject()(recordOp: RecordDB,
     implicit request =>
       val startTime = new DateTime(start)
       val endTime = new DateTime(end)
-      val recordListF = recordOp.getRecordListFuture(recordOp.MinCollection)(startTime, endTime)
+      val recordListF = recordOp.getRecordListFuture(recordOp.MinCollection)(startTime, endTime, Seq(Monitor.activeId))
 
       for (recordList <- recordListF) yield {
         Ok(Json.toJson(recordList))
@@ -859,7 +964,7 @@ class Query @Inject()(recordOp: RecordDB,
     val startTime = new DateTime(start)
     val endTime = new DateTime(end)
     val outputType = OutputType.withName(outputTypeStr)
-    val recordListF = calibrationOp.calibrationReportFuture(startTime, endTime)
+    val recordListF = calibrationOp.calibrationReportFuture(startTime, endTime)(Monitor.activeId)
     implicit val w = Json.writes[Calibration]
     for (records <- recordListF) yield {
       outputType match {
@@ -1114,7 +1219,11 @@ class Query @Inject()(recordOp: RecordDB,
     security.Authenticated.async {
       val monitors = monitorStr.split(':')
       val start = new DateTime(startNum).withTimeAtStartOfDay()
-      val end = new DateTime(endNum).withTimeAtStartOfDay() + 1.day
+      val end = if(isDailyAqi)
+        new DateTime(endNum).withTimeAtStartOfDay() + 1.day
+      else
+        new DateTime(endNum).withMinuteOfHour(0)
+
       val outputType = OutputType.withName(outputTypeStr)
       val myTableType = tableType.withName(tab)
 
@@ -1190,7 +1299,7 @@ class Query @Inject()(recordOp: RecordDB,
           val precision = Array.fill(chart.series.size) {
             0
           }
-          val excelFile = excelUtility.exportChartData(chart, precision, showSec = false)
+          val excelFile = excelUtility.exportChartDataWithPrecision(chart, precision, showSec = false)
           Ok.sendFile(excelFile, fileName = _ =>
             Some("AQI查詢.xlsx"),
             onClose = () => {
@@ -1223,7 +1332,7 @@ class Query @Inject()(recordOp: RecordDB,
 
   private case class TraceResult(trace: Seq[Position])
 
-  def traceQuery(monitor: String, tableTypeStr: String, start: Long, end: Long): Action[AnyContent] = security.Authenticated.async {
+  def traceQuery(monitor: String, tableTypeStr: String, backward: Boolean, start: Long, end: Long): Action[AnyContent] = security.Authenticated.async {
     implicit request =>
       implicit val w = Json.writes[Position]
       implicit val w2 = Json.writes[TraceResult]
@@ -1237,18 +1346,23 @@ class Query @Inject()(recordOp: RecordDB,
           NotFound("查無資料")
         else {
           val trace = ListBuffer.empty[Position]
-          val recordReverse = records.reverse
+          val recordPipeline =
+            if (backward)
+              records.reverse
+            else
+              records
+
           val currentPos = Position(lat =
-            recordReverse.head.mtMap.get(MonitorType.LAT)
+            recordPipeline.head.mtMap.get(MonitorType.LAT)
               .flatMap(_.value).getOrElse(m.lat.getOrElse(23.587100069188324)),
-            lng = recordReverse.head.mtMap.get(MonitorType.LNG)
+            lng = recordPipeline.head.mtMap.get(MonitorType.LNG)
               .flatMap(_.value).getOrElse(m.lng.getOrElse(121.14727819361042)),
-            date = recordReverse.head._id.time)
+            date = recordPipeline.head._id.time)
 
           trace.append(currentPos)
 
           var lastPos = currentPos
-          for (record <- recordReverse) {
+          for (record <- recordPipeline) {
             for (windDir <- record.mtMap.get(MonitorType.WIN_DIRECTION).flatMap(_.value);
                  windSpeed <- record.mtMap.get(MonitorType.WIN_SPEED).flatMap(_.value)) {
               val distance = if (tab == tableType.hour)
@@ -1256,7 +1370,10 @@ class Query @Inject()(recordOp: RecordDB,
               else
                 windSpeed * 60 // m/s * 1 minute
 
-              lastPos = lastPos.getNextPosition(windDir, distance, record._id.time)
+              lastPos = if (backward)
+                lastPos.getNextPosition(windDir, distance, record._id.time)
+              else
+                lastPos.getNextPosition(windDir - 180, distance, record._id.time)
               trace.append(lastPos)
             }
           }

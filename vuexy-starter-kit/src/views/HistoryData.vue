@@ -4,21 +4,8 @@
       <b-form @submit.prevent>
         <b-row>
           <b-col cols="6">
-            <b-form-group label="Điểm đo" label-for="monitor" label-cols-md="3">
-              <v-select
-                id="monitor"
-                v-model="form.monitors"
-                label="desc"
-                :reduce="mt => mt._id"
-                :options="monitors"
-                :close-on-select="false"
-                multiple
-              />
-            </b-form-group>
-          </b-col>
-          <b-col cols="6">
             <b-form-group
-              label="Thông số "
+              :label="$t('monitorType')"
               label-for="monitorType"
               label-cols-md="3"
             >
@@ -31,17 +18,11 @@
                 :close-on-select="false"
                 multiple
               />
-              <b-form-checkbox v-model="form.includeRaw"
-                >Hiển thị giá trị thô</b-form-checkbox
-              >
             </b-form-group>
-            <b-button class="bg-gradient-success m-50" v-for="mtg in monitorTypeGroups" :key="mtg._id" size="sm" @click="form.monitorTypes = mtg.mts">
-              {{ mtg.name }}
-            </b-button>
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="Loại dữ liệu"
+              :label="$t('dataType')"
               label-for="dataType"
               label-cols-md="3"
             >
@@ -50,13 +31,13 @@
                 v-model="form.dataType"
                 label="txt"
                 :reduce="dt => dt.id"
-                :options="dataTypes"
+                :options="translateDataTypes"
               />
             </b-form-group>
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="Khoảng dữ liệu"
+              :label="$t('dataRange')"
               label-for="dataRange"
               label-cols-md="3"
             >
@@ -80,15 +61,7 @@
               class="mr-1"
               @click="query"
             >
-              查詢
-            </b-button>
-            <b-button
-              v-ripple.400="'rgba(186, 191, 199, 0.15)'"
-              type="reset"
-              class="mr-1"
-              variant="outline-secondary"
-            >
-              取消
+              {{ $t('query') }}
             </b-button>
             <b-button
               v-ripple.400="'rgba(255, 255, 255, 0.15)'"
@@ -97,13 +70,13 @@
               class="mr-1"
               @click="downloadExcel"
             >
-              下載Excel
+              {{ $t('downloadExcel') }}
             </b-button>
           </b-col>
         </b-row>
       </b-form>
     </b-card>
-    <b-card v-show="display" :title="resultTitle">
+    <b-card v-show="display">
       <b-table
         striped
         hover
@@ -143,16 +116,17 @@
   </div>
 </template>
 <script lang="ts">
-import Vue from 'vue';
-import DatePicker from 'vue2-datepicker';
-import 'vue2-datepicker/index.css';
-import 'vue2-datepicker/locale/zh-tw';
-const Ripple = require('vue-ripple-directive');
-import { mapState, mapGetters, mapActions, mapMutations } from 'vuex';
-import moment from 'moment';
-import axios from 'axios';
-const excel = require('../libs/excel');
-const _ = require('lodash');
+import Vue from 'vue'
+import DatePicker from 'vue2-datepicker'
+import 'vue2-datepicker/index.css'
+import 'vue2-datepicker/locale/zh-tw'
+const Ripple = require('vue-ripple-directive')
+import { mapState, mapGetters, mapActions, mapMutations } from 'vuex'
+import moment from 'moment'
+import axios from 'axios'
+const excel = require('../libs/excel')
+const _ = require('lodash')
+import { HistoryTrendParam, HistoryDataParam } from './types'
 
 export default Vue.extend({
   components: {
@@ -166,7 +140,7 @@ export default Vue.extend({
     const range = [
       moment().subtract(1, 'days').minute(0).second(0).millisecond(0).valueOf(),
       moment().add(1, 'hour').minute(0).second(0).millisecond(0).valueOf(),
-    ];
+    ]
     return {
       form: {
         monitors: Array<any>(),
@@ -179,7 +153,7 @@ export default Vue.extend({
       columns: Array<any>(),
       rows: Array<any>(),
       currentPage: 1,
-    };
+    }
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
@@ -189,27 +163,33 @@ export default Vue.extend({
     ...mapGetters('monitors', ['mMap']),
     ...mapGetters('tables', ['dataTypes']),
     resultTitle(): string {
-      return `總共${this.rows.length}筆`;
+      return `總共${this.rows.length}筆`
     },
     mtColspan(): number {
-      if (this.form.includeRaw) return 2 * this.form.monitors.length;
+      if (this.form.includeRaw) return 2 * this.form.monitors.length
 
-      return this.form.monitors.length;
+      return this.form.monitors.length
+    },
+    translateDataTypes(): Array<any> {
+      return [
+        { id: 'hour', txt: this.$i18n.t('hourData') },
+        { id: 'min', txt: this.$i18n.t('minData') },
+      ]
     },
   },
   watch: {},
   async mounted() {
-    await this.fetchMonitorTypes();
-    await this.fetchMonitors();
-    await this.fetchTables();
-    await this.fetchMonitorTypeGroups();
+    await this.fetchMonitorTypes()
+    await this.fetchMonitors()
+    await this.fetchTables()
+    await this.fetchMonitorTypeGroups()
 
     if (this.monitors.length !== 0) {
-      this.form.monitors.push(this.monitors[0]._id);
+      this.form.monitors.push(this.monitors[0]._id)
     }
 
     if (this.activatedMonitorTypes.length !== 0)
-      this.form.monitorTypes.push(this.activatedMonitorTypes[0]._id);
+      this.form.monitorTypes.push(this.activatedMonitorTypes[0]._id)
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
@@ -218,103 +198,124 @@ export default Vue.extend({
     ...mapActions('tables', ['fetchTables']),
     ...mapMutations(['setLoading']),
     async query() {
-      let diffHour = (this.form.range[1] - this.form.range[0]) / (1000 * 60 * 60);
-      if (this.form.dataType ==='min' && diffHour > 24 * 31) {
-        await this.$bvModal.msgBoxOk("查詢區間不可大於31天");
-        return;
+      let diffHour =
+        (this.form.range[1] - this.form.range[0]) / (1000 * 60 * 60)
+      if (this.form.dataType === 'min' && diffHour > 24 * 31) {
+        await this.$bvModal.msgBoxOk('查詢區間不可大於31天')
+        return
       }
 
-      this.setLoading({ loading: true });
-      this.display = true;
-      this.rows = [];
-      this.columns = this.getColumns();
-      const monitors = this.form.monitors.join(':');
-      const monitorTypes = this.form.monitorTypes.join(':');
-      const url = `/HistoryReport/${monitors}/${monitorTypes}/${this.form.dataType}/${this.form.includeRaw}/${this.form.range[0]}/${this.form.range[1]}`;
-      const ret = await axios.get(url);
-      this.setLoading({ loading: false });
-      console.info(ret);
+      this.setLoading({ loading: true })
+      this.display = true
+      this.rows = []
+      this.columns = this.getColumns()
+      let param: HistoryDataParam = {
+        monitors: this.form.monitors,
+        monitorTypes: this.form.monitorTypes,
+        raw: this.form.includeRaw,
+        tab: this.form.dataType,
+        start: this.form.range[0],
+        end: this.form.range[1],
+      }
+
+      const ret = await axios.post('/GetHistoryData', param)
+
+      this.setLoading({ loading: false })
+      console.info(ret)
       for (const row of ret.data.rows) {
-        row.date = moment(row.date).format('lll');
+        row.date = moment(row.date).format('lll')
       }
 
-      this.rows = ret.data.rows;
+      this.rows = ret.data.rows
     },
     cellDataTd(i: number) {
       return (_value: any, _key: any, item: any) =>
-        item.cellData[i].cellClassName;
+        item.cellData[i].cellClassName
     },
     getMtDesc(mt: string) {
-      const mtCase = this.mtMap.get(mt);
-      return `${mtCase.desp}(${mtCase.unit})`;
+      const mtCase = this.mtMap.get(mt)
+      return `${mtCase.desp}(${mtCase.unit})`
     },
     getColumns(): Array<any> {
-      const ret = [];
+      const ret = []
       ret.push({
         key: 'date',
         label: '時間',
         stickyColumn: true,
-      });
-      let i = 0;
+      })
+      let i = 0
       for (const mt of this.form.monitorTypes) {
-        const mtCase = this.mtMap.get(mt);
+        const mtCase = this.mtMap.get(mt)
         for (const m of this.form.monitors) {
-          const mCase = this.mMap.get(m);
+          const mCase = this.mMap.get(m)
           ret.push({
             key: `cellData[${i}].v`,
             label: `${mCase.desc}`,
             tdClass: this.cellDataTd(i),
-          });
-          i++;
+          })
+          i++
           if (this.form.includeRaw) {
             ret.push({
               key: `cellData[${i}].v`,
               label: `${mCase.desc}原始值`,
               tdClass: this.cellDataTd(i),
-            });
-            i++;
+            })
+            i++
           }
         }
       }
 
-      return ret;
+      return ret
     },
     async downloadExcel() {
-      const baseUrl =
-        process.env.NODE_ENV === 'development' ? 'http://localhost:9000/' : '/';
-      const monitors = this.form.monitors.join(':');
-      let reportUnit = 'Min';
-      if (this.form.dataType === 'hour') reportUnit = 'Hour';
+      let reportUnit = 'Min'
+      if (this.form.dataType === 'hour') reportUnit = 'Hour'
 
-      const url = `${baseUrl}HistoryTrend/excel/${monitors}/${this.form.monitorTypes.join(
-        ':',
-      )}/${this.form.includeRaw}/${this.form.dataType}/${reportUnit}/all/${
-        this.form.range[0]
-      }/${this.form.range[1]}`;
+      let param: HistoryTrendParam = {
+        monitors: this.form.monitors,
+        monitorTypes: this.form.monitorTypes,
+        raw: this.form.includeRaw,
+        tab: this.form.dataType,
+        unit: reportUnit,
+        filter: 'all',
+        start: this.form.range[0],
+        end: this.form.range[1],
+        output: 'excel',
+      }
 
-      window.open(url);
+      const res = await axios.post('/GetHistoryTrend', param, {
+        responseType: 'blob',
+      })
+
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const link = document.createElement('a')
+      link.href = url
+      const fileName = 'data.xlsx'
+      link.setAttribute('download', fileName)
+      document.body.appendChild(link)
+      link.click()
     },
     exportExcel() {
-      const title = this.columns.map(e => e.label);
-      const key = this.columns.map(e => e.key);
+      const title = this.columns.map(e => e.label)
+      const key = this.columns.map(e => e.key)
       for (let entry of this.rows) {
-        let e = entry as any;
+        let e = entry as any
         for (let k of key) {
-          e[k] = _.get(entry, k);
+          e[k] = _.get(entry, k)
         }
       }
-      const monitorTypes = this.form.monitorTypes.join('');
+      const monitorTypes = this.form.monitorTypes.join('')
       const params = {
         title,
         key,
         data: this.rows,
         autoWidth: true,
-        filename: `${monitorTypes}Tìm kiếm dữ liệu lịch sử`,
-      };
-      excel.export_array_to_excel(params);
+        filename: `${monitorTypes}歷史資料查詢`,
+      }
+      excel.export_array_to_excel(params)
     },
   },
-});
+})
 </script>
 
 <style></style>

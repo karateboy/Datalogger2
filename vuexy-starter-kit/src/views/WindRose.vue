@@ -105,19 +105,19 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import DatePicker from 'vue2-datepicker';
-import 'vue2-datepicker/index.css';
-import 'vue2-datepicker/locale/zh-tw';
-const Ripple = require('vue-ripple-directive');
-import { mapState, mapActions, mapMutations, mapGetters } from 'vuex';
-import darkTheme from 'highcharts/themes/dark-unica';
-import useAppConfig from '../@core/app-config/useAppConfig';
-import moment from 'moment';
-import axios from 'axios';
-import highcharts from 'highcharts';
-import highchartMore from 'highcharts/highcharts-more';
-import { MonitorType } from './types';
+import Vue from 'vue'
+import DatePicker from 'vue2-datepicker'
+import 'vue2-datepicker/index.css'
+import 'vue2-datepicker/locale/zh-tw'
+const Ripple = require('vue-ripple-directive')
+import { mapState, mapActions, mapMutations, mapGetters } from 'vuex'
+import darkTheme from 'highcharts/themes/dark-unica'
+import useAppConfig from '../@core/app-config/useAppConfig'
+import moment from 'moment'
+import axios from 'axios'
+import highcharts from 'highcharts'
+import highchartMore from 'highcharts/highcharts-more'
+import { MonitorType } from './types'
 
 export default Vue.extend({
   components: {
@@ -131,11 +131,11 @@ export default Vue.extend({
     const range = [
       moment().subtract(1, 'days').minute(0).second(0).millisecond(0).valueOf(),
       moment().minute(0).second(0).millisecond(0).valueOf(),
-    ];
-    let monitor: string | undefined;
-    let monitorType: string = 'me';
-    let nWays = [8, 16, 32];
-    let errorMsg: string = '';
+    ]
+    let monitor: string | undefined
+    let monitorType: string = 'me'
+    let nWays = [8, 16, 32]
+    let errorMsg: string = ''
     return {
       display: false,
       form: {
@@ -147,7 +147,7 @@ export default Vue.extend({
       },
       nWays,
       errorMsg,
-    };
+    }
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
@@ -155,32 +155,32 @@ export default Vue.extend({
     ...mapGetters('tables', ['dataTypes']),
     ...mapGetters('monitorTypes', ['mtMap', 'activatedMonitorTypes']),
     canQuery(): boolean {
-      if (this.form.monitorType == undefined) return false;
+      if (this.form.monitorType == undefined) return false
 
-      return true;
+      return true
     },
     levelMt(): Array<MonitorType> {
       return this.monitorTypes.filter(
         (mt: MonitorType) => mt.levels !== undefined,
-      );
+      )
     },
   },
   async mounted() {
-    const { skin } = useAppConfig();
+    const { skin } = useAppConfig()
     if (skin.value == 'dark') {
-      darkTheme(highcharts);
+      darkTheme(highcharts)
     }
 
-    await this.fetchMonitorTypes();
-    await this.fetchMonitors();
-    await this.fetchTables();
+    await this.fetchMonitorTypes()
+    await this.fetchMonitors()
+    await this.fetchTables()
 
     if (this.activatedMonitorTypes.length !== 0) {
-      this.form.monitorType = this.activatedMonitorTypes[0]._id;
+      this.form.monitorType = this.activatedMonitorTypes[0]._id
     }
 
     if (this.monitors.length !== 0) {
-      this.form.monitor = this.monitors[0]._id;
+      this.form.monitor = this.monitors[0]._id
     }
   },
   methods: {
@@ -189,23 +189,23 @@ export default Vue.extend({
     ...mapActions('tables', ['fetchTables']),
     ...mapMutations(['setLoading']),
     async query() {
-      this.setLoading({ loading: true });
-      this.display = true;
+      this.setLoading({ loading: true })
+      this.display = true
 
       try {
-        const url = `/WindRose/${this.form.monitor}/${this.form.monitorType}/${this.form.dataType}/${this.form.nWay}/${this.form.range[0]}/${this.form.range[1]}`;
-        const res = await axios.get(url);
-        const ret = res.data;
+        const url = `/WindRose/${this.form.monitor}/${this.form.monitorType}/${this.form.dataType}/${this.form.nWay}/${this.form.range[0]}/${this.form.range[1]}`
+        const res = await axios.get(url)
+        const ret = res.data
         ret.pane = {
           size: '90%',
-        };
+        }
 
         ret.legend = {
           align: 'right',
           verticalAlign: 'top',
           y: 100,
           layout: 'vertical',
-        };
+        }
         ret.yAxis = {
           min: 0,
           endOnTick: false,
@@ -215,16 +215,16 @@ export default Vue.extend({
           },
           labels: {
             formatter(this: any) {
-              return this.value + '%';
+              return this.value + '%'
             },
           },
           reversedStacks: false,
-        };
+        }
 
         ret.tooltip = {
           valueDecimals: 2,
           valueSuffix: '%',
-        };
+        }
 
         ret.plotOptions = {
           series: {
@@ -233,22 +233,22 @@ export default Vue.extend({
             groupPadding: 0,
             pointPlacement: 'on',
           },
-        };
+        }
 
         ret.credits = {
           enabled: false,
           href: 'http://www.wecc.com.tw/',
-        };
+        }
 
-        ret.title.x = -70;
-        highchartMore(highcharts);
-        highcharts.chart('chart_container', ret);
+        ret.title.x = -70
+        highchartMore(highcharts)
+        highcharts.chart('chart_container', ret)
       } catch (err) {
-        this.$bvModal.msgBoxOk('沒有資料');
+        this.$bvModal.msgBoxOk('沒有資料')
       } finally {
-        this.setLoading({ loading: false });
+        this.setLoading({ loading: false })
       }
     },
   },
-});
+})
 </script>

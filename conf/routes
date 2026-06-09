@@ -15,6 +15,8 @@ GET           /logout                                                           
 POST          /login                                                                               controllers.Login.authenticate
 GET           /login                                                                               controllers.Login.isLogin
 GET           /version                                                                             controllers.HomeController.version
+GET           /testAlarm                                                                           controllers.Security.testAlarm()
+GET           /stopAlarm                                                                           controllers.Security.stopAlarm()
 
 POST          /User                                                                                controllers.HomeController.newUser
 GET           /User                                                                                controllers.HomeController.getAllUsers
@@ -29,6 +31,7 @@ DELETE        /Group/:id                                                        
 
 GET           /HistoryTrend/:monitor/:monitorType/:raw/:tab/:unit/:filter/:start/:end              controllers.Query.historyTrendChart(monitor, monitorType, raw:Boolean, tab, unit, filter, start:Long, end:Long, outputTypeStr="html")
 GET           /HistoryTrend/excel/:monitor/:monitorType/:raw/:tab/:unit/:filter/:start/:end        controllers.Query.historyTrendChart(monitor, monitorType, raw:Boolean, tab, unit, filter, start:Long, end:Long, outputTypeStr="excel")
+POST          /GetHistoryTrend                                                                     controllers.Query.getHistoryTrend
 
 GET           /AqiTrend/:monitor/:isDailyAqi/:tab/:start/:end                                      controllers.Query.aqiTrendChart(monitor, isDailyAqi:Boolean, tab, start:Long, end:Long, outputTypeStr="html")
 GET           /AqiTrend/excel/:monitor/:isDailyAqi/:tab/:start/:end                                controllers.Query.aqiTrendChart(monitor, isDailyAqi:Boolean, tab, start:Long, end:Long, outputTypeStr="excel")
@@ -36,6 +39,7 @@ GET           /AqiTrend/excel/:monitor/:isDailyAqi/:tab/:start/:end             
 GET           /ScatterChart/:monitor/:monitorType/:tabType/:statusFilter/:start/:end               controllers.Query.scatterChart(monitor, monitorType, tabType, statusFilter, start:Long, end:Long)
 
 GET           /HistoryReport/:monitor/:monitorType/:tabType/:includeRaw/:start/:end                controllers.Query.historyData(monitor, monitorType, tabType, includeRaw:Boolean, start: Long, end: Long)
+POST          /GetHistoryData                                                                      controllers.Query.getHistoryData
 
 GET           /CalibrationReport/:start/:end                                                       controllers.Query.calibrationReport(start:Long, end:Long)
 
@@ -129,7 +133,7 @@ GET           /DuoFixedMonitorTypes                                             
 
 GET           /WindRose/:monitor/:monitorType/:tabType/:nWay/:start/:end                           controllers.Query.windRoseReport(monitor: String, monitorType: String, tabType:String, nWay: Int, start: Long, end: Long)
 GET           /Tables                                                                              controllers.Query.getTables
-GET           /TraceQuery/:monitor/:tabType/:start/:end                                            controllers.Query.traceQuery(monitor, tabType, start:Long, end:Long)
+GET           /TraceQuery/:monitor/:tabType/:backward/:start/:end                                  controllers.Query.traceQuery(monitor, tabType, backward:Boolean, start:Long, end:Long)
 #SYSCONFIG
 GET           /AlertEmailTargets                                                                   controllers.HomeController.getAlertEmailTargets
 POST          /AlertEmailTargets                                                                   controllers.HomeController.saveAlertEmailTargets

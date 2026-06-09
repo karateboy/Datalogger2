@@ -15,8 +15,8 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import vSelect from 'vue-select';
+import Vue from 'vue'
+import vSelect from 'vue-select'
 
 export default Vue.extend({
   components: {
@@ -48,29 +48,29 @@ export default Vue.extend({
       calibrateZeoDO: null,
       calibrateSpanDO: null,
       skipInternalVault: null,
-    };
+    }
 
-    if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr);
+    if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr)
 
     let protocols = [
       { id: 1, text: 'Bayern Hessen Protocol' },
       { id: 2, text: 'Command Line' },
-    ];
+    ]
     return {
       paramObj,
       protocols,
-    };
+    }
   },
   computed: {},
   async mounted() {
-    this.onChange();
+    this.onChange()
   },
   methods: {
     justify() {},
     onChange() {
-      this.justify();
-      this.$emit('param-changed', JSON.stringify(this.paramObj));
+      this.justify()
+      this.$emit('param-changed', JSON.stringify(this.paramObj))
     },
   },
-});
+})
 </script>

@@ -21,16 +21,16 @@
   </b-form>
 </template>
 <script lang="ts">
-import Vue from 'vue';
-import axios from 'axios';
+import Vue from 'vue'
+import axios from 'axios'
 interface DuoMonitorType {
-  id: string;
-  desc: string;
-  configID: string;
+  id: string
+  desc: string
+  configID: string
 }
 
 interface DuoConfig {
-  monitorTypes: Array<DuoMonitorType>;
+  monitorTypes: Array<DuoMonitorType>
 }
 
 export default Vue.extend({
@@ -49,14 +49,14 @@ export default Vue.extend({
     },
   },
   data() {
-    let monitorTypes = Array<DuoMonitorType>();
+    let monitorTypes = Array<DuoMonitorType>()
     let config: DuoConfig = {
       monitorTypes,
-    };
+    }
 
-    if (this.paramStr !== '{}') config = JSON.parse(this.paramStr);
+    if (this.paramStr !== '{}') config = JSON.parse(this.paramStr)
 
-    let supportedMonitorTypes = Array<DuoMonitorType>();
+    let supportedMonitorTypes = Array<DuoMonitorType>()
 
     let fields = [
       {
@@ -72,17 +72,17 @@ export default Vue.extend({
         label: '頻譜',
         formatter: (v: boolean) => (v ? '是' : '否'),
       },
-    ];
+    ]
     return {
       config,
       supportedMonitorTypes,
       fields,
-    };
+    }
   },
   watch: {
     loading(newValue: boolean) {
       if (newValue) {
-        this.getSupportedMonitorTypes();
+        this.getSupportedMonitorTypes()
       }
     },
   },
@@ -91,34 +91,34 @@ export default Vue.extend({
       try {
         const res = await axios.get('/DuoFixedMonitorTypes', {
           params: { host: this.host },
-        });
+        })
 
         if (res.status === 200) {
-          this.supportedMonitorTypes = res.data;
+          this.supportedMonitorTypes = res.data
         }
       } catch (err) {
-        throw new Error(`${err}`);
+        throw new Error(`${err}`)
       }
     },
     onSelected(items: Array<DuoMonitorType>) {
-      this.config.monitorTypes = items;
-      this.onChange();
-      this.onMonitorTypeChanged();
+      this.config.monitorTypes = items
+      this.onChange()
+      this.onMonitorTypeChanged()
     },
     justify() {},
     onChange() {
-      this.justify();
-      this.$emit('param-changed', JSON.stringify(this.config));
+      this.justify()
+      this.$emit('param-changed', JSON.stringify(this.config))
     },
     async onMonitorTypeChanged() {
       try {
-        const url = `/ConfigDuoMonitorTypes/${this.host}`;
-        const res = await axios.post(url, this.config.monitorTypes);
-        if (res.status !== 200) this.$bvModal.msgBoxOk('無法設定Duo');
+        const url = `/ConfigDuoMonitorTypes/${this.host}`
+        const res = await axios.post(url, this.config.monitorTypes)
+        if (res.status !== 200) this.$bvModal.msgBoxOk('無法設定Duo')
       } catch (err) {
-        throw new Error(`${err}`);
+        throw new Error(`${err}`)
       }
     },
   },
-});
+})
 </script>

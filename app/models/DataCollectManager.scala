@@ -2,6 +2,7 @@ package models
 
 import akka.actor._
 import com.github.nscala_time.time.Imports._
+import controllers.ReportUnit
 import models.Calibration.{CalibrationListMap, emptyCalibrationListMap, findTargetCalibrationMB}
 import models.ForwardManager.{ForwardHour, ForwardHourRecord, ForwardMin, ForwardMinRecord}
 import models.ModelHelper._
@@ -11,6 +12,7 @@ import org.mongodb.scala.result.UpdateResult
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
 
+import java.io.File
 import javax.inject._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -45,6 +47,8 @@ object DataCollectManager {
   case class AddSignalTypeHandler(mtId: String, handler: Boolean => Unit)
 
   case class WriteSignal(mtId: String, bit: Boolean)
+
+  case class ToggleSignal(mtId: String, delay: Int)
 
   private case object CheckInstruments
 
@@ -111,7 +115,7 @@ object DataCollectManager {
 
   private case object UpdateHourAccumulatedRain
 
-  case object CheckStatus
+  private case class ExportDaily5MinReport(dateTime: DateTime)
 
   private def updateEffectiveRatio(sysConfig: SysConfigDB): Unit = {
     for (ratio <- sysConfig.getEffectiveRatio)
@@ -234,9 +238,10 @@ object DataCollectManager {
     }
   }
 
-  def calculateHourAvgMap(mtMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]],
-                          alwaysValid: Boolean,
-                          monitorTypeDB: MonitorTypeDB): mutable.Iterable[MtRecord] = {
+  def calculateAvgMap(mtMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]],
+                      alwaysValid: Boolean,
+                      monitorTypeDB: MonitorTypeDB,
+                      dailyAvg: Boolean = false): mutable.Iterable[MtRecord] = {
     for {
       (mt, statusMap) <- mtMap
       totalSize = statusMap.map {
@@ -324,13 +329,13 @@ object DataCollectManager {
               Some(values.sum)
 
             case MonitorType.PM10 =>
-              if (LoggerConfig.config.pm25HourAvgUseLastRecord)
+              if (!dailyAvg && LoggerConfig.config.pm25HourAvgUseLastRecord)
                 Some(values.last)
               else
                 Some(values.sum / values.length)
 
             case MonitorType.PM25 =>
-              if (LoggerConfig.config.pm25HourAvgUseLastRecord)
+              if (!dailyAvg && LoggerConfig.config.pm25HourAvgUseLastRecord)
                 Some(values.last)
               else
                 Some(values.sum / values.length)
@@ -374,6 +379,7 @@ object DataCollectManager {
 
 @Singleton
 class DataCollectManager @Inject()(config: Configuration,
+                                   environment: Environment,
                                    recordOp: RecordDB,
                                    monitorTypeOp: MonitorTypeDB,
                                    monitorOp: MonitorDB,
@@ -387,17 +393,25 @@ class DataCollectManager @Inject()(config: Configuration,
                                    calibrationConfigDB: CalibrationConfigDB,
                                    forwardManagerFactory: ForwardManager.Factory,
                                    alarmRuleDb: AlarmRuleDb,
-                                   tableType: TableType) extends Actor with InjectedActorSupport {
+                                   tableType: TableType,
+                                   excelUtility: ExcelUtility) extends Actor with InjectedActorSupport {
 
   import DataCollectManager._
+
   val logger = Logger(this.getClass)
 
-  logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
   DataCollectManager.updateEffectiveRatio(sysConfig)
   HourCalculationRule.init(sysConfig)
 
   for (aqiMonitorTypes <- sysConfig.getAqiMonitorTypes)
     AQI.updateAqiTypeMapping(aqiMonitorTypes)
+
+  // ensure calculated types
+  MonitorType.calculatedMonitorTypes.foreach(monitorTypeOp.ensureRangeType(_, recordOp))
+
+  // ensure daily avg monitor types
+  MonitorType.DailyAvgTargetMonitorTypes.foreach(monitorTypeOp.ensureRangeType(_, recordOp))
+
 
   val timer: Cancellable = {
     import scala.concurrent.duration._
@@ -420,8 +434,8 @@ class DataCollectManager @Inject()(config: Configuration,
 
   private val readerList: List[ActorRef] = startReaders()
   private val forwardManagerOpt: Option[ActorRef] =
-    for (serverConfig <- ForwardManager.getConfig(config)) yield
-      injectedChild(forwardManagerFactory(serverConfig.server, serverConfig.monitor), "forwardManager")
+    for (serverConfig <- ForwardManager.getConfig(config, monitorOp)) yield
+      injectedChild(forwardManagerFactory(serverConfig), "forwardManager")
 
   private def startReaders(): List[ActorRef] = {
     val readers: ListBuffer[ActorRef] = ListBuffer.empty[ActorRef]
@@ -433,6 +447,10 @@ class DataCollectManager @Inject()(config: Configuration,
       readers.append(readerRef)
 
     for (readerRef <- VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
+      readers.append(readerRef)
+
+    for (readerRef <- ImsReader.start(config, context.system, monitorTypeOp = monitorTypeOp, recordOp = recordOp,
+      dataCollectManager = self, dataCollectManagerOp = dataCollectManagerOp, environment = environment))
       readers.append(readerRef)
 
     readers.toList
@@ -459,6 +477,9 @@ class DataCollectManager @Inject()(config: Configuration,
 
   self ! UpdateHourAccumulatedRain
 
+  if (LoggerConfig.config.autoExport)
+    self ! ExportDaily5MinReport(DateTime.yesterday().withTimeAtStartOfDay())
+
   logger.info("DataCollect manager started")
 
   private def checkMinDataAlarm(minMtAvgList: Iterable[MtRecord]): Boolean = {
@@ -473,12 +494,10 @@ class DataCollectManager @Inject()(config: Configuration,
       if (MonitorStatus.isValid(status))
         for (std_law <- mtCase.std_law; v <- value) {
           if (v > std_law) {
-            val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, value)}超過分鐘高值 ${monitorTypeOp.format(mt, mtCase.std_law)}"
-            alarmOp.log(alarmOp.src(mt), Alarm.Level.INFO, msg)
+            val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, value)} HH Alarm (${monitorTypeOp.format(mt, mtCase.std_law)})"
+            alarmOp.log(alarmOp.src(mt), Alarm.Level.ERR, msg)
             overThreshold = true
-            mtCase.overLawSignalType.foreach(signalType => {
-              self ! WriteSignal(signalType, bit = true)
-            })
+            mtCase.overLawSignalType.foreach(signalType => self ! WriteSignal(signalType, bit = true))
           }
         }
     }
@@ -740,9 +759,9 @@ class DataCollectManager @Inject()(config: Configuration,
             mtd =>
               if (mtd.status == MonitorStatus.NormalStat) {
                 val mtCase = monitorTypeOp.map(mtd.mt)
-                if (mtd.value < mtCase.more.getOrElse(MonitorTypeMore()).rangeMin.getOrElse(Double.MinValue))
-                  mtd.copy(status = MonitorStatus.BelowNormalStat)
-                else if (mtd.value > mtCase.more.getOrElse(MonitorTypeMore()).rangeMax.getOrElse(Double.MaxValue))
+                if (mtd.value > mtCase.span.getOrElse(Double.MaxValue))
+                  mtd.copy(status = MonitorStatus.HighAlarmStat)
+                else if (mtd.value > mtCase.std_law.getOrElse(Double.MaxValue))
                   mtd.copy(status = MonitorStatus.OverNormalStat)
                 else
                   mtd
@@ -781,7 +800,7 @@ class DataCollectManager @Inject()(config: Configuration,
 
       val now = DateTime.now()
       //Update Calibration Map
-      for (map <- calibrationDB.getCalibrationListMapFuture(now.minusDays(2), now)(monitorTypeOp)) {
+      for (map <- calibrationDB.getCalibrationListMapFuture(now.minusDays(2), now)(Monitor.activeId)(monitorTypeOp)) {
         self ! UpdateCalibrationMap(map)
       }
 
@@ -847,7 +866,7 @@ class DataCollectManager @Inject()(config: Configuration,
 
           val sortedDocs = docs.toSeq.sortBy { x => x._1 } map (_._2)
           if (sortedDocs.nonEmpty)
-            recordOp.insertManyRecord(recordOp.SecCollection)(sortedDocs)
+            recordOp.insertManyRecordChecked(recordOp.SecCollection)(sortedDocs)
         }
       }
 
@@ -923,7 +942,7 @@ class DataCollectManager @Inject()(config: Configuration,
         val alarms = alarmRuleDb.checkAlarm(tableType.min, recordList, alarmRules)(monitorOp, monitorTypeOp, alarmOp)
         alarms.foreach(ar => alarmOp.log(ar.src, ar.level, ar.desc, 0))
 
-        val f = recordOp.upsertRecord(recordOp.MinCollection)(recordList)
+        val f = recordOp.upsertRecordChecked(recordOp.MinCollection)(recordList)
         f onComplete {
           case Success(_) =>
             self ! ForwardMin
@@ -944,6 +963,9 @@ class DataCollectManager @Inject()(config: Configuration,
 
               for (m <- monitorOp.mvList)
                 dataCollectManagerOp.recalculateHourData(monitor = m, current = current)
+
+              if (LoggerConfig.config.autoExport)
+                self ! ExportDaily5MinReport(DateTime.yesterday().withTimeAtStartOfDay())
 
               self ! CheckInstruments
             }
@@ -1115,6 +1137,14 @@ class DataCollectManager @Inject()(config: Configuration,
       for (handler <- handlerMap.values)
         handler(bit)
 
+    case ToggleSignal(mtId, delay) =>
+      // Trigger only when signalMap is empty or is false
+      if (!signalDataMap.contains(mtId) || !signalDataMap(mtId)._2) {
+        self ! WriteSignal(mtId, bit = true)
+        context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(delay, SECONDS),
+          self, WriteSignal(mtId, bit = false))
+      }
+
     case ReportSignalData(dataList) =>
       dataList.foreach(signalData => monitorTypeOp.logDiMonitorType(alarmOp, signalData.mt, signalData.value))
       val updateMap: Map[String, (DateTime, Boolean)] = dataList.map(signal => {
@@ -1129,11 +1159,15 @@ class DataCollectManager @Inject()(config: Configuration,
       val f = recordOp.getMtRecordMapFuture(recordOp.MinCollection)(Monitor.activeId, monitorTypeOp.measuringList,
         now.minusHours(1), now)
       for (minRecordMap <- f) {
+        val exDataLossRecordMap = minRecordMap.map(pair => {
+          val (mt, mtRecords) = pair
+          mt -> mtRecords.filter(_.status != MonitorStatus.DataLost)
+        })
         for (kv <- instrumentMap) {
           val (instID, instParam) = kv;
           if (instParam.mtList.filter(mt => !monitorTypeOp.map(mt).signalType)
-            .exists(mt => !minRecordMap.contains(mt) ||
-              minRecordMap.contains(mt) && minRecordMap(mt).size < 45)) {
+            .exists(mt => !exDataLossRecordMap.contains(mt) ||
+              exDataLossRecordMap.contains(mt) && exDataLossRecordMap(mt).size < 45)) {
             logger.error(s"$instID has less than 45 minRecords. Restart $instID")
             alarmOp.log(alarmOp.srcInstrumentID(instID), Alarm.Level.ERR, s"$instID 每小時分鐘資料小於45筆. 重新啟動 $instID 設備")
             self ! RestartInstrument(instID)
@@ -1151,6 +1185,29 @@ class DataCollectManager @Inject()(config: Configuration,
         val records = recordMap.getOrElse(MonitorType.RAIN, ListBuffer.empty[MtRecord])
         hourAccumulateRain = Some(records.foldLeft(0d)((acc, record) => acc + record.value.getOrElse(0.0)))
       }
+
+    case ExportDaily5MinReport(start) =>
+      try {
+        logger.info(s"Export $start 5 min report")
+        val mtList = LoggerConfig.config.exportMtList
+        // Export 5 min Data excel
+        val chart = dataCollectManagerOp.trendHelper(Seq(Monitor.activeId), mtList, includeRaw = false, tableType.min,
+          ReportUnit.FiveMin, start, start.plusDays(1), showActual = true)(MonitorStatusFilter.ValidData)
+
+        import java.nio.file._
+        val precisionList = mtList.map(monitorTypeOp.map(_).prec).toArray
+        val srcPath = excelUtility.export5MinChart(chart, precision = precisionList).toPath
+        val outputDir = Paths.get(LoggerConfig.config.exportPath)
+        val dayName = start.toString(s"YYYYMMdd")
+        val target = outputDir.resolve(s"$dayName.xlsx")
+
+        Files.copy(srcPath, target, StandardCopyOption.REPLACE_EXISTING)
+      } catch {
+        case ex: Throwable =>
+          errorHandler(ex)
+      }
+
+
   }
 
   override def postStop(): Unit = {

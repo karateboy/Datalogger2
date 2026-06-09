@@ -24,16 +24,16 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import { mapState, mapGetters, mapActions } from 'vuex';
-import vSelect from 'vue-select';
-import { isNumber } from 'highcharts';
-import { MonitorType } from './types';
+import Vue from 'vue'
+import { mapState, mapGetters, mapActions } from 'vuex'
+import vSelect from 'vue-select'
+import { isNumber } from 'highcharts'
+import { MonitorType } from './types'
 interface CounterConfig {
-  enable: boolean;
-  monitorType?: string;
-  multiplier?: number;
-  repairMode?: boolean;
+  enable: boolean
+  monitorType?: string
+  multiplier?: number
+  repairMode?: boolean
 }
 
 export default Vue.extend({
@@ -47,17 +47,17 @@ export default Vue.extend({
     },
   },
   data() {
-    let chs = Array<CounterConfig>();
+    let chs = Array<CounterConfig>()
     for (let i = 0; i < 2; i++) {
       chs.push({
         enable: false,
         monitorType: undefined,
         multiplier: 1,
         repairMode: false,
-      });
+      })
     }
 
-    if (this.paramStr !== '') chs = JSON.parse(this.paramStr);
+    if (this.paramStr !== '') chs = JSON.parse(this.paramStr)
 
     const fields = [
       {
@@ -76,36 +76,36 @@ export default Vue.extend({
         key: 'multiplier',
         label: '讀值乘數',
       },
-    ];
+    ]
 
     return {
       chs,
       fields,
-    };
+    }
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap']),
     accumulatedMonitorType(): Array<string> {
       return this.monitorTypes.filter((mt: MonitorType) => {
-        return mt.accumulated;
-      });
+        return mt.accumulated
+      })
     },
   },
   async mounted() {
-    await this.fetchMonitorTypes();
+    await this.fetchMonitorTypes()
   },
   methods: {
     ...mapActions('monitorTypes', ['fetchMonitorTypes']),
     justify() {
       for (const ch of this.chs) {
-        if (!isNumber(ch.multiplier)) ch.multiplier = 1;
+        if (!isNumber(ch.multiplier)) ch.multiplier = 1
       }
     },
     onChange(evt: any) {
-      this.justify();
-      this.$emit('param-changed', JSON.stringify(this.chs));
+      this.justify()
+      this.$emit('param-changed', JSON.stringify(this.chs))
     },
   },
-});
+})
 </script>

@@ -5,7 +5,7 @@
         <b-row>
           <b-col cols="6">
             <b-form-group
-              label="Mức độ cảnh báo"
+              :label="$t('AlarmLevel')"
               label-for="alarmLevel"
               label-cols-md="3"
             >
@@ -20,7 +20,7 @@
           </b-col>
           <b-col cols="6">
             <b-form-group
-              label="Khoảng dữ liệu"
+              :label="$t('dataRange')"
               label-for="dataRange"
               label-cols-md="3"
             >
@@ -43,14 +43,7 @@
               class="mr-1"
               @click="query"
             >
-              查詢
-            </b-button>
-            <b-button
-              v-ripple.400="'rgba(186, 191, 199, 0.15)'"
-              type="reset"
-              variant="outline-secondary"
-            >
-              取消
+              {{ $t('query') }}
             </b-button>
           </b-col>
         </b-row>
@@ -71,15 +64,16 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import vSelect from 'vue-select';
-import DatePicker from 'vue2-datepicker';
-import 'vue2-datepicker/index.css';
-import 'vue2-datepicker/locale/zh-tw';
-const Ripple = require('vue-ripple-directive');
-import moment from 'moment';
-import axios from 'axios';
-import { mapMutations } from 'vuex';
+import Vue from 'vue'
+import vSelect from 'vue-select'
+import DatePicker from 'vue2-datepicker'
+import 'vue2-datepicker/index.css'
+import 'vue2-datepicker/locale/zh-tw'
+
+const Ripple = require('vue-ripple-directive')
+import moment from 'moment'
+import axios from 'axios'
+import { mapMutations } from 'vuex'
 
 export default Vue.extend({
   components: {
@@ -93,103 +87,86 @@ export default Vue.extend({
     const range = [
       moment().subtract(1, 'days').minute(0).second(0).millisecond(0).valueOf(),
       moment().add(1, 'hour').minute(0).second(0).millisecond(0).valueOf(),
-    ];
+    ]
     return {
       display: false,
       alarmLevels: [
-        { id: 1, txt: '資訊' },
-        { id: 2, txt: '警告' },
-        { id: 3, txt: '錯誤' },
-      ],
-      columns: [
-        {
-          key: 'time',
-          label: '時間',
-          sortable: true,
-          formatter: (v: number) => moment(v).format('lll'),
-        },
-        {
-          key: 'level',
-          label: '等級',
-          sortable: true,
-          formatter: (v: number) => {
-            switch (v) {
-              case 1:
-                return '資訊';
-
-              case 2:
-                return '警告';
-
-              case 3:
-                return '錯誤';
-            }
-          },
-        },
-        {
-          key: 'src',
-          label: '來源',
-          sortable: true,
-          formatter: (src: string) => {
-            let tokens = src.split(':');
-            switch (tokens[0]) {
-              case 'I':
-                return `Thiết bị:${tokens[1]}`;
-
-              case 'T':
-                return `Thông số :${tokens[1]}`;
-
-              case 'S':
-                if (tokens[1] === 'System') return `系統`;
-                else return `系統:${tokens[1]}`;
-              default:
-                return src;
-            }
-          },
-        },
-        {
-          key: 'desc',
-          label: '詳細資訊',
-          sortable: true,
-        },
+        { id: 1, txt: 'Info' },
+        { id: 2, txt: 'Warning' },
+        { id: 3, txt: 'Error' },
       ],
       rows: [],
       form: {
         range,
         alarmLevel: 1,
       },
-    };
+    }
+  },
+  computed: {
+    columns(): Array<any> {
+      return [
+        {
+          key: 'time',
+          label: this.$i18n.t('time'),
+          sortable: true,
+          formatter: (v: number) => moment(v).format('lll'),
+        },
+        {
+          key: 'level',
+          label: this.$i18n.t('level'),
+          sortable: true,
+          formatter: (v: number) => {
+            switch (v) {
+              case 1:
+                return 'Info'
+
+              case 2:
+                return 'Warning'
+
+              case 3:
+                return 'Error'
+            }
+          },
+        },
+        {
+          key: 'desc',
+          label: this.$i18n.t('details'),
+          sortable: true,
+        },
+      ]
+    },
   },
   methods: {
     ...mapMutations(['setLoading']),
     async query() {
       try {
-        this.setLoading({ loading: true });
-        const url = `/AlarmReport/${this.form.alarmLevel}/${this.form.range[0]}/${this.form.range[1]}`;
-        const res = await axios.get(url);
-        this.display = true;
-        const ret = res.data;
-        this.rows = ret;
+        this.setLoading({ loading: true })
+        const url = `/AlarmReport/${this.form.alarmLevel}/${this.form.range[0]}/${this.form.range[1]}`
+        const res = await axios.get(url)
+        this.display = true
+        const ret = res.data
+        this.rows = ret
       } catch (err) {
-        console.error(`${err}`);
+        console.error(`${err}`)
       } finally {
-        this.setLoading({ loading: false });
+        this.setLoading({ loading: false })
       }
     },
     rowClass(item: any, type: any) {
-      if (!item || type !== 'row') return;
+      if (!item || type !== 'row') return
       switch (item.level) {
         case 1:
-          return 'table-success';
+          return 'table-success'
 
         case 2:
-          return 'table-warning';
+          return 'table-warning'
 
         case 3:
-          return 'table-danger';
+          return 'table-danger'
       }
     },
   },
-});
+})
 </script>
 
 <style></style>

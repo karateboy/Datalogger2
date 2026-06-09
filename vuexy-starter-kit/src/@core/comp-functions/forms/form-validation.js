@@ -1,4 +1,4 @@
-import { ref, nextTick } from '@vue/composition-api';
+import { ref, nextTick } from '@vue/composition-api'
 
 // ===========================================================
 // ! This is coupled with "veeValidate" plugin
@@ -13,7 +13,7 @@ export default function formValidation(
   // ! This is for veeValidate Observer
   // * Used for veeValidate form observer
   // ------------------------------------------------
-  const refFormObserver = ref(null);
+  const refFormObserver = ref(null)
 
   // ------------------------------------------------
   // resetObserver
@@ -21,8 +21,8 @@ export default function formValidation(
   // * It resets form observer
   // ------------------------------------------------
   const resetObserver = () => {
-    refFormObserver.value.reset();
-  };
+    refFormObserver.value.reset()
+  }
 
   // ------------------------------------------------
   // getValidationState
@@ -37,9 +37,9 @@ export default function formValidation(
     changed,
     valid = null,
   }) => {
-    const result = dirty || validated ? valid : null;
-    return !fieldRequired && !changed ? null : result;
-  };
+    const result = dirty || validated ? valid : null
+    return !fieldRequired && !changed ? null : result
+  }
 
   // ------------------------------------------------
   // resetForm
@@ -47,11 +47,11 @@ export default function formValidation(
   // * This uses resetFormData arg to reset form data
   // ------------------------------------------------
   const resetForm = () => {
-    resetFormData();
+    resetFormData()
     nextTick(() => {
-      resetObserver();
-    });
-  };
+      resetObserver()
+    })
+  }
 
   // ------------------------------------------------
   // clearForm
@@ -59,11 +59,11 @@ export default function formValidation(
   // * This uses clearFormData arg to reset form data
   // ------------------------------------------------
   const clearForm = () => {
-    clearFormData();
+    clearFormData()
     nextTick(() => {
-      resetObserver();
-    });
-  };
+      resetObserver()
+    })
+  }
 
   return {
     refFormObserver,
@@ -71,5 +71,5 @@ export default function formValidation(
     getValidationState,
     resetForm,
     clearForm,
-  };
+  }
 }

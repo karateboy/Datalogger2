@@ -1,6 +1,6 @@
 package models
 
-import play.api.Configuration
+import play.api.{Configuration, Logger}
 
 case class LoggerConfig(storeSecondData: Boolean,
                         selfMonitor: Boolean,
@@ -9,13 +9,18 @@ case class LoggerConfig(storeSecondData: Boolean,
                         bypassLogin: Boolean,
                         fromEmail: String,
                         pm25HourAvgUseLastRecord: Boolean,
-                        alertEmail: Boolean)
+                        alertEmail: Boolean,
+                        autoExport: Boolean,
+                        exportMtList: Seq[String],
+                        exportPath: String) extends Stringification
 
 object LoggerConfig {
   var config: LoggerConfig = _
+  val logger = Logger(getClass)
 
   def init(configuration: Configuration): Unit = {
     config = getConfig(configuration)
+    logger.info(config.toString)
   }
 
   private def getConfig(configuration: Configuration): LoggerConfig = {
@@ -27,6 +32,10 @@ object LoggerConfig {
     val fromEmail = configuration.getOptional[String]("logger.fromEmail").getOrElse("AirIoT <airiot@wecc.com.tw>")
     val pm25HourAvgUseLastRecord = configuration.getOptional[Boolean]("logger.pm25HourAvgUseLastRecord").getOrElse(false)
     val alertEmail = configuration.getOptional[Boolean]("logger.alertEmail").getOrElse(false)
+    val autoExport = configuration.getOptional[Boolean]("logger.autoExport").getOrElse(false)
+    val exportMtList = configuration.getOptional[Seq[String]]("logger.exportMtList").getOrElse(Seq.empty)
+    val exportPath = configuration.getOptional[String]("logger.exportPath").getOrElse("C:/Temp/")
+
     LoggerConfig(storeSecondData,
       selfMonitor = selfMonitor,
       trendShowActual = trendShowActual,
@@ -34,7 +43,11 @@ object LoggerConfig {
       bypassLogin = bypassLogin,
       fromEmail = fromEmail,
       pm25HourAvgUseLastRecord = pm25HourAvgUseLastRecord,
-      alertEmail = alertEmail)
+      alertEmail = alertEmail,
+      autoExport = autoExport,
+      exportMtList = exportMtList,
+      exportPath = exportPath
+    )
   }
 }
 

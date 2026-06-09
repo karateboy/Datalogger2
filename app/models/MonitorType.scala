@@ -2,12 +2,11 @@ package models
 
 import models.DataCollectManager.MonitorTypeData
 
+import java.time.ZoneId
 import java.util.Date
 
 case class MonitorTypeMore(rangeMin: Option[Double] = None,
-                           rangeMax: Option[Double] = None,
-                           hhAlarm: Option[Double] = None,
-                          hAlarm: Option[Double] = None)
+                           rangeMax: Option[Double] = None)
 
 case class MonitorType(_id: String,
                        desp: String,
@@ -99,6 +98,7 @@ object MonitorType {
   val LEQZ = "LEQZ"
 
   var rangeOrder = 0
+  val SIGNAL = "SIGNAL"
   var signalOrder = 1000
 
   //Calculated types
@@ -107,7 +107,17 @@ object MonitorType {
   val WS_SPEED = "WS_SPEED"
   val WS10 = "WS10"
   val WD10 = "WD10"
+  val PM10D = "PM10D"
+  val PM25D = "PM25D"
 
+
+
+  val DailyAvgMonitorTypeMap: Map[String, String] = Map(
+    PM10 -> PM10D,
+    PM25 -> PM25D
+  )
+  val DailyAvgInputMonitorTypes: Seq[String] = DailyAvgMonitorTypeMap.keys.toSeq
+  val DailyAvgTargetMonitorTypes: Seq[String] = DailyAvgMonitorTypeMap.values.toSeq
 
   private case class CalculatedMonitorType(requiredMonitorTypes: Seq[String],
                                            targetMonitorType: String,
@@ -117,7 +127,6 @@ object MonitorType {
   * GeneratingFunction(required MonitorTypes, generated MonitorType, rawData)
   * */
   private val calculatedMonitorTypeList: List[CalculatedMonitorType] = List.empty
-
 
   val calculatedMonitorTypes: Seq[String] = calculatedMonitorTypeList.map(_.targetMonitorType)
 

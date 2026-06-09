@@ -79,17 +79,17 @@
 </template>
 
 <script>
-import { onUnmounted } from '@vue/composition-api';
-import AppNavbarVerticalLayout from '@core/layouts/components/app-navbar/AppNavbarVerticalLayout.vue';
-import AppFooter from '@core/layouts/components/AppFooter.vue';
-import useAppConfig from '@core/app-config/useAppConfig';
-import { BNavbar } from 'bootstrap-vue';
-import LayoutContentRendererDefault from '@core/layouts/components/layout-content-renderer/LayoutContentRendererDefault.vue';
-import LayoutContentRendererLeft from '@core/layouts/components/layout-content-renderer/LayoutContentRendererLeft.vue';
-import LayoutContentRendererLeftDetached from '@core/layouts/components/layout-content-renderer/LayoutContentRendererLeftDetached.vue';
-import VerticalNavMenu from './components/vertical-nav-menu/VerticalNavMenu.vue';
-import useVerticalLayout from './useVerticalLayout';
-import mixinVerticalLayout from './mixinVerticalLayout';
+import { onUnmounted } from '@vue/composition-api'
+import AppNavbarVerticalLayout from '@core/layouts/components/app-navbar/AppNavbarVerticalLayout.vue'
+import AppFooter from '@core/layouts/components/AppFooter.vue'
+import useAppConfig from '@core/app-config/useAppConfig'
+import { BNavbar } from 'bootstrap-vue'
+import LayoutContentRendererDefault from '@core/layouts/components/layout-content-renderer/LayoutContentRendererDefault.vue'
+import LayoutContentRendererLeft from '@core/layouts/components/layout-content-renderer/LayoutContentRendererLeft.vue'
+import LayoutContentRendererLeftDetached from '@core/layouts/components/layout-content-renderer/LayoutContentRendererLeftDetached.vue'
+import VerticalNavMenu from './components/vertical-nav-menu/VerticalNavMenu.vue'
+import useVerticalLayout from './useVerticalLayout'
+import mixinVerticalLayout from './mixinVerticalLayout'
 
 export default {
   components: {
@@ -110,7 +110,7 @@ export default {
       navbarType,
       footerType,
       isNavMenuHidden,
-    } = useAppConfig();
+    } = useAppConfig()
 
     const {
       isVerticalMenuActive,
@@ -121,14 +121,14 @@ export default {
       resizeHandler,
       navbarTypeClass,
       footerTypeClass,
-    } = useVerticalLayout(navbarType, footerType);
+    } = useVerticalLayout(navbarType, footerType)
 
     // Resize handler
-    resizeHandler();
-    window.addEventListener('resize', resizeHandler);
+    resizeHandler()
+    window.addEventListener('resize', resizeHandler)
     onUnmounted(() => {
-      window.removeEventListener('resize', resizeHandler);
-    });
+      window.removeEventListener('resize', resizeHandler)
+    })
 
     return {
       isVerticalMenuActive,
@@ -143,19 +143,18 @@ export default {
       routerTransition,
       navbarBackgroundColor,
       isNavMenuHidden,
-    };
+    }
   },
   computed: {
     layoutContentRenderer() {
-      const rendererType = this.$route.meta.contentRenderer;
-      if (rendererType === 'sidebar-left')
-        return 'layout-content-renderer-left';
+      const rendererType = this.$route.meta.contentRenderer
+      if (rendererType === 'sidebar-left') return 'layout-content-renderer-left'
       if (rendererType === 'sidebar-left-detached')
-        return 'layout-content-renderer-left-detached';
-      return 'layout-content-renderer-default';
+        return 'layout-content-renderer-left-detached'
+      return 'layout-content-renderer-default'
     },
   },
-};
+}
 </script>
 
 <style lang="scss">

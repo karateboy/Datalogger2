@@ -1,7 +1,7 @@
 package models.sql
 
 import com.github.nscala_time.time.Imports
-import models.{Calibration, CalibrationDB}
+import models.{Calibration, CalibrationDB, Monitor}
 import scalikejdbc._
 
 import javax.inject.{Inject, Singleton}
@@ -12,35 +12,37 @@ import scala.concurrent.Future
 class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
   private val tabName = "calibration"
 
-  override def calibrationReportFuture(start: Imports.DateTime, end: Imports.DateTime): Future[Seq[Calibration]] =
+  override def calibrationReportFuture(start: Imports.DateTime, end: Imports.DateTime)(monitor:String): Future[Seq[Calibration]] =
     Future {
-      calibrationReport(start, end)
+      calibrationReport(start, end)(monitor)
     }
 
   init()
 
-  override def calibrationReport(start: Imports.DateTime, end: Imports.DateTime): Seq[Calibration] = {
+  override def calibrationReport(start: Imports.DateTime, end: Imports.DateTime)(monitor:String): Seq[Calibration] = {
     implicit val session: DBSession = ReadOnlyAutoSession
     sql"""
          Select *
          From calibration
-         Where startTime >= ${start.toDate} and startTime < ${end.toDate}
+         Where startTime >= ${start.toDate} and startTime < ${end.toDate} and [monitor] = $monitor
          Order by startTime
          """.map(mapper).list().apply()
   }
 
-  override def calibrationReportFuture(start: Imports.DateTime): Future[Seq[Calibration]] =
+  override def calibrationReportFuture(start: Imports.DateTime)(monitor:String): Future[Seq[Calibration]] =
     Future {
       implicit val session: DBSession = ReadOnlyAutoSession
       sql"""
          Select *
          From calibration
-         Where startTime >= ${start.toDate}
+         Where startTime >= ${start.toDate} and [monitor] = $monitor
          Order by startTime
          """.map(mapper).list().apply()
     }
 
-  private def mapper(rs: WrappedResultSet) = Calibration(rs.string("monitorType"),
+  private def mapper(rs: WrappedResultSet) = Calibration(
+    monitor = rs.stringOpt("monitor"),
+    monitorType = rs.string("monitorType"),
     startTime = rs.timestamp("startTime"),
     endTime = rs.timestamp("endTime"),
     zero_val = rs.doubleOpt("zero_val"),
@@ -62,12 +64,12 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
     point6_success = rs.booleanOpt("point6_success"))
 
 
-  override def calibrationReport(mt: String, start: Imports.DateTime, end: Imports.DateTime): Seq[Calibration] = {
+  override def calibrationReport(mt: String, start: Imports.DateTime, end: Imports.DateTime)(monitor:String): Seq[Calibration] = {
     implicit val session: DBSession = ReadOnlyAutoSession
     sql"""
          Select *
          From calibration
-         Where startTime >= ${start.toDate} and startTime < ${end.toDate} and monitorType = $mt
+         Where startTime >= ${start.toDate} and startTime < ${end.toDate} and monitorType = $mt and [monitor] = $monitor
          Order by startTime
          """.map(mapper).list().apply()
   }
@@ -76,7 +78,8 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
     implicit val session: DBSession = AutoSession
     sql"""
       INSERT INTO [dbo].[calibration]
-           ([monitorType]
+           ([monitor]
+           ,[monitorType]
            ,[startTime]
            ,[endTime]
            ,[zero_val]
@@ -97,7 +100,8 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
             ,[point6_std]
             ,[point6_success])
      VALUES
-           (${cal.monitorType}
+           (${cal.monitor}
+           ,${cal.monitorType}
            ,${cal.startTime}
            ,${cal.endTime}
            ,${cal.zero_val}
@@ -124,6 +128,7 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
     if (!sqlServer.getTables().contains(tabName)) {
       sql"""
            CREATE TABLE [dbo].[calibration](
+              [monitor] [nvarchar](50) NOT NULL,
 	            [monitorType] [nvarchar](50) NOT NULL,
 	            [startTime] [datetime2](7) NOT NULL,
 	            [endTime] [datetime2](7) NOT NULL,
@@ -146,6 +151,7 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
               [point6_success] [bit] NULL,
           CONSTRAINT [PK_calibration_1] PRIMARY KEY CLUSTERED
           (
+            [monitor] ASC,
 	          [monitorType] ASC,
 	          [startTime] ASC
           )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
@@ -179,6 +185,14 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
            ADD [$point_success] bit;
            """.execute().apply()
         }
+      }
+
+      if(!columns.contains("monitor")){
+        val activeId = SQLSyntax.createUnsafely(s"${Monitor.activeId}")
+        sql"""
+           ALTER TABLE [dbo].[calibration]
+           ADD [monitor] [nvarchar](50) NOT NULL DEFAULT '$activeId';
+           """.execute().apply()
       }
     }
   }

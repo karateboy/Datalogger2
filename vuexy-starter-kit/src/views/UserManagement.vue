@@ -70,11 +70,11 @@
   </b-card>
 </template>
 <script>
-import Vue from 'vue';
-import axios from 'axios';
-const Ripple = require('vue-ripple-directive');
-import User from './User.vue';
-import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
+import Vue from 'vue'
+import axios from 'axios'
+const Ripple = require('vue-ripple-directive')
+import User from './User.vue'
+import ToastificationContent from '@core/components/toastification/ToastificationContent.vue'
 
 export default Vue.extend({
   components: {
@@ -84,7 +84,7 @@ export default Vue.extend({
     Ripple,
   },
   data() {
-    const userList = [];
+    const userList = []
     const fields = [
       {
         key: 'selected',
@@ -111,9 +111,9 @@ export default Vue.extend({
         sortable: true,
         formatter: this.groupFormatter,
       },
-    ];
+    ]
 
-    const groupList = [];
+    const groupList = []
 
     return {
       fields,
@@ -122,67 +122,67 @@ export default Vue.extend({
       selected: [],
       groupList,
       groupMap: new Map(),
-    };
+    }
   },
   computed: {
     modalTitle() {
-      if (this.isNew) return '新增使用者';
+      if (this.isNew) return '新增使用者'
 
-      return '更新使用者';
+      return '更新使用者'
     },
     user() {
-      return this.selected[0];
+      return this.selected[0]
     },
   },
   async mounted() {
-    await this.getGroupList();
-    await this.getUserList();
+    await this.getGroupList()
+    await this.getUserList()
   },
 
   methods: {
     newUser() {
-      this.isNew = true;
-      this.$bvModal.show('userModal');
+      this.isNew = true
+      this.$bvModal.show('userModal')
     },
     updateUser() {
-      this.isNew = false;
-      this.$bvModal.show('userModal');
+      this.isNew = false
+      this.$bvModal.show('userModal')
     },
     deleteUser() {
       this.$bvModal
         .msgBoxConfirm('是否要刪除使用者?')
         .then(ret => {
           if (ret) {
-            this.delUser(this.selected[0]._id);
+            this.delUser(this.selected[0]._id)
           }
         })
         .catch(err => {
-          throw Error(err);
-        });
+          throw Error(err)
+        })
     },
     async getUserList() {
-      const res = await axios.get('/User');
-      this.userList = res.data;
+      const res = await axios.get('/User')
+      this.userList = res.data
     },
     async getGroupList() {
-      const res = await axios.get('/Groups');
-      this.groupList = res.data;
+      const res = await axios.get('/Groups')
+      this.groupList = res.data
       for (const g of this.groupList) {
-        this.groupMap.set(g._id, g);
+        this.groupMap.set(g._id, g)
       }
     },
     groupFormatter(value, key, item) {
-      if (this.groupMap.has(value)) return this.groupMap.get(value).name;
-      return value;
+      if (this.groupMap.has(value)) return this.groupMap.get(value).name
+      return value
     },
     onUserSelected(items) {
-      this.selected = items;
+      this.selected = items
     },
     delUser(id) {
       axios
         .delete(`/User/${id}`)
         .then(res => {
-          const ret = res.data;
+          const ret = res.data
           if (ret.ok) {
             this.$toast({
               component: ToastificationContent,
@@ -190,7 +190,7 @@ export default Vue.extend({
                 title: '成功',
                 icon: 'UserIcon',
               },
-            });
+            })
           } else {
             this.$toast({
               component: ToastificationContent,
@@ -198,24 +198,24 @@ export default Vue.extend({
                 title: '刪除失敗',
                 icon: 'UserIcon',
               },
-            });
+            })
           }
-          this.getUserList();
+          this.getUserList()
         })
         .catch(err => {
-          throw new Error(err);
-        });
+          throw new Error(err)
+        })
     },
     onUpdate() {
-      this.$bvModal.hide('userModal');
-      this.getUserList();
+      this.$bvModal.hide('userModal')
+      this.getUserList()
     },
     onRefresh() {
-      this.getUserList();
+      this.getUserList()
     },
     onDeleted() {
-      this.getUserList();
+      this.getUserList()
     },
   },
-});
+})
 </script>

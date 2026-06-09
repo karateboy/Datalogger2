@@ -12,7 +12,7 @@ import scala.concurrent.duration.{FiniteDuration, MINUTES, SECONDS}
 
 case class LatestRecordTime(time: Long)
 
-case class ForwardManagerConfig(server: String, monitor: String)
+case class ForwardManagerConfig(server: String, monitors: Seq[String])
 
 object ForwardManager {
   val logger: Logger = Logger(this.getClass)
@@ -20,13 +20,13 @@ object ForwardManager {
   var managerOpt: Option[ActorRef] = None
   var count = 0
 
-  def getConfig(configuration: Configuration): Option[ForwardManagerConfig] = {
+  def getConfig(configuration: Configuration, monitorDB: MonitorDB): Option[ForwardManagerConfig] = {
     try {
       for (serverConfig <- configuration.getOptional[Configuration]("server")
            if serverConfig.getOptional[Boolean]("enable").getOrElse(false)) yield {
         val server = serverConfig.getOptional[String]("host").getOrElse("localhost")
-        val monitor = serverConfig.getOptional[String]("monitor").getOrElse("A01")
-        ForwardManagerConfig(server, monitor)
+        val monitors = monitorDB.mList.filter(m => !m._id.startsWith("Epa")).map(_._id)
+        ForwardManagerConfig(server, monitors)
       }
     } catch {
       case ex: Exception =>
@@ -43,7 +43,7 @@ object ForwardManager {
   }
 
   trait Factory {
-    def apply(@Assisted("server") server: String, @Assisted("monitor") monitor: String): Actor
+    def apply(@Assisted("forwardConfig") forwardConfig: ForwardManagerConfig): Actor
   }
 
   case class ForwardHourRecord(start: DateTime, end: DateTime)
@@ -62,7 +62,7 @@ object ForwardManager {
 
   case object UpdateInstrumentStatusType
 
-  case object GetInstrumentCmd
+
 }
 
 class ForwardManager @Inject()(hourRecordForwarderFactory: HourRecordForwarder.Factory,
@@ -71,24 +71,28 @@ class ForwardManager @Inject()(hourRecordForwarderFactory: HourRecordForwarder.F
                                alarmForwarderFactory: AlarmForwarder.Factory,
                                instrumentStatusForwarderFactory: InstrumentStatusForwarder.Factory,
                                instrumentStatusTypeForwarderFactory: InstrumentStatusTypeForwarder.Factory)
-                              (@Assisted("server") server: String, @Assisted("monitor") monitor: String) extends Actor with InjectedActorSupport {
+                              (@Assisted("forwardConfig") config: ForwardManagerConfig) extends Actor with InjectedActorSupport {
   val logger: Logger = Logger(this.getClass)
+
   import ForwardManager._
 
-  logger.info(s"create forwarder to $server/$monitor")
+  val server: String = config.server
+  val monitors: Seq[String] = config.monitors
 
-  private val hourRecordForwarder = injectedChild(hourRecordForwarderFactory(server, monitor), "hourForwarder")
+  logger.info(s"create forwarder to ${config.server} ${config.monitors.mkString(",")}")
 
-  private val minRecordForwarder = injectedChild(minRecordForwarderFactory(server, monitor), "minForwarder")
+  private val hourRecordForwarder = injectedChild(hourRecordForwarderFactory(server, monitors), "hourForwarder")
 
-  private val calibrationForwarder = injectedChild(calibrationForwarderFactory(server, monitor), "calibrationForwarder")
+  private val minRecordForwarder = injectedChild(minRecordForwarderFactory(server, monitors), "minForwarder")
 
-  private val alarmForwarder = injectedChild(alarmForwarderFactory(server, monitor), "alarmForwarder")
+  private val calibrationForwarder = injectedChild(calibrationForwarderFactory(server, monitors), "calibrationForwarder")
 
-  private val instrumentStatusForwarder = injectedChild(instrumentStatusForwarderFactory(server, monitor),
+  private val alarmForwarder = injectedChild(alarmForwarderFactory(server, monitors), "alarmForwarder")
+
+  private val instrumentStatusForwarder = injectedChild(instrumentStatusForwarderFactory(server, monitors),
     "instrumentStatusForwarder")
 
-  private val statusTypeForwarder = injectedChild(instrumentStatusTypeForwarderFactory(server, monitor),
+  private val statusTypeForwarder = injectedChild(instrumentStatusTypeForwarderFactory(server, monitors),
     "statusTypeForwarder")
 
 
@@ -196,7 +200,6 @@ class ForwardManager @Inject()(hourRecordForwarderFactory: HourRecordForwarder.F
     timer.cancel
     timer2.cancel
     timer3.cancel
-    //timer4.cancel
     timer5.cancel()
   }
 }

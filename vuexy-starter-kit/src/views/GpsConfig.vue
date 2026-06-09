@@ -34,8 +34,8 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script>
-import Vue from 'vue';
-import { mapState, mapGetters } from 'vuex';
+import Vue from 'vue'
+import { mapState, mapGetters } from 'vuex'
 
 export default Vue.extend({
   props: {
@@ -45,21 +45,21 @@ export default Vue.extend({
     },
   },
   data() {
-    let paramObj = {};
+    let paramObj = {}
 
-    if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr);
+    if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr)
 
     return {
       paramObj,
-    };
+    }
   },
   computed: {},
   methods: {
     justify() {},
     onChange(evt) {
-      this.justify();
-      this.$emit('param-changed', JSON.stringify(this.paramObj));
+      this.justify()
+      this.$emit('param-changed', JSON.stringify(this.paramObj))
     },
   },
-});
+})
 </script>

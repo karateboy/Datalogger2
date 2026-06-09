@@ -44,8 +44,8 @@ import {
   BDropdown,
   BDropdownItem,
   BButton,
-} from 'bootstrap-vue';
-import Ripple from 'vue-ripple-directive';
+} from 'bootstrap-vue'
+import Ripple from 'vue-ripple-directive'
 
 export default {
   directives: {
@@ -57,5 +57,5 @@ export default {
     BRow,
     BCol,
   },
-};
+}
 </script>

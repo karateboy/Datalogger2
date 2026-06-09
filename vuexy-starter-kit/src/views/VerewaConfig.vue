@@ -16,13 +16,13 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import { mapState, mapGetters } from 'vuex';
-import vSelect from 'vue-select';
-import { MonitorType } from './types';
+import Vue from 'vue'
+import { mapState, mapGetters } from 'vuex'
+import vSelect from 'vue-select'
+import { MonitorType } from './types'
 
 interface VereWaConfig {
-  monitorType: string;
+  monitorType: string
 }
 
 export default Vue.extend({
@@ -40,38 +40,38 @@ export default Vue.extend({
     },
   },
   data() {
-    let monitorType = 'PM25';
-    let paramObj: VereWaConfig = { monitorType };
+    let monitorType = 'PM25'
+    let paramObj: VereWaConfig = { monitorType }
 
-    if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr);
+    if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr)
 
     return {
       paramObj,
-    };
+    }
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap']),
     verewaMonitorTypes(): Array<MonitorType> {
-      let ret = [];
+      let ret = []
 
       for (let mt of this.monitorTypes) {
-        let mtCase = mt as MonitorType;
-        if (mtCase._id === 'PM25' || mtCase._id === 'PM10') ret.push(mt);
+        let mtCase = mt as MonitorType
+        if (mtCase._id === 'PM25' || mtCase._id === 'PM10') ret.push(mt)
       }
 
-      return ret;
+      return ret
     },
   },
   async mounted() {
-    this.onChange(null);
+    this.onChange(null)
   },
   methods: {
     justify() {},
     onChange(evt: any) {
-      this.justify();
-      this.$emit('param-changed', JSON.stringify(this.paramObj));
+      this.justify()
+      this.$emit('param-changed', JSON.stringify(this.paramObj))
     },
   },
-});
+})
 </script>

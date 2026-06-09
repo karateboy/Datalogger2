@@ -16,12 +16,12 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import axios from 'axios';
+import Vue from 'vue'
+import axios from 'axios'
 interface SignalConfig {
-  monitorType?: string;
+  monitorType?: string
 }
-import vSelect from 'vue-select';
+import vSelect from 'vue-select'
 export default Vue.extend({
   components: {
     vSelect,
@@ -33,42 +33,42 @@ export default Vue.extend({
     },
   },
   data() {
-    let chs = Array<SignalConfig>();
+    let chs = Array<SignalConfig>()
     for (let i = 0; i < 8; i++) {
       chs.push({
         monitorType: undefined,
-      });
+      })
     }
 
-    if (this.paramStr !== '') chs = JSON.parse(this.paramStr);
+    if (this.paramStr !== '') chs = JSON.parse(this.paramStr)
 
     const fields = [
       {
         key: 'monitorType',
         label: '數位訊號',
       },
-    ];
+    ]
 
     return {
       chs,
       fields,
       signalTypes: Array<string>(),
-    };
+    }
   },
   computed: {},
   async mounted() {
-    await this.getSignalTypes();
+    await this.getSignalTypes()
   },
   methods: {
     async getSignalTypes() {
-      const res = await axios.get('/SignalTypes');
-      this.signalTypes = res.data;
+      const res = await axios.get('/SignalTypes')
+      this.signalTypes = res.data
     },
     justify() {},
     onChange(evt: any) {
-      this.justify();
-      this.$emit('param-changed', JSON.stringify(this.chs));
+      this.justify()
+      this.$emit('param-changed', JSON.stringify(this.chs))
     },
   },
-});
+})
 </script>

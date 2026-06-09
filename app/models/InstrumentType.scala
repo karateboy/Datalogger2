@@ -62,6 +62,7 @@ class InstrumentTypeOp @Inject()
  horibaApoaFactory: HoribaApoaCollector.Factory,
  horibaApmaFactory: HoribaApmaCollector.Factory,
  gpsFactory: GpsCollector.Factory,
+ nh3Factory: Nh3Collector.Factory,
  t100Factory: T100Collector.Factory, t200Factory: T200Collector.Factory, t201Factory: T201Collector.Factory,
  t300Factory: T300Collector.Factory, t360Factory: T360Collector.Factory, t400Factory: T400Collector.Factory,
  t700Factory: T700Collector.Factory, environment: play.api.Environment,
@@ -93,11 +94,11 @@ class InstrumentTypeOp @Inject()
 
   import Protocol._
 
-  implicit val prtocolWrite = Json.writes[ProtocolInfo]
-  implicit val write = Json.writes[InstrumentTypeInfo]
+  implicit val prtocolWrite: OWrites[ProtocolInfo] = Json.writes[ProtocolInfo]
+  implicit val write: OWrites[InstrumentTypeInfo] = Json.writes[InstrumentTypeInfo]
 
-  val tcpModbusDeviceTypeMap: Map[String, InstrumentType] =
-    TcpModbusDrv2.getInstrumentTypeList(environment, tcpModbusFactory, monitorTypeOp)
+  private val tcpModbusDeviceTypeMap: Map[String, InstrumentType] =
+    TcpModbusDrv2.getInstrumentTypeList(environment, tcpModbusFactory)
       .map(dt => dt.id -> dt).toMap
 
   private val akDeviceTypeMap: Map[String, InstrumentType] =
@@ -118,6 +119,7 @@ class InstrumentTypeOp @Inject()
     InstrumentType(moxaE1240Drv, moxaE1240Factory),
     InstrumentType(moxaE1212Drv, moxaE1212Factory),
     InstrumentType(MqttCollector2, mqtt2Factory),
+    InstrumentType(Nh3Collector, nh3Factory),
     InstrumentType(T100Collector, t100Factory, analog = false, Some(t100CliFactory)),
     InstrumentType(T200Collector, t200Factory, analog = false, Some(t200CliFactory)),
     InstrumentType(T201Collector, t201Factory),
@@ -149,12 +151,8 @@ class InstrumentTypeOp @Inject()
   private val otherMap = otherDeviceList.map(dt => dt.id -> dt).toMap
   val map: Map[String, InstrumentType] = tcpModbusDeviceTypeMap ++ akDeviceTypeMap ++ otherMap
 
-  val DoInstruments: Seq[InstrumentType] = otherDeviceList.filter(_.driver.isDoInstrument)
+  val DoInstruments: Seq[InstrumentType] = map.values.filter(_.driver.isDoInstrument).toSeq
   var count = 0
-
-  def getInstInfoPair(instType: InstrumentType): (String, InstrumentType) = {
-    instType.id -> instType
-  }
 
   def start(instType: String, id: String, protocol: ProtocolParam, param: String)(implicit context: ActorContext): ActorRef = {
     val actorName = s"${instType}_$count"

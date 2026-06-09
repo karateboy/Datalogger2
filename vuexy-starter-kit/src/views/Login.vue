@@ -19,10 +19,8 @@
       <b-col lg="4" class="d-flex align-items-center auth-bg px-2 p-lg-5">
         <b-col sm="8" md="6" lg="12" class="px-xl-2 mx-auto">
           <b-card-title title-tag="h1" class="font-weight-bold mb-1">
-            Hệ thống quan trắc tự động nhà máy xử lý nước thải tập trung
+            {{ $t('title') }}
           </b-card-title>
-          <b-card-text class="mb-2"> 請登入您的帳號 </b-card-text>
-
           <!-- form -->
           <validation-observer ref="loginValidation">
             <b-form class="auth-login-form mt-2" @submit.prevent>
@@ -47,10 +45,7 @@
               <!-- forgot password -->
               <b-form-group>
                 <div class="d-flex justify-content-between">
-                  <label for="login-password">密碼</label>
-                  <b-link :to="{ name: 'auth-forgot-password-v2' }">
-                    <small>忘記密碼?</small>
-                  </b-link>
+                  <label for="login-password">{{ $t('Password')}}</label>
                 </div>
                 <validation-provider
                   v-slot="{ errors }"
@@ -89,7 +84,7 @@
                 block
                 @click="validationForm"
               >
-                登入
+                {{$t('Login')}}
               </b-button>
             </b-form>
           </validation-observer>
@@ -102,14 +97,14 @@
 
 <script>
 /* eslint-disable global-require */
-import { ValidationProvider, ValidationObserver } from 'vee-validate';
+import { ValidationProvider, ValidationObserver } from 'vee-validate'
 
-import { required, email } from '@validations';
-import { togglePasswordVisibility } from '@core/mixins/ui/forms';
-import axios from 'axios';
-import store from '@/store/index';
-import { mapMutations, mapActions } from 'vuex';
-import ToastificationContent from '@core/components/toastification/ToastificationContent.vue';
+import { required, email } from '@validations'
+import { togglePasswordVisibility } from '@core/mixins/ui/forms'
+import axios from 'axios'
+import store from '@/store/index'
+import { mapMutations, mapActions } from 'vuex'
+import ToastificationContent from '@core/components/toastification/ToastificationContent.vue'
 
 export default {
   components: {
@@ -126,19 +121,19 @@ export default {
       // validation rulesimport store from '@/store/index'
       required,
       email,
-    };
+    }
   },
   computed: {
     passwordToggleIcon() {
-      return this.passwordFieldType === 'password' ? 'EyeIcon' : 'EyeOffIcon';
+      return this.passwordFieldType === 'password' ? 'EyeIcon' : 'EyeOffIcon'
     },
     imgUrl() {
       if (store.state.appConfig.layout.skin === 'dark') {
         // eslint-disable-next-line vue/no-side-effects-in-computed-properties
-        this.sideImg = require('@/assets/images/pages/login-v2-dark.svg');
-        return this.sideImg;
+        this.sideImg = require('@/assets/images/pages/login-v2-dark.svg')
+        return this.sideImg
       }
-      return this.sideImg;
+      return this.sideImg
     },
   },
   mounted() {},
@@ -148,27 +143,27 @@ export default {
     validationForm() {
       this.$refs.loginValidation.validate().then(success => {
         if (success) {
-          const cred = { user: this.userEmail, password: this.password };
+          const cred = { user: this.userEmail, password: this.password }
           axios
             .post('/login', cred)
             .then(res => {
-              const ret = res.data;
+              const ret = res.data
               if (ret.ok) {
-                const userData = ret.userData;
-                const userInfo = userData.user;
-                this.setUserInfo(userInfo);
-                this.setLogin(true);
+                const userData = ret.userData
+                const userInfo = userData.user
+                this.setUserInfo(userInfo)
+                this.setLogin(true)
                 if (userInfo.isAdmin) {
                   this.$ability.update([
                     {
                       action: 'manage',
                       subject: 'all',
                     },
-                  ]);
+                  ])
                 } else {
-                  this.$ability.update(userData.group.abilities);
+                  this.$ability.update(userData.group.abilities)
                 }
-                this.$router.push('/');
+                this.$router.push('/')
               } else {
                 this.$toast({
                   component: ToastificationContent,
@@ -176,7 +171,7 @@ export default {
                     title: '帳號或密碼錯誤',
                     icon: 'UserIcon',
                   },
-                });
+                })
               }
             })
             .catch(err => {
@@ -186,13 +181,13 @@ export default {
                   title: '帳號或密碼錯誤',
                   icon: 'UserIcon',
                 },
-              });
-            });
+              })
+            })
         }
-      });
+      })
     },
   },
-};
+}
 </script>
 
 <style lang="scss">

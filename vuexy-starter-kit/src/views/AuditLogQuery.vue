@@ -58,14 +58,14 @@
 @import '@core/scss/vue/libs/vue-select.scss';
 </style>
 <script lang="ts">
-import Vue from 'vue';
-import DatePicker from 'vue2-datepicker';
-import 'vue2-datepicker/index.css';
-import 'vue2-datepicker/locale/zh-tw';
-const Ripple = require('vue-ripple-directive');
-import moment from 'moment';
-import { mapState, mapGetters } from 'vuex';
-import axios from 'axios';
+import Vue from 'vue'
+import DatePicker from 'vue2-datepicker'
+import 'vue2-datepicker/index.css'
+import 'vue2-datepicker/locale/zh-tw'
+const Ripple = require('vue-ripple-directive')
+import moment from 'moment'
+import { mapState, mapGetters } from 'vuex'
+import axios from 'axios'
 
 export default Vue.extend({
   components: {
@@ -79,7 +79,7 @@ export default Vue.extend({
     const range = [
       moment().subtract(1, 'days').startOf('day').valueOf(),
       moment().valueOf(),
-    ];
+    ]
     return {
       display: false,
       columns: [
@@ -118,7 +118,7 @@ export default Vue.extend({
       form: {
         range,
       },
-    };
+    }
   },
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
@@ -127,21 +127,21 @@ export default Vue.extend({
   methods: {
     handleReport(data: any) {
       for (const log of data) {
-        log.dataTime = moment(log.dataTime).format('lll');
-        log.modifiedTime = moment(log.modifiedTime).format('lll');
-        log.mt = this.mtMap.get(log.mt).desp;
+        log.dataTime = moment(log.dataTime).format('lll')
+        log.modifiedTime = moment(log.modifiedTime).format('lll')
+        log.mt = this.mtMap.get(log.mt).desp
       }
     },
     async query() {
-      this.display = true;
-      const url = `/ManualAuditHistory/${this.form.range[0]}/${this.form.range[1]}`;
-      const res = await axios.get(url);
-      this.handleReport(res.data);
-      const ret = res.data;
-      this.rows = ret;
+      this.display = true
+      const url = `/ManualAuditHistory/${this.form.range[0]}/${this.form.range[1]}`
+      const res = await axios.get(url)
+      this.handleReport(res.data)
+      const ret = res.data
+      this.rows = ret
     },
   },
-});
+})
 </script>
 
 <style></style>

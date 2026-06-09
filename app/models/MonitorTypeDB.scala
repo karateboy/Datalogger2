@@ -55,6 +55,8 @@ trait MonitorTypeDB {
     rangeType(LDN, "LDN", "dB", 2, accumulated = true),
     rangeType(WD10, "前10分風向向量平均", "degrees", 2),
     rangeType(WS10, "前10分風速算術平均", "m/sec", 2),
+    rangeType(PM10D, "前24小時PM10平均", "μg/m3", 2),
+    rangeType(PM25D, "前24小時PM2.5平均", "μg/m3", 2),
     /////////////////////////////////////////////////////
     signalType(DOOR, "門禁"),
     signalType(SMOKE, "煙霧"),
@@ -119,15 +121,27 @@ trait MonitorTypeDB {
     rangeList = mtListFromDb.filter { mt => !mt.signalType }.sortBy(_.order) map (mt => mt._id)
     signalList = mtListFromDb.filter { mt => mt.signalType }.sortBy(_.order) map (mt => mt._id)
 
-    // ensure calculated types
-    for (mt <- calculatedMonitorTypes)
-      ensure(mt)
   }
 
   def getList: List[MonitorType]
 
-  def ensure(id: String): Unit =
+  private def ensure(mtCase:MonitorType): Unit ={
     synchronized {
+      if (!map.contains(mtCase._id)) {
+        mtCase.measuringBy = Some(List.empty[String])
+        upsertMonitorType(mtCase)
+      } else {
+        if (mtCase.measuringBy.isEmpty) {
+          mtCase.measuringBy = Some(List.empty[String])
+          upsertMonitorType(mtCase)
+        }
+      }
+    }
+  }
+
+  def ensureRangeType(id: String, recordDB: RecordDB): Unit =
+    synchronized {
+      recordDB.ensureMonitorType(id)
       if (!map.contains(id)) {
         val mt = defaultMonitorTypes.find(_._id == id).getOrElse(rangeType(id, id, "??", 2))
         mt.measuringBy = Some(List.empty[String])
@@ -141,19 +155,12 @@ trait MonitorTypeDB {
       }
     }
 
-  def ensure(mtCase: MonitorType): Unit = {
-    synchronized {
-      if (!map.contains(mtCase._id)) {
-        mtCase.measuringBy = Some(List.empty[String])
-        upsertMonitorType(mtCase)
-      } else {
-        if (mtCase.measuringBy.isEmpty) {
-          mtCase.measuringBy = Some(List.empty[String])
-          upsertMonitorType(mtCase)
-        }
-      }
-    }
+  def ensureRangeType(mtCase: MonitorType, recordDB: RecordDB): Unit = {
+    recordDB.ensureMonitorType(mtCase._id)
+    ensure(mtCase)
   }
+
+  def ensureSignalType(mtCase: MonitorType): Unit = ensure(mtCase)
 
   def rangeType(_id: String, desp: String, unit: String, prec: Int, accumulated: Boolean = false, acoustic: Boolean = false): MonitorType = {
     rangeOrder += 1
@@ -188,19 +195,27 @@ trait MonitorTypeDB {
 
   def nonCalculatedMeasuringList: List[String] = measuringList.filter(!IsCalculated(_))
 
-  def addMeasuring(mt: String, instrumentId: String, append: Boolean, recordDB: RecordDB): Future[UpdateResult] = {
-    recordDB.ensureMonitorType(mt)
-    synchronized {
-      if (!map.contains(mt)) {
-        val mtCase = defaultMonitorTypes.find(_._id == mt).getOrElse(rangeType(mt, mt, "??", 2))
-        mtCase.addMeasuring(instrumentId, append)
-        upsertMonitorType(mtCase)
-      } else {
-        val mtCase = map(mt)
-        mtCase.addMeasuring(instrumentId, append)
-        upsertItemFuture(mtCase)
+  def addMeasuring(mt: String, instrumentId: String, analog: Boolean, recordDB: RecordDB): Unit = {
+    val newMtCase =
+      synchronized {
+        if (!map.contains(mt)) {
+          val mtCase = defaultMonitorTypes.find(_._id == mt)
+            .getOrElse(if (analog)
+              rangeType(mt, mt, "??", 2)
+            else
+              signalType(mt, mt))
+          mtCase.addMeasuring(instrumentId, append = analog)
+          upsertMonitorType(mtCase)
+          mtCase
+        } else {
+          val mtCase = map(mt)
+          mtCase.addMeasuring(instrumentId, append = analog)
+          upsertItemFuture(mtCase)
+          mtCase
+        }
       }
-    }
+    if (!newMtCase.signalType)
+      recordDB.ensureMonitorType(newMtCase._id)
   }
 
   def upsertMonitorType(mt: MonitorType): Future[UpdateResult] = {

@@ -163,7 +163,7 @@
   </b-form>
 </template>
 <script>
-import Vue from 'vue';
+import Vue from 'vue'
 export default Vue.extend({
   props: {
     instType: {
@@ -192,36 +192,35 @@ export default Vue.extend({
       calibrateZeoDO: null,
       calibrateSpanDO: null,
       skipInternalVault: null,
-    };
+    }
 
-    if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr);
+    if (this.paramStr !== '{}') paramObj = JSON.parse(this.paramStr)
 
     return {
       paramObj,
-    };
+    }
   },
   async mounted() {
-    this.onChange();
+    this.onChange()
   },
   methods: {
     justify() {
-      const paramObj = this.paramObj;
-      if (paramObj.calibrationTime === '') paramObj.calibrationTime = null;
-      if (paramObj.raiseTime === '') paramObj.raiseTime = null;
-      if (paramObj.holdTime === '') paramObj.holdTime = null;
-      if (paramObj.downTime === '') paramObj.downTime = null;
-      if (paramObj.calibrateZeoSeq === '') paramObj.calibrateZeoSeq = null;
-      if (paramObj.calibrateSpanSeq === '') paramObj.calibrateSpanSeq = null;
-      if (paramObj.calibratePurgeSeq === '') paramObj.calibratePurgeSeq = null;
-      if (paramObj.calibratePurgeTime === '')
-        paramObj.calibratePurgeTime = null;
-      if (paramObj.calibrateZeoDO === '') paramObj.calibrateZeoDO = null;
-      if (paramObj.calibrateSpanDO === '') paramObj.calibrateSpanDO = null;
+      const paramObj = this.paramObj
+      if (paramObj.calibrationTime === '') paramObj.calibrationTime = null
+      if (paramObj.raiseTime === '') paramObj.raiseTime = null
+      if (paramObj.holdTime === '') paramObj.holdTime = null
+      if (paramObj.downTime === '') paramObj.downTime = null
+      if (paramObj.calibrateZeoSeq === '') paramObj.calibrateZeoSeq = null
+      if (paramObj.calibrateSpanSeq === '') paramObj.calibrateSpanSeq = null
+      if (paramObj.calibratePurgeSeq === '') paramObj.calibratePurgeSeq = null
+      if (paramObj.calibratePurgeTime === '') paramObj.calibratePurgeTime = null
+      if (paramObj.calibrateZeoDO === '') paramObj.calibrateZeoDO = null
+      if (paramObj.calibrateSpanDO === '') paramObj.calibrateSpanDO = null
     },
     onChange(evt) {
-      this.justify();
-      this.$emit('param-changed', JSON.stringify(this.paramObj));
+      this.justify()
+      this.$emit('param-changed', JSON.stringify(this.paramObj))
     },
   },
-});
+})
 </script>
