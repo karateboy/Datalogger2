@@ -14,7 +14,8 @@ case class ModelRegValue(inputs: List[(InstrumentStatusType, Float)],
                          modes: List[(InstrumentStatusType, Boolean)],
                          warnings: List[(InstrumentStatusType, Boolean)],
                          input64s: List[(InstrumentStatusType, Double)] = List.empty,
-                         holding64s: List[(InstrumentStatusType, Double)] = List.empty)
+                         holding64s: List[(InstrumentStatusType, Double)] = List.empty,
+                         coils: List[(InstrumentStatusType, Boolean)] = List.empty)
 
 case class RegDouble(ist:InstrumentStatusType, value:Double)
 case class RegBool(ist:InstrumentStatusType, value:Boolean)
@@ -22,7 +23,8 @@ case class RegValueSet(inputs: List[RegDouble],
                          holdings: List[RegDouble],
                          modes: List[RegBool],
                          warnings: List[RegBool],
-                         input64s: List[RegDouble] = List.empty,
-                         holding64s: List[RegDouble] = List.empty){
+                         input64s: List[RegDouble],
+                         holding64s: List[RegDouble],
+                       coils: List[RegBool]){
   def dataList: List[RegDouble] = inputs ++ holdings ++ input64s ++ holding64s
 }

@@ -1,10 +1,21 @@
 <template>
   <b-card title="即時資訊">
-    <b-table striped hover :fields="fields" :items="items">
-      <template #cell(index)="data">
-        {{ data.index + 1 }}
-      </template>
-    </b-table>
+    <b-row>
+      <b-col>
+        <b-table striped hover :fields="fields" :items="item1">
+          <template #cell(index)="data">
+            {{ data.index + 1 }}
+          </template>
+        </b-table>
+      </b-col>
+      <b-col>
+        <b-table striped hover :fields="fields" :items="item2">
+          <template #cell(index)="data">
+            {{ middle + data.index + 1 }}
+          </template>
+        </b-table>
+      </b-col>
+    </b-row>
   </b-card>
 </template>
 
@@ -17,7 +28,7 @@ export default {
       fields: [
         {
           key: 'index',
-          label: '序號',
+          label: '#',
         },
         {
           key: 'desp',
@@ -35,17 +46,15 @@ export default {
           sortable: true,
         },
         {
-          key: 'instrument',
-          label: '設備',
-          sortable: true,
-        },
-        {
           key: 'status',
           label: '狀態',
           sortable: true,
         },
       ],
       items: [],
+      item1: [],
+      item2: [],
+      middle: 0,
       timer: 0,
     }
   },
@@ -59,8 +68,10 @@ export default {
   methods: {
     async getRealtimeData() {
       const ret = await axios.get('/MonitorTypeStatusList')
-      this.items.splice(0, this.items.length)
       this.items = ret.data
+      this.middle = Math.floor(this.items.length / 2)
+      this.item1 = this.items.slice(0, this.middle)
+      this.item2 = this.items.slice(this.middle)
     },
   },
 }
