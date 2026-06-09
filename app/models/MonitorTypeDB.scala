@@ -285,14 +285,14 @@ trait MonitorTypeDB {
     val mtCase = map(mt)
 
     val overLaw =
-      for (std <- mtCase.more.getOrElse(MonitorTypeMore()).hhAlarm; v <- vOpt) yield
+      for (v <- vOpt;std = mtCase.std_law.getOrElse(Double.MaxValue)) yield
         if (v > std)
           true
         else
           false
 
     val overInternal =
-      for (std <- mtCase.more.getOrElse(MonitorTypeMore()).hAlarm; v <- vOpt) yield
+      for (v <- vOpt;std = mtCase.span.getOrElse(Double.MaxValue)) yield
         if (v > std)
           true
         else
