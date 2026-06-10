@@ -16,9 +16,9 @@ object PeriodReport extends Enumeration {
   val YearlyReport: Value = Value("yearly")
 
   def map: Map[Value, String] =
-    Map(DailyReport -> "日報",
-      MonthlyReport -> "月報",
-      YearlyReport -> "年報")
+    Map(DailyReport -> "Daily Report",
+      MonthlyReport -> "Monthly Report",
+      YearlyReport -> "Year Report")
 
 }
 
@@ -70,28 +70,28 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
               for (mt <- mtList) yield {
                 CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).avg), Seq.empty[String])
               }
-            StatRow("平均", avgData)
+            StatRow("AVG", avgData)
           }
           val maxRow = {
             val maxData =
               for (mt <- mtList) yield {
                 CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).max), Seq.empty[String])
               }
-            StatRow("最大", maxData)
+            StatRow("MAX", maxData)
           }
           val minRow = {
             val minData =
               for (mt <- mtList) yield {
                 CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).min), Seq.empty[String])
               }
-            StatRow("最小", minData)
+            StatRow("MIN", minData)
           }
           val effectiveRow = {
             val effectiveData =
               for (mt <- mtList) yield {
                 CellData(monitorTypeOp.format(mt, statMap(mt)(startDate).effectPercent), Seq.empty[String])
               }
-            StatRow("有效率(%)", effectiveData)
+            StatRow("Effective (%)", effectiveData)
           }
           val statRows = Seq(avgRow, maxRow, minRow, effectiveRow)
 
@@ -114,7 +114,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
             Ok(Json.toJson(dailyReport))
           else {
             val (title, excelFile) =
-              ("日報" + startDate.toString("YYYYMMdd"), excelUtility.exportDailyReport(startDate, dailyReport))
+              ("DailyReport" + startDate.toString("YYYYMMdd"), excelUtility.exportDailyReport(startDate, dailyReport))
 
             Ok.sendFile(excelFile, fileName = _ =>
               Some(s"$title.xlsx"),
@@ -133,28 +133,28 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
               for (mt <- mtList) yield {
                 CellData(monitorTypeOp.format(mt, overallStatMap(mt).avg), Seq.empty[String])
               }
-            StatRow("平均", avgData)
+            StatRow("AVG", avgData)
           }
           val maxRow = {
             val maxData =
               for (mt <- mtList) yield {
                 CellData(monitorTypeOp.format(mt, overallStatMap(mt).max), Seq.empty[String])
               }
-            StatRow("最大", maxData)
+            StatRow("MAX", maxData)
           }
           val minRow = {
             val minData =
               for (mt <- mtList) yield {
                 CellData(monitorTypeOp.format(mt, overallStatMap(mt).min), Seq.empty[String])
               }
-            StatRow("最小", minData)
+            StatRow("MIN", minData)
           }
           val effectiveRow = {
             val effectiveData =
               for (mt <- mtList) yield {
                 CellData(monitorTypeOp.format(mt, overallStatMap(mt).effectPercent), Seq.empty[String])
               }
-            StatRow("有效率(%)", effectiveData)
+            StatRow("Effective(%)", effectiveData)
           }
           val statRows = Seq(avgRow, maxRow, minRow, effectiveRow)
 
@@ -180,8 +180,8 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
             Ok(Json.toJson(monthlyReport))
           else {
             val (title, excelFile) =
-              ("月報" + start.toString("YYYYMM"),
-                excelUtility.exportDisplayReport(s"監測月報 ${start.toString("YYYY年MM月")}", monthlyReport))
+              ("MonthlyReport" + start.toString("YYYYMM"),
+                excelUtility.exportDisplayReport(s"${start.toString("YYYYMM")}", monthlyReport))
 
             Ok.sendFile(excelFile, fileName = _ =>
               Some(s"$title.xlsx"),
@@ -213,19 +213,19 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
             StatRow(name, accData)
           }
 
-          val avgRow = getAccumulationRow("平均",
+          val avgRow = getAccumulationRow("AVG",
             data => if (data.nonEmpty)
               Some(data.sum / data.length)
             else
               None)
 
-          val maxRow = getAccumulationRow("最大",
+          val maxRow = getAccumulationRow("MAX",
             data => if (data.nonEmpty)
               Some(data.max)
             else
               None)
 
-          val minRow = getAccumulationRow("最小",
+          val minRow = getAccumulationRow("MIN",
             data => if (data.nonEmpty)
               Some(data.min)
             else
@@ -238,7 +238,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
                 val rate = Some(mtStats.count(v => v).toDouble * 100 / mtStats.length)
                 CellData(monitorTypeOp.format(mt, rate), Seq.empty[String])
               }
-            StatRow("有效率(%)", accData)
+            StatRow("Effective(%)", accData)
           }
 
           val statRows = Seq(avgRow, maxRow, minRow, effectiveRow)
@@ -266,8 +266,8 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
             Ok(Json.toJson(yearlyReport))
           else {
             val (title, excelFile) =
-              ("年報" + yearStart.toString("YYYY"),
-                excelUtility.exportDisplayReport(s"${yearStart.toString("YYYY年")}監測年報 ",
+              ("YearReport" + yearStart.toString("YYYY"),
+                excelUtility.exportDisplayReport(s"${yearStart.toString("YYYY")}Report",
                   yearlyReport, monthlyReport = false))
 
             Ok.sendFile(excelFile, fileName = _ =>

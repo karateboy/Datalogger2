@@ -168,13 +168,6 @@ GET           /VariationRules                                                   
 POST          /VariationRule                                                                       controllers.RuleController.upsertVariationRule
 DELETE        /VariationRule/:monitor/:monitorType                                                 controllers.RuleController.deleteVariationRule(monitor, monitorType)
 
-#CDX
-GET           /CdxConfig                                                                           controllers.Cdx.getConfig
-PUT           /CdxConfig                                                                           controllers.Cdx.putConfig
-GET           /CdxMonitorTypes                                                                     controllers.Cdx.getMonitorTypes
-PUT           /CdxMonitorTypes                                                                     controllers.Cdx.putMonitorTypes
-GET           /CdxUpload/:start/:end                                                               controllers.Cdx.CdxUploadData(start:Long, end:Long)
-GET           /NewTaipeiUpload/:start/:end                                                         controllers.Cdx.newTaipeiOpenDataUpload(start: Long, end: Long)
 
 #Reset Reader
 GET           /ResetReaders                                                                        controllers.HomeController.resetReaders()
