@@ -316,7 +316,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
           } catch {
             case ex: Exception =>
               logger.error(s"$instId:${desc}=>${ex.getMessage}", ex)
-              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, s"無法連接:${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, s"${ex.getMessage}")
 
               if (master != null)
                 master.destroy()
@@ -696,7 +696,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
           alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, r.ist.desc)
       } else {
         if (oldModelReg.isDefined && oldModelReg.get.warnings(idx).value != r.value)
-          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, s"${r.ist.desc} 解除")
+          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, s"${r.ist.desc} deactived")
       }
     }
 

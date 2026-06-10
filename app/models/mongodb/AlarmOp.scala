@@ -58,7 +58,7 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
     val f = collection.find(and(equal("src", src),
       gte("time", start),
       lt("time", end),
-      equal("level", level))).sort(descending("time")).toFuture()
+      gte("level", level))).sort(descending("time")).toFuture()
 
     f.failed.foreach(errorHandler)
     f

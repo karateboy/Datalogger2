@@ -394,6 +394,7 @@ class DataCollectManager @Inject()(config: Configuration,
                                    forwardManagerFactory: ForwardManager.Factory,
                                    alarmRuleDb: AlarmRuleDb,
                                    tableType: TableType,
+                                   alarmSound: AlarmSound,
                                    excelUtility: ExcelUtility) extends Actor with InjectedActorSupport {
 
   import DataCollectManager._
@@ -497,9 +498,20 @@ class DataCollectManager @Inject()(config: Configuration,
             val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, value)} HH Alarm (${monitorTypeOp.format(mt, mtCase.std_law)})"
             alarmOp.log(alarmOp.src(mt), Alarm.Level.ERR, msg)
             overThreshold = true
+            alarmSound.play()
             mtCase.overLawSignalType.foreach(signalType => self ! WriteSignal(signalType, bit = true))
+          } else {
+            for (h_alarm <- mtCase.span; v <- value) {
+              if (v > h_alarm) {
+                val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, value)} H Alarm (${monitorTypeOp.format(mt, mtCase.std_law)})"
+                alarmOp.log(alarmOp.src(mt), Alarm.Level.ERR, msg)
+                alarmSound.play()
+              }
+            }
           }
         }
+
+
     }
     overThreshold
   }
@@ -1169,7 +1181,7 @@ class DataCollectManager @Inject()(config: Configuration,
             .exists(mt => !exDataLossRecordMap.contains(mt) ||
               exDataLossRecordMap.contains(mt) && exDataLossRecordMap(mt).size < 45)) {
             logger.error(s"$instID has less than 45 minRecords. Restart $instID")
-            alarmOp.log(alarmOp.srcInstrumentID(instID), Alarm.Level.ERR, s"$instID 每小時分鐘資料小於45筆. 重新啟動 $instID 設備")
+            alarmOp.log(alarmOp.srcInstrumentID(instID), Alarm.Level.ERR, s"$instID has less than 45 entries in one hour. Restart $instID")
             self ! RestartInstrument(instID)
           }
         }

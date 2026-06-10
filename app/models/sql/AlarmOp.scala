@@ -33,7 +33,7 @@ class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mail
       sql"""
           SELECT *
           FROM [dbo].[alarms]
-          Where time >= $start and time < $end and [level] = $level
+          Where time >= $start and time < $end and [level] >= $level
           Order by time desc
          """.map(mapper).list().apply()
     }
