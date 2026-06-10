@@ -272,7 +272,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
           } catch {
             case ex: Exception =>
               log.error(ex.getMessage, ex)
-              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, s"無法連接:${ex.getMessage}")
+              alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.WARN, s"${ex.getMessage}")
 
               if(master != null)
                 master.destroy()
@@ -607,7 +607,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
         }
       } else {
         if (oldModelReg.isDefined && oldModelReg.get.warnings(idx)._2 != enable) {
-          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, s"${statusType.desc} 解除")
+          alarmOp.log(alarmOp.instrumentSrc(instId), Alarm.Level.INFO, s"${statusType.desc} false")
         }
       }
     }

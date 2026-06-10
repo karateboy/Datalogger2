@@ -26,7 +26,7 @@ class AlarmSound @Inject()(environment: Environment) extends LineListener {
       val audioStream = AudioSystem.getAudioInputStream(soundFile.toFile)
       val audioClip = AudioSystem.getClip()
       audioClip.open(audioStream)
-      audioClip.loop(5)
+      audioClip.loop(Clip.LOOP_CONTINUOUSLY)
       audioClip.addLineListener(this)
       (audioClip, audioStream)
     } catch {

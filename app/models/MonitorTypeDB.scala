@@ -106,9 +106,9 @@ trait MonitorTypeDB {
     if (previousValue != v) {
       val mtCase = map(mt)
       if (v)
-        alarmDB.log(alarmDB.src(), Alarm.Level.WARN, s"${mtCase.desp}=>觸發", 1)
+        alarmDB.log(alarmDB.src(), Alarm.Level.WARN, s"${mtCase.desp}=>true", 1)
       else
-        alarmDB.log(alarmDB.src(), Alarm.Level.INFO, s"${mtCase.desp}=>解除", 1)
+        alarmDB.log(alarmDB.src(), Alarm.Level.INFO, s"${mtCase.desp}=>false", 1)
     }
   }
 
