@@ -236,10 +236,6 @@ export default Vue.extend({
           label: this.$i18n.t('precision'),
         },
         {
-          key: 'order',
-          label: this.$i18n.t('order'),
-        },
-        {
           key: 'std_law',
           label: 'HH Alarm',
         },
