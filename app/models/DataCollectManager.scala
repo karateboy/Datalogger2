@@ -807,35 +807,7 @@ class DataCollectManager @Inject()(config: Configuration,
                 mtd
           }
 
-        def getMtValue(mt: String) = rangeCheckedDataList.find(mtd => mtd.mt == mt).map(_.value)
-
-        def getRounded(v: Double): Double =
-          "%.2f".format(v).toDouble
-
-        def getTotalFlowIn: Double = {
-          val flowIn = getMtValue("FLOW_IN")
-          DataCollectManager.totalFlowIn += flowIn.getOrElse(0d) / 60
-          DataCollectManager.totalFlowIn = getRounded(DataCollectManager.totalFlowIn)
-          sysConfig.setTotalFlowIn(DataCollectManager.totalFlowIn)
-          DataCollectManager.totalFlowIn
-        }
-
-        def getTotalFlowOut: Double = {
-          val flowIn = getMtValue("FLOW_OUT")
-          DataCollectManager.totalFlowOut += flowIn.getOrElse(0d) / 60
-          DataCollectManager.totalFlowOut = getRounded(DataCollectManager.totalFlowOut)
-          sysConfig.setTotalFlowOut(DataCollectManager.totalFlowOut)
-          DataCollectManager.totalFlowOut
-        }
-
-        val flowDataList = List(MonitorTypeData(MonitorType.TOTAL_FLOW_IN, getTotalFlowIn, MonitorStatus.NormalStat),
-          MonitorTypeData(MonitorType.TOTAL_FLOW_IN, getTotalFlowIn, MonitorStatus.NormalStat),
-          MonitorTypeData(MonitorType.TOTAL_FLOW_OUT, getTotalFlowOut, MonitorStatus.NormalStat),
-        )
-        sysConfig.setTotalFlowIn(DataCollectManager.totalFlowIn)
-        sysConfig.setTotalFlowOut(DataCollectManager.totalFlowOut)
-
-        val fullDataList = rangeCheckedDataList ++ MonitorType.getCalculatedMonitorTypeData(dataList, now) ++ flowDataList
+        val fullDataList = rangeCheckedDataList ++ MonitorType.getCalculatedMonitorTypeData(dataList, now)
 
         // Update monitor location
         for {lat <- fullDataList.find(_.mt == MonitorType.LAT)
@@ -988,7 +960,35 @@ class DataCollectManager @Inject()(config: Configuration,
           monitorStatusDB)(calibrationMap, current.minusMinutes(1)).toList
 
         val calculatedMtRecords = MonitorType.getCalculatedMtRecord(rawMtRecords, current)
-        val mtRecords = rawMtRecords ++ calculatedMtRecords
+        // --- calculate TotalFlowIn/Out
+        def getMtValue(mt: String) = rawMtRecords.find(mtRecord => mtRecord.mtName == mt).flatMap(_.value)
+
+        def getRounded(v: Double): Double =
+          "%.2f".format(v).toDouble
+
+        def getTotalFlowIn: Double = {
+          val flowIn = getMtValue("FLOW_IN")
+          DataCollectManager.totalFlowIn += flowIn.getOrElse(0d) / 60
+          DataCollectManager.totalFlowIn = getRounded(DataCollectManager.totalFlowIn)
+          sysConfig.setTotalFlowIn(DataCollectManager.totalFlowIn)
+          DataCollectManager.totalFlowIn
+        }
+
+        def getTotalFlowOut: Double = {
+          val flowIn = getMtValue("FLOW_OUT")
+          DataCollectManager.totalFlowOut += flowIn.getOrElse(0d) / 60
+          DataCollectManager.totalFlowOut = getRounded(DataCollectManager.totalFlowOut)
+          sysConfig.setTotalFlowOut(DataCollectManager.totalFlowOut)
+          DataCollectManager.totalFlowOut
+        }
+        val flowDataList = List(
+          MtRecord(MonitorType.TOTAL_FLOW_IN, Some(getTotalFlowIn), MonitorStatus.NormalStat),
+          MtRecord(MonitorType.TOTAL_FLOW_OUT, Some(getTotalFlowOut), MonitorStatus.NormalStat),
+        )
+
+        sysConfig.setTotalFlowIn(DataCollectManager.totalFlowIn)
+        sysConfig.setTotalFlowOut(DataCollectManager.totalFlowOut)
+        val mtRecords = rawMtRecords ++ calculatedMtRecords ++ flowDataList
 
         checkMinDataAlarm(mtRecords)
 
