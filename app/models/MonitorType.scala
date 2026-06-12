@@ -109,6 +109,8 @@ object MonitorType {
   val WD10 = "WD10"
   val PM10D = "PM10D"
   val PM25D = "PM25D"
+  val TOTAL_FLOW_IN = "TOTAL_FLOW_IN"
+  val TOTAL_FLOW_OUT = "TOTAL_FLOW_OUT"
 
 
 

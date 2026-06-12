@@ -38,7 +38,9 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     SMS_PHONES -> Document(valueKey -> ""),
     LINE_CHANNEL_TOKEN -> Document(valueKey -> ""),
     LINE_CHANNEL_GROUP_ID -> Document(valueKey -> ""),
-    HOUR_CALCULATION_RULES -> Document(valueKey -> Json.toJson(HourCalculationRule.defaultRules).toString())
+    HOUR_CALCULATION_RULES -> Document(valueKey -> Json.toJson(HourCalculationRule.defaultRules).toString(),
+    TOTAL_FLOW_IN -> Document(valueKey -> 0d),
+    TOTAL_FLOW_OUT -> Document(valueKey -> 0d))
   )
 
   override def getSpectrumLastParseTime: Future[Instant] = getInstant(SpectrumLastParseTime)()
@@ -183,4 +185,16 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
 
   override def setHourCalculationRules(rules: Seq[HourCalculationRule]): Future[UpdateResult] =
     set(HOUR_CALCULATION_RULES, BsonString(Json.toJson(rules).toString()))
+
+  override def getTotalFlowIn: Future[Double] =
+    get(TOTAL_FLOW_IN).map(_.asNumber().doubleValue())
+
+  override def setTotalFlowIn(value: Double): Future[UpdateResult] =
+    set(TOTAL_FLOW_IN, BsonNumber(value))
+
+  override def getTotalFlowOut: Future[Double] =
+    get(TOTAL_FLOW_OUT).map(_.asNumber().doubleValue())
+
+  override def setTotalFlowOut(value: Double): Future[UpdateResult] =
+    set(TOTAL_FLOW_OUT, BsonNumber(value))
 }

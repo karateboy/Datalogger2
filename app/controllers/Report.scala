@@ -48,7 +48,8 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
 
       val reportType = PeriodReport.withName(reportTypeStr)
       val outputType = OutputType.withName(outputTypeStr)
-      val mtList = Seq("TEMP", "FLOW_OUT", "COLOR", "TP", "TN", "FT007_OUT", "FT502_IN", "PH", "BOD", "NH4", "COD", "TSS", "FLOW_IN")
+      val mtList = Seq("TEMP", "FLOW_OUT", "COLOR", "TP", "TN", "FT007_OUT", "FT502_IN", "PH", "BOD", "NH4", "COD", "TSS", "FLOW_IN",
+        MonitorType.TOTAL_FLOW_IN, MonitorType.TOTAL_FLOW_OUT)
 
       reportType match {
         case PeriodReport.DailyReport =>

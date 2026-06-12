@@ -57,6 +57,8 @@ trait MonitorTypeDB {
     rangeType(WS10, "前10分風速算術平均", "m/sec", 2),
     rangeType(PM10D, "前24小時PM10平均", "μg/m3", 2),
     rangeType(PM25D, "前24小時PM2.5平均", "μg/m3", 2),
+    rangeType(TOTAL_FLOW_IN, "TOTAL FLOW IN", "m3", 2),
+    rangeType(TOTAL_FLOW_OUT, "TOTAL FLOW OUT", "m3", 2),
     /////////////////////////////////////////////////////
     signalType(DOOR, "門禁"),
     signalType(SMOKE, "煙霧"),
@@ -125,7 +127,7 @@ trait MonitorTypeDB {
 
   def getList: List[MonitorType]
 
-  private def ensure(mtCase:MonitorType): Unit ={
+  private def ensure(mtCase: MonitorType): Unit = {
     synchronized {
       if (!map.contains(mtCase._id)) {
         mtCase.measuringBy = Some(List.empty[String])

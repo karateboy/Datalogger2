@@ -12,7 +12,6 @@ import org.mongodb.scala.result.UpdateResult
 import play.api._
 import play.api.libs.concurrent.InjectedActorSupport
 
-import java.io.File
 import javax.inject._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -340,6 +339,12 @@ object DataCollectManager {
               else
                 Some(values.sum / values.length)
 
+            case MonitorType.TOTAL_FLOW_IN =>
+              Some(values.max)
+
+            case MonitorType.TOTAL_FLOW_OUT =>
+              Some(values.max)
+
             case _ =>
               if (mtCase.acoustic.contains(true)) {
                 val noNanValues = values.filter(v => !v.isNaN)
@@ -375,6 +380,8 @@ object DataCollectManager {
   private var digitalOutputOpt: Option[ActorRef] = None
   private var onceTimer: Option[Cancellable] = None
   private var hourAccumulateRain: Option[Double] = None
+  private var totalFlowIn: Double = 0
+  private var totalFlowOut: Double = 0
 }
 
 @Singleton
@@ -406,6 +413,16 @@ class DataCollectManager @Inject()(config: Configuration,
 
   for (aqiMonitorTypes <- sysConfig.getAqiMonitorTypes)
     AQI.updateAqiTypeMapping(aqiMonitorTypes)
+
+  for (tfIn <- sysConfig.getTotalFlowIn)
+    totalFlowIn = tfIn
+
+  for (tfOut <- sysConfig.getTotalFlowOut)
+    totalFlowOut = tfOut
+
+  // ensure TotalFlowIn/TotalFlowOut
+  monitorTypeOp.ensureRangeType(MonitorType.TOTAL_FLOW_IN, recordOp)
+  monitorTypeOp.ensureRangeType(MonitorType.TOTAL_FLOW_OUT, recordOp)
 
   // ensure calculated types
   MonitorType.calculatedMonitorTypes.foreach(monitorTypeOp.ensureRangeType(_, recordOp))
@@ -790,7 +807,35 @@ class DataCollectManager @Inject()(config: Configuration,
                 mtd
           }
 
-        val fullDataList = rangeCheckedDataList ++ MonitorType.getCalculatedMonitorTypeData(dataList, now)
+        def getMtValue(mt: String) = rangeCheckedDataList.find(mtd => mtd.mt == mt).map(_.value)
+
+        def getRounded(v: Double): Double =
+          "%.2f".format(v).toDouble
+
+        def getTotalFlowIn: Double = {
+          val flowIn = getMtValue("FLOW_IN")
+          DataCollectManager.totalFlowIn += flowIn.getOrElse(0d) / 60
+          DataCollectManager.totalFlowIn = getRounded(DataCollectManager.totalFlowIn)
+          sysConfig.setTotalFlowIn(DataCollectManager.totalFlowIn)
+          DataCollectManager.totalFlowIn
+        }
+
+        def getTotalFlowOut: Double = {
+          val flowIn = getMtValue("FLOW_OUT")
+          DataCollectManager.totalFlowOut += flowIn.getOrElse(0d) / 60
+          DataCollectManager.totalFlowOut = getRounded(DataCollectManager.totalFlowOut)
+          sysConfig.setTotalFlowOut(DataCollectManager.totalFlowOut)
+          DataCollectManager.totalFlowOut
+        }
+
+        val flowDataList = List(MonitorTypeData(MonitorType.TOTAL_FLOW_IN, getTotalFlowIn, MonitorStatus.NormalStat),
+          MonitorTypeData(MonitorType.TOTAL_FLOW_IN, getTotalFlowIn, MonitorStatus.NormalStat),
+          MonitorTypeData(MonitorType.TOTAL_FLOW_OUT, getTotalFlowOut, MonitorStatus.NormalStat),
+        )
+        sysConfig.setTotalFlowIn(DataCollectManager.totalFlowIn)
+        sysConfig.setTotalFlowOut(DataCollectManager.totalFlowOut)
+
+        val fullDataList = rangeCheckedDataList ++ MonitorType.getCalculatedMonitorTypeData(dataList, now) ++ flowDataList
 
         // Update monitor location
         for {lat <- fullDataList.find(_.mt == MonitorType.LAT)

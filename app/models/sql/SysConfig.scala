@@ -276,4 +276,32 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
     val ret = set(HOUR_CALCULATION_RULES, Json.toJson(rules).toString())
     UpdateResult.acknowledged(ret, ret, null)
   }
+
+  override def getTotalFlowIn: Future[Double] = Future {
+    val valueOpt = get(TOTAL_FLOW_IN)
+    val ret =
+      for (value <- valueOpt) yield
+        value.v.toDouble
+
+    ret.getOrElse(0.0d)
+  }
+
+  override def setTotalFlowIn(value: Double): Future[UpdateResult] = Future {
+    val ret = set(TOTAL_FLOW_IN, value.toString)
+    UpdateResult.acknowledged(ret, ret, null)
+  }
+
+  override def getTotalFlowOut: Future[Double] = Future {
+    val valueOpt = get(TOTAL_FLOW_OUT)
+    val ret =
+      for (value <- valueOpt) yield
+        value.v.toDouble
+
+    ret.getOrElse(0.0d)
+  }
+
+  override def setTotalFlowOut(value: Double): Future[UpdateResult] = Future {
+    val ret = set(TOTAL_FLOW_OUT, value.toString)
+    UpdateResult.acknowledged(ret, ret, null)
+  }
 }
