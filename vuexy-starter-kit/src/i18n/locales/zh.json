@@ -34,6 +34,7 @@
   "Normal": "正常",
   "OverStandard": "HH Alarm",
   "HighAlarm": "High Alarm",
+  "LowAlarm": "Low Alarm",
   "ZeroCalibration": "零點校正",
   "SpanCalibration": "全幅校正",
   "MaintainStat": "維修",
