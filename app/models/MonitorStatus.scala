@@ -33,6 +33,7 @@ object MonitorStatus {
   val NormalStat = "010"
   val OverNormalStat = "011"
   val HighAlarmStat = "012"
+  val LowAlarmStat = "013"
   val ZeroCalibrationStat = "020"
   val SpanCalibrationStat = "021"
   val CalibrationDeviation = "022"
@@ -104,7 +105,7 @@ object MonitorStatus {
 
   def isValid(s: String): Boolean = {
     val tagInfo = getTagInfo(s)
-    val VALID_STATS = List(NormalStat, OverNormalStat, HighAlarmStat).map(getTagInfo)
+    val VALID_STATS = List(NormalStat, OverNormalStat, HighAlarmStat, LowAlarmStat).map(getTagInfo)
 
     tagInfo.statusType match {
       case StatusType.Internal =>

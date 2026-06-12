@@ -13,6 +13,7 @@ trait MonitorStatusDB {
     MonitorStatus(NormalStat, "Normal", 11),
     MonitorStatus(OverNormalStat, "OverStandard", 9),
     MonitorStatus(HighAlarmStat, "HighAlarm", 10),
+    MonitorStatus(LowAlarmStat, "LowAlarm", 10),
     MonitorStatus(ZeroCalibrationStat, "ZeroCalibration", 5),
     MonitorStatus(SpanCalibrationStat, "SpanCalibration", 6),
     MonitorStatus(MaintainStat, "MaintainStat", 3),

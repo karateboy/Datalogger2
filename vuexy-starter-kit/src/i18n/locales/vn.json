@@ -34,6 +34,7 @@
   "Normal": "Bình thường",
   "OverStandard": "Cảnh báo HH",
   "HighAlarm": "Cảnh báo cao",
+  "LowAlarm": "Cảnh báo thấp",
   "ZeroCalibration": "Hiệu chuẩn không",
   "SpanCalibration": "Hiệu chuẩn phạm vi",
   "MaintainStat": "Bảo trì",
