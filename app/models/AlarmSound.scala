@@ -42,14 +42,22 @@ class AlarmSound @Inject()(environment: Environment) extends LineListener {
   logger.info("AlarmSound init()")
 
   def play(): Unit = {
-    val (clip, stream) = getAudioClip
-    audioClip = clip
-    audioStream = stream
-    audioClip.start()
+    synchronized{
+      if(audioClip != null)
+        audioClip.stop()
+
+      val (clip, stream) = getAudioClip
+      audioClip = clip
+      audioStream = stream
+      audioClip.start()
+    }
   }
 
   def stop(): Unit = {
-    audioClip.stop()
+    synchronized{
+      audioClip.stop()
+    }
+
   }
 
   override def finalize(): Unit = {
