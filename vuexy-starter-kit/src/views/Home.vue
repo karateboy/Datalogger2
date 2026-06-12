@@ -305,7 +305,7 @@ export default Vue.extend({
           },
           yAxis: yAxisList,
           time: {
-            timezoneOffset: -480,
+            timezoneOffset: -420,
           },
           exporting: {
             enabled: false,
@@ -392,7 +392,7 @@ export default Vue.extend({
         },
       }
       ret.time = {
-        timezoneOffset: -480,
+        timezoneOffset: -420,
       }
       ret.exporting = {
         enabled: false,
