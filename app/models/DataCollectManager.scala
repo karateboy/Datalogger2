@@ -510,8 +510,15 @@ class DataCollectManager @Inject()(config: Configuration,
             }
           }
         }
-
-
+      for (zd_law <- mtCase.zd_law; v <- value) {
+        if (v < zd_law) {
+          val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, value)} L Alarm (${monitorTypeOp.format(mt, mtCase.zd_law)})"
+          alarmOp.log(alarmOp.src(mt), Alarm.Level.ERR, msg)
+          overThreshold = true
+          alarmSound.play()
+          mtCase.overLawSignalType.foreach(signalType => self ! WriteSignal(signalType, bit = true))
+        }
+      }
     }
     overThreshold
   }
