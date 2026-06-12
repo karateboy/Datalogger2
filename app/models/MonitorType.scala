@@ -112,10 +112,7 @@ object MonitorType {
 
 
 
-  val DailyAvgMonitorTypeMap: Map[String, String] = Map(
-    PM10 -> PM10D,
-    PM25 -> PM25D
-  )
+  val DailyAvgMonitorTypeMap: Map[String, String] = Map.empty
   val DailyAvgInputMonitorTypes: Seq[String] = DailyAvgMonitorTypeMap.keys.toSeq
   val DailyAvgTargetMonitorTypes: Seq[String] = DailyAvgMonitorTypeMap.values.toSeq
 
