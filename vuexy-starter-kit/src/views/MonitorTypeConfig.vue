@@ -236,12 +236,16 @@ export default Vue.extend({
           label: this.$i18n.t('precision'),
         },
         {
-          key: 'std_law',
-          label: 'HH Alarm',
+          key: 'zd_law',
+          label: 'L Alarm',
         },
         {
           key: 'span',
           label: 'H Alarm',
+        },
+        {
+          key: 'std_law',
+          label: 'HH Alarm',
         },
         {
           key: 'overLawSignalType',

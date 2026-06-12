@@ -34,6 +34,7 @@
   "Normal": "Normal",
   "OverStandard": "HH Alarm",
   "HighAlarm": "High Alarm",
+  "LowAlarm": "Low Alarm",
   "ZeroCalibration": "Zero Calibration",
   "SpanCalibration": "SpanCalibration",
   "MaintainStat": "Maintenance",

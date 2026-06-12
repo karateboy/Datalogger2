@@ -510,8 +510,15 @@ class DataCollectManager @Inject()(config: Configuration,
             }
           }
         }
-
-
+      for (zd_law <- mtCase.zd_law; v <- value) {
+        if (v < zd_law) {
+          val msg = s"${mtCase.desp}: ${monitorTypeOp.format(mt, value)} L Alarm (${monitorTypeOp.format(mt, mtCase.zd_law)})"
+          alarmOp.log(alarmOp.src(mt), Alarm.Level.ERR, msg)
+          overThreshold = true
+          alarmSound.play()
+          mtCase.overLawSignalType.foreach(signalType => self ! WriteSignal(signalType, bit = true))
+        }
+      }
     }
     overThreshold
   }
@@ -771,7 +778,9 @@ class DataCollectManager @Inject()(config: Configuration,
             mtd =>
               if (mtd.status == MonitorStatus.NormalStat) {
                 val mtCase = monitorTypeOp.map(mtd.mt)
-                if (mtd.value > mtCase.span.getOrElse(Double.MaxValue))
+                if (mtd.value < mtCase.zd_law.getOrElse(Double.MinValue))
+                  mtd.copy(status = MonitorStatus.LowAlarmStat)
+                else if (mtd.value > mtCase.span.getOrElse(Double.MaxValue))
                   mtd.copy(status = MonitorStatus.HighAlarmStat)
                 else if (mtd.value > mtCase.std_law.getOrElse(Double.MaxValue))
                   mtd.copy(status = MonitorStatus.OverNormalStat)
