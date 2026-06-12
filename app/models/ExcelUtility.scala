@@ -266,6 +266,42 @@ class ExcelUtility @Inject()
     finishExcel(reportFilePath, pkg, wb)
   }
 
+  def exportDailyReport2(dateTime: DateTime, dailyReport: DisplayReport) = {
+    val (reportFilePath, pkg, wb) = prepareTemplate("dailyReport2.xlsx")
+    val sheet = wb.getSheetAt(0)
+
+    def setValue(cell: Cell, v: String): Unit = {
+      try {
+        val d = BigDecimal(v, MathContext.DECIMAL32)
+        cell.setCellValue(d.doubleValue())
+      } catch {
+        case _: Throwable =>
+          cell.setCellValue(v)
+      }
+    }
+
+    for ((_, mtIdx) <- dailyReport.columnNames.zipWithIndex) {
+      for (hr <- 0 to 23) {
+        val row = sheet.getRow(3 + hr)
+        val cell = row.getCell(mtIdx + 1)
+        val mtHrData = dailyReport.rows(hr).cellData(mtIdx)
+        setValue(cell, mtHrData.v)
+      }
+    }
+
+    for ((statusRowData, statusIdx) <- dailyReport.statRows.zipWithIndex if statusIdx < 3) {
+      val row = sheet.getRow(statusIdx + 3 + dailyReport.rows.size)
+      for (mtIdx <- dailyReport.columnNames.indices) {
+        val valueCell = row.getCell(mtIdx + 1)
+        setValue(valueCell, statusRowData.cellData(mtIdx).v)
+      }
+    }
+
+    sheet.setForceFormulaRecalculation(true)
+    finishExcel(reportFilePath, pkg, wb)
+  }
+
+
   def exportDisplayReport(title: String, displayReport: DisplayReport, monthlyReport: Boolean = true) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("monthlyReport.xlsx")
     val evaluator = wb.getCreationHelper().createFormulaEvaluator()

@@ -48,10 +48,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
 
       val reportType = PeriodReport.withName(reportTypeStr)
       val outputType = OutputType.withName(outputTypeStr)
-      val mtList = if (userInfo.isAdmin)
-        monitorTypeOp.measuringList
-      else
-        monitorTypeOp.measuringList filter group.monitorTypes.contains
+      val mtList = Seq("TEMP", "FLOW_OUT", "COLOR", "TP", "TN", "FT007_OUT", "FT502_IN", "PH", "BOD", "NH4", "COD", "TSS", "FLOW_IN")
 
       reportType match {
         case PeriodReport.DailyReport =>
@@ -114,7 +111,7 @@ class Report @Inject()(monitorTypeOp: MonitorTypeDB,
             Ok(Json.toJson(dailyReport))
           else {
             val (title, excelFile) =
-              ("DailyReport" + startDate.toString("YYYYMMdd"), excelUtility.exportDailyReport(startDate, dailyReport))
+              ("DailyReport" + startDate.toString("YYYYMMdd"), excelUtility.exportDailyReport2(startDate, dailyReport))
 
             Ok.sendFile(excelFile, fileName = _ =>
               Some(s"$title.xlsx"),
