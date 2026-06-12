@@ -280,6 +280,8 @@ class ExcelUtility @Inject()
       }
     }
 
+    val dateCell = sheet.getRow(1).getCell(14)
+    dateCell.setCellValue(dateTime.toDate)
     for ((_, mtIdx) <- dailyReport.columnNames.zipWithIndex) {
       for (hr <- 0 to 23) {
         val row = sheet.getRow(3 + hr)
