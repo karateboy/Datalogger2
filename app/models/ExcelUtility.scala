@@ -291,9 +291,11 @@ class ExcelUtility @Inject()
       }
     }
 
+    val excludeTotalFlow = dailyReport.columnNames.reverse.drop(2).reverse
+
     for ((statusRowData, statusIdx) <- dailyReport.statRows.zipWithIndex if statusIdx < 3) {
       val row = sheet.getRow(statusIdx + 3 + dailyReport.rows.size)
-      for (mtIdx <- dailyReport.columnNames.indices) {
+      for (mtIdx <- excludeTotalFlow.indices) {
         val valueCell = row.getCell(mtIdx + 1)
         setValue(valueCell, statusRowData.cellData(mtIdx).v)
       }
