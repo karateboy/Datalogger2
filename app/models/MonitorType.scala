@@ -4,6 +4,7 @@ import models.DataCollectManager.MonitorTypeData
 
 import java.time.ZoneId
 import java.util.Date
+import scala.collection.JavaConverters._
 
 case class MonitorTypeMore(rangeMin: Option[Double] = None,
                            rangeMax: Option[Double] = None)
@@ -96,6 +97,7 @@ object MonitorType {
   val PH_RAIN = "PH_RAIN"
   val LEQA = "LEQA"
   val LEQZ = "LEQZ"
+  val LFN = "LFN"
 
   var rangeOrder = 0
   val SIGNAL = "SIGNAL"
@@ -109,7 +111,6 @@ object MonitorType {
   val WD10 = "WD10"
   val PM10D = "PM10D"
   val PM25D = "PM25D"
-
 
 
   val DailyAvgMonitorTypeMap: Map[String, String] = Map(
@@ -126,6 +127,7 @@ object MonitorType {
   /*
   * GeneratingFunction(required MonitorTypes, generated MonitorType, rawData)
   * */
+  val lfnRequiredMonitorTypoes = Seq("S1_5", "S1_6", "S1_7", "S1_8", "S1_9", "S1_10", "S1_11", "S1_12", "S1_13", "S1_14", "S1_15")
   private val calculatedMonitorTypeList: List[CalculatedMonitorType] =
     List(
       CalculatedMonitorType(Seq(LEQA), LDN, (mtDataList, now) =>
@@ -140,6 +142,18 @@ object MonitorType {
             else
               MonitorTypeData(LDN, mtData.value, mtData.status)
           }
+      ),
+      CalculatedMonitorType(lfnRequiredMonitorTypoes, LFN,
+        (mtDataList, now) => {
+          val aWeightings = Seq(-50.5, -44.7, -39.4, -34.6, -30.2, -26.2, -22.5, -19.1, -16.1, -13.4, -10.9)
+          val mtMap = mtDataList.map(dl=>dl.mt->dl).toMap
+          val values = lfnRequiredMonitorTypoes.map(mtMap(_).value)
+          val statuses = lfnRequiredMonitorTypoes.map(mtMap(_).status)
+          val aWeightingValues = values.zipWithIndex.map(pair=>pair._1 + aWeightings(pair._2))
+          val lfn = 10 * Math.log10(aWeightingValues.map(v => Math.pow(10, v / 10)).sum / aWeightingValues.size)
+
+          Some(MonitorTypeData(LFN, lfn, statuses.head))
+        }
       ),
       CalculatedMonitorType(Seq(WIN_SPEED), WS_SPEED, (mtDataList, _) =>
         for (target <- mtDataList.find(_.mt == WIN_SPEED)) yield
@@ -171,7 +185,9 @@ object MonitorType {
         MonitorTypeData(mtRecord.mtName, value, mtRecord.status)
     }
 
-    val calculatedMtd = calculatedMonitorTypeList.flatMap { mt => mt.generator(mtData, now) }
+    val mtList = mtData.map(_.mt)
+    val qualifiedMtList = calculatedMonitorTypeList.filter(cmt=>cmt.requiredMonitorTypes.forall(mtList.contains))
+    val calculatedMtd = qualifiedMtList.flatMap { mt => mt.generator(mtData, now) }
     calculatedMtd map { mtd => MtRecord(mtd.mt, Some(mtd.value), mtd.status) }
   }
 

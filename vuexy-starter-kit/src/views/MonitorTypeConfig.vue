@@ -205,6 +205,7 @@ export default Vue.extend({
           if (v === 'WD_SPEED' || v === 'WD_DIR') return `${v} (向量計算)`
           else return v
         },
+        sortable: true
       },
       {
         key: 'desp',
