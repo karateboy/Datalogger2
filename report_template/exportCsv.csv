@@ -1,0 +1,10 @@
+[Data]
+Tagname;TimeStamp;Value;DataQuality
+KHI--KHI.NOx;[dateTime];[NOX_value];Good
+KHI--KHI.SO2;[dateTime];[SO2_value];Good
+KHI--KHI.Temp;[dateTime];[TEMP_value];Good
+KHI--KHI.O2;[dateTime];[O2_value];Good
+KHI--KHI.P;[dateTime];[PRESS_value];Good
+KHI--KHI.PM;[dateTime];[PM_value];Good
+KHI--KHI.Flow;[dateTime];[FLOW_value];Good
+KHI--KHI.CO;[dateTime];[CO_value];Good
