@@ -484,6 +484,9 @@ class DataCollectManager @Inject()(config: Configuration,
 
   private val csvExporterConfig = CsvExporter.getConfig(config).getOrElse(CsvExporterConfig(enable = false, "", Seq.empty[String], ""))
   logger.info(csvExporterConfig.toString)
+  if(csvExporterConfig.test)
+    CsvExporter.exportCsv(DateTime.now(),
+      RecordList.factory(DateTime.now(), Seq.empty, Monitor.activeId), csvExporterConfig, environment)
 
   logger.info("DataCollect manager started")
 

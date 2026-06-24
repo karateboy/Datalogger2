@@ -10,15 +10,17 @@ import scala.io.Source
 
 object CsvExporter {
   val logger = Logger(getClass)
-  case class CsvExporterConfig(enable: Boolean, dir: String, mtList: Seq[String], filename: String)
+  case class CsvExporterConfig(enable: Boolean, dir: String, mtList: Seq[String], filename: String, test:Boolean = true)
 
   def getConfig(configuration: Configuration): Option[CsvExporterConfig] = {
     for {config <- configuration.getOptional[Configuration]("csvExporter")
          enable <- config.getOptional[Boolean]("enable")
          dir <- config.getOptional[String]("dir")
          mtList <- config.getOptional[Seq[String]]("mtList")
-         filename <- config.getOptional[String]("filename")} yield
-      CsvExporterConfig(enable, dir, mtList, filename)
+         filename <- config.getOptional[String]("filename")
+         test <- config.getOptional[Boolean]("test")
+         } yield
+      CsvExporterConfig(enable, dir, mtList, filename, test)
   }
 
 
