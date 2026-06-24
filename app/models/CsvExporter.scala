@@ -10,7 +10,7 @@ import scala.io.Source
 
 object CsvExporter {
   val logger = Logger(getClass)
-  case class CsvExporterConfig(enable: Boolean, dir: String, mtList: Seq[String], filename: String, test:Boolean = true)
+  case class CsvExporterConfig(enable: Boolean, dir: String, mtList: Seq[String], filename: String, test:Boolean = false)
 
   def getConfig(configuration: Configuration): Option[CsvExporterConfig] = {
     for {config <- configuration.getOptional[Configuration]("csvExporter")
