@@ -482,11 +482,8 @@ class DataCollectManager @Inject()(config: Configuration,
   if (LoggerConfig.config.autoExport)
     self ! ExportDaily5MinReport(DateTime.yesterday().withTimeAtStartOfDay())
 
-  private val csvExporterConfig = CsvExporter.getConfig(config).getOrElse(CsvExporterConfig(enable = false,"",Seq.empty[String], ""))
+  private val csvExporterConfig = CsvExporter.getConfig(config).getOrElse(CsvExporterConfig(enable = false, "", Seq.empty[String], ""))
   logger.info(csvExporterConfig.toString)
-
-  if(csvExporterConfig.enable)
-    CsvExporter.exportCsv(DateTime.now, RecordList.factory(DateTime.now, Seq.empty,Monitor.activeId), csvExporterConfig, environment)
 
   logger.info("DataCollect manager started")
 
@@ -970,7 +967,8 @@ class DataCollectManager @Inject()(config: Configuration,
         val alarms = alarmRuleDb.checkAlarm(tableType.min, recordList, alarmRules)(monitorOp, monitorTypeOp, alarmOp)
         alarms.foreach(ar => alarmOp.log(ar.src, ar.level, ar.desc, 0))
 
-        if(csvExporterConfig.enable)
+        val now = current.minusMinutes(1)
+        if (csvExporterConfig.enable && now.getMinuteOfHour % 5 == 0)
           CsvExporter.exportCsv(current.minusMinutes(1), recordList, csvExporterConfig, environment)
 
         val f = recordOp.upsertRecordChecked(recordOp.MinCollection)(recordList)
