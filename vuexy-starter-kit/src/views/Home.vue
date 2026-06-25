@@ -23,7 +23,7 @@
           head-variant="light"
           responsive
           small
-          style="max-height: 500px"
+          style="max-height: 700px"
         >
           <template #cell(index)="data">
             {{ data.index + 1 }}
@@ -126,6 +126,12 @@
 .highcharts-container,
 .highcharts-container svg {
   width: 100% !important;
+  height: 100% !important;
+}
+
+#realtimeChart {
+  height: 100%;
+  width: 100%;
 }
 
 .map-label {
