@@ -1,7 +1,9 @@
 [Data]
 Tagname;TimeStamp;Value;DataQuality
-NOU--NOU.pH;[dateTime];[PH_value];Good
-NOU--NOU.TSS;[dateTime];[TSS_value];Good
-NOU--NOU.TEMP;[dateTime];[TEMP_value];Good
-NOU--NOU.FLOWOUT;[dateTime];[FLOW_OUT_value];Good
-NOU--NOU.FLOWIN;[dateTime];[FLOW_IN_value];Good
+N--N.COD;[dateTime];[COD_value];Good
+N--N.pH;[dateTime];[PH_value];Good
+N--N.TSS;[dateTime];[TSS_value];Good
+N--N.TEMP;[dateTime];[TEMP_value];Good
+N--N.FLOWOUT;[dateTime];[FLOW_OUT_value];Good
+N--N.FLOWIN;[dateTime];[FLOW_IN_value];Good
+N--N.NH4;[dateTime];[NH4_value];Good
