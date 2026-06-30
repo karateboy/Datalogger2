@@ -150,7 +150,7 @@ object MonitorType {
           val values = lfnRequiredMonitorTypoes.map(mtMap(_).value)
           val statuses = lfnRequiredMonitorTypoes.map(mtMap(_).status)
           val aWeightingValues = values.zipWithIndex.map(pair=>pair._1 + aWeightings(pair._2))
-          val lfn = 10 * Math.log10(aWeightingValues.map(v => Math.pow(10, v / 10)).sum / aWeightingValues.size)
+          val lfn = 10 * Math.log10(aWeightingValues.map(v => Math.pow(10, v / 10)).sum)
 
           Some(MonitorTypeData(LFN, lfn, statuses.head))
         }
