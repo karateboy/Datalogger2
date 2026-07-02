@@ -484,7 +484,7 @@ class DataCollectManager @Inject()(config: Configuration,
 
   private val csvExporterConfig = CsvExporter.getConfig(config).getOrElse(CsvExporterConfig(enable = false, "", Seq.empty[String], ""))
   logger.info(csvExporterConfig.toString)
-  if(csvExporterConfig.test)
+  if (csvExporterConfig.test)
     CsvExporter.exportCsv(DateTime.now(),
       RecordList.factory(DateTime.now(), Seq.empty, Monitor.activeId), csvExporterConfig, environment)
 
@@ -776,8 +776,15 @@ class DataCollectManager @Inject()(config: Configuration,
             val calibratorState = instrumentCalibratorMap(instId)
             calibratorState.calibrator ! reportData
             reportData.dataList(monitorTypeOp).map(_.copy(status = calibratorState.state))
-          } else
-            reportData.dataList(monitorTypeOp)
+          } else {
+            val original = reportData.dataList(monitorTypeOp)
+            original map (mtd => if (mtd.mt != MonitorType.PRESS)
+              mtd
+            else {
+              val value = ((mtd.value / 13.6) + 760) * 0.1322
+              mtd.copy(value = value)
+            })
+          }
 
         // Check for monitor type range
         val rangeCheckedDataList =
