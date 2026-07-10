@@ -277,7 +277,7 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
           MonitorTypeCollectorStatus.map(mt)
         else {
           if (chCfg.repairMode.getOrElse(false))
-            MonitorStatus.MaintainStat
+            MonitorStatus.MaintenanceStat
           else
             MonitorStatus.NormalStat
         }
@@ -305,7 +305,7 @@ class Adam4000Collector @Inject()(alarmOp: AlarmDB)
       for (mt <- cfg.monitorType) {
         val value: Double = Integer.decode("0x" + str.substring(1).trim).toDouble * cfg.multiplier.getOrElse(1.0)
         val status = if (cfg.repairMode.getOrElse(false))
-          MonitorStatus.MaintainStat
+          MonitorStatus.MaintenanceStat
         else
           MonitorStatus.NormalStat
 

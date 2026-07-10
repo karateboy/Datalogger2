@@ -342,10 +342,33 @@ class HomeController @Inject()(
       ids.map { id =>
         instrumentOp.getInstrument(id).map { inst =>
           val newState =
-            if (inst.state == MonitorStatus.MaintainStat)
-              MonitorStatus.NormalStat
+            if (inst.state != MonitorStatus.MaintenanceStat)
+              MonitorStatus.MaintenanceStat
             else
-              MonitorStatus.MaintainStat
+              MonitorStatus.NormalStat
+
+          dataCollectManagerOp.setInstrumentState(id, newState)
+        }
+      }
+    } catch {
+      case ex: Throwable =>
+        logger.error(ex.getMessage, ex)
+        Ok(Json.obj("ok" -> false, "msg" -> ex.getMessage))
+    }
+
+    Ok(Json.obj("ok" -> true))
+  }
+
+  def toggleRepairInstrument(instruments: String): Action[AnyContent] = security.Authenticated {
+    val ids = instruments.split(",")
+    try {
+      ids.map { id =>
+        instrumentOp.getInstrument(id).map { inst =>
+          val newState =
+            if (inst.state != MonitorStatus.RepairStat)
+              MonitorStatus.RepairStat
+            else
+              MonitorStatus.NormalStat
 
           dataCollectManagerOp.setInstrumentState(id, newState)
         }
@@ -568,7 +591,7 @@ class HomeController @Inject()(
   def setSignal(mtId: String, bit: Boolean): Action[AnyContent] = security.Authenticated {
     implicit request =>
       val mtCase = monitorTypeOp.map(mtId)
-      if(mtCase.span.isEmpty)
+      if (mtCase.span.isEmpty)
         dataCollectManagerOp.writeSignal(mtId, bit)
       else
         dataCollectManagerOp.toggleSignal(mtId, mtCase.span.get.toInt)
@@ -1073,7 +1096,7 @@ class HomeController @Inject()(
   }
 
   def getHourCalculationRules: Action[AnyContent] = security.Authenticated {
-      Ok(Json.toJson(HourCalculationRule.getRules))
+    Ok(Json.toJson(HourCalculationRule.getRules))
   }
 
   def setHourCalculationRules(): Action[JsValue] = security.Authenticated(parse.json) {

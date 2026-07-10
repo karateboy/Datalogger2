@@ -28,6 +28,15 @@
               :disabled="selected.length === 0"
               @click="toggleMaintenanceMode"
             >
+              切換保養
+            </b-button>
+            <b-button
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              variant="primary"
+              class="mr-1"
+              :disabled="selected.length === 0"
+              @click="toggleRepairMode"
+            >
               切換維修
             </b-button>
             <b-button
@@ -252,6 +261,13 @@ export default Vue.extend({
     async toggleMaintenanceMode() {
       const res = await axios.put(
         `/ToggleMaintainInstrument/${this.selected[0]._id}`,
+        {},
+      )
+      this.showResult(res.data.ok)
+    },
+    async toggleRepairMode() {
+      const res = await axios.put(
+        `/ToggleRepairInstrument/${this.selected[0]._id}`,
         {},
       )
       this.showResult(res.data.ok)

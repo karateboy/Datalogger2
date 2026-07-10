@@ -51,7 +51,7 @@ class MoxaE1240Collector @Inject()
           MonitorTypeCollectorStatus.map(mt)
         else {
           if (chCfg.repairMode.getOrElse(false))
-            MonitorStatus.MaintainStat
+            MonitorStatus.MaintenanceStat
           else
             collectorState
         }

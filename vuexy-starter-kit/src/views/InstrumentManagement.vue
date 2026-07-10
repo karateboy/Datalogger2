@@ -63,6 +63,15 @@
               :disabled="selected.length === 0"
               @click="toggleMaintenanceMode"
             >
+              切換保養
+            </b-button>
+            <b-button
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              variant="primary"
+              class="mr-1"
+              :disabled="selected.length === 0"
+              @click="toggleRepairMode"
+            >
               切換維修
             </b-button>
             <b-button

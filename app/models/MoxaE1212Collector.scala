@@ -47,7 +47,7 @@ class MoxaE1212Collector @Inject()
       } yield {
         val v = scale * values(idx)
         val state = if (chCfg.repairMode.isDefined && chCfg.repairMode.get)
-          MonitorStatus.MaintainStat
+          MonitorStatus.MaintenanceStat
         else
           collectorState
 

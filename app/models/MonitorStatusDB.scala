@@ -19,7 +19,8 @@ trait MonitorStatusDB {
     MonitorStatus(Auditing,"查核", 2),
     MonitorStatus(CalibrationResume, "校正恢復", InternalPriorityMax),
     MonitorStatus(InvalidDataStat, "無效數據", 7),
-    MonitorStatus(MaintainStat, "維修保養", 3),
+    MonitorStatus(MaintenanceStat, "維修", 3),
+    MonitorStatus(RepairStat, "保養", 3),
     MonitorStatus(DataLost, "斷線", 8),
     MonitorStatus(NotActivated, "儀器未啟用", 1))
 

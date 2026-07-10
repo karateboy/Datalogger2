@@ -74,7 +74,7 @@ class Adam6017Collector @Inject()
           MonitorTypeCollectorStatus.map(mt)
         else {
           if (chCfg.repairMode.getOrElse(false))
-            MonitorStatus.MaintainStat
+            MonitorStatus.MaintenanceStat
           else
             collectorState
         }

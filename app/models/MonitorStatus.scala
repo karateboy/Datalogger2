@@ -39,7 +39,8 @@ object MonitorStatus {
   val Auditing = "023"
   val CalibrationResume = "026"
   val InvalidDataStat = "030"
-  val MaintainStat = "031"
+  val MaintenanceStat = "031"
+  val RepairStat = "033"
   val DataLost = "040"
   val NotActivated = "000"
 
@@ -129,7 +130,7 @@ object MonitorStatus {
   }
 
   def isMaintenance(s: String): Boolean = {
-    getTagInfo(MaintainStat) == getTagInfo(s)
+    getTagInfo(MaintenanceStat) == getTagInfo(s)
   }
 
   def isManual(s: String): Boolean = {
