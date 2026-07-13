@@ -300,6 +300,13 @@ export default Vue.extend({
         this.showResult(false)
       }
     },
+    async toggleRepairMode() {
+      const res = await axios.put(
+        `/ToggleRepairInstrument/${this.selected[0]._id}`,
+        {},
+      )
+      this.showResult(res.data.ok)
+    },
     async toggleMaintenanceMode() {
       const res = await axios.put(
         `/ToggleMaintainInstrument/${this.selected[0]._id}`,
