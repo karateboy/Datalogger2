@@ -117,7 +117,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                                         currentHourRecords: Seq[MtRecord]): Future[Seq[MtRecord]] = {
 
     for (recordMap <- recordOp.getMtRecordMapFuture(recordOp.HourCollection)
-    (monitor, mtList, current - 24.hour, current)) yield {
+    (monitor, MonitorType.DailyAvgInputMonitorTypes, current - 24.hour, current)) yield {
       val mtMap = mutable.Map.empty[String, mutable.Map[String, ListBuffer[MtRecord]]]
 
       for (mtRecordList <- recordMap.values; mtRecord <- mtRecordList)
@@ -126,11 +126,11 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
       currentHourRecords.foreach(mtRecord => updateStatusMap(mtRecord, mtMap))
 
       val mtDataList = calculateAvgMap(mtMap, alwaysValid = false, monitorTypeDb, dailyAvg = true)
-      val mapDailyMtDataList = mtDataList.map(mtRecord => {
+      val mapDailyMtDataList = mtDataList.flatMap(mtRecord => {
         if (MonitorType.DailyAvgMonitorTypeMap.contains(mtRecord.mtName))
-          mtRecord.copy(mtName = MonitorType.DailyAvgMonitorTypeMap(mtRecord.mtName))
+          Some(mtRecord.copy(mtName = MonitorType.DailyAvgMonitorTypeMap(mtRecord.mtName)))
         else
-          mtRecord
+          None
       })
       mapDailyMtDataList.toSeq
     }
@@ -154,7 +154,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
       val dailyAvgMtRecordsFuture = calculateDayAvgHourRecord(monitor, MonitorType.DailyAvgInputMonitorTypes, current, mtDataList.toSeq)
       for (ruleHourRecordLists <- hourRecordListsFuture; dailyAvgMtRecords <- dailyAvgMtRecordsFuture) {
         val defaultHourRecordList = RecordList.factory(current.minusHours(1).toDate, mtDataList.toSeq ++ dailyAvgMtRecords, monitor)
-        val hourRecordLists = ruleHourRecordLists :+ defaultHourRecordList
+        val hourRecordLists = ruleHourRecordLists.filter(_.mtDataList.nonEmpty) :+ defaultHourRecordList
 
         // Check alarm
         if (checkAlarm) {
