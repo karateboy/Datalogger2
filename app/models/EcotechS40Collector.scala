@@ -20,8 +20,8 @@ object EcotechS40Collector extends AbstractDrv(_id = "EcotechS40", name = "Ecote
   override val logger: Logger = Logger(this.getClass)
   val instrumentStatusKeyList: List[InstrumentStatusType] = List(
     InstrumentStatusType(key = MonitorType.NO, addr = 1, desc = "NO", "ppm"),
-    InstrumentStatusType(key = MonitorType.NO2, addr = 2, desc = "NO2", "ppm"),
-    InstrumentStatusType(key = MonitorType.NOX, addr = 3, desc = "NOX", "ppm"),
+    InstrumentStatusType(key = MonitorType.NOX, addr = 2, desc = "NOX", "ppm"),
+    InstrumentStatusType(key = MonitorType.NO2, addr = 3, desc = "NO2", "ppm"),
   )
 
   val map: Map[Int, InstrumentStatusType] = instrumentStatusKeyList.map(p => p.addr -> p).toMap
