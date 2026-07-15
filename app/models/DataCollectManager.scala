@@ -206,6 +206,12 @@ object DataCollectManager {
               else
                 Some(values.sum / values.length)
 
+            case MonitorType.TOTAL_FLOW_OUT =>
+              Some(values.max)
+
+            case MonitorType.TOTAL_FLOW_IN =>
+              Some(values.max)
+
             case _ =>
               if (mtCase.acoustic.contains(true)) {
                 val noNanValues = values.filter(v => !v.isNaN)
@@ -981,10 +987,8 @@ class DataCollectManager @Inject()(config: Configuration,
           sysConfig.setTotalFlowOut(DataCollectManager.totalFlowOut)
           DataCollectManager.totalFlowOut
         }
-        val flowDataList = List(
-          MtRecord(MonitorType.TOTAL_FLOW_IN, Some(getTotalFlowIn), MonitorStatus.NormalStat),
-          MtRecord(MonitorType.TOTAL_FLOW_OUT, Some(getTotalFlowOut), MonitorStatus.NormalStat),
-        )
+
+        val flowDataList = List(MtRecord(MonitorType.TOTAL_FLOW_IN, Some(getTotalFlowIn), MonitorStatus.NormalStat))
 
         sysConfig.setTotalFlowIn(DataCollectManager.totalFlowIn)
         sysConfig.setTotalFlowOut(DataCollectManager.totalFlowOut)
