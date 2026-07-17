@@ -4,17 +4,21 @@ import play.api.Logger
 
 import java.io.File
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths, StandardOpenOption}
+import java.nio.file.{Files, Path, Paths, StandardOpenOption}
 import scala.collection.JavaConverters.asScalaBufferConverter
 object ReaderHelper {
   val logger: Logger = Logger(this.getClass)
-  def getParsedFileList(dir: String, filename: String = "parsed.list"): Seq[String] = {
-    val parsedFileName = s"$dir/$filename"
+  def getParsedFileList(dir: String, archiveFile: String = "parsed.list"): Seq[String] = {
+    val parsedFileName = s"$dir/$archiveFile"
+    getParsedFileList(Paths.get(parsedFileName))
+  }
+
+  def getParsedFileList(archiveFile: Path): Seq[String] = {
     try {
-      Files.readAllLines(Paths.get(parsedFileName), StandardCharsets.UTF_8).asScala
+      Files.readAllLines(archiveFile, StandardCharsets.UTF_8).asScala
     } catch {
       case ex: Throwable =>
-        logger.info(s"Cannot open $parsedFileName")
+        logger.info(s"Cannot open $archiveFile")
         Seq.empty[String]
     }
   }
@@ -29,9 +33,22 @@ object ReaderHelper {
     }
   }
 
-  def appendToParsedFileList(dir: String, filePath: String, filename: String = "parsed.list"): Unit = {
+  def removeParsedFileList(archive:Path): Unit = {
     try {
-      Files.write(Paths.get(s"$dir/$filename"), (filePath + "\n").getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+      Files.delete(archive)
+    } catch {
+      case ex: Throwable =>
+        logger.error(s"Cannot delete $archive", ex)
+    }
+  }
+
+  def appendToParsedFileList(dir: String, filePath: String, archiveFile: String = "parsed.list"): Unit = {
+    appendToParsedFileList(filePath, Paths.get(s"$dir/$archiveFile"))
+  }
+
+  def appendToParsedFileList(parsedPath: String, archive: Path): Unit = {
+    try {
+      Files.write(archive, (parsedPath + "\n").getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.APPEND)
     } catch {
       case ex: Throwable =>
         logger.warn(ex.getMessage)

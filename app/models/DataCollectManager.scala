@@ -444,6 +444,9 @@ class DataCollectManager @Inject()(config: Configuration,
     for (readerRef <- VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
       readers.append(readerRef)
 
+    for (readerRef <- ThermoVocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
+      readers.append(readerRef)
+
     for(readerRef <- ImsReader.start(config, context.system, monitorTypeOp = monitorTypeOp, recordOp = recordOp,
       dataCollectManager = self, dataCollectManagerOp = dataCollectManagerOp, environment = environment))
       readers.append(readerRef)
