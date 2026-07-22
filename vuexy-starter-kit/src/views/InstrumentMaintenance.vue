@@ -118,7 +118,7 @@ export default Vue.extend({
       },
       {
         key: '_id',
-        label: '儀器名稱',
+        label: '儀器ID',
         sortable: true,
       },
       {

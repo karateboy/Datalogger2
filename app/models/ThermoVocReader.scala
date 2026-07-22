@@ -152,12 +152,8 @@ class ThermoVocReader(config: VocReaderConfig,
         MonitorStatus.NormalStat
 
       val lines = Files.readAllLines(path, StandardCharsets.UTF_8).asScala
-      val reportTimeOpt: Option[DateTime] = lines.find(line => line.startsWith("Report Time")).map(
-        line =>
-          DateTime.parse(line.split(":")(1).trim, DateTimeFormat.forPattern("YYYYMMddHHmm"))
-      )
-      if(reportTimeOpt.isEmpty)
-        throw new Exception("no reportTime")
+      val filenameTime =
+          DateTime.parse(filename.take(16), DateTimeFormat.forPattern("YYYY_MM_dd HH_mm"))
 
       val mtDataList = mutable.ListBuffer.empty[MtRecord]
       lines.drop(5).filter(_.exists(_.isDigit)) //Only process line with digit
@@ -165,7 +161,7 @@ class ThermoVocReader(config: VocReaderConfig,
           try {
             val pattern = line.split("\\s")
             val mtName = pattern(0).trim
-            val value = pattern(1).toDouble
+            val value = pattern(2).toDouble
             monitorTypeOp.ensureRangeType(mtName, recordOp)
             mtDataList.append(MtRecord(mtName, Some(value), status))
           } catch {
@@ -173,8 +169,8 @@ class ThermoVocReader(config: VocReaderConfig,
               //skip buggy line
           }
         })
-      val reportTime = reportTimeOpt.get
-      val dateTime = reportTime.withMinute(0)
+
+      val dateTime = filenameTime.withMinute(0)
       val f = recordOp.upsertRecordChecked(recordOp.HourCollection)(RecordList.factory(dateTime.toDate, mtDataList, monitorId))
       f onComplete {
         case Success(_) =>
