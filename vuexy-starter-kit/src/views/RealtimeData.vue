@@ -54,13 +54,18 @@ export default {
       items: [],
       item1: [],
       item2: [],
+      vocStatus: [],
       middle: 0,
       timer: 0,
     }
   },
   mounted() {
     this.getRealtimeData()
-    this.timer = setInterval(this.getRealtimeData, 1000)
+    this.getVocStatus()
+    this.timer = setInterval(() => {
+      this.getRealtimeData()
+      this.getVocStatus()
+    }, 1000)
   },
   beforeDestroy() {
     clearInterval(this.timer)
@@ -69,9 +74,18 @@ export default {
     async getRealtimeData() {
       const ret = await axios.get('/MonitorTypeStatusList')
       this.items = ret.data
-      this.middle = Math.floor(this.items.length / 2)
-      this.item1 = this.items.slice(0, this.middle)
-      this.item2 = this.items.slice(this.middle)
+      let full = this.items.concat(this.vocStatus)
+      this.middle = Math.floor(full.length / 2)
+      this.item1 = full.slice(0, this.middle)
+      this.item2 = full.slice(this.middle)
+    },
+    async getVocStatus() {
+      const ret = await axios.get('/VocStatusList')
+      this.vocStatus = ret.data
+      let full = this.items.concat(this.vocStatus)
+      this.middle = Math.floor(full.length / 2)
+      this.item1 = full.slice(0, this.middle)
+      this.item2 = full.slice(this.middle)
     },
   },
 }

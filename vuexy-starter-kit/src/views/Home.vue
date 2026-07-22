@@ -16,7 +16,7 @@
       <b-card border-variant="primary" no-body>
         <b-table
           :fields="fields"
-          :items="realTimeStatus"
+          :items="fullStatus"
           :no-border-collapse="true"
           :sticky-header="true"
           head-row-variant="success"
@@ -272,6 +272,7 @@ export default Vue.extend({
       refreshTimer: 0,
       mtInterestTimer: 0,
       realTimeStatus: Array<MonitorTypeStatus>(),
+      vocStatus: Array<MonitorTypeStatus>(),
       chartSeries: Array<highcharts.SeriesOptionsType>(),
       chart,
       cdxConfig,
@@ -308,6 +309,9 @@ export default Vue.extend({
     },
     activeRecordList(): Array<DisplayRecordList> {
       return this.recordLists.filter(rl => rl._id.monitor === this.activeID)
+    },
+    fullStatus(): Array<MonitorTypeStatus> {
+      return this.realTimeStatus.concat(this.vocStatus)
     },
   },
   async mounted() {
@@ -366,6 +370,7 @@ export default Vue.extend({
     },
     async plotLatestData(): Promise<void> {
       await this.getRealtimeStatus()
+      await this.getVocStatus()
       const now = new Date().getTime()
 
       let chart = this.chart as highcharts.Chart
@@ -391,8 +396,13 @@ export default Vue.extend({
       const ret = await axios.get('/MonitorTypeStatusList')
       this.realTimeStatus = ret.data
     },
+    async getVocStatus(): Promise<void> {
+      const ret = await axios.get('/VocStatusList')
+      this.vocStatus = ret.data
+    },
     async initRealtimeChart(): Promise<boolean> {
       await this.getRealtimeStatus()
+      await this.getVocStatus()
 
       if (this.realTimeStatus.length === 0) return false
 

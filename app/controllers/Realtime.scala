@@ -1,6 +1,7 @@
 package controllers
 
 import com.github.nscala_time.time.Imports._
+import models.ModelHelper.waitReadyResult
 import models._
 import play.api.Logger
 import play.api.libs.json._
@@ -47,7 +48,7 @@ class Realtime @Inject()
           instrumentMap <- instrumentOp.getInstrumentMapFuture()
           dataMap <- dataCollectManagerOp.getLatestData
         } yield {
-          val list = {
+          val list: List[MonitorTypeStatus] = {
             for {
               mt <- monitorTypeOp.measuringList.sortBy(monitorTypeOp.map(_).order)
               recordOpt = dataMap.get(mt)
@@ -100,7 +101,6 @@ class Realtime @Inject()
               }
             }
           }
-
           // filter out not allowed monitorTypes
           val allowedList = if (userInfo.isAdmin)
             list.sortBy(_.order)
@@ -111,6 +111,51 @@ class Realtime @Inject()
         }
 
       result
+  }
+
+  def getMonitorTypeStatusList2: Action[AnyContent] = security.Authenticated.async {
+    implicit request =>
+      implicit val mtsWrite: OWrites[MonitorTypeStatus] = Json.writes[MonitorTypeStatus]
+      val userInfo = security.getUserinfo(request).get
+      val group = groupDB.getGroupByID(userInfo.group).get
+      val remainingActivatedMonitorTypes = monitorTypeOp.rangeList.filter(mt => !monitorTypeOp.measuringList.contains(mt))
+      for (recordMap <- recordDB.getMtRecordMapFuture(recordDB.HourCollection)(Monitor.activeId, remainingActivatedMonitorTypes, DateTime.now().minusHours(1).minusMinutes(30), DateTime.now())) yield {
+        val list: List[MonitorTypeStatus] = for {
+          mt <- remainingActivatedMonitorTypes.sortBy(monitorTypeOp.map(_).order)
+          recordOpt = recordMap.get(mt).flatMap(_.headOption)
+        } yield {
+          val mCase = monitorTypeOp.map(mt)
+          val measuringByStr = mCase.measuringBy.map {
+            instrumentList =>
+              instrumentList.mkString(",")
+          }.getOrElse("??")
+
+          if (recordOpt.isDefined) {
+            val record = recordOpt.get
+            val (overInternal, overLaw) = monitorTypeOp.overStd(mt, record.value)
+            val status =
+              monitorStatusOp.map(record.status).name
+
+            MonitorTypeStatus(_id = mCase._id, desp = mCase.desp, monitorTypeOp.format(mt, record.value),
+              mCase.unit, measuringByStr,
+              status,
+              MonitorStatus.getCssClassStr(record.status, overInternal, overLaw),
+              monitorStatusOp.map(record.status).priority * 100 + mCase.order)
+          } else {
+            MonitorTypeStatus(_id = mCase._id, mCase.desp, monitorTypeOp.format(mt, None),
+              mCase.unit, measuringByStr,
+              "斷線",
+              Seq("disconnect_status"), -1)
+          }
+        }
+        // filter out not allowed monitorTypes
+        val allowedList = if (userInfo.isAdmin)
+          list.sortBy(_.order)
+        else
+          list.filter(mtStatus => group.monitorTypes.contains(mtStatus._id)).sortBy(_.order)
+
+        Ok(Json.toJson(allowedList))
+      }
   }
 
   case class RealtimeAQI(date: Date, aqi: AqiExplainReport)

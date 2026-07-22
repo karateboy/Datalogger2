@@ -85,6 +85,7 @@ GET           /QueryData/:monitor/:monitorType/:tabType/:start/:end             
 
 #Realtime
 GET           /MonitorTypeStatusList                                                               controllers.Realtime.MonitorTypeStatusList()
+GET           /VocStatusList                                                                       controllers.Realtime.getMonitorTypeStatusList2()
 GET           /RealtimeAQI                                                                         controllers.Realtime.getRealtimeAQI()
 GET           /LatestMonitorData                                                                   controllers.Realtime.getLatestMonitorData()
 #Report
