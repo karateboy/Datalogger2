@@ -10,6 +10,7 @@ WE WILL RELEASE FUTURE UPDATES SO IN ORDER TO NOT OVERWRITE YOUR STYLES IT'S BET
   width: 100%;
   padding-bottom: 50%; /* Ratio 16:9 ( 100%/16*9 = 56.25% ) */
 }
+
 .map_container .map_canvas {
   position: absolute;
   top: 0;
@@ -33,49 +34,63 @@ WE WILL RELEASE FUTURE UPDATES SO IN ORDER TO NOT OVERWRITE YOUR STYLES IT'S BET
   color: #000000;
   background-color: #00ff00;
 }
+
 .PSI1 A {
   color: #000000;
 }
+
 .PSI2 {
   color: #000000;
   background-color: #ffff00;
 }
+
 .PSI2 A {
   color: #000000;
 }
+
 .PSI3 {
   color: #ffffff;
   background-color: #ff0000;
 }
+
 .PSI3 A {
   color: #ffffff;
 }
+
 .PSI4 {
   color: #ffffff;
   background-color: #800080;
 }
+
 .PSI4 A {
   color: #ffffff;
 }
+
 .PSI5 {
   color: #ffffff;
   background-color: #633300;
 }
+
 .PSI5 A {
   color: #ffffff;
 }
+
 .PSI1_BG {
   border: outset 1px #a0a0a0;
 }
+
 .PSI2_BG {
   border: outset 1px #a0a0a0;
 }
+
 .PSI3_BG {
   border: outset 1px #a0a0a0;
 }
+
 .PSI4_BG {
   border: outset 1px #a0a0a0;
 }
+
 .PSI5_BG {
   border: outset 1px #a0a0a0;
 }
@@ -146,131 +161,74 @@ WE WILL RELEASE FUTURE UPDATES SO IN ORDER TO NOT OVERWRITE YOUR STYLES IT'S BET
 }
 
 .calibration_status {
-  /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#b4e391+0,61c419+50,b4e391+100;Green+3D */
-  background: #b4e391; /* Old browsers */
-  background: -moz-linear-gradient(
-    top,
-    #b4e391 0%,
-    #61c419 50%,
-    #b4e391 100%
-  ); /* FF3.6-15 */
-  background: -webkit-linear-gradient(
-    top,
-    #b4e391 0%,
-    #61c419 50%,
-    #b4e391 100%
-  ); /* Chrome10-25,Safari5.1-6 */
-  background: linear-gradient(
-    to bottom,
-    #b4e391 0%,
-    #61c419 50%,
-    #b4e391 100%
-  ); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
-  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b4e391', endColorstr='#b4e391',GradientType=0 ); /* IE6-9 */
+  background: #ceffce;
 }
 
 .maintain_status {
-  /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#e570e7+0,c85ec7+47,a849a3+100;Pink+3D+%233 */
-  background: #e570e7; /* Old browsers */
-  background: -moz-linear-gradient(
-    top,
-    #e570e7 0%,
-    #c85ec7 47%,
-    #a849a3 100%
-  ); /* FF3.6-15 */
-  background: -webkit-linear-gradient(
-    top,
-    #e570e7 0%,
-    #c85ec7 47%,
-    #a849a3 100%
-  ); /* Chrome10-25,Safari5.1-6 */
-  background: linear-gradient(
-    to bottom,
-    #e570e7 0%,
-    #c85ec7 47%,
-    #a849a3 100%
-  ); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
-  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#e570e7', endColorstr='#a849a3',GradientType=0 ); /* IE6-9 */
+  background: #c4e1ff;
 }
 
 .abnormal_status {
-  /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#ff3019+0,cf0404+100;Red+3D */
-  background: #ff3019; /* Old browsers */
-  background: -moz-linear-gradient(
-    top,
-    #ff3019 0%,
-    #cf0404 100%
-  ); /* FF3.6-15 */
-  background: -webkit-linear-gradient(
-    top,
-    #ff3019 0%,
-    #cf0404 100%
-  ); /* Chrome10-25,Safari5.1-6 */
-  background: linear-gradient(
-    to bottom,
-    #ff3019 0%,
-    #cf0404 100%
-  ); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
-  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ff3019', endColorstr='#cf0404',GradientType=0 ); /* IE6-9 */
+  background: #ffd2d2;
 }
 
 .auto_audit_status {
   /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#d0e4f7+0,73b1e7+24,0a77d5+50,539fe1+79,87bcea+100;Blue+Pipe+%231 */
   background: #d0e4f7; /* Old browsers */
   background: -moz-linear-gradient(
-    top,
-    #d0e4f7 0%,
-    #73b1e7 24%,
-    #0a77d5 50%,
-    #539fe1 79%,
-    #87bcea 100%
+          top,
+          #d0e4f7 0%,
+          #73b1e7 24%,
+          #0a77d5 50%,
+          #539fe1 79%,
+          #87bcea 100%
   ); /* FF3.6-15 */
   background: -webkit-linear-gradient(
-    top,
-    #d0e4f7 0%,
-    #73b1e7 24%,
-    #0a77d5 50%,
-    #539fe1 79%,
-    #87bcea 100%
+          top,
+          #d0e4f7 0%,
+          #73b1e7 24%,
+          #0a77d5 50%,
+          #539fe1 79%,
+          #87bcea 100%
   ); /* Chrome10-25,Safari5.1-6 */
   background: linear-gradient(
-    to bottom,
-    #d0e4f7 0%,
-    #73b1e7 24%,
-    #0a77d5 50%,
-    #539fe1 79%,
-    #87bcea 100%
+          to bottom,
+          #d0e4f7 0%,
+          #73b1e7 24%,
+          #0a77d5 50%,
+          #539fe1 79%,
+          #87bcea 100%
   ); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
-  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#d0e4f7', endColorstr='#87bcea',GradientType=0 ); /* IE6-9 */
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#d0e4f7', endColorstr='#87bcea', GradientType=0); /* IE6-9 */
 }
 
 .manual_audit_status {
   /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#f1e767+0,feb645+100;Yellow+3D */
   background: #f1e767; /* Old browsers */
   background: -moz-linear-gradient(
-    top,
-    #f1e767 0%,
-    #feb645 100%
+          top,
+          #f1e767 0%,
+          #feb645 100%
   ); /* FF3.6-15 */
   background: -webkit-linear-gradient(
-    top,
-    #f1e767 0%,
-    #feb645 100%
+          top,
+          #f1e767 0%,
+          #feb645 100%
   ); /* Chrome10-25,Safari5.1-6 */
   background: linear-gradient(
-    to bottom,
-    #f1e767 0%,
-    #feb645 100%
+          to bottom,
+          #f1e767 0%,
+          #feb645 100%
   ); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
-  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f1e767', endColorstr='#feb645',GradientType=0 ); /* IE6-9 */
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f1e767', endColorstr='#feb645', GradientType=0); /* IE6-9 */
 }
 
 .stop_status {
-  color:rgb(255, 154, 0);
+  color: rgb(255, 154, 0);
 }
 
 .disconnect_status {
-  color:rgb(153, 0, 0);
+  color: rgb(153, 0, 0);
 }
 
 .st-sort-ascent:before {
@@ -281,9 +239,9 @@ WE WILL RELEASE FUTURE UPDATES SO IN ORDER TO NOT OVERWRITE YOUR STYLES IT'S BET
   content: '\25BC';
 }
 
-body{
+body {
   --font-family-sans-serif: "Montserrat", Helvetica, Arial, serif;
-    --font-family-monospace: "Montserrat", Helvetica, Arial, serif;
+  --font-family-monospace: "Montserrat", Helvetica, Arial, serif;
 }
 
 // Breadcrumb
@@ -294,78 +252,78 @@ body{
 }
 
 .AQI1 {
-	color: #000;
-	background-color: #00e800
+  color: #000;
+  background-color: #00e800
 }
 
 .AQI1 A, .AQI1 a:hover {
-	color: #000
+  color: #000
 }
 
 .AQI2 {
-	color: #000;
-	background-color: #ff0
+  color: #000;
+  background-color: #ff0
 }
 
 .AQI2 A, .AQI2 A:hover {
-	color: #000
+  color: #000
 }
 
 .AQI3 {
-	color: #000;
-	background-color: #ff7e00
+  color: #000;
+  background-color: #ff7e00
 }
 
 .AQI3 A, .AQI3 A:hover {
-	color: #000
+  color: #000
 }
 
 .AQI4 {
-	background-color: red
+  background-color: red
 }
 
 .AQI4 A, .AQI4 A:hover {
-	color: #fff
+  color: #fff
 }
 
 .AQI5 {
-	color: #fff;
-	background-color: #8f3f97
+  color: #fff;
+  background-color: #8f3f97
 }
 
 .AQI5 A, .AQI5 A:hover {
-	color: #fff
+  color: #fff
 }
 
 .AQI6 {
-	color: #fff;
-	background-color: #7e0023
+  color: #fff;
+  background-color: #7e0023
 }
 
 .AQI6 A, .AQI6 A:hover {
-	color: #fff
+  color: #fff
 }
 
 .AQI1_BG {
-	border: outset 1px #a0a0a0
+  border: outset 1px #a0a0a0
 }
 
 .AQI2_BG {
-	border: outset 1px #a0a0a0
+  border: outset 1px #a0a0a0
 }
 
 .AQI3_BG {
-	border: outset 1px #a0a0a0
+  border: outset 1px #a0a0a0
 }
 
 .AQI4_BG {
-	border: outset 1px #a0a0a0
+  border: outset 1px #a0a0a0
 }
 
 .AQI5_BG {
-	border: outset 1px #a0a0a0
+  border: outset 1px #a0a0a0
 }
 
 .AQI6_BG {
-	border: outset 1px #a0a0a0
+  border: outset 1px #a0a0a0
 }

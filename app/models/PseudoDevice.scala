@@ -37,7 +37,7 @@ object PseudoDevice extends AbstractDrv(_id = "PseudoDevice", name = "Pseudo Dev
 
   override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt: Option[AnyRef]): Actor = {
     val f2 = f.asInstanceOf[PseudoDevice.Factory]
-    val config = DeviceConfig.default
+    val config = DeviceConfig.default.copy(monitorTypes = Some(List(MonitorType.NO, MonitorType.NO2, MonitorType.NOX)))
     f2(id, desc = super.description, config, protocol)
   }
 
@@ -57,6 +57,10 @@ class PseudoDeviceCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
     alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
 
+
+  val myLogger = Logger(this.getClass)
+  myLogger.info(s"start PseudoDeviceCollector instId: $instId")
+  myLogger.info(s"desc: $deviceConfig")
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = PseudoDevice.predefinedIST
 

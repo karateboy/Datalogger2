@@ -36,7 +36,7 @@ object MonitorStatus {
   val ZeroCalibrationStat = "020"
   val SpanCalibrationStat = "021"
   val CalibrationDeviation = "022"
-  val Auditing = "023"
+  val AuditStat = "023"
   val CalibrationResume = "026"
   val InvalidDataStat = "030"
   val MaintenanceStat = "031"
@@ -54,7 +54,7 @@ object MonitorStatus {
         TagInfo(StatusType.ManualValid, Some(t), id)
       case 'M' =>
         TagInfo(StatusType.ManualInvalid, Some(t), id)
-      case l =>
+      case t =>
         if (t.isLetter)
           TagInfo(StatusType.Auto, Some(t), id)
         else
@@ -129,8 +129,13 @@ object MonitorStatus {
     CALIBRATION_STATS.contains(getTagInfo(s))
   }
 
+  def isNotActivated(s:String): Boolean = {
+    getTagInfo(s).id == NotActivated
+  }
+
   def isMaintenance(s: String): Boolean = {
-    getTagInfo(MaintenanceStat) == getTagInfo(s)
+    val maintenanceStats = List(MaintenanceStat, RepairStat, AuditStat).map(getTagInfo)
+    maintenanceStats.contains(getTagInfo(s))
   }
 
   def isManual(s: String): Boolean = {
