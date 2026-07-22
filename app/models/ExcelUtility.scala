@@ -45,15 +45,16 @@ class ExcelUtility @Inject()
     val sheet = wb.getSheetAt(0)
     val headerRow = sheet.createRow(0)
     headerRow.createCell(0).setCellValue("時間")
-    val calibrationStyle = wb.createCellStyle()
-    calibrationStyle.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex)
-    calibrationStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND)
+    val statusStyle =
+      for (col <- 0 to 2)
+        yield wb.getSheetAt(1).getRow(0).getCell(col).getCellStyle
+
+    val calibrationStyle = statusStyle(0)
     val manualStyle = wb.createCellStyle()
     manualStyle.setFillForegroundColor(IndexedColors.GOLD.getIndex)
     manualStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND)
-    val maintenanceStyle = wb.createCellStyle()
-    maintenanceStyle.setFillForegroundColor(IndexedColors.LAVENDER.getIndex)
-    maintenanceStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND)
+    val maintenanceStyle = statusStyle(1)
+    val abnormalStyle = statusStyle(2)
 
     for ((series, colIdx) <- chart.series.zipWithIndex) {
       if (series.statusList.nonEmpty) {
@@ -139,6 +140,9 @@ class ExcelUtility @Inject()
                 } else if (MonitorStatus.isMaintenance(status)) {
                   cell.setCellStyle(maintenanceStyle)
                   statusCell.setCellStyle(maintenanceStyle)
+                } else if (MonitorStatus.isError(status)) {
+                  cell.setCellStyle(abnormalStyle)
+                  statusCell.setCellStyle(abnormalStyle)
                 }
               }
           }

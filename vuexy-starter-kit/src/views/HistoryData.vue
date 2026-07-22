@@ -109,7 +109,14 @@
         </b-row>
       </b-form>
     </b-card>
-    <b-card v-show="display" :title="resultTitle">
+    <b-card v-show="display">
+      <b-card-title
+        >{{ resultTitle }}
+        <b-img
+          src="../assets/images/stat_legend.png"
+          class="float-right w-50"
+        ></b-img>
+      </b-card-title>
       <b-table
         striped
         hover

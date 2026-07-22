@@ -165,8 +165,7 @@ export default Vue.extend({
           key: `cellData[${i}].v`,
           label: `${report.columnNames[i]}`,
           sortable: true,
-          tdClass: this.cellDataTd(i),
-          stickyColumn: true,
+          tdClass: this.cellDataTd(i)
         })
       }
       for (const row of report.rows) {
