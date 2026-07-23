@@ -21,7 +21,7 @@ class GroupOp @Inject()(sqlServer: SqlServer) extends GroupDB {
     implicit val session: DBSession = AutoSession
 
     val monitors = group.monitors.mkString(",")
-    val monitorTypes = group.monitorTypes.mkString(",")
+    val monitorTypes = Json.toJson(group.monitorTypes).toString()
     val abilities = Json.toJson(group.abilities).toString()
     val ret =
       sql"""
@@ -78,10 +78,15 @@ class GroupOp @Inject()(sqlServer: SqlServer) extends GroupDB {
 
   private def mapper(rs: WrappedResultSet) = {
     val abilities = Json.parse(rs.string("abilities")).validate[Seq[Ability]].asOpt.getOrElse(Seq.empty[Ability])
+    val monitorTypes = try {
+      Json.parse(rs.string("monitorTypes")).validate[Seq[String]].asOpt.getOrElse(Seq.empty[String])
+    }catch{
+      case _: Throwable => Seq.empty[String]
+    }
     Group(rs.string("id"),
       name = rs.string("name"),
       monitors = rs.string("monitors").split(",").filter(_.nonEmpty),
-      monitorTypes = rs.string("monitorTypes").split(",").filter(_.nonEmpty),
+      monitorTypes = monitorTypes,
       admin = rs.boolean("admin"),
       abilities = abilities,
       parent = rs.stringOpt("parent")

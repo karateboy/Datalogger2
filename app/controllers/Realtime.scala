@@ -119,7 +119,7 @@ class Realtime @Inject()
       val userInfo = security.getUserinfo(request).get
       val group = groupDB.getGroupByID(userInfo.group).get
       val remainingActivatedMonitorTypes = monitorTypeOp.rangeList.filter(mt => !monitorTypeOp.measuringList.contains(mt))
-      for (recordMap <- recordDB.getMtRecordMapFuture(recordDB.HourCollection)(Monitor.activeId, remainingActivatedMonitorTypes, DateTime.now().minusHours(1).minusMinutes(30), DateTime.now())) yield {
+      for (recordMap <- recordDB.getMtRecordMapFuture(recordDB.HourCollection)(Monitor.activeId, remainingActivatedMonitorTypes, DateTime.now().minusHours(2), DateTime.now())) yield {
         val list: List[MonitorTypeStatus] = for {
           mt <- remainingActivatedMonitorTypes.sortBy(monitorTypeOp.map(_).order)
           recordOpt = recordMap.get(mt).flatMap(_.headOption)
