@@ -1064,10 +1064,16 @@ class HomeController @Inject()(
     }
   }
 
+  private case class MonitorStatusInfo(_id: String, name: String, priority: Int, classStr:Seq[String])
+
   def monitorStatusList: Action[AnyContent] = security.Authenticated {
     import MonitorStatus._
     val monitorStatusList = monitorStatusDB.msList.sortBy(_.priority)
-    Ok(Json.toJson(monitorStatusList))
+    val monitorStatusListInfo = monitorStatusList.map(ms =>
+      MonitorStatusInfo(ms._id, ms.name, ms.priority, MonitorStatus.getCssClassStr(ms._id))
+    )
+    implicit val writes: OWrites[MonitorStatusInfo] = Json.writes[MonitorStatusInfo]
+    Ok(Json.toJson(monitorStatusListInfo))
   }
 
   def monitorTypeGroupList: Action[AnyContent] = security.Authenticated.async {

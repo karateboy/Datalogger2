@@ -114,7 +114,7 @@
         >{{ resultTitle }}
         <b-img
           src="../assets/images/stat_legend.png"
-          class="float-right w-50"
+          class="float-right legend"
         ></b-img>
       </b-card-title>
       <b-table
@@ -155,6 +155,11 @@
     </b-card>
   </div>
 </template>
+<style lang="css">
+.legend {
+  width: 30%;
+}
+</style>
 <script lang="ts">
 import Vue from 'vue'
 import DatePicker from 'vue2-datepicker'

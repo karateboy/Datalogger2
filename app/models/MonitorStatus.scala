@@ -85,7 +85,7 @@ object MonitorStatus {
       }
 
     val fgClass =
-      if (overLaw)
+      if (overLaw || tag == OverNormalStat || tag == BelowNormalStat)
         "over_law_std"
       else if (overInternal)
         "over_internal_std"

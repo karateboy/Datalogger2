@@ -2,7 +2,6 @@
   <div>
     <b-card title="狀態碼管理" class="text-center">
       <b-table
-        small
         responsive
         :fields="columns"
         :items="monitorStatusList"
@@ -10,7 +9,6 @@
         selectable
         selected-variant="info"
         bordered
-        sticky-header
         style="max-height: 650px"
         @row-selected="onMsSelected"
       >
@@ -25,7 +23,7 @@
 import Vue from 'vue'
 const Ripple = require('vue-ripple-directive')
 import axios from 'axios'
-import { MonitorType, ThresholdConfig } from './types'
+import { MonitorType, MonitorTypeStatus, ThresholdConfig } from './types'
 import { isNumber } from 'highcharts'
 
 interface MonitorStatus {}
@@ -44,14 +42,23 @@ export default Vue.extend({
       {
         key: '_id',
         label: '代碼',
+        tdClass: (value: string, key: string, item: MonitorTypeStatus) => {
+          return item.classStr
+        },
       },
       {
         key: 'name',
         label: '名稱',
+        tdClass: (value: string, key: string, item: MonitorTypeStatus) => {
+          return item.classStr
+        },
       },
       {
         key: 'priority',
         label: '優先級 (1最優先)',
+        tdClass: (value: string, key: string, item: MonitorTypeStatus) => {
+          return item.classStr
+        },
       },
     ]
     const monitorStatusList = Array<EditMonitorStatus>()

@@ -1,15 +1,33 @@
 <template>
-  <b-card title="即時資訊">
+  <b-card border-variant="primary" no-body>
     <b-row>
       <b-col>
-        <b-table striped hover :fields="fields" :items="item1">
+        <b-table
+          striped
+          hover
+          :fields="fields"
+          :items="item1"
+          head-row-variant="success"
+          head-variant="light"
+          responsive
+          small
+        >
           <template #cell(index)="data">
             {{ data.index + 1 }}
           </template>
         </b-table>
       </b-col>
       <b-col>
-        <b-table striped hover :fields="fields" :items="item2">
+        <b-table
+          striped
+          hover
+          :fields="fields"
+          :items="item2"
+          head-row-variant="success"
+          head-variant="light"
+          responsive
+          small
+        >
           <template #cell(index)="data">
             {{ middle + data.index + 1 }}
           </template>
@@ -21,6 +39,7 @@
 
 <script>
 import axios from 'axios'
+import { MonitorTypeStatus } from '@/views/types'
 
 export default {
   data() {
@@ -49,6 +68,9 @@ export default {
           key: 'status',
           label: '狀態',
           sortable: true,
+          tdClass: (value, key, item) => {
+            return item.classStr
+          },
         },
       ],
       items: [],
