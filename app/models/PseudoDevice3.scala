@@ -26,7 +26,7 @@ object PseudoDevice3 extends AbstractDrv(_id = "PseudoDevice3", name = "Pseudo D
 
   override def verifyParam(json: String): String = json
 
-  override def getDataRegList: List[DataReg] =
+  override def getDataRegList(deviceConfig: DeviceConfig): List[DataReg] =
     predefinedIST.filter(p => dataAddress.contains(p.addr)).map {
       ist =>
         DataReg(monitorType = ist.key, ist.addr, multiplier = 1)
@@ -86,7 +86,7 @@ class PseudoDevice3 @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
 
   override def connectHost: Unit = {}
 
-  override def getDataRegList: Seq[DataReg] = PseudoDevice3.getDataRegList
+  override def getDataRegList(deviceConfig: DeviceConfig): Seq[DataReg] = PseudoDevice3.getDataRegList(deviceConfig)
 
   // zero is 0, span is 1
   override def getCalibrationReg: Option[CalibrationReg] = Some(CalibrationReg(0, 1))

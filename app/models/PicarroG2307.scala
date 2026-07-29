@@ -41,7 +41,7 @@ object PicarroG2307 extends AbstractDrv(_id = "picarroG2307", name = "Picarro G2
     f2(id, desc = super.description, config, protocol)
   }
 
-  override def getDataRegList: List[DataReg] =
+  override def getDataRegList(deviceConfig: DeviceConfig): List[DataReg] =
     predefinedIST.filter(p => dataAddress.contains(p.addr)).map {
       ist =>
         DataReg(monitorType = ist.key, ist.addr, multiplier = 1)
@@ -124,7 +124,7 @@ class PicarroG2307Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusO
     inOpt = Some(new BufferedReader(new InputStreamReader(socket.getInputStream)))
   }
 
-  override def getDataRegList: Seq[DataReg] = predefinedIST.filter(p => dataAddress.contains(p.addr)).map {
+  override def getDataRegList(deviceConfig: DeviceConfig): Seq[DataReg] = predefinedIST.filter(p => dataAddress.contains(p.addr)).map {
     ist =>
       DataReg(monitorType = ist.key, ist.addr, multiplier = 1)
   }

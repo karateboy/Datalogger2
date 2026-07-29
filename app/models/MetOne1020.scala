@@ -17,8 +17,8 @@ import scala.concurrent.{Future, blocking}
 object MetOne1020 extends AbstractDrv(_id = "MetOne1020", name = "MetOne 1020",
   protocols = List(Protocol.serial, Protocol.tcp)) {
   override val logger: Logger = Logger(this.getClass)
-  val instrumentStatusKeyList: List[InstrumentStatusType] = List(
-    InstrumentStatusType(key = MonitorType.PM25, addr = 1, desc = "Conc", "mg/m3"),
+  def instrumentStatusKeyList(mt:String): List[InstrumentStatusType] = List(
+    InstrumentStatusType(key = mt, addr = 1, desc = "Conc", "mg/m3"),
     InstrumentStatusType(key = "Qtot", addr = 2, desc = "Qtot", "m3"),
     InstrumentStatusType(key = "WS", addr = 3, desc = "WS", "MPS"),
     InstrumentStatusType(key = "WD", addr = 4, desc = "WD", "DEG"),
@@ -27,19 +27,31 @@ object MetOne1020 extends AbstractDrv(_id = "MetOne1020", name = "MetOne 1020",
     InstrumentStatusType(key = "Delta", addr = 7, desc = "Delta", "C"),
     InstrumentStatusType(key = "AT", addr = 8, desc = "AT", "C")
   )
-  val instrumentStatusKeyListOld: List[InstrumentStatusType] = List(
-    InstrumentStatusType(key = MonitorType.PM25, addr = 1, desc = "Conc", "mg/m3")
+  def instrumentStatusKeyListOld(mt:String): List[InstrumentStatusType] = List(
+    InstrumentStatusType(key = mt, addr = 1, desc = "Conc", "mg/m3")
   )
-  val map: Map[Int, InstrumentStatusType] = instrumentStatusKeyList.map(p => p.addr -> p).toMap
+
   val dataAddress: List[Int] = List(1)
 
-  override def getDataRegList: List[DataReg] = instrumentStatusKeyList.filter(p => dataAddress.contains(p.addr)).map {
-    ist =>
-      DataReg(monitorType = ist.key, ist.addr, multiplier = 1000)
+  override def getDataRegList(deviceConfig: DeviceConfig): List[DataReg] = {
+    val mt = deviceConfig.monitorTypes.getOrElse(List(MonitorType.PM25)).head
+
+    instrumentStatusKeyList(mt).filter(p => dataAddress.contains(p.addr)).map {
+      ist =>
+        DataReg(monitorType = ist.key, ist.addr, multiplier = 1000)
+    }
   }
 
-  override def getMonitorTypes(param: String): List[String] =
-    List(MonitorType.PM25)
+  override def getMonitorTypes(param: String): List[String] = {
+    try{
+      val config = Json.parse(param).validate[DeviceConfig].asOpt.get
+      config.monitorTypes.getOrElse(List(MonitorType.PM25))
+    }catch{
+      case ex:Throwable=>
+        logger.error("getMonitorTypes error", ex)
+        List(MonitorType.PM25)
+    }
+  }
 
   override def getCalibrationTime(param: String): Option[LocalTime] = None
 
@@ -82,11 +94,13 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
 
   logger.info(s"MetOne1020 collector start $protocolParam ${deviceConfig.slaveID}")
 
-  override def probeInstrumentStatusType: Seq[InstrumentStatusType] =
+  val monitorType = deviceConfig.monitorTypes.getOrElse(List(MonitorType.PM25)).head
+  override def probeInstrumentStatusType: Seq[InstrumentStatusType] = {
     if (deviceConfig.slaveID.contains(1))
-      MetOne1020.instrumentStatusKeyList
+      MetOne1020.instrumentStatusKeyList(monitorType)
     else
-      MetOne1020.instrumentStatusKeyListOld
+      MetOne1020.instrumentStatusKeyListOld(monitorType)
+  }
 
   private def readLines(in:InputStream): Array[String] = {
     val buffer = new Array[Byte](in.available())
@@ -109,7 +123,7 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
           val dataLine = replies.last
           val dataPart = dataLine.split(",")
           val value = dataPart(1).trim.toDouble/1000
-          Some(ModelRegValue2(inputRegs = List((instrumentStatusKeyListOld.head, value)),
+          Some(ModelRegValue2(inputRegs = List((instrumentStatusKeyListOld(monitorType).head, value)),
             modeRegs = List.empty[(InstrumentStatusType, Boolean)],
             warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
         }catch {
@@ -145,7 +159,7 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
                 throw new Exception(s"Unexpected return ${replies.size}")
               else {
                 val value = replies(3).split(",")(1).trim.toDouble
-                Some(ModelRegValue2(inputRegs = List((instrumentStatusKeyListOld.head, value)),
+                Some(ModelRegValue2(inputRegs = List((instrumentStatusKeyListOld(monitorType).head, value)),
                   modeRegs = List.empty[(InstrumentStatusType, Boolean)],
                   warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
               }
@@ -188,7 +202,7 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
               val measure =
                 for (line <- replies if line.contains(",")) yield {
                   val inputs = line.trim.split(",")
-                  for (statusKey <- instrumentStatusKeyList if statusKey.addr < inputs.length) yield
+                  for (statusKey <- instrumentStatusKeyList(monitorType) if statusKey.addr < inputs.length) yield
                     (statusKey, inputs(statusKey.addr).toDouble)
                 }
               Some(ModelRegValue2(inputRegs = measure.flatten,
@@ -224,7 +238,7 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
 
   }
 
-  override def getDataRegList: Seq[DataReg] = MetOne1020.getDataRegList
+  override def getDataRegList(deviceConfig: DeviceConfig): Seq[DataReg] = MetOne1020.getDataRegList(deviceConfig)
 
   override def getCalibrationReg: Option[CalibrationReg] = None
 

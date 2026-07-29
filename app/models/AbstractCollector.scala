@@ -107,7 +107,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
 
   def connectHost(): Unit
 
-  def getDataRegList: Seq[DataReg]
+  def getDataRegList(deviceConfig: DeviceConfig): Seq[DataReg]
 
   def normalPhase(): Receive = {
     case ConnectHost =>
@@ -118,12 +118,12 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
             connected = true
             if (instrumentStatusTypesOpt.isEmpty) {
               val statusTypeList = probeInstrumentStatusType.toList
-              if (getDataRegList.forall(reg => statusTypeList.exists(statusType => statusType.addr == reg.address))) {
+              if (getDataRegList(deviceConfig).forall(reg => statusTypeList.exists(statusType => statusType.addr == reg.address))) {
                 // Data register must included in the list
                 instrumentStatusTypesOpt = Some(statusTypeList)
                 instrumentOp.updateStatusType(instId, instrumentStatusTypesOpt.get)
               } else {
-                val dataReg = getDataRegList
+                val dataReg = getDataRegList(deviceConfig)
                 logger.error(s"statusType ${statusTypeList}")
                 logger.error(s"dataReg ${dataReg} not in statusType")
                 throw new Exception("Probe register failed. Data register is not in there...")
@@ -591,7 +591,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
 
   def reportData(regValue: ModelRegValue2): Option[ReportData] = {
     val optValues: Seq[Option[(String, (InstrumentStatusType, Double))]] = {
-      for (dataReg <- getDataRegList) yield {
+      for (dataReg <- getDataRegList(deviceConfig)) yield {
         for (idx <- findDataRegIdx(regValue)(dataReg.address)) yield {
           val rawValue: (InstrumentStatusType, Double) = regValue.inputRegs(idx)
           (dataReg.monitorType, (rawValue._1, rawValue._2 * dataReg.multiplier))

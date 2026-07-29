@@ -18,7 +18,7 @@ object HydreonRainGauge extends AbstractDrv(_id = "HydreonRainGauge", name = "Hy
   val map: Map[Int, InstrumentStatusType] = instrumentStatusKeyList.map(p => p.addr -> p).toMap
   val dataAddress = List(1)
 
-  override def getDataRegList: List[DataReg] = instrumentStatusKeyList.filter(p => dataAddress.contains(p.addr)).map {
+  override def getDataRegList(deviceConfig: DeviceConfig): List[DataReg] = instrumentStatusKeyList.filter(p => dataAddress.contains(p.addr)).map {
     ist =>
       DataReg(monitorType = ist.key, ist.addr, 1.0f)
   }
@@ -117,7 +117,7 @@ class HydreonRainGaugeCollector @Inject()(instrumentOp: InstrumentDB, monitorSta
     resetRainAccumulator()
   }
 
-  override def getDataRegList: Seq[DataReg] = HydreonRainGauge.getDataRegList
+  override def getDataRegList(deviceConfig: DeviceConfig): Seq[DataReg] = HydreonRainGauge.getDataRegList(deviceConfig)
 
   override def getCalibrationReg: Option[CalibrationReg] = None
 

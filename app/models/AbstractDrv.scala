@@ -13,7 +13,7 @@ object AbstractDrv {
 abstract class AbstractDrv(_id: String, name: String, protocols: List[String]) extends DriverOps {
   import DeviceConfig._
   val logger: Logger = Logger(this.getClass)
-  def getDataRegList: List[DataReg]
+  def getDataRegList(deviceConfig: DeviceConfig): List[DataReg]
 
   override def verifyParam(json: String): String = {
     val ret = Json.parse(json).validate[DeviceConfig]
@@ -23,7 +23,7 @@ abstract class AbstractDrv(_id: String, name: String, protocols: List[String]) e
         throw new Exception(JsError.toJson(error).toString())
       },
       param => {
-        val mt = getDataRegList.map(_.monitorType)
+        val mt = getDataRegList(param).map(_.monitorType)
         val newParam = DeviceConfig(param.slaveID, param.calibrationTime, Some(mt),
           param.raiseTime, param.downTime, param.holdTime,
           param.calibrateZeoSeq, param.calibrateSpanSeq,

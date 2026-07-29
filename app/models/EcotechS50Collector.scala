@@ -25,7 +25,7 @@ object EcotechS50Collector extends AbstractDrv(_id = "EcotechS50", name = "Ecote
   val map: Map[Int, InstrumentStatusType] = instrumentStatusKeyList.map(p => p.addr -> p).toMap
   val dataAddress: List[Int] = List(1)
 
-  override def getDataRegList: List[DataReg] = instrumentStatusKeyList.filter(p => dataAddress.contains(p.addr)).map {
+  override def getDataRegList(deviceConfig: DeviceConfig): List[DataReg] = instrumentStatusKeyList.filter(p => dataAddress.contains(p.addr)).map {
     ist =>
       DataReg(monitorType = ist.key, ist.addr)
   }
@@ -155,7 +155,7 @@ class EcotechS50Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
         SerialPort.PARITY_NONE))
   }
 
-  override def getDataRegList: Seq[DataReg] = EcotechS50Collector.getDataRegList
+  override def getDataRegList(deviceConfig: DeviceConfig): Seq[DataReg] = EcotechS50Collector.getDataRegList(deviceConfig)
 
   val ZERO_ADDR = 0
   val SPAN_ADDR = 1

@@ -23,7 +23,7 @@ object Tca08Collector extends AbstractDrv(_id = "tca08", name = "Total Carbon An
 
   override def verifyParam(json: String) = json
 
-  override def getDataRegList: List[DataReg] =
+  override def getDataRegList(deviceConfig: DeviceConfig): List[DataReg] =
     predefinedIST.filter(p => dataAddress.contains(p.addr)).map {
       ist =>
         DataReg(monitorType = ist.key, ist.addr, multiplier = 1)
@@ -111,7 +111,7 @@ class Tca08Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
       Some(SerialComm.open(protocolParam.comPort.get, protocolParam.speed.getOrElse(115200)))
   }
 
-  override def getDataRegList: Seq[DataReg] = Tca08Collector.getDataRegList
+  override def getDataRegList(deviceConfig: DeviceConfig): Seq[DataReg] = Tca08Collector.getDataRegList(deviceConfig)
 
   override def getCalibrationReg: Option[CalibrationReg] = None
 

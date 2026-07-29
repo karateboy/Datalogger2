@@ -34,7 +34,7 @@ object Ma350Drv extends AbstractDrv(_id = "MA350", name = "microAeth MA350",
 
   override def verifyParam(json: String) = json
 
-  override def getDataRegList: List[DataReg] =
+  override def getDataRegList(deviceConfig: DeviceConfig): List[DataReg] =
     predefinedIST.filter(p => dataAddress.contains(p.addr)).map {
       ist =>
         DataReg(monitorType = ist.key, ist.addr, multiplier = 1)
@@ -106,7 +106,7 @@ class Ma350Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Moni
       Some(SerialComm.open(protocolParam.comPort.get, protocolParam.speed.getOrElse(115200)))
   }
 
-  override def getDataRegList: Seq[DataReg] = Ma350Drv.getDataRegList
+  override def getDataRegList(deviceConfig: DeviceConfig): Seq[DataReg] = Ma350Drv.getDataRegList(deviceConfig)
 
   override def getCalibrationReg: Option[CalibrationReg] = None
 

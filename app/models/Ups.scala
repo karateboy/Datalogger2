@@ -24,7 +24,7 @@ object UpsDrv extends AbstractDrv(_id = "Ups", name = "Ups 1 Series",
 
   override def verifyParam(json: String): String = json
 
-  override def getDataRegList: List[DataReg] =
+  override def getDataRegList(deviceConfig: DeviceConfig): List[DataReg] =
     predefinedIST.filter(p => dataAddress.contains(p.addr)).map {
       ist =>
         DataReg(monitorType = ist.key, ist.addr, multiplier = 1)
@@ -87,7 +87,7 @@ class UpsCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monito
       Some(SerialComm.open(protocolParam.comPort.get, protocolParam.speed.getOrElse(2400)))
   }
 
-  override def getDataRegList: Seq[DataReg] = UpsDrv.getDataRegList
+  override def getDataRegList(deviceConfig: DeviceConfig): Seq[DataReg] = UpsDrv.getDataRegList(deviceConfig)
 
   override def getCalibrationReg: Option[CalibrationReg] = None
 

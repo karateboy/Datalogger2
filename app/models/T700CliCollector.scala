@@ -58,7 +58,7 @@ class T700CliCollector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Mo
   }
 
 
-  override def getDataRegList: Seq[DataReg] = Seq.empty[DataReg]
+  override def getDataRegList(deviceConfig: DeviceConfig): Seq[DataReg] = Seq.empty[DataReg]
 
   override def getCalibrationReg: Option[CalibrationReg] = None
 

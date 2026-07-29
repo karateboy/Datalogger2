@@ -238,7 +238,7 @@ abstract class TapiTxxCliCollector(instrumentOp: InstrumentDB, monitorStatusOp: 
     setCalibrationReg(0, on = false) //exit calibration mode if in calibration mode
   }
 
-  override def getDataRegList: Seq[DataReg] = dataInstrumentTypes.map(it => DataReg(monitorType = it.key, it.addr, multiplier = 1))
+  override def getDataRegList(deviceConfig: DeviceConfig): Seq[DataReg] = dataInstrumentTypes.map(it => DataReg(monitorType = it.key, it.addr, multiplier = 1))
 
   override def getCalibrationReg: Option[CalibrationReg] = Some(CalibrationReg(0, 1))
 

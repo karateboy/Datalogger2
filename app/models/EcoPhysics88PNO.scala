@@ -47,7 +47,7 @@ object EcoPhysics88PNO extends AbstractDrv(_id = "EcoPhysics88P_NO", name = "Eco
   val map: Map[Int, InstrumentStatusType] = instrumentStatusKeyList.map(p => p.addr -> p).toMap
   val dataAddress = List(1)
 
-  override def getDataRegList: List[DataReg] = instrumentStatusKeyList.filter(p => dataAddress.contains(p.addr)).map {
+  override def getDataRegList(deviceConfig: DeviceConfig): List[DataReg] = instrumentStatusKeyList.filter(p => dataAddress.contains(p.addr)).map {
     ist =>
       DataReg(monitorType = ist.key, ist.addr, 1.0f)
   }
@@ -170,7 +170,7 @@ class EcoPhysics88PNOCollector @Inject()(instrumentOp: InstrumentDB, monitorStat
         SerialPort.PARITY_NONE))
   }
 
-  override def getDataRegList: Seq[DataReg] = EcoPhysics88PNO.getDataRegList
+  override def getDataRegList(deviceConfig: DeviceConfig): Seq[DataReg] = EcoPhysics88PNO.getDataRegList(deviceConfig)
 
   override def getCalibrationReg: Option[CalibrationReg] = Some(CalibrationReg(0, 2))
 
