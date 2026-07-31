@@ -212,6 +212,13 @@ class HomeController @Inject()(
           "停用"
       }
 
+      def getCssStr: Seq[String] = {
+        if (inst.active) {
+          MonitorStatus.getCssClassStr(inst.state)
+        } else
+          Seq.empty[String]
+      }
+
       def getCalibrationTime: Option[LocalTime] = {
         if (instrumentTypeOp.map.contains(inst.instType)) {
           val instTypeCase = instrumentTypeOp.map(inst.instType)
@@ -249,7 +256,7 @@ class HomeController @Inject()(
             inst.instType
 
         InstrumentInfo(inst._id, displayName, state,
-          Protocol.map(inst.protocol.protocol), protocolParam, mtStr, calibrationTime, inst)
+          Protocol.map(inst.protocol.protocol), protocolParam, mtStr, calibrationTime, inst, getCssStr)
       }
 
       getInfoClass

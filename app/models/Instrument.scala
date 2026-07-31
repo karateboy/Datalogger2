@@ -3,7 +3,7 @@ package models
 import models.Protocol.ProtocolParam
 case class InstrumentInfo(_id: String, instType: String, state: String,
                           protocol: String, protocolParam: String, monitorTypes: String,
-                          calibrationTime: Option[String], inst: Instrument)
+                          calibrationTime: Option[String], inst: Instrument, classStr: Seq[String])
 
 case class InstrumentStatusType(key: String, addr: Int, desc: String, unit: String)
 
@@ -12,8 +12,6 @@ case class Instrument(_id: String, instType: String,
                       state: String,
                       statusType: Option[List[InstrumentStatusType]]) {
 
-  def replaceParam(newParam: String): Instrument = {
-    Instrument(_id, instType, protocol, newParam, active, state, statusType)
-  }
+  def replaceParam(newParam: String): Instrument = this.copy(param = newParam)
 }
 

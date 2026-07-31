@@ -53,7 +53,7 @@ object HoribaApsaCollector extends DriverOps {
 
   override def id: String = "HoribaAPSA4"
 
-  override def description: String = "Horiba APSA (SO2)"
+  override def description: String = "HORIBA（APSA-370）"
 
   override def protocol: List[String] = List(tcp)
 

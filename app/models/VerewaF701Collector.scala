@@ -26,7 +26,7 @@ object VerewaF701Collector extends DriverOps{
     collector
   }
 
-  lazy val supportedMonitorTypes = List(("PM25"), ("PM10"))
+  lazy val supportedMonitorTypes = List("PM25", "PM10")
   implicit val configRead = Json.reads[F701_20Config]
   implicit val configWrite = Json.writes[F701_20Config]
 
@@ -83,7 +83,7 @@ object VerewaF701Collector extends DriverOps{
 
   override def id: String = "VEREWA_F701"
 
-  override def description: String = "Verewa F701-20"
+  override def description: String = "DURAG VEREWA（F-701-20）"
 
   override def protocol: List[String] = List(serial)
 }

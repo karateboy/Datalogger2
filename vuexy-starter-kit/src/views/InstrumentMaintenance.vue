@@ -130,6 +130,9 @@ export default Vue.extend({
         key: 'state',
         label: '狀態',
         sortable: true,
+        tdClass: (value, key, item) => {
+          return item.classStr
+        },
       },
       {
         key: 'protocol',

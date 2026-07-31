@@ -52,7 +52,7 @@
     <b-card v-show="display">
       <div id="zero_chart" />
       <div id="span_chart" />
-      <b-table striped hover :fields="columns" :items="rows" />
+      <b-table striped hover :fields="columns" :items="rows" responsive />
     </b-card>
   </div>
 </template>

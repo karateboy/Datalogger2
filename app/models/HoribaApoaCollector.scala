@@ -52,7 +52,7 @@ object HoribaApoaCollector extends DriverOps {
 
   override def id: String = "HoribaAPOA"
 
-  override def description: String = "Horiba APOA (O3)"
+  override def description: String = "HORIBA（APOA-370）"
 
   override def protocol: List[String] = List(tcp)
 

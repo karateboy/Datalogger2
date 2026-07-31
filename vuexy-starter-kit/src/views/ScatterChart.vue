@@ -165,8 +165,6 @@ export default Vue.extend({
         { id: 'maintenance', txt: '維修' },
         { id: 'invalid', txt: '無效數據' },
         { id: 'valid', txt: '有效數據' },
-        { id: 'validWithoutEngineExhaustion', txt: '有效數據(不含引擎排放)' },
-        { id: 'engineExhaustion', txt: '引擎排放' },
       ],
       regressionModes: [
         { id: 'linear', txt: '線性' },

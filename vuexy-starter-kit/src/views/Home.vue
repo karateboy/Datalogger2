@@ -173,10 +173,16 @@ export default Vue.extend({
       {
         key: 'index',
         label: '#',
+        tdClass: (value: string, key: string, item: MonitorTypeStatus) => {
+          return item.classStr
+        },
       },
       {
         key: 'desp',
         label: '測項',
+        tdClass: (value: string, key: string, item: MonitorTypeStatus) => {
+          return item.classStr
+        },
       },
       {
         key: 'value',
@@ -186,10 +192,16 @@ export default Vue.extend({
           if (isNaN(v)) return `-`
           else return `${item.value}`
         },
+        tdClass: (value: string, key: string, item: MonitorTypeStatus) => {
+          return item.classStr
+        },
       },
       {
         key: 'unit',
         label: '單位',
+        tdClass: (value: string, key: string, item: MonitorTypeStatus) => {
+          return item.classStr
+        },
       },
       {
         key: 'status',

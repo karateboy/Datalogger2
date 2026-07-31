@@ -48,21 +48,33 @@ export default {
         {
           key: 'index',
           label: '#',
+          tdClass: (value, key, item) => {
+            return item.classStr
+          },
         },
         {
           key: 'desp',
           label: '測項',
           sortable: true,
+          tdClass: (value, key, item) => {
+            return item.classStr
+          },
         },
         {
           key: 'value',
           label: '測值',
           sortable: true,
+          tdClass: (value, key, item) => {
+            return item.classStr
+          },
         },
         {
           key: 'unit',
           label: '單位',
           sortable: true,
+          tdClass: (value, key, item) => {
+            return item.classStr
+          },
         },
         {
           key: 'status',

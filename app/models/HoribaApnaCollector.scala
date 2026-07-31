@@ -53,7 +53,7 @@ object HoribaApnaCollector extends DriverOps {
 
   override def id: String = "HoribaAPNA1"
 
-  override def description: String = "Horiba APNA (NO, NO2, NOX)"
+  override def description: String = "HORIBA（APNA-370）"
 
   override def protocol: List[String] = List(tcp)
 

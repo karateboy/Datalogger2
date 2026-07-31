@@ -34,11 +34,11 @@ case class Calibration(monitor:Option[String],
                        point6_std: Option[Double] = None,
                        point6_success: Option[Boolean] = None) {
 
-  private def span_dev_ratioOpt: Option[Double] =
+  def span_dev_ratioOpt: Option[Double] =
     for (s_dev <- span_devOpt; std <- span_std)
       yield s_dev / std * 100
 
-  def span_devOpt: Option[Double] =
+  private def span_devOpt: Option[Double] =
     for (span <- span_val; std <- span_std)
       yield Math.abs(span - std)
 
