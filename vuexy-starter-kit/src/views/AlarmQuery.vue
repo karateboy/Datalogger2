@@ -48,6 +48,7 @@
             <b-button
               v-ripple.400="'rgba(186, 191, 199, 0.15)'"
               type="reset"
+              class="mr-1"
               variant="outline-secondary"
             >
               取消
@@ -57,6 +58,7 @@
       </b-form>
     </b-card>
     <b-card v-show="display">
+      <b-button variant="info" @click="exportExcel"> 匯出Excel </b-button>
       <b-table
         striped
         hover
@@ -80,6 +82,8 @@ const Ripple = require('vue-ripple-directive')
 import moment from 'moment'
 import axios from 'axios'
 import { mapMutations } from 'vuex'
+import _ from 'lodash'
+import excel from '@/libs/excel'
 
 export default Vue.extend({
   components: {
@@ -187,6 +191,35 @@ export default Vue.extend({
         case 3:
           return 'table-danger'
       }
+    },
+    exportExcel() {
+      const title = this.columns.map(e => e.label)
+      const key = this.columns.map(e => e.key)
+      const key_formatter = this.columns.map(e => ({
+        key: e.key,
+        formatter: e.formatter,
+      }))
+
+      let rows = []
+      for (let entry of this.rows) {
+        let e = entry as any
+        let e2 = _.cloneDeep(e)
+        rows.push(e2)
+        for (let k of key_formatter) {
+          e2[k.key] = k.formatter
+            ? k.formatter(entry[k.key])
+            : _.get(entry, k.key)
+        }
+      }
+
+      const params = {
+        title,
+        key,
+        data: rows,
+        autoWidth: true,
+        filename: `警報資料`,
+      }
+      excel.export_array_to_excel(params)
     },
   },
 })
