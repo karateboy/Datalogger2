@@ -15,7 +15,7 @@ import offlineExport from 'highcharts/modules/offline-exporting'
 import Loading from 'vue-loading-overlay'
 import VueFormWizard from 'vue-form-wizard'
 import 'vue-form-wizard/dist/vue-form-wizard.min.css'
-
+import { getCurrentInstance } from '@vue/composition-api'
 import router from './router'
 import store from './store'
 import App from './App.vue'
@@ -135,7 +135,29 @@ require('vue-loading-overlay/dist/vue-loading.css')
 
 Vue.config.productionTip = false
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
+  if (!store.state.login) {
+    try{
+      const ret = await axios.get('/userInfo')
+      const userInfo = ret.data.userData;
+      store.commit('user/setUserInfo', userInfo.user)
+      store.commit('setLogin', true)
+
+      if (userInfo.isAdmin) {
+        window.vm.$ability.update([
+          {
+            action: 'manage',
+            subject: 'all',
+          },
+        ])
+      } else {
+        window.vm.$ability.update(userInfo.group.abilities)
+      }
+    }catch(e){
+      //console.error(e);
+    }
+  }
+
   if (store.state.login || to.name === 'login') {
     next()
   } else {
@@ -151,7 +173,8 @@ Vue.use(GmapVue, {
   },
   installComponents: true,
 })
-new Vue({
+
+window.vm = new Vue({
   router,
   store,
   render: h => h(App),
