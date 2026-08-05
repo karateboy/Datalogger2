@@ -67,7 +67,7 @@
                 v-model="form.range"
                 :range="true"
                 type="datetime"
-                format="YYYY-MM-DD"
+                format="YYYY-MM-DD HH:mm"
                 value-type="timestamp"
                 :show-second="false"
               />
@@ -116,8 +116,9 @@ import useAppConfig from '../@core/app-config/useAppConfig'
 import moment from 'moment'
 import axios from 'axios'
 import highcharts from 'highcharts'
-import highchartMore from 'highcharts/highcharts-more'
+import HighchartsMore from 'highcharts/highcharts-more'
 import { MonitorType } from './types'
+HighchartsMore(highcharts)
 
 export default Vue.extend({
   components: {
@@ -241,7 +242,6 @@ export default Vue.extend({
         }
 
         ret.title.x = -70
-        highchartMore(highcharts)
         highcharts.chart('chart_container', ret)
       } catch (err) {
         this.$bvModal.msgBoxOk('沒有資料')
