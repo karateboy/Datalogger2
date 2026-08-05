@@ -5,7 +5,7 @@ import play.api.libs.json.{Json, OWrites}
 import java.util.Date
 import scala.concurrent.Future
 
-case class Alarm(time: Date, src: String, level: Int, desc: String, monitor:Option[String])
+case class Alarm(time: Date, src: String, level: Int, desc: String, var monitor:Option[String] = Some(Monitor.activeId))
 
 object Alarm {
   object Level {

@@ -69,9 +69,9 @@ class AlarmOp @Inject()(sqlServer: SqlServer, emailTargetOp: EmailTargetOp, mail
     def insertAlarm()(implicit session: DBSession = AutoSession): Unit = {
       sql"""
              INSERT INTO [dbo].[alarms]
-                ([time],[src],[level],[desc])
+                ([time],[src],[level],[desc],[monitor])
             VALUES
-            (${ar.time}, ${ar.src}, ${ar.level}, ${ar.desc})
+            (${ar.time}, ${ar.src}, ${ar.level}, ${ar.desc}, ${Monitor.activeId})
              """.execute().apply()
 
       if (ar.level >= Alarm.Level.ERR) {

@@ -72,6 +72,9 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
 
   private def logFilter(ar: Alarm, coldPeriod: Int = 30): Unit = {
     def insertAlarm(): Unit = {
+      if(ar.monitor.isEmpty)
+        ar.monitor = Some(Monitor.activeId)
+
       collection.insertOne(ar).toFuture()
       if (ar.level >= Level.ERR) {
         if (LoggerConfig.config.alertEmail)
