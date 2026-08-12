@@ -122,12 +122,12 @@ class ThermoVocReader(config: VocReaderConfig,
     parseAllFiles(monitorConfig)(parsedFileList)
   }
 
-  private def parseAllFiles(monitorConfig: VocMonitorConfig, ignoreParsed: Boolean = false)(parsedFileList: mutable.Set[String]): Unit = {
+  private def parseAllFiles(monitorConfig: VocMonitorConfig)(parsedFileList: mutable.Set[String]): Unit = {
     val dir = Paths.get(monitorConfig.path)
 
     try {
       val stream = Files.list(dir)
-      try stream.filter(path => Files.isRegularFile(path))
+      try stream.filter(path => Files.isRegularFile(path) && !parsedFileList.contains(path.toAbsolutePath.toString))
         .forEach(path => {
           parser(monitorConfig.id, path)
           parsedFileList.add(path.toAbsolutePath.toString)
