@@ -109,6 +109,7 @@ import Vue from 'vue'
 import DatePicker from 'vue2-datepicker'
 import 'vue2-datepicker/index.css'
 import 'vue2-datepicker/locale/zh-tw'
+
 const Ripple = require('vue-ripple-directive')
 import { mapState, mapActions, mapMutations, mapGetters } from 'vuex'
 import darkTheme from 'highcharts/themes/dark-unica'
@@ -118,6 +119,7 @@ import axios from 'axios'
 import highcharts from 'highcharts'
 import HighchartsMore from 'highcharts/highcharts-more'
 import { MonitorType } from './types'
+
 HighchartsMore(highcharts)
 
 export default Vue.extend({
@@ -242,6 +244,7 @@ export default Vue.extend({
         }
 
         ret.title.x = -70
+        document.querySelectorAll('.highcharts-data-table').forEach((e) => e.remove())
         highcharts.chart('chart_container', ret)
       } catch (err) {
         this.$bvModal.msgBoxOk('沒有資料')

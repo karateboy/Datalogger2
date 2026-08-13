@@ -142,8 +142,6 @@ class CdxUploader @Inject()(alarmDB: AlarmDB, environment: Environment){
 
     if (cdxConfig.enable) {
       logger.warn("CDX upload is deprecated. Use EPA's own program instead.")
-    }else{
-      alarmDB.log(alarmDB.srcCDX(), Alarm.Level.INFO, s"CDX 模擬上傳${dateTime.toString(fmt)}小時值成功")
     }
   }
 }
