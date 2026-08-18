@@ -275,7 +275,7 @@ export default Vue.extend({
       this.form.monitor = this.monitors[0]._id
     }
 
-    this.$gmapApiPromiseLazy().then(() => {
+    (this as any).$gmapApiPromiseLazy().then(() => {
       this.mapLoaded = true
     })
   },

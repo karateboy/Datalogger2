@@ -154,7 +154,7 @@ import {
 import highcharts from 'highcharts'
 import darkTheme from 'highcharts/themes/dark-unica'
 import useAppConfig from '../@core/app-config/useAppConfig'
-import highchartMore from 'highcharts/highcharts-more'
+import HighchartsMore from 'highcharts/highcharts-more'
 import moment from 'moment'
 import { Monitor } from '@/store/monitors/types'
 
@@ -211,8 +211,8 @@ export default Vue.extend({
         },
       },
     ]
-    let chart: any
-    chart = null
+    let chart: any = null
+
     const cdxUploadColumns = [
       {
         key: 'time',
@@ -305,7 +305,7 @@ export default Vue.extend({
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap']),
     ...mapGetters('monitors', ['mMap']),
-    skin() {
+    skin(): any {
       const { skin } = useAppConfig()
       return skin
     },
@@ -332,7 +332,7 @@ export default Vue.extend({
       darkTheme(highcharts)
     }
 
-    this.$gmapApiPromiseLazy().then(() => {
+    (this as any).$gmapApiPromiseLazy().then(() => {
       this.mapLoaded = true
       console.info('Google map api loaded', this.$refs.map)
       /*
@@ -667,7 +667,7 @@ export default Vue.extend({
         }
 
         ret.title.x = -70
-        highchartMore(highcharts)
+        HighchartsMore(highcharts)
         highcharts.chart(`rose_${mt}`, ret)
       } catch (err) {
       } finally {

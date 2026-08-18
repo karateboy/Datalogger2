@@ -115,7 +115,7 @@ export default Vue.extend({
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap']),
     allMonitorTypes(): Array<MonitorType> {
-      let ret = []
+      let ret = Array<MonitorType>();
       for (let mt of this.monitorTypes) {
         ret.push(mt)
       }

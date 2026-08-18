@@ -200,7 +200,7 @@ export default Vue.extend({
         formatter: e.formatter,
       }))
 
-      let rows = []
+      let rows = Array<any>();
       for (let entry of this.rows) {
         let e = entry as any
         let e2 = _.cloneDeep(e)

@@ -148,7 +148,7 @@ export default Vue.extend({
       this.monitorTypeGroups.push(newMt)
     },
     save() {
-      const all = []
+      const all = Array<Promise<any>>();
       for (const mtg of this.monitorTypeGroups) {
         if (mtg.dirty) {
           this.justify(mtg)

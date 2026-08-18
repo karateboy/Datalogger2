@@ -276,7 +276,7 @@ export default Vue.extend({
       return `${mtCase.desp}(${mtCase.unit})`
     },
     getColumns(): Array<any> {
-      const ret = []
+      const ret = Array<any>()
       ret.push({
         key: 'date',
         label: '時間',

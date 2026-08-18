@@ -10,7 +10,7 @@ export const state: TableState = {
 
 const getters: GetterTree<TableState, RootState> = {
   dataTypes() {
-    const dataTypes = []
+    const dataTypes = Array<any>();
     for (const table of state.tables) {
       if (table.indexOf('hour_data') !== -1) {
         if (table === 'hour_data')
@@ -30,7 +30,7 @@ const getters: GetterTree<TableState, RootState> = {
     return dataTypes
   },
   hourDataTypes() {
-    const dataTypes = []
+    const dataTypes = Array<any>();
     for (const table of state.tables) {
       if (table.indexOf('hour_data') !== -1) {
         if (table === 'hour_data')

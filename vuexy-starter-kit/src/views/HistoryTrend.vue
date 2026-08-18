@@ -265,7 +265,7 @@ export default Vue.extend({
     ...mapGetters('monitorTypes', ['activatedMonitorTypes']),
     ...mapState('monitors', ['monitors']),
     ...mapGetters('tables', ['dataTypes']),
-    reportUnits() {
+    reportUnits() : Array<{ txt: string; id: string }> {
       const minReportTypes = [
         { txt: '秒', id: 'Sec' },
         { txt: '分', id: 'Min' },

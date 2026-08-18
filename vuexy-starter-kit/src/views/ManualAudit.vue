@@ -291,7 +291,7 @@ export default Vue.extend({
       return `${mtCase.desp}(${mtCase.unit})`
     },
     getColumns() {
-      const ret = []
+      const ret = Array<any>();
       ret.push({
         key: 'include',
         label: '選擇',
@@ -318,7 +318,7 @@ export default Vue.extend({
     audit() {
       // case class ManualAuditParam(reason: String, updateList: Seq[UpdateRecordParam])
       // case class UpdateRecordParam(time: Long, mt:String, status: String)
-      const updateList = []
+      const updateList = Array<any>();
       for (const item of this.rows) {
         if (item.include) {
           for (let i = 0; i < item.cellData.length; i++) {
