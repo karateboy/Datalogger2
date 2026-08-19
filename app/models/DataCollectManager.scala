@@ -247,7 +247,7 @@ object DataCollectManager {
     } yield {
 
       val status = {
-        val statusOrderList = statusMap.toSeq.sortBy(pair => (-pair._2.length, monitorStatusDB.map(pair._1).priority, ))
+        val statusOrderList = statusMap.toSeq.sortBy(pair => (-pair._2.length, monitorStatusDB.map(pair._1).priority))
         val mostStatus = statusOrderList.head
         val calibrationStatusList = Seq(MonitorStatus.ZeroCalibrationStat, MonitorStatus.SpanCalibrationStat)
         val calibrationCount = if (calibrationStatusList.forall(statusMap.contains))
