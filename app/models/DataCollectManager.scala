@@ -259,11 +259,19 @@ object DataCollectManager {
       else
         ListBuffer.empty[MtRecord]
 
-      def hourAccumulator(values: Seq[Double], isRaw: Boolean): Option[Double] = {
-        if (values.isEmpty)
-          None
-        else {
-          val mtCase = monitorTypeDB.map(mt)
+      def hourAccumulator(values: Seq[Double], isRaw: Boolean, status:String): Option[Double] = {
+        val mtCase = monitorTypeDB.map(mt)
+        if (values.isEmpty) {
+          mt match{
+            case MonitorType.WD10 =>
+              Some(-999.9)
+            case MonitorType.WS10 =>
+              Some(-999.9)
+            case _ =>
+              None
+          }
+        } else {
+
           mt match {
             case MonitorType.WIN_DIRECTION =>
               val windDir = values
@@ -282,20 +290,24 @@ object DataCollectManager {
                 directionAvg(windSpeed, values)
               }
             case MonitorType.WD10 =>
-              val windDir = values.take(10)
-              if (mtMap.contains(MonitorType.WIN_SPEED)) {
-                val windSpeedMostStatus = mtMap(MonitorType.WIN_SPEED).maxBy(kv => kv._2.length)
-                val windSpeed = windSpeedMostStatus._2.take(10)
-                if (isRaw)
-                  directionAvg(windSpeed.flatMap(_.rawValue), values)
-                else
-                  directionAvg(windSpeed.flatMap(_.value), values)
-              } else { //assume wind speed is all equal
-                val windSpeed =
-                  for (_ <- 1 to windDir.length)
-                    yield 1.0
+              if(status != MonitorStatus.NormalStat)
+                Some(-999.9)
+              else{
+                val windDir = values.take(10)
+                if (mtMap.contains(MonitorType.WS10)) {
+                  val windSpeedMostStatus = mtMap(MonitorType.WS10).maxBy(kv => kv._2.length)
+                  val windSpeed = windSpeedMostStatus._2.take(10)
+                  if (isRaw)
+                    directionAvg(windSpeed.flatMap(_.rawValue), values)
+                  else
+                    directionAvg(windSpeed.flatMap(_.value), values)
+                } else { //assume wind speed is all equal
+                  val windSpeed =
+                    for (_ <- 1 to windDir.length)
+                      yield 1.0
 
-                directionAvg(windSpeed, values)
+                  directionAvg(windSpeed, values)
+                }
               }
             case MonitorType.WIN_SPEED =>
               if (mtMap.contains(MonitorType.WIN_DIRECTION)) {
@@ -314,12 +326,16 @@ object DataCollectManager {
                   Some(values.sum / values.length)
               }
             case MonitorType.WS10 =>
-              val v10 = values.take(10)
-              val v = v10.sum / v10.length
-              if (v.isNaN)
-                None
-              else
-                Some(v10.sum / v10.length)
+              if(status != MonitorStatus.NormalStat)
+                Some(-999.9)
+              else{
+                val v10 = values.take(10)
+                val v = v10.sum / v10.length
+                if (v.isNaN)
+                  None
+                else
+                  Some(v10.sum / v10.length)
+              }
 
             case MonitorType.RAIN =>
               Some(values.sum)
@@ -355,11 +371,11 @@ object DataCollectManager {
       }
 
       val roundedAvg =
-        for (avg <- hourAccumulator(mtRecords.flatMap(_.value), isRaw = false)) yield
+        for (avg <- hourAccumulator(mtRecords.flatMap(_.value), isRaw = false, status = status)) yield
           BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_UP).doubleValue()
 
       val roundedRawAvg: Option[Double] =
-        for (avg <- hourAccumulator(mtRecords.flatMap(_.rawValue), isRaw = true)) yield
+        for (avg <- hourAccumulator(mtRecords.flatMap(_.rawValue), isRaw = true, status = status)) yield
           BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_UP).doubleValue()
 
       MtRecord(mt, roundedAvg, status, rawValue = roundedRawAvg)
