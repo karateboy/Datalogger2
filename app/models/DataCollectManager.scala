@@ -46,7 +46,7 @@ object DataCollectManager {
 
   case class WriteSignal(mtId: String, bit: Boolean)
 
-  case class ToggleSignal(mtId:String, delay:Int)
+  case class ToggleSignal(mtId: String, delay: Int)
 
   private case object CheckInstruments
 
@@ -237,6 +237,7 @@ object DataCollectManager {
   def calculateAvgMap(mtMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]],
                       alwaysValid: Boolean,
                       monitorTypeDB: MonitorTypeDB,
+                      monitorStatusDB: MonitorStatusDB,
                       dailyAvg: Boolean = false): mutable.Iterable[MtRecord] = {
     for {
       (mt, statusMap) <- mtMap
@@ -244,25 +245,44 @@ object DataCollectManager {
         _._2.size
       }.sum if totalSize != 0
     } yield {
-      val status = {
-        val kv = statusMap.maxBy(kv => kv._2.length)
-        if (kv._1 == MonitorStatus.NormalStat && (alwaysValid ||
-          statusMap(kv._1).size < totalSize * effectiveRatio)) {
-          //return most status except normal
-          val noNormalStatusMap = statusMap - kv._1
-          noNormalStatusMap.maxBy(kv => kv._2.length)._1
-        } else
-          kv._1
-      }
-      val mtRecords = if (statusMap.contains(MonitorStatus.NormalStat))
-        statusMap(MonitorStatus.NormalStat)
-      else
-        ListBuffer.empty[MtRecord]
 
-      def hourAccumulator(values: Seq[Double], isRaw: Boolean, status:String): Option[Double] = {
+      val status = {
+        val statusOrderList = statusMap.toSeq.sortBy(pair => (-pair._2.length, monitorStatusDB.map(pair._1).priority, ))
+        val mostStatus = statusOrderList.head
+        val calibrationStatusList = Seq(MonitorStatus.ZeroCalibrationStat, MonitorStatus.SpanCalibrationStat)
+        val calibrationCount = if (calibrationStatusList.forall(statusMap.contains))
+          calibrationStatusList.flatMap(statusMap.get(_).map(_.size)).sum
+        else 0
+
+        val otherThanNormalList = statusOrderList.filter(pair => pair._1 != MonitorStatus.NormalStat)
+        if(otherThanNormalList.nonEmpty && calibrationCount >= otherThanNormalList.head._2.length)
+          MonitorStatus.CalibrationDeviation
+        else{
+          if (mostStatus._1 == MonitorStatus.NormalStat) {
+            if (mostStatus._2.length >= totalSize * effectiveRatio)
+              MonitorStatus.NormalStat
+            else {
+              val secondMostStatus = statusOrderList.drop(1).head
+              secondMostStatus._1
+            }
+          } else
+            mostStatus._1
+        }
+      }
+
+      val normalCount = statusMap.get(MonitorStatus.NormalStat).map(_.size).getOrElse(0)
+      val validCount = MonitorStatus.validStatusList.map(statusMap.get(_).map(_.size).getOrElse(0)).sum
+      val mtRecords = if (normalCount >= 60 * effectiveRatio) {
+        statusMap(MonitorStatus.NormalStat).toList
+      } else if (validCount >= 60 * 0.5) {
+        MonitorStatus.validStatusList.flatMap(status => statusMap.get(status)).flatten
+      } else
+        List.empty[MtRecord]
+
+      def hourAccumulator(values: Seq[Double], isRaw: Boolean, status: String): Option[Double] = {
         val mtCase = monitorTypeDB.map(mt)
         if (values.isEmpty) {
-          mt match{
+          mt match {
             case MonitorType.WD10 =>
               Some(-999.9)
             case MonitorType.WS10 =>
@@ -290,9 +310,9 @@ object DataCollectManager {
                 directionAvg(windSpeed, values)
               }
             case MonitorType.WD10 =>
-              if(status != MonitorStatus.NormalStat)
+              if (status != MonitorStatus.NormalStat)
                 Some(-999.9)
-              else{
+              else {
                 val windDir = values.take(10)
                 if (mtMap.contains(MonitorType.WS10)) {
                   val windSpeedMostStatus = mtMap(MonitorType.WS10).maxBy(kv => kv._2.length)
@@ -326,9 +346,9 @@ object DataCollectManager {
                   Some(values.sum / values.length)
               }
             case MonitorType.WS10 =>
-              if(status != MonitorStatus.NormalStat)
+              if (status != MonitorStatus.NormalStat)
                 Some(-999.9)
-              else{
+              else {
                 val v10 = values.take(10)
                 val v = v10.sum / v10.length
                 if (v.isNaN)
@@ -408,6 +428,7 @@ class DataCollectManager @Inject()(config: Configuration,
                                    tableType: TableType) extends Actor with InjectedActorSupport {
 
   import DataCollectManager._
+
   val logger = Logger(this.getClass)
 
   logger.info(s"store second data = ${LoggerConfig.config.storeSecondData}")
@@ -463,7 +484,7 @@ class DataCollectManager @Inject()(config: Configuration,
     for (readerRef <- ThermoVocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
       readers.append(readerRef)
 
-    for(readerRef <- ImsReader.start(config, context.system, monitorTypeOp = monitorTypeOp, recordOp = recordOp,
+    for (readerRef <- ImsReader.start(config, context.system, monitorTypeOp = monitorTypeOp, recordOp = recordOp,
       dataCollectManager = self, dataCollectManagerOp = dataCollectManagerOp, environment = environment))
       readers.append(readerRef)
 
@@ -509,7 +530,7 @@ class DataCollectManager @Inject()(config: Configuration,
             alarmOp.log(alarmOp.src(mt), Alarm.Level.INFO, msg)
             overThreshold = true
             mtCase.overLawSignalType.foreach(signalType => {
-              if(mtCase.span.isEmpty)
+              if (mtCase.span.isEmpty)
                 self ! WriteSignal(signalType, bit = true)
               else
                 self ! ToggleSignal(signalType, mtCase.span.get.toInt)
@@ -1152,7 +1173,7 @@ class DataCollectManager @Inject()(config: Configuration,
 
     case ToggleSignal(mtId, delay) =>
       // Trigger only when signalMap is empty or is false
-      if(!signalDataMap.contains(mtId) || !signalDataMap(mtId)._2){
+      if (!signalDataMap.contains(mtId) || !signalDataMap(mtId)._2) {
         self ! WriteSignal(mtId, bit = true)
         context.system.scheduler.scheduleOnce(scala.concurrent.duration.Duration(delay, SECONDS),
           self, WriteSignal(mtId, bit = false))
@@ -1172,9 +1193,9 @@ class DataCollectManager @Inject()(config: Configuration,
       val f = recordOp.getMtRecordMapFuture(recordOp.MinCollection)(Monitor.activeId, monitorTypeOp.measuringList,
         now.minusHours(1), now)
       for (minRecordMap <- f) {
-        val exDataLossRecordMap = minRecordMap.map(pair=>{
+        val exDataLossRecordMap = minRecordMap.map(pair => {
           val (mt, mtRecords) = pair
-          mt->mtRecords.filter(_.status != MonitorStatus.DataLost)
+          mt -> mtRecords.filter(_.status != MonitorStatus.DataLost)
         })
         for (kv <- instrumentMap) {
           val (instID, instParam) = kv;
