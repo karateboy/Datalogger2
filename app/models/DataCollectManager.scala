@@ -234,13 +234,13 @@ object DataCollectManager {
     }
   }
 
-  def calculateAvgMap(mtMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]],
-                      alwaysValid: Boolean,
+  def calculateAvgMap(mtStatusMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]],
+                      mtDataMap:mutable.Map[String, ListBuffer[MtRecord]],
                       monitorTypeDB: MonitorTypeDB,
                       monitorStatusDB: MonitorStatusDB,
                       dailyAvg: Boolean = false): mutable.Iterable[MtRecord] = {
     for {
-      (mt, statusMap) <- mtMap
+      (mt, statusMap) <- mtStatusMap
       totalSize = statusMap.map {
         _._2.size
       }.sum if totalSize != 0
@@ -270,33 +270,33 @@ object DataCollectManager {
         }
       }
 
-      val normalCount = statusMap.get(MonitorStatus.NormalStat).map(_.size).getOrElse(0)
-      val validCount = MonitorStatus.validStatusList.map(statusMap.get(_).map(_.size).getOrElse(0)).sum
-      val mtRecords = if (normalCount >= 60 * effectiveRatio) {
-        statusMap(MonitorStatus.NormalStat).toList
-      } else if (validCount >= 60 * 0.5) {
-        MonitorStatus.validStatusList.flatMap(status => statusMap.get(status)).flatten
-      } else
-        List.empty[MtRecord]
+      val mtRecords = {
+        mt match{
+          case MonitorType.WS10 | MonitorType.WD10 =>
+            mtDataMap(mt).take(10).filter(_.status == MonitorStatus.NormalStat).toList
+          case _ =>
+            val normalCount = statusMap.get(MonitorStatus.NormalStat).map(_.size).getOrElse(0)
+            val validCount = MonitorStatus.validStatusList.map(statusMap.get(_).map(_.size).getOrElse(0)).sum
+            if (normalCount >= 60 * effectiveRatio) {
+              statusMap(MonitorStatus.NormalStat).toList
+            } else if (validCount >= 60 * 0.5) {
+              MonitorStatus.validStatusList.flatMap(statusMap.get).flatten
+            } else
+              List.empty[MtRecord]
+        }
+      }
+
 
       def hourAccumulator(values: Seq[Double], isRaw: Boolean, status: String): Option[Double] = {
         val mtCase = monitorTypeDB.map(mt)
         if (values.isEmpty) {
-          mt match {
-            case MonitorType.WD10 =>
-              Some(-999.9)
-            case MonitorType.WS10 =>
-              Some(-999.9)
-            case _ =>
-              None
-          }
+          Some(-999.9)
         } else {
-
           mt match {
             case MonitorType.WIN_DIRECTION =>
               val windDir = values
-              if (mtMap.contains(MonitorType.WIN_SPEED)) {
-                val windSpeedMostStatus = mtMap(MonitorType.WIN_SPEED).maxBy(kv => kv._2.length)
+              if (mtStatusMap.contains(MonitorType.WIN_SPEED)) {
+                val windSpeedMostStatus = mtStatusMap(MonitorType.WIN_SPEED).maxBy(kv => kv._2.length)
                 val windSpeed = windSpeedMostStatus._2
                 if (isRaw)
                   directionAvg(windSpeed.flatMap(_.rawValue), values)
@@ -314,8 +314,8 @@ object DataCollectManager {
                 Some(-999.9)
               else {
                 val windDir = values.take(10)
-                if (mtMap.contains(MonitorType.WS10)) {
-                  val windSpeedMostStatus = mtMap(MonitorType.WS10).maxBy(kv => kv._2.length)
+                if (mtStatusMap.contains(MonitorType.WS10)) {
+                  val windSpeedMostStatus = mtStatusMap(MonitorType.WS10).maxBy(kv => kv._2.length)
                   val windSpeed = windSpeedMostStatus._2.take(10)
                   if (isRaw)
                     directionAvg(windSpeed.flatMap(_.rawValue), values)
@@ -330,8 +330,8 @@ object DataCollectManager {
                 }
               }
             case MonitorType.WIN_SPEED =>
-              if (mtMap.contains(MonitorType.WIN_DIRECTION)) {
-                val dirStatusMap = mtMap(MonitorType.WIN_DIRECTION)
+              if (mtStatusMap.contains(MonitorType.WIN_DIRECTION)) {
+                val dirStatusMap = mtStatusMap(MonitorType.WIN_DIRECTION)
                 val dirMostStatus = dirStatusMap.maxBy(kv => kv._2.length)
                 val dirs = dirMostStatus._2
                 if (isRaw)
@@ -390,12 +390,22 @@ object DataCollectManager {
         }
       }
 
+      def getValues(getter: MtRecord => Option[Double]): List[Double] =
+        mt match {
+          case MonitorType.WS10 =>
+            mtRecords.flatMap(getter(_)).take(10)
+          case MonitorType.WD10 =>
+            mtRecords.flatMap(getter(_)).take(10)
+          case _ =>
+            mtRecords.flatMap(getter(_))
+        }
+
       val roundedAvg =
-        for (avg <- hourAccumulator(mtRecords.flatMap(_.value), isRaw = false, status = status)) yield
+        for (avg <- hourAccumulator(getValues(_.value), isRaw = false, status = status)) yield
           BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_UP).doubleValue()
 
       val roundedRawAvg: Option[Double] =
-        for (avg <- hourAccumulator(mtRecords.flatMap(_.rawValue), isRaw = true, status = status)) yield
+        for (avg <- hourAccumulator(getValues(_.rawValue), isRaw = true, status = status)) yield
           BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_UP).doubleValue()
 
       MtRecord(mt, roundedAvg, status, rawValue = roundedRawAvg)
