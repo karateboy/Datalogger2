@@ -152,6 +152,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 
     for (mtRecordList <- recordMap.values; mtRecord <- mtRecordList){
       val  lb = mtDataMap.getOrElseUpdate(mtRecord.mtName, ListBuffer.empty[MtRecord])
+      lb.append(mtRecord)
     }
 
     mtDataMap
