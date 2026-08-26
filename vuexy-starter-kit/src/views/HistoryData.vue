@@ -157,7 +157,7 @@
 </template>
 <style lang="css">
 .legend {
-  width: 30%;
+  width: 45%;
 }
 </style>
 <script lang="ts">

@@ -5,6 +5,7 @@
       :fields="fields"
       select-mode="single"
       selectable
+      selected-variant=""
       responsive
       @row-selected="onInstSelected"
     >
@@ -120,11 +121,17 @@ export default Vue.extend({
         key: '_id',
         label: '儀器ID',
         sortable: true,
+        tdClass: (value, key, item) => {
+          return item.classStr
+        },
       },
       {
         key: 'instType',
         label: '儀器種類',
         sortable: true,
+        tdClass: (value, key, item) => {
+          return item.classStr
+        },
       },
       {
         key: 'state',
@@ -138,21 +145,33 @@ export default Vue.extend({
         key: 'protocol',
         label: '連線方式',
         sortable: true,
+        tdClass: (value, key, item) => {
+          return item.classStr
+        },
       },
       {
         key: 'protocolParam',
         label: '通訊參數',
         sortable: true,
+        tdClass: (value, key, item) => {
+          return item.classStr
+        },
       },
       {
         key: 'calibrationTime',
         label: '每日校正時間',
         sortable: true,
+        tdClass: (value, key, item) => {
+          return item.classStr
+        },
       },
       {
         key: 'monitorTypes',
         label: '測項',
         sortable: true,
+        tdClass: (value, key, item) => {
+          return item.classStr
+        },
       },
     ]
 

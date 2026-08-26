@@ -1,6 +1,6 @@
 <template>
   <b-row class="match-height">
-    <b-col v-if="isRealtimeMeasuring" lg="9" md="12">
+    <b-col v-if="isRealtimeMeasuring" lg="8" md="12">
       <b-card
         border-variant="primary"
         class="text-center"
@@ -12,7 +12,7 @@
         <div id="realtimeChart"></div>
       </b-card>
     </b-col>
-    <b-col v-if="isRealtimeMeasuring" class="text-center" lg="3">
+    <b-col v-if="isRealtimeMeasuring" class="text-center" lg="4">
       <b-card border-variant="primary" no-body>
         <b-table
           :fields="fields"
