@@ -555,7 +555,13 @@ class ExcelUtility @Inject()
         val monitorId = monitorOp.nameIdMap.getOrElse(info.mName, Monitor.activeId)
         val recordList = map.getOrElseUpdate(info.mName, RecordList.apply(Seq.empty[MtRecord], RecordListID(time, monitorId)))
         val value = try {
-          Some(cells(info.pos).getNumericCellValue)
+          val cell = cells(info.pos)
+          if (cell.getCellType == CellType.NUMERIC)
+            Some(cell.getNumericCellValue)
+          else if (cell.getCellType == CellType.BLANK)
+            None
+          else
+            None
         } catch {
           case _: Throwable =>
             None
