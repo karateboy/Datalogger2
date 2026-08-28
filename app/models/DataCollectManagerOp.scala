@@ -19,7 +19,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                                      alarmDb: AlarmDB,
                                      monitorDB: MonitorDB,
                                      monitorTypeDb: MonitorTypeDB,
-                                      monitorStatusDB: MonitorStatusDB,
+                                     monitorStatusDB: MonitorStatusDB,
                                      sysConfigDB: SysConfigDB,
                                      alarmRuleDb: AlarmRuleDb,
                                      cdxUploader: CdxUploader,
@@ -108,7 +108,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 
     val lb = statusMap.getOrElseUpdate(status, ListBuffer.empty[MtRecord])
 
-    for (v <- mtRecord.value if !v.isNaN)
+    if(mtRecord.value.isEmpty || mtRecord.value.forall(!_.isNaN))
       lb.append(mtRecord)
   }
 
@@ -150,13 +150,14 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
   private def getMtDataMap(recordMap: mutable.Map[String, ListBuffer[MtRecord]]): mutable.Map[String, ListBuffer[MtRecord]] = {
     val mtDataMap = mutable.Map.empty[String, ListBuffer[MtRecord]]
 
-    for (mtRecordList <- recordMap.values; mtRecord <- mtRecordList){
-      val  lb = mtDataMap.getOrElseUpdate(mtRecord.mtName, ListBuffer.empty[MtRecord])
+    for (mtRecordList <- recordMap.values; mtRecord <- mtRecordList) {
+      val lb = mtDataMap.getOrElseUpdate(mtRecord.mtName, ListBuffer.empty[MtRecord])
       lb.append(mtRecord)
     }
 
     mtDataMap
   }
+
   def recalculateHourData(monitor: String,
                           current: DateTime,
                           checkAlarm: Boolean = true,
@@ -165,37 +166,44 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     val mtList = monitorTypeDb.measuredList
     for (recordMap <- recordOp.getMtRecordMapFuture(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current);
          alarmRules <- alarmRuleDb.getRulesAsync) yield {
+      try {
+        val mtStatusMap = getMtStatusMap(recordMap)
+        val mtDataMap: mutable.Map[String, ListBuffer[MtRecord]] = getMtDataMap(recordMap)
+        val mtDataList = calculateAvgMap(mtStatusMap, mtDataMap, monitorTypeDb, dailyAvg = true, monitorStatusDB = monitorStatusDB)
+        val hourRecordListsFuture = HourCalculationRule.calculateHourRecord(monitor, current, recordOp)
+        val dailyAvgMtRecordsFuture = calculateDayAvgHourRecord(monitor, MonitorType.DailyAvgInputMonitorTypes, current, mtDataList.toSeq)
+        for (ruleHourRecordLists <- hourRecordListsFuture; dailyAvgMtRecords <- dailyAvgMtRecordsFuture) {
+          try {
+            val defaultHourRecordList = RecordList.factory(current.minusHours(1).toDate, mtDataList.toSeq ++ dailyAvgMtRecords, monitor)
+            val hourRecordLists = ruleHourRecordLists.filter(_.mtDataList.nonEmpty) :+ defaultHourRecordList
 
-      val mtStatusMap = getMtStatusMap(recordMap)
-      val mtDataMap: mutable.Map[String, ListBuffer[MtRecord]] = getMtDataMap(recordMap)
-      val mtDataList = calculateAvgMap(mtStatusMap, mtDataMap, monitorTypeDb, dailyAvg = true, monitorStatusDB = monitorStatusDB)
-      val hourRecordListsFuture = HourCalculationRule.calculateHourRecord(monitor, current, recordOp)
-      val dailyAvgMtRecordsFuture = calculateDayAvgHourRecord(monitor, MonitorType.DailyAvgInputMonitorTypes, current, mtDataList.toSeq)
-      for (ruleHourRecordLists <- hourRecordListsFuture; dailyAvgMtRecords <- dailyAvgMtRecordsFuture) {
-        val defaultHourRecordList = RecordList.factory(current.minusHours(1).toDate, mtDataList.toSeq ++ dailyAvgMtRecords, monitor)
-        val hourRecordLists = ruleHourRecordLists.filter(_.mtDataList.nonEmpty) :+ defaultHourRecordList
+            // Check alarm
+            if (checkAlarm) {
+              val alarms = alarmRuleDb.checkAlarm(tableType.hour, defaultHourRecordList, alarmRules)(monitorDB, monitorTypeDb, alarmDb)
+              alarms.foreach(alarmDb.log)
+            }
 
-        // Check alarm
-        if (checkAlarm) {
-          val alarms = alarmRuleDb.checkAlarm(tableType.hour, defaultHourRecordList, alarmRules)(monitorDB, monitorTypeDb, alarmDb)
-          alarms.foreach(alarmDb.log)
-        }
+            val f = recordOp.upsertManyRecordsChecked(recordOp.HourCollection)(hourRecordLists)
+            if (forward) {
+              f onComplete {
+                case Success(_) =>
+                  manager ! ForwardHour
+                  for {cdxConfig <- sysConfigDB.getCdxConfig if monitor == Monitor.activeId
+                       cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes} {
+                    cdxUploader.upload(recordList = defaultHourRecordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
+                    newTaipeiOpenData.upload(defaultHourRecordList, cdxMtConfigs)
+                  }
 
-        val f = recordOp.upsertManyRecordsChecked(recordOp.HourCollection)(hourRecordLists)
-        if (forward) {
-          f onComplete {
-            case Success(_) =>
-              manager ! ForwardHour
-              for {cdxConfig <- sysConfigDB.getCdxConfig if monitor == Monitor.activeId
-                   cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes} {
-                cdxUploader.upload(recordList = defaultHourRecordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
-                newTaipeiOpenData.upload(defaultHourRecordList, cdxMtConfigs)
+                case Failure(exception) =>
+                  logger.error("failed", exception)
               }
-
-            case Failure(exception) =>
-              logger.error("failed", exception)
+            }
+          } catch {
+            case e: Exception => logger.error(s"recalculateHourData failed 1: ${e.getMessage}", e)
           }
         }
+      } catch {
+        case e: Exception => logger.error(s"recalculateHourData failed 2: ${e.getMessage}", e)
       }
     }
   }

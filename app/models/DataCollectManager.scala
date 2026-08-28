@@ -22,6 +22,7 @@ import scala.math.BigDecimal.RoundingMode
 import scala.util.{Failure, Success}
 
 object DataCollectManager {
+  val logger1 = Logger(this.getClass)
   var effectiveRatio = 0.75
 
   case class InstrumentParam(actor: ActorRef, mtList: List[String],
@@ -250,12 +251,15 @@ object DataCollectManager {
         val statusOrderList = statusMap.toSeq.sortBy(pair => (-pair._2.length, monitorStatusDB.map(pair._1).priority))
         val mostStatus = statusOrderList.head
         val calibrationStatusList = Seq(MonitorStatus.ZeroCalibrationStat, MonitorStatus.SpanCalibrationStat)
-        val calibrationCount = if (calibrationStatusList.forall(statusMap.contains))
+        val calibrationAllStatus = calibrationStatusList.forall(statusMap.contains)
+        val calibrationCount = if (calibrationAllStatus)
           calibrationStatusList.flatMap(statusMap.get(_).map(_.size)).sum
         else 0
 
         val otherThanNormalList = statusOrderList.filter(pair => pair._1 != MonitorStatus.NormalStat)
-        if(otherThanNormalList.nonEmpty && calibrationCount >= otherThanNormalList.head._2.length)
+        val otherThanNormalCounts = otherThanNormalList.map(pair => pair._2.length)
+
+        if(calibrationAllStatus && otherThanNormalList.nonEmpty && calibrationCount >= otherThanNormalCounts.max)
           MonitorStatus.CalibrationDeviation
         else{
           if (mostStatus._1 == MonitorStatus.NormalStat) {
