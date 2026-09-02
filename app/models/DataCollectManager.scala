@@ -239,7 +239,7 @@ object DataCollectManager {
                       mtDataMap: mutable.Map[String, ListBuffer[MtRecord]],
                       monitorTypeDB: MonitorTypeDB,
                       monitorStatusDB: MonitorStatusDB,
-                      dailyAvg: Boolean = false): mutable.Iterable[MtRecord] = {
+                      dailyAvg: Boolean = false)(current: DateTime, failedCalibrationMap:Map[String, DateTime]): mutable.Iterable[MtRecord] = {
     for {
       (mt, statusMap) <- mtStatusMap
       totalSize = statusMap.map {
@@ -404,15 +404,22 @@ object DataCollectManager {
             mtRecords.flatMap(getter(_)).map(v => if (v < 0) 0 else v)
         }
 
+      val calibrationCheckedStatus = failedCalibrationMap.get(mt) match {
+        case Some(failedTime) if failedTime == current =>
+          MonitorStatus.InvalidDataStat
+        case _ =>
+          status
+      }
+
       val roundedAvg =
-        for (avg <- hourAccumulator(getValues(_.value), isRaw = false, status = status)) yield
+        for (avg <- hourAccumulator(getValues(_.value), isRaw = false, status = calibrationCheckedStatus)) yield
           BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_UP).doubleValue()
 
       val roundedRawAvg: Option[Double] =
-        for (avg <- hourAccumulator(getValues(_.rawValue), isRaw = true, status = status)) yield
+        for (avg <- hourAccumulator(getValues(_.rawValue), isRaw = true, status = calibrationCheckedStatus)) yield
           BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_UP).doubleValue()
 
-      MtRecord(mt, roundedAvg, status, rawValue = roundedRawAvg)
+      MtRecord(mt, roundedAvg, calibrationCheckedStatus, rawValue = roundedRawAvg)
     }
   }
 

@@ -142,4 +142,19 @@ trait CalibrationDB {
   }
 
   def insertFuture(cal: Calibration): Unit
+
+  def getFailedCalibrationMapFuture(start: DateTime, end: DateTime)(monitor:String): Future[Map[String, DateTime]] = {
+    val f = calibrationReportFuture(start, end)(monitor)
+    f.failed.foreach(errorHandler)
+    for (calibrationList <- f)
+      yield {
+        val resultMap = mutable.Map.empty[String, DateTime]
+        for (item <- calibrationList.filter { c => c.zero_success.contains(false) || c.span_success.contains(false) } ) {
+          // Only keep the first failed calibration for each monitor type
+          resultMap.getOrElseUpdate(item.monitorType,
+            new DateTime(item.endTime).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0))
+        }
+        resultMap.toMap
+      }
+  }
 }

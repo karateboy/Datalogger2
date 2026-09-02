@@ -20,6 +20,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                                      monitorDB: MonitorDB,
                                      monitorTypeDb: MonitorTypeDB,
                                      monitorStatusDB: MonitorStatusDB,
+                                     calibrationDB: CalibrationDB,
                                      sysConfigDB: SysConfigDB,
                                      alarmRuleDb: AlarmRuleDb,
                                      cdxUploader: CdxUploader,
@@ -127,7 +128,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         lb.append(mtRecord)
       })
 
-      val mtDataList = calculateAvgMap(mtStatusMap, mtDataMap, monitorTypeDb, dailyAvg = true, monitorStatusDB = monitorStatusDB)
+      val mtDataList = calculateAvgMap(mtStatusMap, mtDataMap, monitorTypeDb, dailyAvg = true, monitorStatusDB = monitorStatusDB)(current, Map.empty[String, DateTime])
       val mapDailyMtDataList = mtDataList.flatMap(mtRecord => {
         if (MonitorType.DailyAvgMonitorTypeMap.contains(mtRecord.mtName))
           Some(mtRecord.copy(mtName = MonitorType.DailyAvgMonitorTypeMap(mtRecord.mtName)))
@@ -165,11 +166,12 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                           alwaysValid: Boolean = false): Future[Unit] = {
     val mtList = monitorTypeDb.measuredList
     for (recordMap <- recordOp.getMtRecordMapFuture(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current);
-         alarmRules <- alarmRuleDb.getRulesAsync) yield {
+         alarmRules <- alarmRuleDb.getRulesAsync;
+         failedCalibrationMap <- calibrationDB.getFailedCalibrationMapFuture(current - 2.hour, current)(monitor)) yield {
       try {
         val mtStatusMap = getMtStatusMap(recordMap)
         val mtDataMap: mutable.Map[String, ListBuffer[MtRecord]] = getMtDataMap(recordMap)
-        val mtDataList = calculateAvgMap(mtStatusMap, mtDataMap, monitorTypeDb, dailyAvg = true, monitorStatusDB = monitorStatusDB)
+        val mtDataList = calculateAvgMap(mtStatusMap, mtDataMap, monitorTypeDb, dailyAvg = true, monitorStatusDB = monitorStatusDB)(current, failedCalibrationMap)
         val hourRecordListsFuture = HourCalculationRule.calculateHourRecord(monitor, current, recordOp)
         val dailyAvgMtRecordsFuture = calculateDayAvgHourRecord(monitor, MonitorType.DailyAvgInputMonitorTypes, current, mtDataList.toSeq)
         for (ruleHourRecordLists <- hourRecordListsFuture; dailyAvgMtRecords <- dailyAvgMtRecordsFuture) {
