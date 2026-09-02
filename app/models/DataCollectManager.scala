@@ -236,7 +236,7 @@ object DataCollectManager {
   }
 
   def calculateAvgMap(mtStatusMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]],
-                      mtDataMap:mutable.Map[String, ListBuffer[MtRecord]],
+                      mtDataMap: mutable.Map[String, ListBuffer[MtRecord]],
                       monitorTypeDB: MonitorTypeDB,
                       monitorStatusDB: MonitorStatusDB,
                       dailyAvg: Boolean = false): mutable.Iterable[MtRecord] = {
@@ -259,9 +259,9 @@ object DataCollectManager {
         val otherThanNormalList = statusOrderList.filter(pair => pair._1 != MonitorStatus.NormalStat)
         val otherThanNormalCounts = otherThanNormalList.map(pair => pair._2.length)
 
-        if(calibrationAllStatus && otherThanNormalList.nonEmpty && calibrationCount >= otherThanNormalCounts.max)
+        if (calibrationAllStatus && otherThanNormalList.nonEmpty && calibrationCount >= otherThanNormalCounts.max)
           MonitorStatus.CalibrationDeviation
-        else{
+        else {
           if (mostStatus._1 == MonitorStatus.NormalStat) {
             if (mostStatus._2.length >= totalSize * effectiveRatio)
               MonitorStatus.NormalStat
@@ -275,7 +275,7 @@ object DataCollectManager {
       }
 
       val mtRecords = {
-        mt match{
+        mt match {
           case MonitorType.WS10 | MonitorType.WD10 =>
             mtDataMap(mt).take(10).filter(_.status == MonitorStatus.NormalStat).toList
           case _ =>
@@ -401,7 +401,7 @@ object DataCollectManager {
           case MonitorType.WD10 =>
             mtRecords.flatMap(getter(_)).take(10)
           case _ =>
-            mtRecords.flatMap(getter(_))
+            mtRecords.flatMap(getter(_)).map(v => if (v < 0) 0 else v)
         }
 
       val roundedAvg =

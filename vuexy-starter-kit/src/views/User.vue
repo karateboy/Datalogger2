@@ -86,13 +86,6 @@
           >
             {{ btnTitle }}
           </b-button>
-          <b-button
-            v-ripple.400="'rgba(186, 191, 199, 0.15)'"
-            variant="outline-secondary"
-            @click="reset"
-          >
-            取消
-          </b-button>
         </b-col>
       </b-row>
     </b-form>
