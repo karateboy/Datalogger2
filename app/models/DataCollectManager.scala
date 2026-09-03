@@ -239,7 +239,7 @@ object DataCollectManager {
                       mtDataMap: mutable.Map[String, ListBuffer[MtRecord]],
                       monitorTypeDB: MonitorTypeDB,
                       monitorStatusDB: MonitorStatusDB,
-                      dailyAvg: Boolean = false)(current: DateTime, failedCalibrationMap:Map[String, DateTime]): mutable.Iterable[MtRecord] = {
+                      dailyAvg: Boolean = false)(targetDateTime: DateTime, failedCalibrationMap:Map[String, DateTime]): mutable.Iterable[MtRecord] = {
     for {
       (mt, statusMap) <- mtStatusMap
       totalSize = statusMap.map {
@@ -405,7 +405,7 @@ object DataCollectManager {
         }
 
       val calibrationCheckedStatus = failedCalibrationMap.get(mt) match {
-        case Some(failedTime) if failedTime == current =>
+        case Some(failedTime) if failedTime == targetDateTime =>
           MonitorStatus.InvalidDataStat
         case _ =>
           status

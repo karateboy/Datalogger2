@@ -128,7 +128,9 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         lb.append(mtRecord)
       })
 
-      val mtDataList = calculateAvgMap(mtStatusMap, mtDataMap, monitorTypeDb, dailyAvg = true, monitorStatusDB = monitorStatusDB)(current, Map.empty[String, DateTime])
+      val mtDataList = calculateAvgMap(mtStatusMap,
+        mtDataMap, monitorTypeDb,
+        dailyAvg = true, monitorStatusDB = monitorStatusDB)(current - 24.hour, Map.empty[String, DateTime])
       val mapDailyMtDataList = mtDataList.flatMap(mtRecord => {
         if (MonitorType.DailyAvgMonitorTypeMap.contains(mtRecord.mtName))
           Some(mtRecord.copy(mtName = MonitorType.DailyAvgMonitorTypeMap(mtRecord.mtName)))
@@ -171,7 +173,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
       try {
         val mtStatusMap = getMtStatusMap(recordMap)
         val mtDataMap: mutable.Map[String, ListBuffer[MtRecord]] = getMtDataMap(recordMap)
-        val mtDataList = calculateAvgMap(mtStatusMap, mtDataMap, monitorTypeDb, dailyAvg = true, monitorStatusDB = monitorStatusDB)(current, failedCalibrationMap)
+        val mtDataList = calculateAvgMap(mtStatusMap, mtDataMap, monitorTypeDb, dailyAvg = true, monitorStatusDB = monitorStatusDB)(current.minusHours(1), failedCalibrationMap)
         val hourRecordListsFuture = HourCalculationRule.calculateHourRecord(monitor, current, recordOp)
         val dailyAvgMtRecordsFuture = calculateDayAvgHourRecord(monitor, MonitorType.DailyAvgInputMonitorTypes, current, mtDataList.toSeq)
         for (ruleHourRecordLists <- hourRecordListsFuture; dailyAvgMtRecords <- dailyAvgMtRecordsFuture) {
