@@ -116,45 +116,49 @@ class Realtime @Inject()
   def getMonitorTypeStatusList2: Action[AnyContent] = security.Authenticated.async {
     implicit request =>
       implicit val mtsWrite: OWrites[MonitorTypeStatus] = Json.writes[MonitorTypeStatus]
-      val userInfo = security.getUserinfo(request).get
-      val group = groupDB.getGroupByID(userInfo.group).get
-      val remainingActivatedMonitorTypes = monitorTypeOp.rangeList.filter(mt => !monitorTypeOp.measuringList.contains(mt))
-      for (recordMap <- recordDB.getMtRecordMapFuture(recordDB.HourCollection)(Monitor.activeId, remainingActivatedMonitorTypes, DateTime.now().minusHours(2).minusMinutes(35), DateTime.now())) yield {
-        val list: List[MonitorTypeStatus] = for {
-          mt <- remainingActivatedMonitorTypes.sortBy(monitorTypeOp.map(_).order)
-          recordOpt = recordMap.get(mt).flatMap(_.headOption)
-        } yield {
-          val mCase = monitorTypeOp.map(mt)
-          val measuringByStr = mCase.measuringBy.map {
-            instrumentList =>
-              instrumentList.mkString(",")
-          }.getOrElse("??")
+      if (ThermoVocReader.count == 0 && VocReader.count == 0) {
+        Future.successful(Ok(Json.toJson(Seq.empty)))
+      } else {
+        val userInfo = security.getUserinfo(request).get
+        val group = groupDB.getGroupByID(userInfo.group).get
+        val remainingActivatedMonitorTypes = monitorTypeOp.measuredList.filter(mt => !monitorTypeOp.measuringList.contains(mt))
+        for (recordMap <- recordDB.getMtRecordMapFuture(recordDB.HourCollection)(Monitor.activeId, remainingActivatedMonitorTypes, DateTime.now().minusHours(2).minusMinutes(35), DateTime.now())) yield {
+          val list: List[MonitorTypeStatus] = for {
+            mt <- remainingActivatedMonitorTypes.sortBy(monitorTypeOp.map(_).order)
+            recordOpt = recordMap.get(mt).flatMap(_.headOption)
+          } yield {
+            val mCase = monitorTypeOp.map(mt)
+            val measuringByStr = mCase.measuringBy.map {
+              instrumentList =>
+                instrumentList.mkString(",")
+            }.getOrElse("??")
 
-          if (recordOpt.isDefined) {
-            val record = recordOpt.get
-            val (overInternal, overLaw) = monitorTypeOp.overStd(mt, record.value)
-            val status =
-              monitorStatusOp.map(record.status).name
+            if (recordOpt.isDefined) {
+              val record = recordOpt.get
+              val (overInternal, overLaw) = monitorTypeOp.overStd(mt, record.value)
+              val status =
+                monitorStatusOp.map(record.status).name
 
-            MonitorTypeStatus(_id = mCase._id, desp = mCase.desp, monitorTypeOp.format(mt, record.value),
-              mCase.unit, measuringByStr,
-              status,
-              MonitorStatus.getCssClassStr(record.status, overInternal, overLaw),
-              monitorStatusOp.map(record.status).priority * 100 + mCase.order)
-          } else {
-            MonitorTypeStatus(_id = mCase._id, mCase.desp, monitorTypeOp.format(mt, None),
-              mCase.unit, measuringByStr,
-              "斷線",
-              Seq("disconnect_status"), -1)
+              MonitorTypeStatus(_id = mCase._id, desp = mCase.desp, monitorTypeOp.format(mt, record.value),
+                mCase.unit, measuringByStr,
+                status,
+                MonitorStatus.getCssClassStr(record.status, overInternal, overLaw),
+                monitorStatusOp.map(record.status).priority * 100 + mCase.order)
+            } else {
+              MonitorTypeStatus(_id = mCase._id, mCase.desp, monitorTypeOp.format(mt, None),
+                mCase.unit, measuringByStr,
+                "斷線",
+                Seq("disconnect_status"), -1)
+            }
           }
-        }
-        // filter out not allowed monitorTypes
-        val allowedList = if (userInfo.isAdmin)
-          list.sortBy(_.order)
-        else
-          list.filter(mtStatus => group.monitorTypes.contains(mtStatus._id)).sortBy(_.order)
+          // filter out not allowed monitorTypes
+          val allowedList = if (userInfo.isAdmin)
+            list.sortBy(_.order)
+          else
+            list.filter(mtStatus => group.monitorTypes.contains(mtStatus._id)).sortBy(_.order)
 
-        Ok(Json.toJson(allowedList))
+          Ok(Json.toJson(allowedList))
+        }
       }
   }
 
