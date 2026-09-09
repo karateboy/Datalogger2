@@ -173,7 +173,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
       try {
         val mtStatusMap = getMtStatusMap(recordMap)
         val mtDataMap: mutable.Map[String, ListBuffer[MtRecord]] = getMtDataMap(recordMap)
-        val mtDataList = calculateAvgMap(mtStatusMap, mtDataMap, monitorTypeDb, dailyAvg = true, monitorStatusDB = monitorStatusDB)(current.minusHours(1), failedCalibrationMap)
+        val mtDataList = calculateAvgMap(mtStatusMap, mtDataMap, monitorTypeDb, monitorStatusDB = monitorStatusDB)(current.minusHours(1), failedCalibrationMap)
         val hourRecordListsFuture = HourCalculationRule.calculateHourRecord(monitor, current, recordOp)
         val dailyAvgMtRecordsFuture = calculateDayAvgHourRecord(monitor, MonitorType.DailyAvgInputMonitorTypes, current, mtDataList.toSeq)
         for (ruleHourRecordLists <- hourRecordListsFuture; dailyAvgMtRecords <- dailyAvgMtRecordsFuture) {
