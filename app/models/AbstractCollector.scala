@@ -107,7 +107,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
 
   def connectHost(): Unit
 
-  def getDataRegList(deviceConfig: DeviceConfig): Seq[DataReg]
+  protected def getDataRegList(deviceConfig: DeviceConfig): Seq[DataReg]
 
   def normalPhase(): Receive = {
     case ConnectHost =>

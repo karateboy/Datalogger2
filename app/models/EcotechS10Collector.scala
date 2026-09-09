@@ -15,11 +15,11 @@ import javax.xml.bind.DatatypeConverter
 import scala.collection.mutable
 import scala.concurrent.{Future, blocking}
 
-object EcotechS50Collector extends AbstractDrv(_id = "EcotechS50", name = "Ecotech Serinus 50 (SO2)",
+object EcotechS10Collector extends AbstractDrv(_id = "EcotechS10", name = "Ecotech Serinus 10 (O3)",
   protocols = List(Protocol.serial)) {
   override val logger: Logger = Logger(this.getClass)
   private val instrumentStatusKeyList: List[InstrumentStatusType] = List(
-    InstrumentStatusType(key = MonitorType.SO2, addr = 1, desc = "SO2", "ppm")
+    InstrumentStatusType(key = MonitorType.O3, addr = 1, desc = "O3", "ppm")
   )
 
   val map: Map[Int, InstrumentStatusType] = instrumentStatusKeyList.map(p => p.addr -> p).toMap
@@ -31,7 +31,7 @@ object EcotechS50Collector extends AbstractDrv(_id = "EcotechS50", name = "Ecote
   }
 
   override def getMonitorTypes(param: String): List[String] =
-    List(MonitorType.SO2)
+    List(MonitorType.O3)
 
   override def getCalibrationTime(param: String): Option[Imports.LocalTime] = {
     val config = Json.parse(param).validate[DeviceConfig].asOpt.get
@@ -39,7 +39,7 @@ object EcotechS50Collector extends AbstractDrv(_id = "EcotechS50", name = "Ecote
   }
 
   override def factory(id: String, protocol: ProtocolParam, param: String)(f: AnyRef, fOpt: Option[AnyRef]): Actor = {
-    val f2 = f.asInstanceOf[EcotechS50Collector.Factory]
+    val f2 = f.asInstanceOf[EcotechS10Collector.Factory]
     val config = Json.parse(param).validate[DeviceConfig].asOpt.get
     f2(id, desc = super.description, config, protocol)
   }
@@ -52,7 +52,7 @@ object EcotechS50Collector extends AbstractDrv(_id = "EcotechS50", name = "Ecote
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class EcotechS50Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
+class EcotechS10Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: MonitorStatusDB,
                                     alarmOp: AlarmDB, monitorTypeOp: MonitorTypeDB,
                                     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)
                                    (@Assisted("instId") instId: String,
@@ -64,7 +64,7 @@ class EcotechS50Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
   val logger: Logger = Logger(this.getClass)
 
-  logger.info(s"Ecotech S50 Collector start")
+  logger.info(s"Ecotech S10 Collector start")
   logger.debug(deviceConfig.toString)
 
   private val STX = '\u0002'.toByte
@@ -72,7 +72,7 @@ class EcotechS50Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
   private val EOT = '\u0004'.toByte
   @volatile var serialOpt: Option[SerialComm] = None
 
-  import EcotechS50Collector._
+  import EcotechS10Collector._
 
   override def probeInstrumentStatusType: Seq[InstrumentStatusType] = instrumentStatusKeyList
 
@@ -89,10 +89,10 @@ class EcotechS50Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
         val msg = resp.slice(5, 5 + msgLen)
 
         logger.debug(s"msg = ${DatatypeConverter.printHexBinary(msg)}")
-        val so2 = msg.slice(1, 5)
-        logger.debug(s"so2 = ${DatatypeConverter.printHexBinary(so2)}")
+        val o3 = msg.slice(1, 5)
+        logger.debug(s"o3 = ${DatatypeConverter.printHexBinary(o3)}")
 
-        Array(so2).map(ByteBuffer.wrap(_).getFloat.toDouble)
+        Array(o3).map(ByteBuffer.wrap(_).getFloat.toDouble)
       }
 
       try {
@@ -155,7 +155,7 @@ class EcotechS50Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
         SerialPort.PARITY_NONE))
   }
 
-  override def getDataRegList(deviceConfig: DeviceConfig): Seq[DataReg] = EcotechS50Collector.getDataRegList(deviceConfig)
+  override def getDataRegList(deviceConfig: DeviceConfig): Seq[DataReg] = EcotechS10Collector.getDataRegList(deviceConfig)
 
   val ZERO_ADDR = 0
   val SPAN_ADDR = 1

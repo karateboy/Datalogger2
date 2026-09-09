@@ -407,6 +407,7 @@ export default Vue.extend({
     async getRealtimeStatus(): Promise<void> {
       const ret = await axios.get('/MonitorTypeStatusList')
       this.realTimeStatus = ret.data
+      console.info(this.realTimeStatus)
     },
     async getVocStatus(): Promise<void> {
       const ret = await axios.get('/VocStatusList')

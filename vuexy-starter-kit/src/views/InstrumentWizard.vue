@@ -433,6 +433,8 @@ export default Vue.extend({
         'picarroG2307',
         'EcoPhysics88P',
         'EcoPhysics88P_NO',
+        'EcotechS10',
+        'EcotechS30',
         'EcotechS40',
         'EcotechS50',
       ]

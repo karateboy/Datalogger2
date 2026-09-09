@@ -18,7 +18,7 @@ import scala.concurrent.{Future, blocking}
 object EcotechS40Collector extends AbstractDrv(_id = "EcotechS40", name = "Ecotech Serinus 40 (NO/NO2/NOx)",
   protocols = List(Protocol.serial)) {
   override val logger: Logger = Logger(this.getClass)
-  val instrumentStatusKeyList: List[InstrumentStatusType] = List(
+  private val instrumentStatusKeyList: List[InstrumentStatusType] = List(
     InstrumentStatusType(key = MonitorType.NO, addr = 1, desc = "NO", "ppm"),
     InstrumentStatusType(key = MonitorType.NOX, addr = 2, desc = "NOX", "ppm"),
     InstrumentStatusType(key = MonitorType.NO2, addr = 3, desc = "NO2", "ppm"),
@@ -66,7 +66,7 @@ class EcotechS40Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
     calibrationOp: CalibrationDB, instrumentStatusOp: InstrumentStatusDB)(instId, desc, deviceConfig, protocolParam) {
   val logger: Logger = Logger(this.getClass)
 
-  logger.info(s"EcotechS40Collector start")
+  logger.info(s"Ecotech S40 Collector start")
   logger.debug(deviceConfig.toString)
 
   private val STX = '\u0002'.toByte

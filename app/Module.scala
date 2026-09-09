@@ -106,6 +106,8 @@ class Module(environment: Environment,
 	  bindActorFactory[DuoCollector, Duo.Factory]
     bindActorFactory[EcoPhysics88PCollector, EcoPhysics88P.Factory]
     bindActorFactory[EcoPhysics88PNOCollector, EcoPhysics88PNO.Factory]
+    bindActorFactory[EcotechS10Collector, EcotechS10Collector.Factory]
+    bindActorFactory[EcotechS30Collector, EcotechS30Collector.Factory]
     bindActorFactory[EcotechS40Collector, EcotechS40Collector.Factory]
     bindActorFactory[EcotechS50Collector, EcotechS50Collector.Factory]
     bindActorFactory[HydreonRainGaugeCollector, HydreonRainGauge.Factory]

@@ -13,7 +13,7 @@ object AbstractDrv {
 abstract class AbstractDrv(_id: String, name: String, protocols: List[String]) extends DriverOps {
   import DeviceConfig._
   val logger: Logger = Logger(this.getClass)
-  def getDataRegList(deviceConfig: DeviceConfig): List[DataReg]
+  protected def getDataRegList(deviceConfig: DeviceConfig): List[DataReg]
 
   override def verifyParam(json: String): String = {
     val ret = Json.parse(json).validate[DeviceConfig]
