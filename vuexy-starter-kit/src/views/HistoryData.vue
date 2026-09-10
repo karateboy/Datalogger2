@@ -132,7 +132,7 @@
           <b-tr>
             <b-th></b-th>
             <b-th
-              v-for="mt in form.monitorTypes"
+              v-for="mt in monitorTypes"
               :key="mt"
               :colspan="mtColspan"
               class="text-center"
@@ -195,6 +195,7 @@ export default Vue.extend({
         includeRaw: false,
       },
       display: false,
+      monitorTypes: Array<any>(),
       columns: Array<any>(),
       rows: Array<any>(),
       currentPage: 1,
@@ -248,6 +249,7 @@ export default Vue.extend({
       this.display = true
       this.rows = []
       this.columns = this.getColumns()
+      this.monitorTypes = [...this.form.monitorTypes]
       let param: HistoryDataParam = {
         monitors: this.form.monitors,
         monitorTypes: this.form.monitorTypes,
