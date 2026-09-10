@@ -94,7 +94,7 @@
 
 <script>
 import Vue from 'vue'
-import { mapState, mapActions } from 'vuex'
+import { mapState, mapActions, mapGetters } from 'vuex'
 import axios from 'axios'
 const Ripple = require('vue-ripple-directive')
 import ToastificationContent from '@core/components/toastification/ToastificationContent.vue'
@@ -131,6 +131,7 @@ export default Vue.extend({
   computed: {
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapState('user', ['userInfo']),
+    ...mapGetters('monitorTypes', ['mtMap']),
     passwordLabel() {
       if (this.isNew) return '密碼:'
       return '變更密碼:'
@@ -165,8 +166,24 @@ export default Vue.extend({
     },
     monitorTypeOptions() {
       let ret = []
-      for (const mt of this.monitorTypes)
-        ret.push({ text: mt.desp, value: mt._id })
+      if (this.user.group) {
+        let group = this.groupList.find(group => group._id === this.user.group)
+        if (group) {
+          if (group.admin) {
+            for (const mt of this.monitorTypes)
+              ret.push({ text: mt.desp, value: mt._id })
+
+            return ret
+          }
+
+          for (const monitorType of group.monitorTypes) {
+            let mt = this.mtMap.get(monitorType)
+            ret.push({ text: mt.desp, value: mt._id })
+          }
+
+          return ret
+        }
+      }
       return ret
     },
   },
