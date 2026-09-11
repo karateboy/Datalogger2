@@ -408,9 +408,7 @@ class Query @Inject()(recordOp: RecordDB,
             (time, valueOpt.flatten)
         }
         val timeStatus = timeData.map {
-          t =>
-            val statusOpt = for (x <- t._2) yield x._2
-            statusOpt.flatten
+          t =>for (x <- t._2) yield x._2
         }
         if (monitorTypeOp.map.contains(mt))
           seqData(name = s"${monitorOp.map(m).desc}_${monitorTypeOp.map(mt).desp}",
@@ -527,7 +525,7 @@ class Query @Inject()(recordOp: RecordDB,
                                  period: Period,
                                  includeRaw: Boolean = false,
                                  statusFilter: MonitorStatusFilter.Value = MonitorStatusFilter.ValidData)
-                                (start: DateTime, end: DateTime): Map[String, Map[DateTime, (Option[Double], Option[String])]] = {
+                                (start: DateTime, end: DateTime): Map[String, Map[DateTime, (Option[Double], String)]] = {
     val mtRecordListMap = recordOp.getRecordMap(tableType.mapCollection(myTabType))(monitor, mtList, start, end, includeRaw)
     val actualMonitorTypes = if (includeRaw)
       mtList flatMap { mt => Seq(mt, MonitorType.getRawType(mt)) }
@@ -548,7 +546,7 @@ class Query @Inject()(recordOp: RecordDB,
 
         val pairs =
           if ((myTabType == tableType.hour && period.getHours == 1) || (myTabType == tableType.min && period.getMinutes == 1)) {
-            recordList.filter { r => MonitorStatusFilter.isMatched(statusFilter, r.status) }.map { r => r.time -> (r.value, Some(r.status)) }
+            recordList.filter { r => MonitorStatusFilter.isMatched(statusFilter, r.status) }.map { r => r.time -> (r.value, r.status) }
           } else {
             for {
               period_start <- getPeriods(start, end, period)
@@ -557,15 +555,15 @@ class Query @Inject()(recordOp: RecordDB,
               if (mt == MonitorType.WIN_DIRECTION || mt == MonitorType.getRawType(MonitorType.WIN_DIRECTION)) {
                 val windDir = records
                 val windSpeed = recordOp.getRecordMap(tableType.mapCollection(myTabType))(monitor, List(MonitorType.WIN_SPEED), period_start, period_start + period)(MonitorType.WIN_SPEED)
-                period_start -> (directionAvg(windSpeed.flatMap(_.value), windDir.flatMap(_.value)), None)
+                period_start -> (directionAvg(windSpeed.flatMap(_.value), windDir.flatMap(_.value)), windDir.head.status)
               } else {
                 val matchedRecords = records.filter { r => MonitorStatusFilter.isMatched(statusFilter, r.status) }
                 val values = matchedRecords.flatMap { r => r.value }
                 val status =
                   if (matchedRecords.nonEmpty)
-                    Some(matchedRecords.head.status)
+                    matchedRecords.head.status
                   else
-                    None
+                    MonitorStatus.DataLost
 
                 if (values.nonEmpty)
                   period_start -> (Some(values.sum / values.length), status)

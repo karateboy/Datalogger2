@@ -15,7 +15,7 @@ object StatusType extends Enumeration {
   )
 }
 
-case class MonitorStatus(_id: String, name: String, priority: Int) {
+case class MonitorStatus(_id: String, name: String, priority: Int, explain: String = "") {
   val info: TagInfo = MonitorStatus.getTagInfo(_id)
 }
 

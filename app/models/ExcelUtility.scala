@@ -124,28 +124,30 @@ class ExcelUtility @Inject()
           for (v <- pair._2 if !v.isNaN) {
             val d = BigDecimal(v).setScale(precision(colIdx % precision.length), RoundingMode.HALF_UP)
             cell.setCellValue(d.doubleValue())
-            if (series.statusList.nonEmpty)
-              for (status <- series.statusList(row - 1)) {
-                val tagInfo = MonitorStatus.getTagInfo(status)
-                val statusCell = thisRow.createCell(2 * colIdx + 2)
-                val monitorStatus = monitorStatusOp.map(status)
-                statusCell.setCellValue(monitorStatus.name)
-                if (MonitorStatus.isCalibration(status)) {
-                  cell.setCellStyle(calibrationStyle)
-                  statusCell.setCellStyle(calibrationStyle)
-                } else if (tagInfo.statusType == StatusType.ManualValid ||
-                  tagInfo.statusType == StatusType.ManualInvalid) {
-                  cell.setCellStyle(manualStyle)
-                  statusCell.setCellStyle(manualStyle)
-                } else if (MonitorStatus.isMaintenance(status)) {
-                  cell.setCellStyle(maintenanceStyle)
-                  statusCell.setCellStyle(maintenanceStyle)
-                } else if (MonitorStatus.isError(status)) {
-                  cell.setCellStyle(abnormalStyle)
-                  statusCell.setCellStyle(abnormalStyle)
-                }
-              }
           }
+
+          if (series.statusList.nonEmpty)
+            for (status <- series.statusList(row - 1)) {
+              val tagInfo = MonitorStatus.getTagInfo(status)
+              val statusCell = thisRow.createCell(2 * colIdx + 2)
+              val monitorStatus = monitorStatusOp.map(status)
+              statusCell.setCellValue(monitorStatus.name)
+              if (MonitorStatus.isCalibration(status)) {
+                cell.setCellStyle(calibrationStyle)
+                statusCell.setCellStyle(calibrationStyle)
+              } else if (tagInfo.statusType == StatusType.ManualValid ||
+                tagInfo.statusType == StatusType.ManualInvalid) {
+                cell.setCellStyle(manualStyle)
+                statusCell.setCellStyle(manualStyle)
+              } else if (MonitorStatus.isMaintenance(status)) {
+                cell.setCellStyle(maintenanceStyle)
+                statusCell.setCellStyle(maintenanceStyle)
+              } else if (MonitorStatus.isError(status)) {
+                cell.setCellStyle(abnormalStyle)
+                statusCell.setCellStyle(abnormalStyle)
+              }
+            }
+
         }
       }
     }

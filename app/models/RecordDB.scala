@@ -138,7 +138,7 @@ trait RecordDB {
       val recordSeq = records flatMap {
         doc => {
           val mtMap = doc.mtMap
-          if (mtMap.contains(mt) && mtMap(mt).value.isDefined)
+          if (mtMap.contains(mt))
             Some(Record(new DateTime(doc._id.time.getTime), mtMap(mt).value, mtMap(mt).status, doc._id.monitor))
           else
             None
