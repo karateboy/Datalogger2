@@ -6,12 +6,14 @@
         :fields="columns"
         :items="monitorStatusList"
         select-mode="single"
-        selectable
-        selected-variant="info"
         bordered
         style="max-height: 650px"
-        @row-selected="onMsSelected"
       >
+        <template v-slot:cell(name)="data">
+          <span :title="data.item.explain">
+            {{ data.value }}
+          </span>
+        </template>
       </b-table>
     </b-card>
   </div>

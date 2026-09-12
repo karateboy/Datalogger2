@@ -54,7 +54,7 @@
               variant="primary"
               class="mr-1"
               :disabled="selected.length === 0"
-              @click="toggleState('022')"
+              @click="confirmToggle('022')"
             >
               切換氣象及粒狀物校正
             </b-button>
@@ -278,6 +278,14 @@ export default Vue.extend({
         this.showResult(res.data.ok)
       } catch (err) {
         console.error(err)
+      }
+    },
+    async confirmToggle(state) {
+      const value = await this.$bvModal.msgBoxConfirm(
+        `目前選擇的儀器:${this.selected[0]._id}, 氣象及粒狀物校正僅適用於相關測項, 是否確認切換?`,
+      )
+      if (value) {
+        await this.toggleState(state)
       }
     },
     async toggleMaintenanceMode() {

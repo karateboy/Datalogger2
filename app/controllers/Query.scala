@@ -964,7 +964,8 @@ class Query @Inject()(recordOp: RecordDB,
     val outputType = OutputType.withName(outputTypeStr)
     val recordListF = calibrationOp.calibrationReportFuture(startTime, endTime)(Monitor.activeId)
     implicit val w = Json.writes[Calibration]
-    for (records <- recordListF) yield {
+    for (rawRecords <- recordListF) yield {
+      val records = rawRecords map { _.rounded(monitorTypeOp)}
       outputType match {
         case OutputType.html =>
           implicit val write2: OWrites[CalibrationQueryResult] = Json.writes[CalibrationQueryResult]

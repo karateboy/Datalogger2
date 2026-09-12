@@ -122,12 +122,21 @@ object MonitorType {
 
   private case class CalculatedMonitorType(requiredMonitorTypes: Seq[String],
                                            targetMonitorType: String,
-                                           generator: (Seq[MonitorTypeData], Date) => Option[MonitorTypeData])
+                                           generator: (Seq[MonitorTypeData], Date) => Option[MonitorTypeData],
+                                           mtRecordGenerator: (Seq[MtRecord], Date) => Option[MtRecord])
+
+  private def copyMtDataGenerator(mt: String)(mtData: Seq[MonitorTypeData], date: Date) =
+    for (target <- mtData.find(_.mt == mt)) yield
+      target.copy(mt = mt)
+
+  private def copyMtRecordGenerator(mt: String)(mtData: Seq[MtRecord], date: Date) =
+    for (target <- mtData.find(_.mtName == mt)) yield
+      target.copy(mtName = mt)
 
   /*
   * GeneratingFunction(required MonitorTypes, generated MonitorType, rawData)
   * */
-  val lfnRequiredMonitorTypoes = Seq("S1_5", "S1_6", "S1_7", "S1_8", "S1_9", "S1_10", "S1_11", "S1_12", "S1_13", "S1_14", "S1_15")
+  private val lfnRequiredMonitorTypes = Seq("S1_5", "S1_6", "S1_7", "S1_8", "S1_9", "S1_10", "S1_11", "S1_12", "S1_13", "S1_14", "S1_15")
   private val calculatedMonitorTypeList: List[CalculatedMonitorType] =
     List(
       CalculatedMonitorType(Seq(LEQA), LDN, (mtDataList, now) =>
@@ -141,32 +150,45 @@ object MonitorType {
               MonitorTypeData(LDN, mtData.value + 10, mtData.status)
             else
               MonitorTypeData(LDN, mtData.value, mtData.status)
-          }
+          },
+        (mtRecords, now) =>
+          for (mtData <- mtRecords.find(_.mtName == LEQA))
+            yield {
+              val localTime = now.toInstant
+                .atZone(ZoneId.systemDefault())
+                .toLocalTime;
+
+              if (localTime.getHour < 7 || localTime.getHour >= 22)
+                MtRecord(LDN, mtData.value.map(_ + 10), mtData.status)
+              else
+                MtRecord(LDN, mtData.value, mtData.status)
+            }
       ),
-      CalculatedMonitorType(lfnRequiredMonitorTypoes, LFN,
-        (mtDataList, now) => {
+      CalculatedMonitorType(lfnRequiredMonitorTypes, LFN,
+        (mtDataList, _) => {
           val aWeightings = Seq(-50.5, -44.7, -39.4, -34.6, -30.2, -26.2, -22.5, -19.1, -16.1, -13.4, -10.9)
-          val mtMap = mtDataList.map(dl=>dl.mt->dl).toMap
-          val values = lfnRequiredMonitorTypoes.map(mtMap(_).value)
-          val statuses = lfnRequiredMonitorTypoes.map(mtMap(_).status)
-          val aWeightingValues = values.zipWithIndex.map(pair=>pair._1 + aWeightings(pair._2))
+          val mtMap = mtDataList.map(dl => dl.mt -> dl).toMap
+          val values = lfnRequiredMonitorTypes.map(mtMap(_).value)
+          val statuses = lfnRequiredMonitorTypes.map(mtMap(_).status)
+          val aWeightingValues = values.zipWithIndex.map(pair => pair._1 + aWeightings(pair._2))
           val lfn = 10 * Math.log10(aWeightingValues.map(v => Math.pow(10, v / 10)).sum)
 
           Some(MonitorTypeData(LFN, lfn, statuses.head))
-        }
+        },
+        (mtDataList, _) => {
+          val aWeightings = Seq(-50.5, -44.7, -39.4, -34.6, -30.2, -26.2, -22.5, -19.1, -16.1, -13.4, -10.9)
+          val mtMap = mtDataList.map(dl => dl.mtName -> dl).toMap
+          val values = lfnRequiredMonitorTypes.map(mtMap(_).value)
+          val statuses = lfnRequiredMonitorTypes.map(mtMap(_).status)
+          val aWeightingValues = values.zipWithIndex.flatMap(pair => pair._1.map(_ + aWeightings(pair._2)))
+          val lfn = 10 * Math.log10(aWeightingValues.map(v => Math.pow(10, v / 10)).sum)
+
+          Some(MtRecord(LFN, Option(lfn), statuses.head))
+        },
       ),
-      CalculatedMonitorType(Seq(WIN_SPEED), WS_SPEED, (mtDataList, _) =>
-        for (target <- mtDataList.find(_.mt == WIN_SPEED)) yield
-          target.copy(mt = WS_SPEED)
-      ),
-      CalculatedMonitorType(Seq(WIN_SPEED), WS10, (mtDataList, _) =>
-        for (target <- mtDataList.find(_.mt == WIN_SPEED)) yield
-          target.copy(mt = WS10)
-      ),
-      CalculatedMonitorType(Seq(WIN_DIRECTION), WD10, (mtDataList, _) =>
-        for (target <- mtDataList.find(_.mt == WIN_DIRECTION)) yield
-          target.copy(mt = WD10)
-      ),
+      CalculatedMonitorType(Seq(WIN_SPEED), WS_SPEED, copyMtDataGenerator(WS_SPEED), copyMtRecordGenerator(WS_SPEED)),
+      CalculatedMonitorType(Seq(WIN_SPEED), WS10, copyMtDataGenerator(WS10), copyMtRecordGenerator(WS10)),
+      CalculatedMonitorType(Seq(WIN_DIRECTION), WD10, copyMtDataGenerator(WD10), copyMtRecordGenerator(WD10)),
     )
 
   val calculatedMonitorTypes: Seq[String] = calculatedMonitorTypeList.map(_.targetMonitorType)
@@ -180,15 +202,9 @@ object MonitorType {
     }
 
   def getCalculatedMtRecord(mtRecords: Seq[MtRecord], now: Date): List[MtRecord] = {
-    val mtData = mtRecords flatMap { mtRecord =>
-      for (value <- mtRecord.value) yield
-        MonitorTypeData(mtRecord.mtName, value, mtRecord.status)
-    }
-
-    val mtList = mtData.map(_.mt)
-    val qualifiedMtList = calculatedMonitorTypeList.filter(cmt=>cmt.requiredMonitorTypes.forall(mtList.contains))
-    val calculatedMtd = qualifiedMtList.flatMap { mt => mt.generator(mtData, now) }
-    calculatedMtd map { mtd => MtRecord(mtd.mt, Some(mtd.value), mtd.status) }
+    val mtList = mtRecords.map(_.mtName)
+    val qualifiedMtList = calculatedMonitorTypeList.filter(cmt => cmt.requiredMonitorTypes.forall(mtList.contains))
+    qualifiedMtList.flatMap { mt => mt.mtRecordGenerator(mtRecords, now) }
   }
 
   def populateCalculatedTypes(mtList: Seq[String]): Seq[String] = {

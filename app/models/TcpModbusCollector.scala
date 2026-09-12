@@ -556,7 +556,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
                 val zero = zeroMap.get(mt)
                 val span = spanMap.get(mt)
                 val spanStd = monitorTypeDB.map(mt).span
-                val cal = Calibration(Some(Monitor.activeId), mt, startTime, endTime, zero, spanStd, span)
+                val cal = Calibration(Some(Monitor.activeId), mt, startTime, endTime, zero, spanStd, span).rounded(monitorTypeDB)
                 calibrationOp.insertFuture(cal)
               }
             } else {
@@ -570,7 +570,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
                     val spanStd = monitorTypeDB.map(mt).span
                     Calibration(Some(Monitor.activeId), mt, startTime, endTime, None, spanStd, values)
                   }
-                calibrationOp.insertFuture(cal)
+                calibrationOp.insertFuture(cal.rounded(monitorTypeDB))
               }
             }
 

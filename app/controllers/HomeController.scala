@@ -216,7 +216,7 @@ class HomeController @Inject()(
         if (inst.active) {
           MonitorStatus.getCssClassStr(inst.state)
         } else
-          Seq.empty[String]
+          Seq("abnormal_status")
       }
 
       def getCalibrationTime: Option[LocalTime] = {
@@ -1071,13 +1071,17 @@ class HomeController @Inject()(
     }
   }
 
-  private case class MonitorStatusInfo(_id: String, name: String, priority: Int, classStr:Seq[String])
+  private case class MonitorStatusInfo(_id: String,
+                                       name: String,
+                                       priority: Int,
+                                       classStr: Seq[String],
+                                       explain: String)
 
   def monitorStatusList: Action[AnyContent] = security.Authenticated {
     import MonitorStatus._
     val monitorStatusList = monitorStatusDB.msList.sortBy(_.priority)
     val monitorStatusListInfo = monitorStatusList.map(ms =>
-      MonitorStatusInfo(ms._id, ms.name, ms.priority, MonitorStatus.getCssClassStr(ms._id))
+      MonitorStatusInfo(ms._id, ms.name, ms.priority, MonitorStatus.getCssClassStr(ms._id), ms.explain)
     )
     implicit val writes: OWrites[MonitorStatusInfo] = Json.writes[MonitorStatusInfo]
     Ok(Json.toJson(monitorStatusListInfo))

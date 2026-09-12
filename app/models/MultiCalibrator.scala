@@ -160,7 +160,8 @@ class MultiCalibrator(calibrationConfig: CalibrationConfig,
       if (point >= calibrationConfig.pointConfigs.length) {
         log.info("All point calibration is done.")
         val calibrations = calibrationMap.values.toSeq
-        calibrations.foreach(calibration => {
+        calibrations.foreach(rawCalibration => {
+          val calibration = rawCalibration.rounded(monitorTypeDB)
           calibrationDB.insertFuture(calibration)
           if (!calibration.multipointSuccess())
             alarmDB.log(alarmDB.src(calibration.monitorType), Alarm.Level.ERR,

@@ -10,9 +10,10 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.math.BigDecimal.RoundingMode
 
 
-case class Calibration(monitor:Option[String],
+case class Calibration(monitor: Option[String],
                        monitorType: String,
                        startTime: Date,
                        endTime: Date,
@@ -95,6 +96,18 @@ case class Calibration(monitor:Option[String],
       spanStd <- span_std if spanVal != zeroVal} yield
       (-zeroVal * spanStd) / (spanVal - zeroVal)
 
+  def rounded(implicit monitorTypeOp: MonitorTypeDB): Calibration = {
+    val mtCase = monitorTypeOp.map(this.monitorType)
+
+    def roundValue(v: Option[Double]): Option[Double] = v.map(BigDecimal(_).setScale(mtCase.prec, RoundingMode.HALF_UP).toDouble)
+
+    this.copy(zero_val = roundValue(this.zero_val),
+      span_val = roundValue(this.span_val),
+      point3 = roundValue(this.point3),
+      point4 = roundValue(this.point4),
+      point5 = roundValue(this.point5)
+    )
+  }
 }
 
 object Calibration {
@@ -115,15 +128,15 @@ trait CalibrationDB {
   implicit val reads: Reads[Calibration] = Json.reads[Calibration]
   implicit val writes: OWrites[Calibration] = Json.writes[Calibration]
 
-  def calibrationReport(start: DateTime, end: DateTime)(monitor:String): Seq[Calibration]
+  def calibrationReport(start: DateTime, end: DateTime)(monitor: String): Seq[Calibration]
 
-  def calibrationReportFuture(start: DateTime, end: DateTime)(monitor:String): Future[Seq[Calibration]]
+  def calibrationReportFuture(start: DateTime, end: DateTime)(monitor: String): Future[Seq[Calibration]]
 
-  def calibrationReportFuture(start: DateTime)(monitor:String): Future[Seq[Calibration]]
+  def calibrationReportFuture(start: DateTime)(monitor: String): Future[Seq[Calibration]]
 
-  def calibrationReport(mt: String, start: DateTime, end: DateTime)(monitor:String): Seq[Calibration]
+  def calibrationReport(mt: String, start: DateTime, end: DateTime)(monitor: String): Seq[Calibration]
 
-  def getCalibrationListMapFuture(startDate: DateTime, endDate: DateTime)(monitor:String)
+  def getCalibrationListMapFuture(startDate: DateTime, endDate: DateTime)(monitor: String)
                                  (implicit monitorTypeOp: MonitorTypeDB): Future[CalibrationListMap] = {
     val begin = startDate - 3.day
     val end = endDate
@@ -143,13 +156,13 @@ trait CalibrationDB {
 
   def insertFuture(cal: Calibration): Unit
 
-  def getFailedCalibrationMapFuture(start: DateTime, end: DateTime)(monitor:String): Future[Map[String, DateTime]] = {
+  def getFailedCalibrationMapFuture(start: DateTime, end: DateTime)(monitor: String): Future[Map[String, DateTime]] = {
     val f = calibrationReportFuture(start, end)(monitor)
     f.failed.foreach(errorHandler)
     for (calibrationList <- f)
       yield {
         val resultMap = mutable.Map.empty[String, DateTime]
-        for (item <- calibrationList.filter { c => c.zero_success.contains(false) || c.span_success.contains(false) } ) {
+        for (item <- calibrationList.filter { c => c.zero_success.contains(false) || c.span_success.contains(false) }) {
           // Only keep the first failed calibration for each monitor type
           resultMap.getOrElseUpdate(item.monitorType,
             new DateTime(item.endTime).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0))
