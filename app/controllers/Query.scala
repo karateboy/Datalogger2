@@ -408,7 +408,7 @@ class Query @Inject()(recordOp: RecordDB,
             (time, valueOpt.flatten)
         }
         val timeStatus = timeData.map {
-          t =>for (x <- t._2) yield x._2
+          t => for (x <- t._2) yield x._2
         }
         if (monitorTypeOp.map.contains(mt))
           seqData(name = s"${monitorOp.map(m).desc}_${monitorTypeOp.map(mt).desp}",
@@ -666,14 +666,7 @@ class Query @Inject()(recordOp: RecordDB,
       val monitors = monitorStr.split(":")
       val monitorTypes = monitorTypeStr.split(':')
       val tabType = tableType.withName(tabTypeStr)
-      val (start, end) =
-        if (tabType == tableType.hour) {
-          val orignal_start = new DateTime(startNum)
-          val orignal_end = new DateTime(endNum)
-          (orignal_start.withMinuteOfHour(0), orignal_end.withMinute(0) + 1.hour)
-        } else {
-          (new DateTime(startNum), new DateTime(endNum))
-        }
+      val (start, end) = (new DateTime(startNum), new DateTime(endNum))
 
       val resultFuture = recordOp.getRecordListFuture(tableType.mapCollection(tabType))(start, end, monitors)
       val emptyCell = CellData("-", Seq.empty[String])
@@ -753,15 +746,7 @@ class Query @Inject()(recordOp: RecordDB,
         error => Future.successful(handleJsonValidateError(error)),
         param => {
           val tabType: TableType#Value = tableType.withName(param.tab)
-          val (start, end) =
-            if (tabType == tableType.hour) {
-              val original_start = new DateTime(param.start)
-              val original_end = new DateTime(param.end)
-              (original_start.withMinuteOfHour(0), original_end.withMinute(0) + 1.hour)
-            } else {
-              (new DateTime(param.start), new DateTime(param.end))
-            }
-
+          val (start, end) = (new DateTime(param.start), new DateTime(param.end))
           val resultFuture = recordOp.getRecordListFuture(tableType.mapCollection(tabType))(start, end, param.monitors)
           val emptyCell = CellData("-", Seq.empty[String])
           for (recordList <- resultFuture) yield {
@@ -965,7 +950,9 @@ class Query @Inject()(recordOp: RecordDB,
     val recordListF = calibrationOp.calibrationReportFuture(startTime, endTime)(Monitor.activeId)
     implicit val w = Json.writes[Calibration]
     for (rawRecords <- recordListF) yield {
-      val records = rawRecords map { _.rounded(monitorTypeOp)}
+      val records = rawRecords map {
+        _.rounded(monitorTypeOp)
+      }
       outputType match {
         case OutputType.html =>
           implicit val write2: OWrites[CalibrationQueryResult] = Json.writes[CalibrationQueryResult]
@@ -1218,7 +1205,7 @@ class Query @Inject()(recordOp: RecordDB,
     security.Authenticated.async {
       val monitors = monitorStr.split(':')
       val start = new DateTime(startNum).withTimeAtStartOfDay()
-      val end = if(isDailyAqi)
+      val end = if (isDailyAqi)
         new DateTime(endNum).withTimeAtStartOfDay() + 1.day
       else
         new DateTime(endNum).withMinuteOfHour(0)
