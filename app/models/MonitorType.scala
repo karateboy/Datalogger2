@@ -125,13 +125,13 @@ object MonitorType {
                                            generator: (Seq[MonitorTypeData], Date) => Option[MonitorTypeData],
                                            mtRecordGenerator: (Seq[MtRecord], Date) => Option[MtRecord])
 
-  private def copyMtDataGenerator(mt: String)(mtData: Seq[MonitorTypeData], date: Date) =
-    for (target <- mtData.find(_.mt == mt)) yield
-      target.copy(mt = mt)
+  private def copyMtDataGenerator(srcMt:String, targetMt: String)(mtData: Seq[MonitorTypeData], date: Date) =
+    for (target <- mtData.find(_.mt == srcMt)) yield
+      target.copy(mt = targetMt)
 
-  private def copyMtRecordGenerator(mt: String)(mtData: Seq[MtRecord], date: Date) =
-    for (target <- mtData.find(_.mtName == mt)) yield
-      target.copy(mtName = mt)
+  private def copyMtRecordGenerator(srcMt:String, targetMt: String)(mtData: Seq[MtRecord], date: Date) =
+    for (target <- mtData.find(_.mtName == srcMt)) yield
+      target.copy(mtName = targetMt)
 
   /*
   * GeneratingFunction(required MonitorTypes, generated MonitorType, rawData)
@@ -186,9 +186,15 @@ object MonitorType {
           Some(MtRecord(LFN, Option(lfn), statuses.head))
         },
       ),
-      CalculatedMonitorType(Seq(WIN_SPEED), WS_SPEED, copyMtDataGenerator(WS_SPEED), copyMtRecordGenerator(WS_SPEED)),
-      CalculatedMonitorType(Seq(WIN_SPEED), WS10, copyMtDataGenerator(WS10), copyMtRecordGenerator(WS10)),
-      CalculatedMonitorType(Seq(WIN_DIRECTION), WD10, copyMtDataGenerator(WD10), copyMtRecordGenerator(WD10)),
+      CalculatedMonitorType(Seq(WIN_SPEED),
+        WS_SPEED,
+        copyMtDataGenerator(WIN_SPEED, WS_SPEED), copyMtRecordGenerator(WIN_SPEED, WS_SPEED)),
+      CalculatedMonitorType(Seq(WIN_SPEED),
+        WS10,
+        copyMtDataGenerator(WIN_SPEED, WS10), copyMtRecordGenerator(WIN_SPEED, WS10)),
+      CalculatedMonitorType(Seq(WIN_DIRECTION),
+        WD10,
+        copyMtDataGenerator(WIN_DIRECTION, WD10), copyMtRecordGenerator(WIN_DIRECTION, WD10)),
     )
 
   val calculatedMonitorTypes: Seq[String] = calculatedMonitorTypeList.map(_.targetMonitorType)

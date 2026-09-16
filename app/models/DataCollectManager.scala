@@ -119,6 +119,8 @@ object DataCollectManager {
       effectiveRatio = ratio
   }
 
+  var lastMinRain: Option[Double] = None
+
   private def calculateMinAvgMap(mtList: Seq[String],
                                  mtStatusMap: mutable.Map[String, mutable.Map[String, ListBuffer[(DateTime, Double)]]],
                                  monitorTypeDB: MonitorTypeDB,
@@ -180,15 +182,22 @@ object DataCollectManager {
               }
             case MonitorType.RAIN =>
               if (mtCase.accumulated.contains(true)) {
-                if (values.length < 2)
-                  None
-                else {
-                  val diff = values.last - values.head
-                  if (diff < 0)
+                val diff =
+                  if (lastMinRain.isEmpty) {
+                    if (values.length < 2)
+                      None
+                    else
+                      Some(values.last - values.head)
+                  } else
+                    Some(values.last - lastMinRain.get)
+
+                lastMinRain = Some(values.last)
+                diff.flatMap(v =>
+                  if (v < 0)
                     None
                   else
-                    Some(diff)
-                }
+                    Some(v)
+                )
               } else
                 Some(values.sum)
 
@@ -239,7 +248,7 @@ object DataCollectManager {
                       mtDataMap: mutable.Map[String, ListBuffer[MtRecord]],
                       monitorTypeDB: MonitorTypeDB,
                       monitorStatusDB: MonitorStatusDB,
-                      dailyAvg: Boolean = false)(targetDateTime: DateTime, failedCalibrationMap:Map[String, DateTime]): mutable.Iterable[MtRecord] = {
+                      dailyAvg: Boolean = false)(targetDateTime: DateTime, failedCalibrationMap: Map[String, DateTime]): mutable.Iterable[MtRecord] = {
     for {
       (mt, statusMap) <- mtStatusMap
       totalSize = statusMap.map {
