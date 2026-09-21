@@ -48,7 +48,7 @@ class InstrumentStatusForwarder @Inject()(ws: WSClient, instrumentStatusOp: Inst
   }
 
   def uploadRecord(monitor:String, latestRecordTime: Long)(monitorLatestMap:Map[String, Long]): Unit = {
-    val recordFuture = instrumentStatusOp.queryFuture(new DateTime(latestRecordTime + 1), DateTime.now)
+    val recordFuture = instrumentStatusOp.queryFuture(new DateTime(latestRecordTime + 1), DateTime.now, monitor)
     for (records <- recordFuture) {
       if (records.nonEmpty) {
         val url = s"http://$server/InstrumentStatusRecord/$monitor"

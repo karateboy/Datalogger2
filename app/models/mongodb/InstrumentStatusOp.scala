@@ -58,19 +58,24 @@ class InstrumentStatusOp @Inject()(mongodb: MongoDB) extends InstrumentStatusDB 
     val f = collection.insertOne(toDocument(is)).toFuture()
   }
 
-  override def query(id: String, start: DateTime, end: DateTime): Seq[InstrumentStatus] = {
+  override def query(id: String, start: DateTime, end: DateTime, monitor:String): Seq[InstrumentStatus] = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
-    val f = collection.find(and(equal("instID", id), gte("time", start.toDate()), lt("time", end.toDate()))).sort(ascending("time")).toFuture()
+    val f = collection.find(and(equal("instID", id),
+      gte("time", start.toDate),
+      lt("time", end.toDate),
+      equal("monitor", monitor))).sort(ascending("time")).toFuture()
     waitReadyResult(f).map { toInstrumentStatus }
   }
 
-  override def queryFuture(start: DateTime, end: DateTime): Future[Seq[InstrumentStatus]] = {
+  override def queryFuture(start: DateTime, end: DateTime, monitor:String): Future[Seq[InstrumentStatus]] = {
     import org.mongodb.scala.model.Filters._
     import org.mongodb.scala.model.Sorts._
 
-    val recordFuture = collection.find(and(gte("time", start.toDate), lt("time", end.toDate))).sort(ascending("time")).toFuture()
+    val recordFuture = collection.find(and(gte("time", start.toDate),
+      lt("time", end.toDate),
+      equal("monitor", monitor))).sort(ascending("time")).toFuture()
     for (f <- recordFuture)
       yield f.map { toInstrumentStatus }
   }

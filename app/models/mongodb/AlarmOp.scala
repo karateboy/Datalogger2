@@ -67,7 +67,7 @@ class AlarmOp @Inject()(mongodb: MongoDB, mailerClient: MailerClient, emailTarge
   override def getAlarmsFuture(start: Date, end: Date)(monitor:String): Future[Seq[Alarm]] =
     collection.find(and(gte("time", start),
       lt("time", end),
-      or(equal("monitor", monitor), equal("monitor", null)))).sort(descending("time")).toFuture()
+      equal("monitor", monitor))).sort(descending("time")).toFuture()
 
 
   private def logFilter(ar: Alarm, coldPeriod: Int = 30): Unit = {

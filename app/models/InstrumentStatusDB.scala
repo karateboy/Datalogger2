@@ -8,10 +8,10 @@ import scala.concurrent.Future
 object InstrumentStatusDB {
   case class Status(key: String, value: Double)
 
-  case class InstrumentStatus(time: Date, instID: String, statusList: Seq[Status]) {
+  case class InstrumentStatus(time: Date, instID: String, statusList: Seq[Status], monitor: Option[String] = Some(Monitor.activeId)) {
     def excludeNaN: InstrumentStatus = {
       val validList = statusList.filter { s => !(s.value.isNaN || s.value.isInfinite || s.value.isNegInfinity) }
-      InstrumentStatus(time, instID, validList)
+      InstrumentStatus(time, instID, validList, monitor)
     }
 
   }
@@ -27,8 +27,8 @@ trait InstrumentStatusDB {
   import InstrumentStatusDB._
   def log(is: InstrumentStatus): Unit
 
-  def query(id: String, start: Imports.DateTime, end: Imports.DateTime): Seq[InstrumentStatus]
+  def query(id: String, start: Imports.DateTime, end: Imports.DateTime, monitor: String): Seq[InstrumentStatus]
 
-  def queryFuture(start: Imports.DateTime, end: Imports.DateTime): Future[Seq[InstrumentStatus]]
+  def queryFuture(start: Imports.DateTime, end: Imports.DateTime, monitor:String): Future[Seq[InstrumentStatus]]
 
 }

@@ -836,7 +836,7 @@ class Query @Inject()(recordOp: RecordDB,
     val (start, end) = (new DateTime(startNum).withMillisOfDay(0),
       new DateTime(endNum).withMillisOfDay(0))
 
-    val report = instrumentStatusOp.query(id, start, end + 1.day)
+    val report = instrumentStatusOp.query(id, start, end + 1.day, Monitor.activeId)
     val keyList: Seq[String] = if (report.isEmpty)
       List.empty[String]
     else
