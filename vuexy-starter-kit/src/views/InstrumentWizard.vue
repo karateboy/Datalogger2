@@ -50,6 +50,7 @@
                   rules="required"
                 >
                   <b-form-input id="inst-id" v-model="form._id" />
+                  <small class="text-danger">ID以_TEST結尾, 代表平行測試儀器</small>
                   <small class="text-danger">{{ errors[0] }}</small>
                 </validation-provider>
               </b-form-group>

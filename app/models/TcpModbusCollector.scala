@@ -518,7 +518,7 @@ class TcpModbusCollector @Inject()(instrumentOp: InstrumentDB,
           val values = for {mt <- deviceConfig.monitorTypes.get} yield {
             val calibrations = calibrationReadingList.flatMap {
               reading =>
-                reading.dataList(monitorTypeDB).filter {
+                reading.dataList(monitorTypeDB, instId.endsWith("_TEST")).filter {
                   _.mt == mt
                 }.map { r => r.value }
             }

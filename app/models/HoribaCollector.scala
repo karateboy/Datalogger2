@@ -454,7 +454,7 @@ abstract class HoribaCollector @Inject()
 
     case reportData: ReportData =>
       if (recording) {
-        val data = reportData.dataList(monitorTypeOp)
+        val data = reportData.dataList(monitorTypeOp, id.endsWith("_TEST"))
         context become calibrationHandler(connection, calibrationType, startTime, recording,
           data ::: calibrationDataList, zeroMap)
       }

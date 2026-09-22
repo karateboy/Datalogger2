@@ -347,7 +347,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
       val values = for {mt <- deviceConfig.monitorTypes.getOrElse(List.empty[String])} yield {
         val calibrations = calibrationReadingList.flatMap {
           reading =>
-            reading.dataList(monitorTypeDB).filter {
+            reading.dataList(monitorTypeDB, instId.endsWith("_TEST")).filter {
               _.mt == mt
             }.map { r => r.value }
         }

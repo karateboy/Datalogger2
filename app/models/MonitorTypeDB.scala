@@ -126,7 +126,7 @@ trait MonitorTypeDB {
 
   def getList: List[MonitorType]
 
-  private def ensure(mtCase:MonitorType): Unit ={
+  private def ensure(mtCase: MonitorType): Unit = {
     synchronized {
       if (!map.contains(mtCase._id)) {
         mtCase.measuringBy = Some(List.empty[String])
@@ -196,21 +196,28 @@ trait MonitorTypeDB {
 
   def nonCalculatedMeasuringList: List[String] = measuringList.filter(!IsCalculated(_))
 
-  def addMeasuring(mt: String, instrumentId: String, analog: Boolean, recordDB: RecordDB): Unit = {
+  def addMeasuring(mt: String, instrumentId: String, recordDB: RecordDB): Unit = {
     val newMtCase =
       synchronized {
         if (!map.contains(mt)) {
           val mtCase = defaultMonitorTypes.find(_._id == mt)
-            .getOrElse(if (analog)
-              rangeType(mt, mt, "??", 2)
-            else
-              signalType(mt, mt))
-          mtCase.addMeasuring(instrumentId, append = analog)
+            .getOrElse({
+              if (mt.endsWith("_TEST")) {
+                val srcMt = defaultMonitorTypes.find(_._id == mt.reverse.drop("_TEST".length).reverse)
+                if (srcMt.isDefined) {
+                  val srcMtCase = srcMt.get
+                  srcMtCase.copy(_id = mt, desp = srcMtCase.desp + "(TEST)")
+                } else
+                  rangeType(mt, mt, "??", 2)
+              } else
+                rangeType(mt, mt, "??", 2)
+            })
+          mtCase.addMeasuring(instrumentId, append = false)
           upsertMonitorType(mtCase)
           mtCase
         } else {
           val mtCase = map(mt)
-          mtCase.addMeasuring(instrumentId, append = analog)
+          mtCase.addMeasuring(instrumentId, append = false)
           upsertItemFuture(mtCase)
           mtCase
         }

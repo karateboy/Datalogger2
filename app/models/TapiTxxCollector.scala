@@ -450,7 +450,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
       val values = for {mt <- tapiConfig.monitorTypes.get} yield {
         val calibrations = calibrationReadingList.flatMap {
           reading =>
-            reading.dataList(monitorTypeDB).filter {
+            reading.dataList(monitorTypeDB, instId.endsWith("_TEST")).filter {
               _.mt == mt
             }.map { r => r.value }
         }

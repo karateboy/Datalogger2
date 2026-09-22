@@ -259,7 +259,7 @@ class Baseline9000Collector @Inject()
 
     case reportData:ReportData =>
       if(calibrateRecordStart){
-        val dataList = reportData.dataList(monitorTypeOp)
+        val dataList = reportData.dataList(monitorTypeOp, id.endsWith("_TEST"))
         val data = dataList.filter { data => data.mt == mt }
         context become calibrationHandler(calibrationType, mt, startTime, data ::: calibrationDataList, zeroValue)
       }

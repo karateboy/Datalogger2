@@ -200,7 +200,12 @@ class HomeController @Inject()(
       def getMonitorTypes: List[String] = {
         if (instrumentTypeOp.map.contains(inst.instType)) {
           val instTypeCase = instrumentTypeOp.map(inst.instType)
-          instTypeCase.driver.getMonitorTypes(inst.param)
+          instTypeCase.driver.getMonitorTypes(inst.param).map(mt=>{
+            if(inst.isTestDevice)
+              s"${mt}_TEST"
+            else
+              mt
+          })
         } else
           List.empty[String]
       }

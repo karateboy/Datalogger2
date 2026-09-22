@@ -11,6 +11,7 @@ case class Instrument(_id: String, instType: String,
                       protocol: ProtocolParam, param: String, active: Boolean,
                       state: String,
                       statusType: Option[List[InstrumentStatusType]]) {
+  def isTestDevice: Boolean = _id.endsWith("_TEST")
 
   def replaceParam(newParam: String): Instrument = this.copy(param = newParam)
 }

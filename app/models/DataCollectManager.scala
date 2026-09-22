@@ -76,13 +76,18 @@ object DataCollectManager {
   case class MonitorTypeData(mt: String, var value: Double, status: String)
 
   case class ReportData(private val _dataList: List[MonitorTypeData]) {
-    def dataList(monitorTypeDB: MonitorTypeDB): List[MonitorTypeData] =
+    def dataList(monitorTypeDB: MonitorTypeDB, testDevice:Boolean): List[MonitorTypeData] =
       _dataList.map(mtd => {
-        val mtCase = monitorTypeDB.map(mtd.mt)
+        val mt = if(testDevice)
+          s"${mtd.mt}_TEST"
+        else
+          mtd.mt
+
+        val mtCase = monitorTypeDB.map(mt)
+
         val m: Double = mtCase.fixedM.getOrElse(1d)
         val b: Double = mtCase.fixedB.getOrElse(0d)
-        mtd.value = mtd.value * m + b
-        mtd
+        mtd.copy(mt, value=mtd.value * m + b)
       })
   }
 
@@ -658,9 +663,14 @@ class DataCollectManager @Inject()(config: Configuration,
       else {
         val instType = instrumentTypeOp.map(inst.instType)
         val collector = instrumentTypeOp.start(inst.instType, inst._id, inst.protocol, inst.param)
-        val monitorTypes = instType.driver.getMonitorTypes(inst.param)
+        val monitorTypes = instType.driver.getMonitorTypes(inst.param).map(mt=>{
+          if(inst._id.endsWith("_TEST"))
+            s"${mt}_TEST"
+          else
+            mt
+        })
         for (mt <- MonitorType.populateCalculatedTypes(monitorTypes)) yield
-          monitorTypeOp.addMeasuring(mt, inst._id, instType.analog, recordOp)
+          monitorTypeOp.addMeasuring(mt, inst._id, recordOp)
 
         val calibrateTimeOpt = instType.driver.getCalibrationTime(inst.param)
         val timerOpt = calibrateTimeOpt.map { localtime =>
@@ -816,10 +826,10 @@ class DataCollectManager @Inject()(config: Configuration,
             // Report to calibrator
             val calibratorState = instrumentCalibratorMap(instId)
             calibratorState.calibrator ! reportData
-            reportData.dataList(monitorTypeOp).map(_.copy(status = calibratorState.state))
+            reportData.dataList(monitorTypeOp, instId.endsWith("_TEST")).map(_.copy(status = calibratorState.state))
           } else
-            reportData.dataList(monitorTypeOp)
-
+            reportData.dataList(monitorTypeOp, instId.endsWith("_TEST"))
+        logger.info(dataList.toString)
         // Check for monitor type range
         val rangeCheckedDataList =
           dataList map {
