@@ -1,12 +1,13 @@
 package models
 
 import com.github.nscala_time.time.Imports
-import com.github.nscala_time.time.Imports.DateTime
+import com.github.nscala_time.time.Imports.{DateTime, Period}
 import models.ModelHelper.waitReadyResult
 import org.mongodb.scala.BulkWriteResult
 import org.mongodb.scala.result.{InsertManyResult, UpdateResult}
 import play.api.libs.json.{Json, OWrites, Reads}
 
+import java.util.Date
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -58,14 +59,28 @@ trait RecordDB {
                           (monitor: String, mtList: Seq[String], startTime: Imports.DateTime, endTime: Imports.DateTime): Future[mutable.Map[String, ListBuffer[MtRecord]]] = {
     for (recordLists <- getRecordListFuture(colName)(startTime, endTime, Seq(monitor))) yield {
       val map = mutable.Map.empty[String, ListBuffer[MtRecord]]
+      val dtSet = collection.mutable.Set.empty[Date]
+      if(colName == MinCollection){
+        for(dt<-ModelHelper.getPeriods(startTime, endTime, Period.minutes(1))){
+          dtSet.add(dt.toDate)
+        }
+      }
       for {recordList <- recordLists
            mtMap = recordList.mtMap
            mt <- mtList
            } {
+        dtSet.remove(recordList._id.time)
+        val lb = map.getOrElseUpdate(mt, ListBuffer.empty[MtRecord])
         if (mtMap.contains(mt)) {
-          val lb = map.getOrElseUpdate(mt, ListBuffer.empty[MtRecord])
           lb.append(mtMap(mt))
+        }else{
+          lb.append(MtRecord(mt, None, MonitorStatus.DataLost))
         }
+      }
+      // Append lost data
+      for(dt<-dtSet;mt <- mtList){
+        val lb = map.getOrElseUpdate(mt, ListBuffer.empty[MtRecord])
+        lb.append(MtRecord(mt, None, MonitorStatus.DataLost))
       }
       map
     }
