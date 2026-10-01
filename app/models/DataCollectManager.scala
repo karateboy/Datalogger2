@@ -76,9 +76,9 @@ object DataCollectManager {
   case class MonitorTypeData(mt: String, var value: Double, status: String)
 
   case class ReportData(private val _dataList: List[MonitorTypeData]) {
-    def dataList(monitorTypeDB: MonitorTypeDB, testDevice:Boolean): List[MonitorTypeData] =
+    def dataList(monitorTypeDB: MonitorTypeDB, testDevice: Boolean): List[MonitorTypeData] =
       _dataList.map(mtd => {
-        val mt = if(testDevice)
+        val mt = if (testDevice)
           s"${mtd.mt}_TEST"
         else
           mtd.mt
@@ -87,7 +87,7 @@ object DataCollectManager {
 
         val m: Double = mtCase.fixedM.getOrElse(1d)
         val b: Double = mtCase.fixedB.getOrElse(0d)
-        mtd.copy(mt, value=mtd.value * m + b)
+        mtd.copy(mt, value = mtd.value * m + b)
       })
   }
 
@@ -263,7 +263,7 @@ object DataCollectManager {
 
       val status = {
         val statusOrderList = statusMap.toSeq.sortBy(pair => (-pair._2.length, monitorStatusDB.map(pair._1).priority))
-        val mostStatus = statusOrderList.head
+        val mostStatus: (String, ListBuffer[MtRecord]) = statusOrderList.head
         val calibrationStatusList = Seq(MonitorStatus.ZeroCalibrationStat, MonitorStatus.SpanCalibrationStat)
         val calibrationAllStatus = calibrationStatusList.forall(statusMap.contains)
         val calibrationCount = if (calibrationAllStatus)
@@ -273,18 +273,21 @@ object DataCollectManager {
         val otherThanNormalList = statusOrderList.filter(pair => pair._1 != MonitorStatus.NormalStat)
         val otherThanNormalCounts = otherThanNormalList.map(pair => pair._2.length)
 
-        if (calibrationAllStatus && otherThanNormalList.nonEmpty && calibrationCount >= otherThanNormalCounts.max)
+        // status
+        // 1. 校正失敗 → 030
+        // 2. 010 ≥ 75% → 010
+        // 3. 010 < 75% → 若 020＋021 加總筆數 ≥ 其他非010狀態筆數 → 022
+        // 4. 不符合022 → 非010狀態取筆數最多；同筆數看優先級
+
+        if (failedCalibrationMap.get(mt).contains(targetDateTime))
+          MonitorStatus.InvalidDataStat
+        else if (mostStatus._1 == MonitorStatus.NormalStat && mostStatus._2.length >= totalSize * effectiveRatio)
+          MonitorStatus.NormalStat
+        else if (calibrationAllStatus && otherThanNormalList.nonEmpty && calibrationCount >= otherThanNormalCounts.max)
           MonitorStatus.CalibrationDeviation
         else {
-          if (mostStatus._1 == MonitorStatus.NormalStat) {
-            if (mostStatus._2.length >= totalSize * effectiveRatio)
-              MonitorStatus.NormalStat
-            else {
-              val secondMostStatus = statusOrderList.drop(1).head
-              secondMostStatus._1
-            }
-          } else
-            mostStatus._1
+          val secondMostStatus = statusOrderList.filter(p => p._1 != MonitorStatus.NormalStat).head
+          secondMostStatus._1
         }
       }
 
@@ -418,22 +421,15 @@ object DataCollectManager {
             mtRecords.flatMap(getter(_)).map(v => if (v < 0) 0 else v)
         }
 
-      val calibrationCheckedStatus = failedCalibrationMap.get(mt) match {
-        case Some(failedTime) if failedTime == targetDateTime =>
-          MonitorStatus.InvalidDataStat
-        case _ =>
-          status
-      }
-
       val roundedAvg =
-        for (avg <- hourAccumulator(getValues(_.value), isRaw = false, status = calibrationCheckedStatus)) yield
+        for (avg <- hourAccumulator(getValues(_.value), isRaw = false, status = status)) yield
           BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_UP).doubleValue()
 
       val roundedRawAvg: Option[Double] =
-        for (avg <- hourAccumulator(getValues(_.rawValue), isRaw = true, status = calibrationCheckedStatus)) yield
+        for (avg <- hourAccumulator(getValues(_.rawValue), isRaw = true, status = status)) yield
           BigDecimal(avg).setScale(monitorTypeDB.map(mt).prec, RoundingMode.HALF_UP).doubleValue()
 
-      MtRecord(mt, roundedAvg, calibrationCheckedStatus, rawValue = roundedRawAvg)
+      MtRecord(mt, roundedAvg, status, rawValue = roundedRawAvg)
     }
   }
 
@@ -663,8 +659,8 @@ class DataCollectManager @Inject()(config: Configuration,
       else {
         val instType = instrumentTypeOp.map(inst.instType)
         val collector = instrumentTypeOp.start(inst.instType, inst._id, inst.protocol, inst.param)
-        val monitorTypes = instType.driver.getMonitorTypes(inst.param).map(mt=>{
-          if(inst._id.endsWith("_TEST"))
+        val monitorTypes = instType.driver.getMonitorTypes(inst.param).map(mt => {
+          if (inst._id.endsWith("_TEST"))
             s"${mt}_TEST"
           else
             mt
