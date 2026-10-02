@@ -285,6 +285,13 @@ import MoxaE1240ConfigPage from './MoxaE1240ConfigPage.vue'
 import VerewaConfig from './VerewaConfig.vue'
 import MetOne1020Config from './MetOne1020Config.vue'
 import GpsConfig from './GpsConfig.vue'
+import { extend } from 'vee-validate';
+import * as rules from 'vee-validate/dist/rules';
+
+// 遍歷並註冊所有內建規則
+Object.keys(rules).forEach(rule => {
+  extend(rule, rules[rule]);
+});
 
 interface ProtocolParam {
   protocol: 'tcp' | 'serial' | 'tcpCli' | undefined

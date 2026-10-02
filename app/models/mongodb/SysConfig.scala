@@ -33,7 +33,7 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     CDX_MONITOR_TYPES -> Document(valueKey -> Json.toJson(CdxUploader.defaultMonitorTypes).toString()),
     ACTIVE_MONITOR_ID -> Document(valueKey -> Monitor.activeId),
     AQI_MONITOR_TYPES -> Document(valueKey -> AQI.defaultMappingTypes),
-    EPA_LAST_RECORD_TIME -> Document(valueKey -> Date.from(Instant.parse("2022-01-01T00:00:00.000Z"))),
+    EPA_LAST_RECORD_TIME -> Document(valueKey -> Date.from(Instant.now().minusSeconds(86400*7))),
     LINE_TOKEN -> Document(valueKey -> ""),
     SMS_PHONES -> Document(valueKey -> ""),
     LINE_CHANNEL_TOKEN -> Document(valueKey -> ""),

@@ -208,7 +208,7 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
   }
 
   override def getEpaLastRecordTime: Future[Date] =
-    getDate(EPA_LAST_RECORD_TIME, Date.from(Instant.parse("2022-01-01T00:00:00.000Z")))
+    getDate(EPA_LAST_RECORD_TIME, Date.from(Instant.now().minusSeconds(86400 * 7)))
 
   override def setEpaLastRecordTime(v: Date): Future[UpdateResult] = setDate(EPA_LAST_RECORD_TIME)(v)
 
