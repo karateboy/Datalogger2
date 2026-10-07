@@ -386,7 +386,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
             val zero = zeroMap.get(mt)
             val span = spanMap.get(mt)
             val spanStd = monitorTypeDB.map(mt).span
-            val cal = Calibration(Some(Monitor.activeId), mt, startTime, endTime, zero, spanStd, span)
+            val cal = Calibration(Some(Monitor.activeId), mt, startTime, endTime, zero, spanStd, span).updateStatus(monitorTypeDB.map(mt))
             calibrationOp.insertFuture(cal)
           }
         } else {
@@ -400,6 +400,7 @@ abstract class AbstractCollector(instrumentOp: InstrumentDB,
                 val spanStd = monitorTypeDB.map(mt).span
                 Calibration(Some(Monitor.activeId), mt, startTime, endTime, None, spanStd, values)
               }
+            cal.updateStatus(monitorTypeDB.map(mt))
             calibrationOp.insertFuture(cal)
           }
         }

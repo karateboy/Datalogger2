@@ -330,6 +330,7 @@ class Baseline9000Collector @Inject()
               Calibration(Some(Monitor.activeId), mt, startTime, com.github.nscala_time.time.Imports.DateTime.now, None, monitorTypeOp.map(mt).span, avg)
             }
           }
+        cal.updateStatus(monitorTypeOp.map(mt))
         calibrationOp.insertFuture(cal)
 
         if (mt == mtCH4) {

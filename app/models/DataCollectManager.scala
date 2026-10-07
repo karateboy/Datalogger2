@@ -249,18 +249,17 @@ object DataCollectManager {
     }
   }
 
-  def calculateAvgMap(mtStatusMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]],
+  def calculateAvgMap(mtList:Seq[String],
+                      mtStatusMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]],
                       mtDataMap: mutable.Map[String, ListBuffer[MtRecord]],
                       monitorTypeDB: MonitorTypeDB,
                       monitorStatusDB: MonitorStatusDB,
-                      dailyAvg: Boolean = false)(targetDateTime: DateTime, failedCalibrationMap: Map[String, DateTime]): mutable.Iterable[MtRecord] = {
+                      dailyAvg: Boolean = false)(targetDateTime: DateTime, failedCalibrationMap: Map[String, DateTime]): Seq[MtRecord] = {
     for {
-      (mt, statusMap) <- mtStatusMap
-      totalSize = statusMap.map {
-        _._2.size
-      }.sum if totalSize != 0
+      mt <- mtList if mtStatusMap.contains(mt)
+      statusMap = mtStatusMap(mt)
+      totalSize = statusMap.map {_._2.size}.sum if totalSize != 0
     } yield {
-
       val status = {
         val statusOrderList = statusMap.toSeq.sortBy(pair => (-pair._2.length, monitorStatusDB.map(pair._1).priority))
         val mostStatus: (String, ListBuffer[MtRecord]) = statusOrderList.head
@@ -294,7 +293,7 @@ object DataCollectManager {
       val mtRecords = {
         mt match {
           case MonitorType.WS10 | MonitorType.WD10 =>
-            mtDataMap(mt).take(10).filter(_.status == MonitorStatus.NormalStat).toList
+            mtDataMap(mt).reverse.take(10).filter(_.status == MonitorStatus.NormalStat).toList
           case _ =>
             val normalCount = statusMap.get(MonitorStatus.NormalStat).map(_.size).getOrElse(0)
             val validCount = MonitorStatus.validStatusList.map(statusMap.get(_).map(_.size).getOrElse(0)).sum
@@ -337,7 +336,7 @@ object DataCollectManager {
                 val windDir = values.take(10)
                 if (mtStatusMap.contains(MonitorType.WS10)) {
                   val windSpeedMostStatus = mtStatusMap(MonitorType.WS10).maxBy(kv => kv._2.length)
-                  val windSpeed = windSpeedMostStatus._2.take(10)
+                  val windSpeed = windSpeedMostStatus._2.reverse.take(10)
                   if (isRaw)
                     directionAvg(windSpeed.flatMap(_.rawValue), values)
                   else
@@ -825,7 +824,7 @@ class DataCollectManager @Inject()(config: Configuration,
             reportData.dataList(monitorTypeOp, instId.endsWith("_TEST")).map(_.copy(status = calibratorState.state))
           } else
             reportData.dataList(monitorTypeOp, instId.endsWith("_TEST"))
-        logger.info(dataList.toString)
+
         // Check for monitor type range
         val rangeCheckedDataList =
           dataList map {

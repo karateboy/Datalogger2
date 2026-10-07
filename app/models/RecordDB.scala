@@ -57,33 +57,43 @@ trait RecordDB {
 
   def getMtRecordMapFuture(colName: String)
                           (monitor: String, mtList: Seq[String], startTime: Imports.DateTime, endTime: Imports.DateTime): Future[mutable.Map[String, ListBuffer[MtRecord]]] = {
-    for (recordLists <- getRecordListFuture(colName)(startTime, endTime, Seq(monitor))) yield {
-      val map = mutable.Map.empty[String, ListBuffer[MtRecord]]
-      val dtSet = collection.mutable.Set.empty[Date]
-      if(colName == MinCollection){
-        for(dt<-ModelHelper.getPeriods(startTime, endTime, Period.minutes(1))){
-          dtSet.add(dt.toDate)
-        }
-      }
-      for {recordList <- recordLists
-           mtMap = recordList.mtMap
-           mt <- mtList
-           } {
-        dtSet.remove(recordList._id.time)
-        val lb = map.getOrElseUpdate(mt, ListBuffer.empty[MtRecord])
-        if (mtMap.contains(mt)) {
-          lb.append(mtMap(mt))
-        }else{
-          lb.append(MtRecord(mt, None, MonitorStatus.DataLost))
-        }
-      }
-      // Append lost data
-      for(dt<-dtSet;mt <- mtList){
-        val lb = map.getOrElseUpdate(mt, ListBuffer.empty[MtRecord])
-        lb.append(MtRecord(mt, None, MonitorStatus.DataLost))
-      }
-      map
+    for (recordLists <- getRecordListFuture(colName)(startTime, endTime, Seq(monitor))) yield
+      getMtRecordMapFromRecordLists(colName)(mtList, startTime, endTime)(recordLists)
+  }
+
+  def getMtRecordMapFromRecordLists(colName: String)
+                                   (mtList: Seq[String], startTime: DateTime, endTime: DateTime)
+                                   (recordLists: Seq[RecordList]): mutable.Map[String, ListBuffer[MtRecord]] = {
+    val map = mutable.Map.empty[String, ListBuffer[MtRecord]]
+    val dtList = collection.mutable.ListBuffer.empty[Date]
+    val period = if (colName == MinCollection)
+      Period.minutes(1)
+    else
+      Period.hours(1)
+
+    for (dt <- ModelHelper.getPeriods(startTime, endTime, period)) {
+      dtList.append(dt.toDate)
     }
+
+    for {recordList <- recordLists} {
+      val mtMap =
+        if (dtList.head == recordList._id.time)
+          recordList.mtMap
+        else
+          Map.empty[String, MtRecord]
+
+      for (mt <- mtList) {
+        val lb = map.getOrElseUpdate(mt, ListBuffer.empty[MtRecord])
+        if (mtMap.contains(mt))
+          lb.append(mtMap(mt))
+        else
+          lb.append(MtRecord(mt, None, MonitorStatus.DataLost))
+      }
+
+      dtList.remove(0)
+    }
+
+    map
   }
 
   def getRecordWithLimitFuture(colName: String)(startTime: Imports.DateTime,
@@ -145,6 +155,7 @@ trait RecordDB {
                               monitor: String): Future[Seq[Seq[MtRecord]]]
 
   def upsertManyRecordsChecked(colName: String)(records: Seq[RecordList]): Future[BulkWriteResult] = upsertManyRecords(colName)(sanityCheck(records))
+
   protected def upsertManyRecords(colName: String)(records: Seq[RecordList]): Future[BulkWriteResult]
 
   def getRecordMapFromRecordList(mtList: Seq[String], records: Seq[RecordList], includeRaw: Boolean): Map[String, Seq[Record]] = {

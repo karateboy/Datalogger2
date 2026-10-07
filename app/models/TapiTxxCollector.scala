@@ -491,6 +491,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
             val span = spanMap.get(mt)
             val spanStd = monitorTypeDB.map(mt).span
             val cal = Calibration(Some(Monitor.activeId), mt, startTime, endTime, zero, spanStd, span).rounded(monitorTypeDB)
+            cal.updateStatus(monitorTypeDB.map(mt))
             calibrationOp.insertFuture(cal)
           }
         } else {
@@ -504,6 +505,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
                 val spanStd = monitorTypeDB.map(mt).span
                 Calibration(Some(Monitor.activeId), mt, startTime, endTime, None, spanStd, values)
               }
+            cal.updateStatus(monitorTypeDB.map(mt))
             calibrationOp.insertFuture(cal.rounded(monitorTypeDB))
           }
         }

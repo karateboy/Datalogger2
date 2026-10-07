@@ -532,8 +532,10 @@ abstract class HoribaCollector @Inject()
               }
             }
           }
-        for (cal <- calibrationList)
+        for (cal <- calibrationList) {
+          cal.updateStatus(monitorTypeOp.map(cal.monitorType))
           calibrationOp.insertFuture(cal)
+        }
 
         self ! SetState(id, MonitorStatus.NormalStat)
       }

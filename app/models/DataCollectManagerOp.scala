@@ -109,12 +109,11 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 
     val lb = statusMap.getOrElseUpdate(status, ListBuffer.empty[MtRecord])
 
-    if(mtRecord.value.isEmpty || mtRecord.value.forall(!_.isNaN))
+    if (mtRecord.value.isEmpty || mtRecord.value.forall(!_.isNaN))
       lb.append(mtRecord)
   }
 
   private def calculateDayAvgHourRecord(monitor: String,
-                                        mtList: Seq[String],
                                         current: DateTime,
                                         currentHourRecords: Seq[MtRecord]): Future[Seq[MtRecord]] = {
 
@@ -128,8 +127,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         lb.append(mtRecord)
       })
 
-      val mtDataList = calculateAvgMap(mtStatusMap,
-        mtDataMap, monitorTypeDb,
+      val mtDataList = calculateAvgMap(MonitorType.DailyAvgInputMonitorTypes, mtStatusMap, mtDataMap, monitorTypeDb,
         dailyAvg = true, monitorStatusDB = monitorStatusDB)(current - 24.hour, Map.empty[String, DateTime])
       val mapDailyMtDataList = mtDataList.flatMap(mtRecord => {
         if (MonitorType.DailyAvgMonitorTypeMap.contains(mtRecord.mtName))
@@ -164,52 +162,70 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
   def recalculateHourData(monitor: String,
                           current: DateTime,
                           checkAlarm: Boolean = true,
-                          forward: Boolean = true,
-                          alwaysValid: Boolean = false): Future[Unit] = {
+                          forward: Boolean = true): Future[Unit] = {
     val mtList = monitorTypeDb.measuredList
-    for (recordMap <- recordOp.getMtRecordMapFuture(recordOp.MinCollection)(monitor, mtList, current - 1.hour, current);
+    val forwardMtList = Seq(MonitorType.WS10, MonitorType.WD10)
+    val backwardMtList = mtList.filter(!forwardMtList.contains(_))
+
+
+    for (recordListSeq <- recordOp.getRecordListFuture(recordOp.MinCollection)(current - 2.hour, current, Seq(monitor));
          alarmRules <- alarmRuleDb.getRulesAsync;
          failedCalibrationMap <- calibrationDB.getFailedCalibrationMapFuture(current - 2.hour, current)(monitor)) yield {
-      try {
-        val mtStatusMap = getMtStatusMap(recordMap)
-        val mtDataMap: mutable.Map[String, ListBuffer[MtRecord]] = getMtDataMap(recordMap)
-        val mtDataList = calculateAvgMap(mtStatusMap, mtDataMap, monitorTypeDb, monitorStatusDB = monitorStatusDB)(current.minusHours(1), failedCalibrationMap)
-        val hourRecordListsFuture = HourCalculationRule.calculateHourRecord(monitor, current, recordOp)
-        val dailyAvgMtRecordsFuture = calculateDayAvgHourRecord(monitor, MonitorType.DailyAvgInputMonitorTypes, current, mtDataList.toSeq)
-        for (ruleHourRecordLists <- hourRecordListsFuture; dailyAvgMtRecords <- dailyAvgMtRecordsFuture) {
-          try {
-            val defaultHourRecordList = RecordList.factory(current.minusHours(1).toDate, mtDataList.toSeq ++ dailyAvgMtRecords, monitor)
-            val hourRecordLists = ruleHourRecordLists.filter(_.mtDataList.nonEmpty) :+ defaultHourRecordList
+      def slice(start: DateTime, end: DateTime): Seq[RecordList] =
+        recordListSeq.filter(p => (start <= new DateTime(p._id.time)) && (new DateTime(p._id.time) < end))
 
-            // Check alarm
-            if (checkAlarm) {
-              val alarms = alarmRuleDb.checkAlarm(tableType.hour, defaultHourRecordList, alarmRules)(monitorDB, monitorTypeDb, alarmDb)
-              alarms.foreach(alarmDb.log)
-            }
+      val backwardRecordLists = slice(current - 1.hour, current)
+      val forwardRecordLists = slice(current.plusMinutes(1).minusHours(2), current.minusHours(1).plusMinutes(1))
+      // Calculate backward 0:00~0:59 => 0:00
+      val ret1: Future[Unit] =
+        try {
+          val backwardRecordMap = recordOp.getMtRecordMapFromRecordLists(recordOp.MinCollection)(backwardMtList, current - 1.hour, current)(backwardRecordLists)
+          val mtDataList = calculateAvgMap(backwardMtList, getMtStatusMap(backwardRecordMap), getMtDataMap(backwardRecordMap), monitorTypeDb, monitorStatusDB = monitorStatusDB)(current.minusHours(1), failedCalibrationMap)
+          val forwardRecordMap = recordOp.getMtRecordMapFromRecordLists(recordOp.MinCollection)(forwardMtList, current.plusMinutes(1).minusHours(2), current.minusHours(1).plusMinutes(1))(backwardRecordLists)
+          val mtDataList2 = calculateAvgMap(forwardMtList, getMtStatusMap(forwardRecordMap), getMtDataMap(forwardRecordMap), monitorTypeDb, monitorStatusDB = monitorStatusDB)(current.minusHours(1), failedCalibrationMap)
+          val hourRecordListsFuture = HourCalculationRule.calculateHourRecord(monitor, current, recordOp)
+          val dailyAvgMtRecordsFuture = calculateDayAvgHourRecord(monitor, current, mtDataList)
+          for (ruleHourRecordLists <- hourRecordListsFuture; dailyAvgMtRecords <- dailyAvgMtRecordsFuture) yield {
+            try {
+              val defaultHourRecordList = RecordList.factory(current.minusHours(1).toDate, mtDataList ++ mtDataList2 ++ dailyAvgMtRecords, monitor)
+              val hourRecordLists = ruleHourRecordLists.filter(_.mtDataList.nonEmpty) :+ defaultHourRecordList
 
-            val f = recordOp.upsertManyRecordsChecked(recordOp.HourCollection)(hourRecordLists)
-            if (forward) {
-              f onComplete {
-                case Success(_) =>
-                  manager ! ForwardHour
-                  for {cdxConfig <- sysConfigDB.getCdxConfig if monitor == Monitor.activeId
-                       cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes} {
-                    cdxUploader.upload(recordList = defaultHourRecordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
-                    newTaipeiOpenData.upload(defaultHourRecordList, cdxMtConfigs)
-                  }
-
-                case Failure(exception) =>
-                  logger.error("failed", exception)
+              // Check alarm
+              if (checkAlarm) {
+                val alarms = alarmRuleDb.checkAlarm(tableType.hour, defaultHourRecordList, alarmRules)(monitorDB, monitorTypeDb, alarmDb)
+                alarms.foreach(alarmDb.log)
               }
+
+              val f = recordOp.upsertManyRecordsChecked(recordOp.HourCollection)(hourRecordLists)
+              if (forward) {
+                f onComplete {
+                  case Success(_) =>
+                    for {cdxConfig <- sysConfigDB.getCdxConfig if monitor == Monitor.activeId
+                         cdxMtConfigs <- sysConfigDB.getCdxMonitorTypes} {
+                      cdxUploader.upload(recordList = defaultHourRecordList, cdxConfig = cdxConfig, mtConfigs = cdxMtConfigs)
+                      newTaipeiOpenData.upload(defaultHourRecordList, cdxMtConfigs)
+                    }
+
+                  case Failure(exception) =>
+                    logger.error("failed", exception)
+                }
+              }
+            } catch {
+              case e: Exception => logger.error(s"recalculateHourData failed 1: ${e.getMessage}", e)
             }
-          } catch {
-            case e: Exception => logger.error(s"recalculateHourData failed 1: ${e.getMessage}", e)
           }
+        } catch {
+          case e: Exception => logger.error(s"recalculateHourData failed 2: ${e.getMessage}", e)
+            Future.unit
         }
-      } catch {
-        case e: Exception => logger.error(s"recalculateHourData failed 2: ${e.getMessage}", e)
+
+      for (_ <- ret1) {
+        if (forward)
+          manager ! ForwardHour
       }
     }
+
+
   }
 
   def resetReaders(): Unit = {

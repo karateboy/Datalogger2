@@ -20,8 +20,8 @@ case class Calibration(monitor: Option[String],
                        zero_val: Option[Double],
                        span_std: Option[Double],
                        span_val: Option[Double],
-                       zero_success: Option[Boolean] = None,
-                       span_success: Option[Boolean] = None,
+                       var zero_success: Option[Boolean] = None,
+                       var span_success: Option[Boolean] = None,
                        point3: Option[Double] = None,
                        point3_std: Option[Double] = None,
                        point3_success: Option[Boolean] = None,
@@ -107,6 +107,23 @@ case class Calibration(monitor: Option[String],
       point4 = roundValue(this.point4),
       point5 = roundValue(this.point5)
     )
+  }
+
+  def updateStatus(mtCase: MonitorType): Calibration = {
+    zero_success =
+      for (law <- mtCase.zd_law) yield {
+        val zeroValue = zero_val.getOrElse(Double.MaxValue)
+        val diff = math.abs(zeroValue - 0)
+        diff < law
+      }
+
+    span_success =
+      for (devLaw <- mtCase.span_dev_law; span <- span_std) yield {
+        val spanValue = span_val.getOrElse(Double.MaxValue)
+        val dev = math.abs((spanValue - span) / span)
+        dev * 100 < devLaw
+      }
+    this
   }
 }
 
