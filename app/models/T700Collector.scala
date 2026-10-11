@@ -94,7 +94,7 @@ class T700Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
 
   override def triggerSpanCalibration(v: Boolean): Unit = {}
 
-  override def resetToNormal(): Unit = {
+  override def resetToNormal(includeCalibration:Boolean = false): Unit = {
     logger.info("T700 reset to normal operation.")
     executeSeq(T700_STANDBY_SEQ, on = true)
   }

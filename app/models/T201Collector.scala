@@ -103,9 +103,9 @@ class T201Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     }
   }
 
-  override def resetToNormal(): Unit = {
+  override def resetToNormal(includeCalibration:Boolean): Unit = {
     try {
-      super.resetToNormal()
+      super.resetToNormal(includeCalibration)
 
       logger.info("Resetting T201 internal zero/span calibration to off")
       if (!config.skipInternalVault.contains(true)) {

@@ -3,7 +3,7 @@
     <b-row v-if="instType !== 't700'">
       <b-col cols="12">
         <b-form-group
-          label="每日校正時間"
+          label="預設校正時間"
           label-for="slave-id"
           label-cols-md="3"
         >

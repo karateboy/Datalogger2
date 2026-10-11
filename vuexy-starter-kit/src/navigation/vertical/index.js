@@ -153,7 +153,7 @@ export default [
         resource: 'SystemSettings',
       },
       {
-        title: '多點校正管理',
+        title: '校正管理',
         route: 'calibration-config',
         action: 'set',
         resource: 'SystemSettings',

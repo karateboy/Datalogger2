@@ -90,9 +90,9 @@ class T100Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     }
   }
 
-  override def resetToNormal(): Unit = {
+  override def resetToNormal(includeCalibration:Boolean): Unit = {
     try {
-      super.resetToNormal()
+      super.resetToNormal(includeCalibration)
 
       logger.info("Reset to normal state coil 20, 21 to false")
       if (!config.skipInternalVault.contains(true)) {

@@ -267,7 +267,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
               instrumentOp.updateStatusType(instId, instrumentStatusTypesOpt.get)
             }
             import scala.concurrent.duration._
-            resetToNormal()
+            resetToNormal(false)
             timerOpt = Some(context.system.scheduler.scheduleOnce(Duration(1, SECONDS), self, ReadRegister))
           } catch {
             case ex: Exception =>
@@ -343,7 +343,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
         timer.cancel()
 
       logInstrumentError(id, s"${self.path.name}: ${ex.getMessage}. ", ex)
-      resetToNormal()
+      resetToNormal(true)
       instrumentOp.setState(id, endState)
       collectorState = endState
       context become normalReceive()
@@ -367,7 +367,7 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
           timer.cancel()
         collectorState = targetState
         instrumentOp.setState(instId, targetState)
-        resetToNormal()
+        resetToNormal(false)
         context become normalReceive()
       }
 
@@ -513,20 +513,21 @@ abstract class TapiTxxCollector @Inject()(instrumentOp: InstrumentDB,
         log.info("All monitorTypes are calibrated.")
         collectorState = endState
         instrumentOp.setState(instId, collectorState)
-        resetToNormal()
+        resetToNormal(true)
         context become normalReceive()
         log.info(s"$self => ${monitorStatusOp.map(collectorState).name}")
       }
   }
 
-  def resetToNormal(): Unit = {
+  def resetToNormal(includeCalibration:Boolean): Unit = {
     log.info("Reset to normal state")
     tapiConfig.calibrateZeoDO foreach {
       doBit =>
         context.parent ! WriteDO(doBit, on = false)
     }
 
-    context.parent ! ExecuteSeq(T700_STANDBY_SEQ, on = true)
+    if(includeCalibration)
+      context.parent ! ExecuteSeq(T700_STANDBY_SEQ, on = true)
   }
 
   def triggerZeroCalibration(v: Boolean): Unit = {

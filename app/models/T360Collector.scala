@@ -76,9 +76,9 @@ class T360Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     }
   }
 
-  override def resetToNormal(): Unit = {
+  override def resetToNormal(includeCalibration:Boolean): Unit = {
     try {
-      super.resetToNormal()
+      super.resetToNormal(includeCalibration)
 
       logger.info("Resetting T360 internal zero/span calibration to false")
       if (!config.skipInternalVault.contains(true)) {

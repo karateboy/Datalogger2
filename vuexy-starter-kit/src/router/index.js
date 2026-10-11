@@ -323,14 +323,14 @@ const router = new VueRouter({
       name: 'calibration-config',
       component: () => import('@/views/CalibrationConfig.vue'),
       meta: {
-        pageTitle: '多點校正管理',
+        pageTitle: '校正管理',
         breadcrumb: [
           {
             text: '系統管理',
             active: true,
           },
           {
-            text: '多點校正管理',
+            text: '校正管理',
             active: true,
           },
         ],

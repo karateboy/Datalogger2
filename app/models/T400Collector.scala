@@ -92,9 +92,9 @@ class T400Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp: Monit
     }
   }
 
-  override def resetToNormal(): Unit = {
+  override def resetToNormal(includeCalibration:Boolean = false): Unit = {
     try {
-      super.resetToNormal()
+      super.resetToNormal(includeCalibration)
 
       logger.info("Resetting T400 internal zero/span calibration to off")
       if (!config.skipInternalVault.contains(true)) {

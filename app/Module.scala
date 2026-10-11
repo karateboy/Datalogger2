@@ -122,6 +122,7 @@ class Module(environment: Environment,
     bindActorFactory[AlarmForwarder, AlarmForwarder.Factory]
     bindActorFactory[InstrumentStatusForwarder, InstrumentStatusForwarder.Factory]
     bindActorFactory[InstrumentStatusTypeForwarder, InstrumentStatusTypeForwarder.Factory]
+    bindActorFactory[Auditor, Auditor.Factory]
   }
 
 }

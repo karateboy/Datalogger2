@@ -159,7 +159,7 @@ export default Vue.extend({
       },
       {
         key: 'calibrationTime',
-        label: '每日校正時間',
+        label: '預設校正時間',
         sortable: true,
         tdClass: (value, key, item) => {
           return item.classStr

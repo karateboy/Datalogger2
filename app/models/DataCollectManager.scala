@@ -455,7 +455,8 @@ class DataCollectManager @Inject()(config: Configuration,
                                    calibrationConfigDB: CalibrationConfigDB,
                                    forwardManagerFactory: ForwardManager.Factory,
                                    alarmRuleDb: AlarmRuleDb,
-                                   tableType: TableType) extends Actor with InjectedActorSupport {
+                                   tableType: TableType,
+                                   auditorFactory: Auditor.Factory) extends Actor with InjectedActorSupport {
 
   import DataCollectManager._
 
@@ -498,6 +499,8 @@ class DataCollectManager @Inject()(config: Configuration,
   private val forwardManagerOpt: Option[ActorRef] =
     for (serverConfig <- ForwardManager.getConfig(config, monitorOp)) yield
       injectedChild(forwardManagerFactory(serverConfig), "forwardManager")
+
+  private val auditor = injectedChild(auditorFactory(), "auditor")
 
   private def startReaders(): List[ActorRef] = {
     val readers: ListBuffer[ActorRef] = ListBuffer.empty[ActorRef]
