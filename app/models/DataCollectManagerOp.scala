@@ -163,7 +163,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                           current: DateTime,
                           checkAlarm: Boolean = true,
                           forward: Boolean = true): Future[Unit] = {
-    val mtList = monitorTypeDb.measuredList
+    val mtList = monitorTypeDb.measuringList
     val forwardMtList = Seq(MonitorType.WS10, MonitorType.WD10)
     val backwardMtList = mtList.filter(!forwardMtList.contains(_))
 
@@ -182,10 +182,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
           val backwardRecordMap = recordOp.getMtRecordMapFromRecordLists(recordOp.MinCollection)(backwardMtList, current - 1.hour, current)(backwardRecordLists)
           val mtDataList = calculateAvgMap(backwardMtList, getMtStatusMap(backwardRecordMap), getMtDataMap(backwardRecordMap), monitorTypeDb, monitorStatusDB = monitorStatusDB)(current.minusHours(1), failedCalibrationMap)
           val forwardRecordMap = recordOp.getMtRecordMapFromRecordLists(recordOp.MinCollection)(forwardMtList, current.plusMinutes(1).minusHours(2), current.minusHours(1).plusMinutes(1))(forwardRecordLists)
-          logger.info(s"forwarMtList=$forwardMtList")
-          logger.info(s"forwardRecordMap=$forwardRecordMap")
           val mtDataList2 = calculateAvgMap(forwardMtList, getMtStatusMap(forwardRecordMap), getMtDataMap(forwardRecordMap), monitorTypeDb, monitorStatusDB = monitorStatusDB)(current.minusHours(1), failedCalibrationMap)
-          logger.info(mtDataList2.toString())
           val hourRecordListsFuture = HourCalculationRule.calculateHourRecord(monitor, current, recordOp)
           val dailyAvgMtRecordsFuture = calculateDayAvgHourRecord(monitor, current, mtDataList)
           for (ruleHourRecordLists <- hourRecordListsFuture; dailyAvgMtRecords <- dailyAvgMtRecordsFuture) yield {

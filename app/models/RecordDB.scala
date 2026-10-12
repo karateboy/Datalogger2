@@ -5,6 +5,7 @@ import com.github.nscala_time.time.Imports.{DateTime, Period}
 import models.ModelHelper.waitReadyResult
 import org.mongodb.scala.BulkWriteResult
 import org.mongodb.scala.result.{InsertManyResult, UpdateResult}
+import play.api.Logger
 import play.api.libs.json.{Json, OWrites, Reads}
 
 import java.util.Date
@@ -26,6 +27,8 @@ trait RecordDB {
   val HourCollection = "hour_data"
   val MinCollection = "min_data"
   val SecCollection = "sec_data"
+
+  val logger: Logger = Logger(this.getClass)
 
   def ensureMonitorType(mt: String): Unit
 
@@ -65,34 +68,15 @@ trait RecordDB {
                                    (mtList: Seq[String], startTime: DateTime, endTime: DateTime)
                                    (recordLists: Seq[RecordList]): mutable.Map[String, ListBuffer[MtRecord]] = {
     val map = mutable.Map.empty[String, ListBuffer[MtRecord]]
-    val dtList = collection.mutable.ListBuffer.empty[Date]
-    val period = if (colName == MinCollection)
-      Period.minutes(1)
-    else
-      Period.hours(1)
-
-    for (dt <- ModelHelper.getPeriods(startTime, endTime, period)) {
-      dtList.append(dt.toDate)
-    }
 
     for {recordList <- recordLists} {
-      val mtMap =
-        if (dtList.head == recordList._id.time)
-          recordList.mtMap
-        else
-          Map.empty[String, MtRecord]
+      val mtMap = recordList.mtMap
 
       for (mt <- mtList) {
         val lb = map.getOrElseUpdate(mt, ListBuffer.empty[MtRecord])
         if (mtMap.contains(mt))
           lb.append(mtMap(mt))
-        else {
-          if(colName == MinCollection)
-            lb.append(MtRecord(mt, None, MonitorStatus.DataLost))
-        }
       }
-
-      dtList.remove(0)
     }
 
     map

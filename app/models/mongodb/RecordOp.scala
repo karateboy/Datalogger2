@@ -17,7 +17,7 @@ import scala.util.Success
 
 @Singleton
 class RecordOp @Inject()(mongodb: MongoDB) extends RecordDB {
-  val logger: Logger = Logger(this.getClass)
+  override val logger: Logger = Logger(this.getClass)
 
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY

@@ -14,7 +14,7 @@ import scala.concurrent.Future
 
 @Singleton
 class RecordOp @Inject()(sqlServer: SqlServer) extends RecordDB {
-  val logger: Logger = Logger(this.getClass)
+  override val logger: Logger = Logger(this.getClass)
   private var mtList = List.empty[String]
 
   init()

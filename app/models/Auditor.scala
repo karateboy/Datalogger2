@@ -2,9 +2,7 @@ package models
 
 import com.github.nscala_time.time.Imports._
 import akka.actor.Actor
-import models.mongodb.RecordOp
 import play.api.Logger
-
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -130,7 +128,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class Auditor @Inject()(monitorDB: MonitorDB,
                         monitorTypeDB: MonitorTypeDB,
-                        recordOp: RecordOp,
+                        recordOp: RecordDB,
                         spikeRuleOp: SpikeRuleDB,
                         constantRuleOp: ConstantRuleDB,
                         variationRuleOp: VariationRuleDB,
