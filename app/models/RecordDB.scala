@@ -86,8 +86,10 @@ trait RecordDB {
         val lb = map.getOrElseUpdate(mt, ListBuffer.empty[MtRecord])
         if (mtMap.contains(mt))
           lb.append(mtMap(mt))
-        else
-          lb.append(MtRecord(mt, None, MonitorStatus.DataLost))
+        else {
+          if(colName == MinCollection)
+            lb.append(MtRecord(mt, None, MonitorStatus.DataLost))
+        }
       }
 
       dtList.remove(0)
