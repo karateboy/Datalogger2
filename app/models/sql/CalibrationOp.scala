@@ -1,7 +1,7 @@
 package models.sql
 
 import com.github.nscala_time.time.Imports
-import models.{Calibration, CalibrationDB, Monitor}
+import models.{Alarm, Calibration, CalibrationDB, Monitor}
 import scalikejdbc._
 
 import javax.inject.{Inject, Singleton}
@@ -9,7 +9,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
+class CalibrationOp @Inject()(sqlServer: SqlServer, alarmOp: AlarmOp) extends CalibrationDB {
   private val tabName = "calibration"
 
   override def calibrationReportFuture(start: Imports.DateTime, end: Imports.DateTime)(monitor:String): Future[Seq[Calibration]] =
@@ -76,6 +76,9 @@ class CalibrationOp @Inject()(sqlServer: SqlServer) extends CalibrationDB {
 
   override def insertFuture(cal: Calibration): Unit = {
     implicit val session: DBSession = AutoSession
+    if(cal.zero_success.contains(false)||cal.span_success.contains(false))
+      alarmOp.log(alarmOp.src(cal.monitorType), Alarm.Level.ERR, s"${cal.monitorType} 校正失敗 failed.")
+
     sql"""
       INSERT INTO [dbo].[calibration]
            ([monitor]

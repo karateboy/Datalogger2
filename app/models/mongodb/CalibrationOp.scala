@@ -12,7 +12,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 @Singleton
-class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
+class CalibrationOp @Inject()(mongodb: MongoDB, alarmOp: AlarmOp) extends CalibrationDB {
 
   import org.bson.codecs.configuration.CodecRegistries.{fromProviders, fromRegistries}
   import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
@@ -79,6 +79,9 @@ class CalibrationOp @Inject()(mongodb: MongoDB) extends CalibrationDB {
   }
 
   override def insertFuture(cal: Calibration): Unit = {
+    if(cal.zero_success.contains(false)||cal.span_success.contains(false))
+      alarmOp.log(alarmOp.src(cal.monitorType), Alarm.Level.ERR, s"${cal.monitorType} 校正失敗 failed.")
+
     collection.insertOne(cal).toFuture()
   }
 
