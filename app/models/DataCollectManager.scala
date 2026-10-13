@@ -249,7 +249,7 @@ object DataCollectManager {
     }
   }
 
-  def calculateAvgMap(mtList:Seq[String],
+  def calculateAvgMap(mtList: Seq[String],
                       mtStatusMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]],
                       mtDataMap: mutable.Map[String, ListBuffer[MtRecord]],
                       monitorTypeDB: MonitorTypeDB,
@@ -258,7 +258,9 @@ object DataCollectManager {
     for {
       mt <- mtList if mtStatusMap.contains(mt)
       statusMap = mtStatusMap(mt)
-      totalSize = statusMap.map {_._2.size}.sum if totalSize != 0
+      totalSize = statusMap.map {
+        _._2.size
+      }.sum if totalSize != 0
     } yield {
       val status = {
         val statusOrderList = statusMap.toSeq.sortBy(pair => (-pair._2.length, monitorStatusDB.map(pair._1).priority))
@@ -1036,8 +1038,13 @@ class DataCollectManager @Inject()(config: Configuration,
               // reset hourAccumulatedRain to zero
               hourAccumulateRain = Some(0)
 
-              for (m <- monitorOp.mvList)
-                dataCollectManagerOp.recalculateHourData(monitor = m, current = current)
+              val futureList =
+                for (m <- monitorOp.mvList) yield {
+                  dataCollectManagerOp.recalculateHourData(monitor = m, current = current)
+                }
+
+              for(_ <- Future.sequence(futureList))
+                auditor ! Auditor.Audit(current)
 
               self ! CheckInstruments
             }
