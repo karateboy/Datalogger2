@@ -90,6 +90,14 @@
             >
               VOC重新匯入
             </b-button>
+            <b-button
+              v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+              variant="primary"
+              class="mr-1"
+              @click="audit"
+            >
+              資料檢核
+            </b-button>
           </b-col>
         </b-row>
       </b-form>
@@ -225,6 +233,19 @@ export default Vue.extend({
         const res = await axios.get(url)
         if (res.data.ok) {
           this.$bvModal.msgBoxOk('重新上傳資料')
+        }
+      } catch (err) {
+        throw new Error('failed to upload data')
+      }
+    },
+    async audit() {
+      const monitors = this.form.monitors.join(':')
+      const url = `/Audit/${this.form.range[0]}/${this.form.range[1]}`
+
+      try {
+        const res = await axios.get(url)
+        if (res.data.ok) {
+          this.$bvModal.msgBoxOk('資料檢核中')
         }
       } catch (err) {
         throw new Error('failed to upload data')

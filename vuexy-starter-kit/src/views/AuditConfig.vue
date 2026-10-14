@@ -40,7 +40,7 @@
           <template #cell(abs)="row">
             <b-form-spinbutton
               v-model.number="row.item.abs"
-              min="1"
+              min="-1"
               max="1000"
             ></b-form-spinbutton>
           </template>
@@ -151,7 +151,7 @@
           <template #cell(abs)="row">
             <b-form-spinbutton
               v-model.number="row.item.abs"
-              min="1"
+              min="0"
               max="1000"
             ></b-form-spinbutton>
           </template>

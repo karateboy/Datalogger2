@@ -1043,7 +1043,7 @@ class DataCollectManager @Inject()(config: Configuration,
                   dataCollectManagerOp.recalculateHourData(monitor = m, current = current)
                 }
 
-              for(_ <- Future.sequence(futureList))
+              for (_ <- Future.sequence(futureList))
                 auditor ! Auditor.Audit(current)
 
               self ! CheckInstruments
@@ -1052,6 +1052,9 @@ class DataCollectManager @Inject()(config: Configuration,
             errorHandler(exception)
         }
       }
+
+    case a: Auditor.Audit =>
+      auditor ! a
 
     case UpdateCalibrationMap(map) =>
       context become handler(instrumentMap,

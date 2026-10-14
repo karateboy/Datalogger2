@@ -3,6 +3,7 @@ package models
 import akka.actor.ActorRef
 import com.github.nscala_time.time.Imports.{DateTime, _}
 import models.ForwardManager.ForwardHour
+import org.mongodb.scala.BulkWriteResult
 import play.api.Logger
 
 import javax.inject.{Inject, Named, Singleton}
@@ -135,7 +136,7 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
         else
           None
       })
-      mapDailyMtDataList.toSeq
+      mapDailyMtDataList
     }
   }
 
@@ -162,31 +163,30 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
   def recalculateHourData(monitor: String,
                           current: DateTime,
                           checkAlarm: Boolean = true,
-                          forward: Boolean = true): Future[Unit] = {
+                          forward: Boolean = true): Future[BulkWriteResult] = {
     val mtList = monitorTypeDb.measuringList
     val forwardMtList = Seq(MonitorType.WS10, MonitorType.WD10)
     val backwardMtList = mtList.filter(!forwardMtList.contains(_))
 
+    val ret2 = {
+      for (recordListSeq <- recordOp.getRecordListFuture(recordOp.MinCollection)(current - 2.hour, current, Seq(monitor));
+           alarmRules <- alarmRuleDb.getRulesAsync;
+           failedCalibrationMap <- calibrationDB.getFailedCalibrationMapFuture(current - 2.hour, current)(monitor)) yield {
+        def slice(start: DateTime, end: DateTime): Seq[RecordList] =
+          recordListSeq.filter(p => (start <= new DateTime(p._id.time)) && (new DateTime(p._id.time) < end))
 
-    for (recordListSeq <- recordOp.getRecordListFuture(recordOp.MinCollection)(current - 2.hour, current, Seq(monitor));
-         alarmRules <- alarmRuleDb.getRulesAsync;
-         failedCalibrationMap <- calibrationDB.getFailedCalibrationMapFuture(current - 2.hour, current)(monitor)) yield {
-      def slice(start: DateTime, end: DateTime): Seq[RecordList] =
-        recordListSeq.filter(p => (start <= new DateTime(p._id.time)) && (new DateTime(p._id.time) < end))
-
-      val backwardRecordLists = slice(current - 1.hour, current)
-      val forwardRecordLists = slice(current.plusMinutes(1).minusHours(2), current.minusHours(1).plusMinutes(1))
-      // Calculate backward 0:00~0:59 => 0:00
-      val ret1: Future[Unit] =
-        try {
+        val backwardRecordLists = slice(current - 1.hour, current)
+        val forwardRecordLists = slice(current.plusMinutes(1).minusHours(2), current.minusHours(1).plusMinutes(1))
+        // Calculate backward 0:00~0:59 => 0:00
+        val ret1 = {
           val backwardRecordMap = recordOp.getMtRecordMapFromRecordLists(recordOp.MinCollection)(backwardMtList, current - 1.hour, current)(backwardRecordLists)
           val mtDataList = calculateAvgMap(backwardMtList, getMtStatusMap(backwardRecordMap), getMtDataMap(backwardRecordMap), monitorTypeDb, monitorStatusDB = monitorStatusDB)(current.minusHours(1), failedCalibrationMap)
           val forwardRecordMap = recordOp.getMtRecordMapFromRecordLists(recordOp.MinCollection)(forwardMtList, current.plusMinutes(1).minusHours(2), current.minusHours(1).plusMinutes(1))(forwardRecordLists)
           val mtDataList2 = calculateAvgMap(forwardMtList, getMtStatusMap(forwardRecordMap), getMtDataMap(forwardRecordMap), monitorTypeDb, monitorStatusDB = monitorStatusDB)(current.minusHours(1), failedCalibrationMap)
           val hourRecordListsFuture = HourCalculationRule.calculateHourRecord(monitor, current, recordOp)
           val dailyAvgMtRecordsFuture = calculateDayAvgHourRecord(monitor, current, mtDataList)
-          for (ruleHourRecordLists <- hourRecordListsFuture; dailyAvgMtRecords <- dailyAvgMtRecordsFuture) yield {
-            try {
+          val ret =
+            for (ruleHourRecordLists <- hourRecordListsFuture; dailyAvgMtRecords <- dailyAvgMtRecordsFuture) yield {
               val defaultHourRecordList = RecordList.factory(current.minusHours(1).toDate, mtDataList ++ mtDataList2 ++ dailyAvgMtRecords, monitor)
               val hourRecordLists = ruleHourRecordLists.filter(_.mtDataList.nonEmpty) :+ defaultHourRecordList
 
@@ -210,22 +210,25 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
                     logger.error("failed", exception)
                 }
               }
-            } catch {
-              case e: Exception => logger.error(s"recalculateHourData failed 1: ${e.getMessage}", e)
+              f
             }
-          }
-        } catch {
-          case e: Exception => logger.error(s"recalculateHourData failed 2: ${e.getMessage}", e)
-            Future.unit
+
+          ret.flatten
+
+
         }
 
-      for (_ <- ret1) {
-        if (forward)
-          manager ! ForwardHour
+        ret1.onComplete {
+          case Success(_) =>
+            if (forward)
+              manager ! ForwardHour
+          case Failure(exception) =>
+            logger.error("failed", exception)
+        }
+        ret1
       }
     }
-
-
+    ret2.flatten
   }
 
   def resetReaders(): Unit = {

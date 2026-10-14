@@ -635,6 +635,17 @@ class HomeController @Inject()(
     Ok(Json.obj("ok" -> true))
   }
 
+  def auditData(startNum: Long, endNum: Long): Action[AnyContent] = security.Authenticated {
+    val start = new DateTime(startNum)
+    val end = new DateTime(endNum)
+
+    for(dt<-ModelHelper.getPeriods(start, end, 1.hour)){
+      manager ! Auditor.Audit(dt)
+    }
+
+    Ok(Json.obj("ok" -> true))
+  }
+
   def getSensors: Action[AnyContent] = security.Authenticated.async {
     import MqttSensor.write
     val f = sensorOp.getAllSensorList
