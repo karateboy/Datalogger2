@@ -35,7 +35,7 @@ object Auditor {
           if (mtRecords.forall(record => MonitorStatus.isValid(record.status))) {
             for (v1 <- head.value; v2 <- mid.value; v <- last.value) {
               if (Math.abs((v1 + v2) / 2 - v) > rule.abs) {
-                recordOp.updateRecordStatus(recordOp.HourCollection)(dataTime.getTime, rule._id.monitorType, "A10", rule._id.monitor)
+                //recordOp.updateRecordStatus(recordOp.HourCollection)(dataTime.getTime, rule._id.monitorType, "A10", rule._id.monitor)
                 alarmDB.log(alarmDB.src(rule._id.monitorType), Alarm.Level.ERR,
                   s"${monitorDB.map(rule._id.monitor).desc} ${monitorTypeDB.map(rule._id.monitorType).desp} 突波高值檢核觸發")
               }
@@ -72,7 +72,7 @@ object Auditor {
             val values = mtRecordToCheck.flatMap(_.value)
             val count = values.groupBy(identity).mapValues(_.size).values.max
             if (count >= rule.count) {
-              recordOp.updateRecordStatus(recordOp.HourCollection)(dataTime.getTime, rule._id.monitorType, "A10", rule._id.monitor)
+              //recordOp.updateRecordStatus(recordOp.HourCollection)(dataTime.getTime, rule._id.monitorType, "A10", rule._id.monitor)
               alarmDB.log(alarmDB.src(rule._id.monitorType), Alarm.Level.ERR,
                 s"${monitorDB.map(rule._id.monitor).desc} ${monitorTypeDB.map(rule._id.monitorType).desp} 定值檢核觸發")
             }
@@ -109,7 +109,7 @@ object Auditor {
           if (head.status == MonitorStatus.NormalStat && last.status == MonitorStatus.NormalStat) {
             for (v1 <- head.value; v2 <- last.value) {
               if (Math.abs(v1 - v2) > rule.abs) {
-                recordOp.updateRecordStatus(recordOp.HourCollection)(dataTime.getTime, rule._id.monitorType, "A10", rule._id.monitor)
+                //recordOp.updateRecordStatus(recordOp.HourCollection)(dataTime.getTime, rule._id.monitorType, "A10", rule._id.monitor)
                 alarmDB.log(alarmDB.src(rule._id.monitorType), Alarm.Level.ERR,
                   s"${monitorDB.map(rule._id.monitor).desc} ${monitorTypeDB.map(rule._id.monitorType).desp} 變動檢核觸發")
               }

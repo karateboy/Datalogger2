@@ -42,6 +42,7 @@
               v-model.number="row.item.abs"
               min="-1"
               max="1000"
+              step="0.01"
             ></b-form-spinbutton>
           </template>
           <template #cell(operation)="row">
@@ -153,6 +154,7 @@
               v-model.number="row.item.abs"
               min="0"
               max="1000"
+              step="0.01"
             ></b-form-spinbutton>
           </template>
           <template #cell(operation)="row">
