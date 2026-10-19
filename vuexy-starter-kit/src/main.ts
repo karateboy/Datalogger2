@@ -137,9 +137,9 @@ Vue.config.productionTip = false
 
 router.beforeEach(async (to, from, next) => {
   if (!store.state.login) {
-    try{
+    try {
       const ret = await axios.get('/userInfo')
-      const userInfo = ret.data.userData;
+      const userInfo = ret.data.userData
       store.commit('user/setUserInfo', userInfo.user)
       store.commit('setLogin', true)
 
@@ -153,7 +153,7 @@ router.beforeEach(async (to, from, next) => {
       } else {
         window.vm.$ability.update(userInfo.group.abilities)
       }
-    }catch(e){
+    } catch (e) {
       //console.error(e);
     }
   }

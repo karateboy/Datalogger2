@@ -332,7 +332,7 @@ export default Vue.extend({
       darkTheme(highcharts)
     }
 
-    (this as any).$gmapApiPromiseLazy().then(() => {
+    ;(this as any).$gmapApiPromiseLazy().then(() => {
       this.mapLoaded = true
       console.info('Google map api loaded', this.$refs.map)
       /*

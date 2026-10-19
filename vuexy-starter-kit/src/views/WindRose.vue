@@ -244,7 +244,9 @@ export default Vue.extend({
         }
 
         ret.title.x = -70
-        document.querySelectorAll('.highcharts-data-table').forEach((e) => e.remove())
+        document
+          .querySelectorAll('.highcharts-data-table')
+          .forEach(e => e.remove())
         highcharts.chart('chart_container', ret)
       } catch (err) {
         this.$bvModal.msgBoxOk('沒有資料')

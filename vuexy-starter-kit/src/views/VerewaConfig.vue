@@ -53,7 +53,7 @@ export default Vue.extend({
     ...mapState('monitorTypes', ['monitorTypes']),
     ...mapGetters('monitorTypes', ['mtMap']),
     verewaMonitorTypes(): Array<MonitorType> {
-      let ret = Array<MonitorType>();
+      let ret = Array<MonitorType>()
 
       for (let mt of this.monitorTypes) {
         let mtCase = mt as MonitorType

@@ -50,7 +50,9 @@
                   rules="required"
                 >
                   <b-form-input id="inst-id" v-model="form._id" />
-                  <small class="text-danger">ID以_TEST結尾, 代表平行測試儀器</small>
+                  <small class="text-danger"
+                    >ID以_TEST結尾, 代表平行測試儀器</small
+                  >
                   <small class="text-danger">{{ errors[0] }}</small>
                 </validation-provider>
               </b-form-group>
@@ -285,13 +287,13 @@ import MoxaE1240ConfigPage from './MoxaE1240ConfigPage.vue'
 import VerewaConfig from './VerewaConfig.vue'
 import MetOne1020Config from './MetOne1020Config.vue'
 import GpsConfig from './GpsConfig.vue'
-import { extend } from 'vee-validate';
-import * as rules from 'vee-validate/dist/rules';
+import { extend } from 'vee-validate'
+import * as rules from 'vee-validate/dist/rules'
 
 // 遍歷並註冊所有內建規則
 Object.keys(rules).forEach(rule => {
-  extend(rule, rules[rule]);
-});
+  extend(rule, rules[rule])
+})
 
 interface ProtocolParam {
   protocol: 'tcp' | 'serial' | 'tcpCli' | undefined

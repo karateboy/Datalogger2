@@ -183,14 +183,14 @@ const router = new VueRouter({
       name: 'alarm-query',
       component: () => import('@/views/AlarmQuery.vue'),
       meta: {
-        pageTitle: '警報查詢',
+        pageTitle: '警報記錄查詢',
         breadcrumb: [
           {
-            text: '數據查詢',
+            text: '維護操作',
             active: true,
           },
           {
-            text: '警報查詢',
+            text: '警報記錄查詢',
             active: true,
           },
         ],

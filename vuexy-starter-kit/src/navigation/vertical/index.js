@@ -75,12 +75,6 @@ export default [
         action: 'read',
         resource: 'Data',
       },
-      {
-        title: '警報記錄查詢',
-        route: 'alarm-query',
-        action: 'read',
-        resource: 'Data',
-      },
     ],
   },
   {
@@ -106,9 +100,20 @@ export default [
   {
     title: '維護操作',
     icon: 'ActivityIcon',
-    route: 'instrument-maintenance',
-    action: 'set',
-    resource: 'Maintenance',
+    children: [
+      {
+        title: '維護操作',
+        route: 'instrument-maintenance',
+        action: 'set',
+        resource: 'Maintenance',
+      },
+      {
+        title: '警報記錄查詢',
+        route: 'alarm-query',
+        action: 'read',
+        resource: 'Data',
+      },
+    ],
   },
   {
     title: '系統管理',

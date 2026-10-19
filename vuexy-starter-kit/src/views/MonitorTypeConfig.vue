@@ -205,7 +205,7 @@ export default Vue.extend({
           if (v === 'WD_SPEED' || v === 'WD_DIR') return `${v} (向量計算)`
           else return v
         },
-        sortable: true
+        sortable: true,
       },
       {
         key: 'desp',
@@ -371,7 +371,7 @@ export default Vue.extend({
       }
     },
     save() {
-      const all = Array<Promise<any>>();
+      const all = Array<Promise<any>>()
       for (const mt of this.monitorTypes) {
         if (mt.dirty) {
           this.justify(mt)
