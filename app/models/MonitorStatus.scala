@@ -43,6 +43,8 @@ object MonitorStatus {
   val RepairStat = "033"
   val DataLost = "040"
   val NotActivated = "000"
+  val SiteChanged = "001"
+  val PowerOut = "002"
 
   def getTagInfo(tag: String): TagInfo = {
     val id = tag.substring(1)

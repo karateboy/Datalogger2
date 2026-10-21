@@ -4,6 +4,7 @@
       <b-tabs card>
         <b-tab title="資料上傳" active> <DataUpload /></b-tab>
         <b-tab title="資料回補"> <DataUpsert /></b-tab>
+        <b-tab title="品保計算" active> <QaUpload /></b-tab>
       </b-tabs>
     </b-card>
   </div>
@@ -12,11 +13,13 @@
 import Vue from 'vue'
 import DataUpload from './DataUpload.vue'
 import DataUpsert from './DataUpsert.vue'
+import QaUpload from './QaUpload.vue'
 
 export default Vue.extend({
   components: {
     DataUpload,
     DataUpsert,
+    QaUpload
   },
 })
 </script>

@@ -98,6 +98,56 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     manager ! ToggleSignal(mtId, delay)
   }
 
+  def recalculateHourData(monitor: String,
+                          current: DateTime,
+                          checkAlarm: Boolean = true,
+                          forward: Boolean = true): Future[BulkWriteResult] = {
+    val mtList = monitorTypeDb.measuringList
+    recalculateHelper(monitor, current, mtList, checkAlarm, forward)
+  }
+
+  def qaHourData(monitor: String,
+                 current: DateTime,
+                 forward: Boolean = true): Future[Seq[Object]] = {
+    val mtList = monitorTypeDb.measuringList
+    val excludeMtList = Seq(MonitorType.PM10, MonitorType.PM25, MonitorType.WS10, MonitorType.WD10)
+    val recalculateList = mtList.filter(excludeMtList.contains)
+    val backwardMtList = mtList.filter(!excludeMtList.contains(_))
+
+    val f1 = recalculateHelper(monitor, current, recalculateList, checkAlarm = false, forward = forward)
+    val f2 = {
+      for (backwardRecordLists <- recordOp.getRecordListFuture(recordOp.MinCollection)(current - 1.hour, current, Seq(monitor));
+           failedCalibrationMap <- calibrationDB.getFailedCalibrationMapFuture(current - 2.hour, current)(monitor)) yield {
+        // Calculate backward 0:00~0:59 => 0:00
+        val f = {
+          val backwardRecordMap = recordOp.getMtRecordMapFromRecordLists(recordOp.MinCollection)(backwardMtList, current - 1.hour, current)(backwardRecordLists)
+          val mtDataList = qaAvgMap(backwardMtList, getMtStatusMap(backwardRecordMap), getMtDataMap(backwardRecordMap), monitorTypeDb, monitorStatusDB = monitorStatusDB)(current.minusHours(1), failedCalibrationMap)
+          val hourRecordLists = RecordList.factory(current.minusHours(1).toDate, mtDataList, monitor)
+          recordOp.upsertRecordChecked(recordOp.HourCollection)(hourRecordLists)
+        }
+
+        f.onComplete {
+          case Success(_) =>
+            if (forward)
+              manager ! ForwardHour
+          case Failure(exception) =>
+            logger.error("failed", exception)
+        }
+        f
+      }
+    }
+    Future.sequence(Seq(f1, f2))
+  }
+
+  private def getMtStatusMap(recordMap: mutable.Map[String, ListBuffer[MtRecord]]): mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]] = {
+    val mtStatusMap = mutable.Map.empty[String, mutable.Map[String, ListBuffer[MtRecord]]]
+
+    for (mtRecordList <- recordMap.values; mtRecord <- mtRecordList)
+      updateStatusMap(mtRecord, mtStatusMap)
+
+    mtStatusMap
+  }
+
   private def updateStatusMap(mtRecord: MtRecord, mtMap: mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]]): Unit = {
     val statusMap = mtMap.getOrElseUpdate(mtRecord.mtName, mutable.Map.empty[String, ListBuffer[MtRecord]])
     val tagInfo = MonitorStatus.getTagInfo(mtRecord.status)
@@ -112,6 +162,21 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
 
     if (mtRecord.value.isEmpty || mtRecord.value.forall(!_.isNaN))
       lb.append(mtRecord)
+  }
+
+  private def getMtDataMap(recordMap: mutable.Map[String, ListBuffer[MtRecord]]): mutable.Map[String, ListBuffer[MtRecord]] = {
+    val mtDataMap = mutable.Map.empty[String, ListBuffer[MtRecord]]
+
+    for (mtRecordList <- recordMap.values; mtRecord <- mtRecordList) {
+      val lb = mtDataMap.getOrElseUpdate(mtRecord.mtName, ListBuffer.empty[MtRecord])
+      lb.append(mtRecord)
+    }
+
+    mtDataMap
+  }
+
+  def resetReaders(): Unit = {
+    manager ! ReaderReset
   }
 
   private def calculateDayAvgHourRecord(monitor: String,
@@ -140,34 +205,9 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     }
   }
 
-  private def getMtStatusMap(recordMap: mutable.Map[String, ListBuffer[MtRecord]]): mutable.Map[String, mutable.Map[String, ListBuffer[MtRecord]]] = {
-    val mtStatusMap = mutable.Map.empty[String, mutable.Map[String, ListBuffer[MtRecord]]]
-
-    for (mtRecordList <- recordMap.values; mtRecord <- mtRecordList)
-      updateStatusMap(mtRecord, mtStatusMap)
-
-    mtStatusMap
-  }
-
-  private def getMtDataMap(recordMap: mutable.Map[String, ListBuffer[MtRecord]]): mutable.Map[String, ListBuffer[MtRecord]] = {
-    val mtDataMap = mutable.Map.empty[String, ListBuffer[MtRecord]]
-
-    for (mtRecordList <- recordMap.values; mtRecord <- mtRecordList) {
-      val lb = mtDataMap.getOrElseUpdate(mtRecord.mtName, ListBuffer.empty[MtRecord])
-      lb.append(mtRecord)
-    }
-
-    mtDataMap
-  }
-
-  def recalculateHourData(monitor: String,
-                          current: DateTime,
-                          checkAlarm: Boolean = true,
-                          forward: Boolean = true): Future[BulkWriteResult] = {
-    val mtList = monitorTypeDb.measuringList
+  private def recalculateHelper(monitor: String, current: DateTime, mtList: Seq[String], checkAlarm: Boolean, forward: Boolean) = {
     val forwardMtList = Seq(MonitorType.WS10, MonitorType.WD10)
     val backwardMtList = mtList.filter(!forwardMtList.contains(_))
-
     val ret2 = {
       for (recordListSeq <- recordOp.getRecordListFuture(recordOp.MinCollection)(current - 2.hour, current, Seq(monitor));
            alarmRules <- alarmRuleDb.getRulesAsync;
@@ -229,10 +269,6 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
       }
     }
     ret2.flatten
-  }
-
-  def resetReaders(): Unit = {
-    manager ! ReaderReset
   }
 }
 

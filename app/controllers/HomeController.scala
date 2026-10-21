@@ -625,6 +625,20 @@ class HomeController @Inject()(
     Ok(Json.obj("ok" -> true))
   }
 
+  def qaHour(monitorStr: String, startNum: Long, endNum: Long): Action[AnyContent] = security.Authenticated {
+    val monitors = monitorStr.split(":")
+    val start = new DateTime(startNum).withMinuteOfHour(0).withSecondOfMinute(0).withMillisOfSecond(0)
+    val end = new DateTime(endNum).withMinuteOfHour(23).withSecondOfMinute(59).withMillisOfSecond(0)
+
+    logger.info(s"QA Hour from $start to $end")
+
+    for {monitor <- monitors
+         hour <- query.getPeriods(start, end, 1.hour)}
+      dataCollectManagerOp.qaHourData(monitor, hour)
+
+    Ok(Json.obj("ok" -> true))
+  }
+
   def uploadData(startNum: Long, endNum: Long): Action[AnyContent] = security.Authenticated {
     val start = new DateTime(startNum)
     val end = new DateTime(endNum)
