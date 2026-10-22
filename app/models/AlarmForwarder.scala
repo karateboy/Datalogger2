@@ -63,10 +63,7 @@ class AlarmForwarder @Inject()(alarmOp: AlarmDB, ws: WSClient)
         val url = s"http://$server/AlarmRecord/$monitor"
         val f = ws.url(url).put(Json.toJson(alarms))
         f.foreach(_ => context become handler(monitorLatestMap + (monitor->alarms.last.time.getTime)))
-        f.failed.foreach(ex => {
-          context become handler(monitorLatestMap - monitor)
-          ModelHelper.logException(ex)
-        })
+        f.failed.foreach(ex => ModelHelper.logException(ex))
       }
     }
   }
