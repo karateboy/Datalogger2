@@ -9,7 +9,9 @@ case class LoggerConfig(storeSecondData: Boolean,
                         bypassLogin: Boolean,
                         fromEmail: String,
                         pm25HourAvgUseLastRecord: Boolean,
-                        alertEmail: Boolean)
+                        alertEmail: Boolean,
+                        allowInsufficientAvg: Boolean,
+                        negativeRaw: Boolean)
 
 object LoggerConfig {
   var config: LoggerConfig = _
@@ -27,6 +29,9 @@ object LoggerConfig {
     val fromEmail = configuration.getOptional[String]("logger.fromEmail").getOrElse("AirIoT <airiot@wecc.com.tw>")
     val pm25HourAvgUseLastRecord = configuration.getOptional[Boolean]("logger.pm25HourAvgUseLastRecord").getOrElse(false)
     val alertEmail = configuration.getOptional[Boolean]("logger.alertEmail").getOrElse(false)
+    val allowInsufficientAvg = configuration.getOptional[Boolean]("allowInsufficientAvg").getOrElse(false)
+    val negativeRaw = configuration.getOptional[Boolean]("negativeRaw").getOrElse(false)
+
     LoggerConfig(storeSecondData,
       selfMonitor = selfMonitor,
       trendShowActual = trendShowActual,
@@ -34,7 +39,9 @@ object LoggerConfig {
       bypassLogin = bypassLogin,
       fromEmail = fromEmail,
       pm25HourAvgUseLastRecord = pm25HourAvgUseLastRecord,
-      alertEmail = alertEmail)
+      alertEmail = alertEmail,
+      allowInsufficientAvg = allowInsufficientAvg,
+      negativeRaw = negativeRaw)
   }
 }
 

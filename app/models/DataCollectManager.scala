@@ -94,7 +94,10 @@ object DataCollectManager {
       def hourAccumulator(values: Seq[Double], isRaw: Boolean, status: String): Option[Double] = {
         val mtCase = monitorTypeDB.map(mt)
         if (values.isEmpty) {
-          Some(-999.9)
+          if (LoggerConfig.config.allowInsufficientAvg)
+            None
+          else
+            Some(-999.9)
         } else {
           mt match {
             case MonitorType.WIN_DIRECTION =>
@@ -201,7 +204,10 @@ object DataCollectManager {
           case MonitorType.WD10 =>
             mtRecords.flatMap(getter(_)).take(10)
           case _ =>
-            mtRecords.flatMap(getter(_)).map(v => if (v < 0) 0 else v)
+            if(LoggerConfig.config.negativeRaw)
+              mtRecords.flatMap(getter(_))
+            else
+              mtRecords.flatMap(getter(_)).map(v => if (v < 0) 0 else v)
         }
 
       val roundedAvg =
