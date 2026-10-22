@@ -231,7 +231,8 @@ object DataCollectManager {
     } yield {
       val status: String = {
         val statusOrderList = statusMap.toSeq.sortBy(pair => monitorStatusDB.map(pair._1).priority)
-        val mostStatus: (String, ListBuffer[MtRecord]) = statusOrderList.head
+        val normalStatusOpt = statusMap.get(MonitorStatus.NormalStat)
+        val firstPriority: (String, ListBuffer[MtRecord]) = statusOrderList.head
 
         // status
         // 1. 校正失敗 → 030
@@ -242,10 +243,10 @@ object DataCollectManager {
 
         if (failedCalibrationMap.get(mt).contains(targetDateTime))
           MonitorStatus.InvalidDataStat
-        else if (mostStatus._1 == MonitorStatus.NormalStat && mostStatus._2.length >= totalSize * effectiveRatio)
+        else if (normalStatusOpt.isDefined && normalStatusOpt.get.length >= totalSize * effectiveRatio)
           MonitorStatus.NormalStat
         else {
-          val candidate = mostStatus
+          val candidate = firstPriority
           if (candidate._1 == "020" || candidate._1 == "021") {
             if (statusMap.contains("020") && statusMap.contains("021"))
               "022"
