@@ -23,10 +23,10 @@ class ExcelUtility @Inject()
  monitorTypeOp: MonitorTypeDB,
  monitorStatusOp: MonitorStatusDB) {
   val logger: Logger = Logger(this.getClass)
-  val docRoot = environment.rootPath + "/report_template/"
+  val docRoot: String = environment.rootPath + "/report_template/"
 
   def exportChartData(chart: HighchartData, monitorTypes: Seq[String], showSec: Boolean): File = {
-    val precArray = monitorTypes.map { mt =>
+    val precisions = monitorTypes.map { mt =>
       if (monitorTypeOp.map.contains(mt))
         monitorTypeOp.map(mt).prec
       else {
@@ -34,7 +34,7 @@ class ExcelUtility @Inject()
         monitorTypeOp.map(realType).prec
       }
     }
-    exportChartDataWithPrecision(chart, precArray, showSec)
+    exportChartDataWithPrecision(chart, precisions, showSec)
   }
 
   def exportChartDataWithPrecision(chart: HighchartData, precision: Seq[Int], showSec: Boolean): File = {
@@ -170,13 +170,13 @@ class ExcelUtility @Inject()
     style.setFont(font)
     style.setDataFormat(format.getFormat(format_str))
     style.setBorderBottom(BorderStyle.THIN);
-    style.setBottomBorderColor(IndexedColors.BLACK.getIndex());
+    style.setBottomBorderColor(IndexedColors.BLACK.getIndex);
     style.setBorderLeft(BorderStyle.THIN);
-    style.setLeftBorderColor(IndexedColors.BLACK.getIndex());
+    style.setLeftBorderColor(IndexedColors.BLACK.getIndex);
     style.setBorderRight(BorderStyle.THIN);
-    style.setRightBorderColor(IndexedColors.BLACK.getIndex());
+    style.setRightBorderColor(IndexedColors.BLACK.getIndex);
     style.setBorderTop(BorderStyle.THIN);
-    style.setTopBorderColor(IndexedColors.BLACK.getIndex());
+    style.setTopBorderColor(IndexedColors.BLACK.getIndex);
     style
   }
 
@@ -197,7 +197,7 @@ class ExcelUtility @Inject()
 
   def exportDailyReport(dateTime: DateTime, dailyReport: DisplayReport) = {
     val (reportFilePath, pkg, wb) = prepareTemplate("dailyReport.xlsx")
-    val evaluator = wb.getCreationHelper().createFormulaEvaluator()
+    val evaluator = wb.getCreationHelper.createFormulaEvaluator()
     val format = wb.createDataFormat()
     val sheet = wb.getSheetAt(0)
     val titleRow = sheet.createRow(0)
@@ -323,26 +323,24 @@ class ExcelUtility @Inject()
         setValue(cell, mtHrData.v)
 
         var hasStyle = false
-        mtHrData.cellClassName.foreach(status => {
-          status match {
-            case "calibration_status" =>
-              hasStyle = true
-              cell.setCellStyle(statusStyle(1))
-            case "maintain_status" =>
-              hasStyle = true
-              cell.setCellStyle(statusStyle(2))
-            case "abnormal_status" =>
-              hasStyle = true
-              cell.setCellStyle(statusStyle(3))
-            case "manual_audit_status" =>
-              hasStyle = true
-              cell.setCellStyle(statusStyle(4))
-            case "normal" =>
-              if (!hasStyle)
-                cell.setCellStyle(statusStyle(0))
-            case _ =>
-          }
-        })
+        mtHrData.cellClassName.foreach {
+          case "calibration_status" =>
+            hasStyle = true
+            cell.setCellStyle(statusStyle(1))
+          case "maintain_status" =>
+            hasStyle = true
+            cell.setCellStyle(statusStyle(2))
+          case "abnormal_status" =>
+            hasStyle = true
+            cell.setCellStyle(statusStyle(3))
+          case "manual_audit_status" =>
+            hasStyle = true
+            cell.setCellStyle(statusStyle(4))
+          case "normal" =>
+            if (!hasStyle)
+              cell.setCellStyle(statusStyle(0))
+          case _ =>
+        }
         if (!hasStyle)
           cell.setCellStyle(statusStyle(0))
       }
@@ -353,7 +351,7 @@ class ExcelUtility @Inject()
       val titleCell = row.createCell(0)
       titleCell.setCellValue(statusRowData.name)
       titleCell.setCellStyle(statusStyle(0))
-      for (mtIdx <- 0 to displayReport.columnNames.size - 1) {
+      for (mtIdx <- displayReport.columnNames.indices) {
         if (mtIdx < statusRowData.cellData.length) {
           val valueCell = row.createCell(mtIdx + 1)
           setValue(valueCell, statusRowData.cellData(mtIdx).v)
@@ -371,19 +369,20 @@ class ExcelUtility @Inject()
     Files.copy(templatePath, reportFilePath, StandardCopyOption.REPLACE_EXISTING)
 
     //Open Excel
-    val pkg = OPCPackage.open(new FileInputStream(reportFilePath.toAbsolutePath().toString()))
+    val pkg = OPCPackage.open(new FileInputStream(reportFilePath.toAbsolutePath.toString))
     val wb = new XSSFWorkbook(pkg);
 
     (reportFilePath, pkg, wb)
   }
 
-  def finishExcel(reportFilePath: Path, pkg: OPCPackage, wb: XSSFWorkbook) = {
-    val out = new FileOutputStream(reportFilePath.toAbsolutePath().toString());
+  private def finishExcel(reportFilePath: Path, pkg: OPCPackage, wb: XSSFWorkbook) = {
+    val out = new FileOutputStream(reportFilePath.toAbsolutePath.toString)
+    wb.setForceFormulaRecalculation(true)
     wb.write(out);
     out.close();
     pkg.close();
 
-    new File(reportFilePath.toAbsolutePath().toString())
+    new File(reportFilePath.toAbsolutePath.toString)
   }
 
   def calibrationReport(start: DateTime, end: DateTime, calibrationList: Seq[Calibration]): File = {
