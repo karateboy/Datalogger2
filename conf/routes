@@ -187,7 +187,7 @@ PUT           /AlarmRule                                                        
 DELETE        /AlarmRule/:id                                                                       controllers.DataLogger.deleteAlarmRule(id)
 
 GET           /UpsertData/template                                                                 controllers.DataLogger.getUpsertTemplate
-POST          /UpsertData                                                                          controllers.DataLogger.upsertData
+POST          /UpsertData/:minData                                                                 controllers.DataLogger.upsertData(minData:Boolean)
 
 #Calibration Config
 GET           /CalibrationConfig                                                                   controllers.HomeController.getCalibrationConfig

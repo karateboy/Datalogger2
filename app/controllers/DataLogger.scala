@@ -53,7 +53,7 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb,
       assets.at("/public", "upsertTemplate.xlsx")(request)
   }
 
-  def upsertData: Action[MultipartFormData[play.api.libs.Files.TemporaryFile]] = security.Authenticated.async(parse.multipartFormData) {
+  def upsertData(minData:Boolean): Action[MultipartFormData[play.api.libs.Files.TemporaryFile]] = security.Authenticated.async(parse.multipartFormData) {
     implicit request =>
       val file = request.body.file("data").get
       val tmpFile = file.ref.path.toFile
@@ -62,11 +62,20 @@ class DataLogger @Inject()(alarmRuleDb: AlarmRuleDb,
       if (minRecordLists.isEmpty) {
         Future.successful(BadRequest(Json.obj("ok" -> false, "msg" -> "No data")))
       } else {
-        logger.info(s"upsert minData #=${minRecordLists.size}")
+        if(minData)
+          logger.info(s"upsert min Data #=${minRecordLists.size}")
+        else
+          logger.info(s"upsert hour Data #=${minRecordLists.size}")
+
         if(minRecordLists.nonEmpty)
           logger.info("1st record=>" + minRecordLists.head.toString)
 
-        for (_ <- recordDB.upsertManyRecordsChecked(recordDB.MinCollection)(minRecordLists)) yield {
+        val collection = if(minData)
+          recordDB.MinCollection
+        else
+          recordDB.HourCollection
+
+        for (_ <- recordDB.upsertManyRecordsChecked(collection)(minRecordLists)) yield {
           Ok(Json.obj("ok" -> true))
         }
       }
