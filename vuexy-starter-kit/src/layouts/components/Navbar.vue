@@ -81,16 +81,16 @@ export default {
       return '使用者'
     },
   },
+  watch: {
+    activeID() {
+      document.title = `${this.mMap.get(this.activeID).desc}`
+    },
+  },
   async mounted() {
     await this.getVersion()
     await this.fetchMonitors()
     await this.getActiveID()
     document.title = `${this.mMap.get(this.activeID).desc}`
-  },
-  watch: {
-    activeID() {
-      document.title = `${this.mMap.get(this.activeID).desc}`
-    },
   },
   methods: {
     ...mapActions('monitors', ['fetchMonitors', 'getActiveID']),
