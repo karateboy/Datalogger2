@@ -612,6 +612,8 @@ object DataCollectManager {
 
   case object GetLatestSignal
 
+  case object GetReaderInfoList
+
   case object RestartMyself
 
   object AutoZero extends CalibrationType(true, true)
@@ -629,6 +631,9 @@ object DataCollectManager {
   private case object ReloadAlarmRule
 
   private case object UpdateHourAccumulatedRain
+
+  case class ReaderInfo(name:String="", path:String="", setting:String="")
+
 }
 
 @Singleton
@@ -687,7 +692,7 @@ class DataCollectManager @Inject()(config: Configuration,
       Some(context.system.scheduler.scheduleAtFixedRate(FiniteDuration(postSeconds, SECONDS), Duration(1, MINUTES), self, AutoState))
     } else
       None
-  private val readerList: List[ActorRef] = startReaders()
+  private val readerList: List[(ActorRef, ReaderInfo)] = startReaders()
   private val forwardManagerOpt: Option[ActorRef] =
     for (serverConfig <- ForwardManager.getConfig(config, monitorOp)) yield
       injectedChild(forwardManagerFactory(serverConfig), "forwardManager")
@@ -1273,6 +1278,9 @@ class DataCollectManager @Inject()(config: Configuration,
 
       sender() ! resultMap
 
+    case GetReaderInfoList =>
+      sender ! readerList.map(_._2)
+
     case GetLatestData =>
       val latestMtRecordMap = mutable.Map.empty[String, Record]
       //Filter out older than 10 second
@@ -1373,7 +1381,7 @@ class DataCollectManager @Inject()(config: Configuration,
       }
 
     case ReaderReset =>
-      readerList.foreach(_ ! ReaderReset)
+      readerList.foreach(_._1 ! ReaderReset)
 
     case UpdateHourAccumulatedRain =>
       val now = DateTime.now
@@ -1390,24 +1398,24 @@ class DataCollectManager @Inject()(config: Configuration,
     onceTimer.foreach(_.cancel())
   }
 
-  private def startReaders(): List[ActorRef] = {
-    val readers: ListBuffer[ActorRef] = ListBuffer.empty[ActorRef]
+  private def startReaders(): List[(ActorRef, ReaderInfo)] = {
+    val readers: ListBuffer[(ActorRef, ReaderInfo)] = ListBuffer.empty[(ActorRef, ReaderInfo)]
 
-    for (readerRef <- SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp))
-      readers.append(readerRef)
+    for (reader <- SpectrumReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp))
+      readers.append(reader)
 
-    for (readerRef <- WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp))
-      readers.append(readerRef)
+    for (reader <- WeatherReader.start(config, context.system, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp))
+      readers.append(reader)
 
-    for (readerRef <- VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
-      readers.append(readerRef)
+    for (reader <- VocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
+      readers.append(reader)
 
-    for (readerRef <- ThermoVocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
-      readers.append(readerRef)
+    for (reader <- ThermoVocReader.start(config, context.system, monitorOp, monitorTypeOp, recordOp, self))
+      readers.append(reader)
 
-    for (readerRef <- ImsReader.start(config, context.system, monitorTypeOp = monitorTypeOp, recordOp = recordOp,
+    for (reader <- ImsReader.start(config, context.system, monitorTypeOp = monitorTypeOp, recordOp = recordOp,
       dataCollectManager = self, dataCollectManagerOp = dataCollectManagerOp, environment = environment))
-      readers.append(readerRef)
+      readers.append(reader)
 
     readers.toList
   }

@@ -2,6 +2,7 @@ package models
 
 import akka.actor._
 import com.github.nscala_time.time.Imports.DateTime
+import models.DataCollectManager.ReaderInfo
 import models.ModelHelper.{getHourBetween, waitReadyResult}
 import play.api._
 
@@ -22,7 +23,7 @@ object WeatherReader {
 
   def start(configuration: Configuration, actorSystem: ActorSystem,
             sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp): Option[ActorRef] = {
+            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp): Option[(ActorRef, ReaderInfo)] = {
     def getConfig: Option[WeatherReaderConfig] = {
       for {config <- configuration.getOptional[Configuration]("weatherReader")
            enable <- config.getOptional[Boolean]("enable")
@@ -33,8 +34,11 @@ object WeatherReader {
         WeatherReaderConfig(enable, dir, modelOpt.getOrElse(CR800_MODEL))
     }
 
-    for (config <- getConfig if config.enable) yield
-      actorSystem.actorOf(props(config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp), "weatherReader")
+    for (config <- getConfig if config.enable) yield {
+      val actorRef = actorSystem.actorOf(props(config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp), "weatherReader")
+      val info = ReaderInfo(name="Weather Reader", path = config.dir, setting = s"model=${config.model}")
+      (actorRef, info)
+    }
   }
 
   def props(config: WeatherReaderConfig, sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,

@@ -3,6 +3,7 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports._
 import com.github.tototoshi.csv.CSVReader
+import models.DataCollectManager.ReaderInfo
 import models.ForwardManager.{ForwardHourRecord, ForwardMinRecord}
 import models.ImsReader.ImsConfig
 import models.ModelHelper.{getPeriods, waitReadyResult}
@@ -33,7 +34,7 @@ object ImsReader {
             recordOp: RecordDB,
             dataCollectManager: ActorRef,
             dataCollectManagerOp: DataCollectManagerOp,
-            environment: Environment): Option[ActorRef] = {
+            environment: Environment): Option[(ActorRef, ReaderInfo)] = {
 
     rootPath = environment.rootPath.toPath
 
@@ -49,7 +50,10 @@ object ImsReader {
     for (config <- getConfig if config.enable) yield {
       logger.info(config.toString)
       count += 1
-      actorSystem.actorOf(props(config, monitorTypeOp, recordOp, dataCollectManager, dataCollectManagerOp, actorSystem), s"imsReader$count")
+
+      val actorRef = actorSystem.actorOf(props(config, monitorTypeOp, recordOp, dataCollectManager, dataCollectManagerOp, actorSystem), s"imsReader$count")
+      val info = ReaderInfo(name="ImsReader", path=config.path)
+      (actorRef, info)
     }
   }
 

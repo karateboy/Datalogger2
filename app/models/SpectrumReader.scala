@@ -3,6 +3,7 @@ package models
 import akka.actor._
 import com.github.nscala_time.time.Imports.{DateTime, Period}
 import com.github.tototoshi.csv.CSVReader
+import models.DataCollectManager.ReaderInfo
 import models.ModelHelper.{errorHandler, getPeriods}
 import play.api._
 
@@ -20,7 +21,7 @@ object SpectrumReader {
   val logger: Logger = Logger(this.getClass)
   def start(configuration: Configuration, actorSystem: ActorSystem,
             sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp): Option[ActorRef] = {
+            recordOp: RecordDB, dataCollectManagerOp: DataCollectManagerOp): Option[(ActorRef, ReaderInfo)] = {
     def getConfig: Option[SpectrumReaderConfig] = {
       for {config <- configuration.getOptional[Configuration]("spectrumReader")
            enable <- config.getOptional[Boolean]("enable")
@@ -31,8 +32,11 @@ object SpectrumReader {
         SpectrumReaderConfig(enable, dir, postfix)
     }
 
-    for (config <- getConfig if config.enable) yield
-      actorSystem.actorOf(props(config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp), "spectrumReader")
+    for (config <- getConfig if config.enable) yield {
+      val info = ReaderInfo("Spectrum Reader", config.dir, setting = s"postfix=${config.postfix}")
+      val actorRef = actorSystem.actorOf(props(config, sysConfig, monitorTypeOp, recordOp, dataCollectManagerOp), "spectrumReader")
+      (actorRef, info)
+    }
   }
 
   def props(config: SpectrumReaderConfig, sysConfig: SysConfigDB, monitorTypeOp: MonitorTypeDB,

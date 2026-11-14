@@ -2,6 +2,7 @@ package models
 
 import akka.actor._
 import com.github.nscala_time.time.Imports._
+import models.DataCollectManager.ReaderInfo
 import models.ForwardManager.ForwardHourRecord
 import play.api._
 
@@ -20,7 +21,7 @@ object VocReader {
   var count = 0
 
   def start(configuration: Configuration, actorSystem: ActorSystem, monitorOp: MonitorDB, monitorTypeOp: MonitorTypeDB,
-            recordOp: RecordDB, dataCollectManager: ActorRef): Option[ActorRef] = {
+            recordOp: RecordDB, dataCollectManager: ActorRef): Option[(ActorRef, ReaderInfo)] = {
     def getConfig: Option[VocReaderConfig] = {
       def getMonitorConfig(config: Configuration) = {
         val id = config.get[String]("id")
@@ -47,7 +48,9 @@ object VocReader {
         monitorOp.upsertMonitor(m)
       })
       count = count + 1
-      actorSystem.actorOf(props(config, monitorTypeOp, recordOp, dataCollectManager), s"vocReader${count}")
+      val actorRef = actorSystem.actorOf(props(config, monitorTypeOp, recordOp, dataCollectManager), s"vocReader${count}")
+      val info = ReaderInfo(name="VocReader", path=s"${config.monitors.map(_.path).mkString(",")}", setting=s"${config.monitors.mkString(",")}")
+      (actorRef, info)
     }
   }
 

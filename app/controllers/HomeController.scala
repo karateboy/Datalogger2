@@ -3,10 +3,11 @@ package controllers
 import akka.actor.ActorRef
 import buildinfo.BuildInfo
 import com.github.nscala_time.time.Imports._
-import models.DataCollectManager.{RemoveMultiCalibrationTimer, SetupMultiCalibrationTimer, StartMultiCalibration, StopMultiCalibration}
+import models.DataCollectManager._
 import models.ForwardManager.{ForwardHourRecord, ForwardMinRecord}
 import models.ModelHelper.{errorHandler, handleJsonValidateError, handleJsonValidateErrorFuture, waitReadyResult}
 import models._
+import models.sql.SqlServer
 import play.api._
 import play.api.libs.json._
 import play.api.libs.mailer.{Email, MailerClient}
@@ -34,7 +35,8 @@ class HomeController @Inject()(
                                 cc: ControllerComponents,
                                 mailerClient: MailerClient,
                                 every8d: Every8d,
-                                monitorTypeGroupDb: MonitorTypeGroupDb) extends AbstractController(cc) {
+                                monitorTypeGroupDb: MonitorTypeGroupDb,
+                                sqlServer: SqlServer) extends AbstractController(cc) {
 
   val title = "資料擷取器"
 
@@ -192,6 +194,12 @@ class HomeController @Inject()(
   implicit val w1: OWrites[InstrumentStatusType] = Json.writes[InstrumentStatusType]
   implicit val w: OWrites[Instrument] = Json.writes[Instrument]
 
+  def getReaderInfos: Action[AnyContent] = security.Authenticated.async {
+    implicit val write = Json.writes[ReaderInfo]
+    for (ret <- dataCollectManagerOp.getReaderInfoList) yield
+      Ok(Json.toJson(ret))
+  }
+
   def getInstrumentInfoList: Action[AnyContent] = security.Authenticated {
     implicit val write: OWrites[InstrumentInfo] = Json.writes[InstrumentInfo]
     val ret = instrumentOp.getInstrumentList()
@@ -200,8 +208,8 @@ class HomeController @Inject()(
       def getMonitorTypes: List[String] = {
         if (instrumentTypeOp.map.contains(inst.instType)) {
           val instTypeCase = instrumentTypeOp.map(inst.instType)
-          instTypeCase.driver.getMonitorTypes(inst.param).map(mt=>{
-            if(inst.isTestDevice)
+          instTypeCase.driver.getMonitorTypes(inst.param).map(mt => {
+            if (inst.isTestDevice)
               s"${mt}_TEST"
             else
               mt
@@ -507,6 +515,18 @@ class HomeController @Inject()(
     Ok(s"Execute $seq")
   }
 
+  def setVocState(state: String): Action[AnyContent] = security.Authenticated {
+    logger.info(s"Set Voc State = $state")
+    try {
+      sqlServer.executeTrigger(state)
+      Ok(Json.obj("ok" -> true))
+    } catch {
+      case _: Throwable =>
+        Ok(Json.obj("ok" -> false))
+    }
+
+  }
+
   def monitorList: Action[AnyContent] = security.Authenticated {
     implicit request =>
       val userInfo = security.getUserinfo(request).get
@@ -653,7 +673,7 @@ class HomeController @Inject()(
     val start = new DateTime(startNum)
     val end = new DateTime(endNum)
 
-    for(dt<-ModelHelper.getPeriods(start, end, 1.hour)){
+    for (dt <- ModelHelper.getPeriods(start, end, 1.hour)) {
       manager ! Auditor.Audit(dt)
     }
 
@@ -1019,8 +1039,6 @@ class HomeController @Inject()(
         })
   }
 
-  private case class EditData(id: String, value: String)
-
   def splitTable(): Action[JsValue] = security.Authenticated.async(parse.json) {
     implicit request =>
       implicit val reads: Reads[EditData] = Json.reads[EditData]
@@ -1049,14 +1067,16 @@ class HomeController @Inject()(
     Ok(Json.obj("version" -> BuildInfo.version, "scalaVersion" -> BuildInfo.scalaVersion, "sbtVersion" -> BuildInfo.sbtVersion))
   }
 
-  import calibrationConfigDB._
-
   def getCalibrationConfig: Action[AnyContent] = security.Authenticated.async {
     val f = calibrationConfigDB.getListFuture
     f.failed.foreach(errorHandler)
+    implicit val write1: OWrites[PointCalibrationConfig] = Json.writes[PointCalibrationConfig]
+    implicit val write: OWrites[CalibrationConfig] = Json.writes[CalibrationConfig]
     for (ret <- f) yield
       Ok(Json.toJson(ret))
   }
+
+  import calibrationConfigDB._
 
   def upsertCalibrationConfig: Action[JsValue] = security.Authenticated.async(parse.json) {
     implicit request =>
@@ -1101,14 +1121,7 @@ class HomeController @Inject()(
     }
   }
 
-  private case class MonitorStatusInfo(_id: String,
-                                       name: String,
-                                       priority: Int,
-                                       classStr: Seq[String],
-                                       explain: String)
-
   def monitorStatusList: Action[AnyContent] = security.Authenticated {
-    import MonitorStatus._
     val monitorStatusList = monitorStatusDB.msList.sortBy(_.priority)
     val monitorStatusListInfo = monitorStatusList.map(ms =>
       MonitorStatusInfo(ms._id, ms.name, ms.priority, MonitorStatus.getCssClassStr(ms._id), ms.explain)
@@ -1157,4 +1170,12 @@ class HomeController @Inject()(
           Ok(Json.obj("ok" -> true))
         })
   }
+
+  private case class EditData(id: String, value: String)
+
+  private case class MonitorStatusInfo(_id: String,
+                                       name: String,
+                                       priority: Int,
+                                       classStr: Seq[String],
+                                       explain: String)
 }

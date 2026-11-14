@@ -55,7 +55,7 @@ GET           /Instruments                                                      
 GET           /Instruments/DO                                                                      controllers.HomeController.getDoInstrumentList
 GET           /Instrument/:id                                                                      controllers.HomeController.getInstrument(id)
 DELETE        /Instrument/:ids                                                                     controllers.HomeController.removeInstrument(ids)
-
+GET           /ReaderInfos                                                                         controllers.HomeController.getReaderInfos()
 
 
 PUT           /DeactivateInstrument/:ids                                                           controllers.HomeController.deactivateInstrument(ids)
@@ -69,6 +69,7 @@ PUT           /CalibrateInstrument/:ids                                         
 PUT           /ResetInstrument/:ids                                                                controllers.HomeController.resetInstrument(ids)
 PUT           /WriteDO/:ids                                                                        controllers.HomeController.writeDO(ids)
 GET           /ExecuteSeq/:seq/:on                                                                 controllers.HomeController.getExecuteSeq(seq:String, on:Boolean)
+PUT           /VocState/:state                                                                     controllers.HomeController.setVocState(state)
 
 
 GET           /InstrumentStatusReport/:id/:start/:end                                              controllers.Query.instrumentStatusReport(id, start:Long, end:Long)

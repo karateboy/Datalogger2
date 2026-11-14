@@ -19,7 +19,7 @@ export default Vue.extend({
   components: {
     DataUpload,
     DataUpsert,
-    QaUpload
+    QaUpload,
   },
 })
 </script>

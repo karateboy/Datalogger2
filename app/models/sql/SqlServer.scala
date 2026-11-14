@@ -32,4 +32,10 @@ class SqlServer @Inject()(lifecycle: ApplicationLifecycle) {
           WHERE TABLE_NAME = $tabName
          """.map(rs => rs.string(1)).list().apply()
   }
+
+  def executeTrigger(state: String)(implicit session: DBSession = AutoSession): Boolean = {
+    sql"""
+          Exec dbo.SwitchVocTrigger $state
+         """.execute().apply()
+  }
 }

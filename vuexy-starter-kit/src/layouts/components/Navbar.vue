@@ -52,7 +52,7 @@
 <script>
 import DarkToggler from '@core/layouts/components/app-navbar/components/DarkToggler.vue'
 import axios from 'axios'
-import { mapState } from 'vuex'
+import { mapState, mapGetters, mapActions } from 'vuex'
 import jscookie from 'js-cookie'
 
 export default {
@@ -73,6 +73,8 @@ export default {
   },
   computed: {
     ...mapState('user', ['userInfo']),
+    ...mapState('monitors', ['activeID']),
+    ...mapGetters('monitors', ['mMap']),
     role() {
       if (this.userInfo.isAdmin) return '系統管理員'
 
@@ -81,8 +83,17 @@ export default {
   },
   async mounted() {
     await this.getVersion()
+    await this.fetchMonitors()
+    await this.getActiveID()
+    document.title = `${this.mMap.get(this.activeID).desc}`
+  },
+  watch: {
+    activeID() {
+      document.title = `${this.mMap.get(this.activeID).desc}`
+    },
   },
   methods: {
+    ...mapActions('monitors', ['fetchMonitors', 'getActiveID']),
     async getVersion() {
       let res = await axios.get('/version')
       if (res.status === 200) this.version = res.data.version

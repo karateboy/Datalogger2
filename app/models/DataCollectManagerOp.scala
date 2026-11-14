@@ -90,6 +90,17 @@ class DataCollectManagerOp @Inject()(@Named("dataCollectManager") manager: Actor
     f.mapTo[Map[String, Boolean]]
   }
 
+  def getReaderInfoList: Future[Seq[ReaderInfo]] = {
+    import akka.pattern.ask
+    import akka.util.Timeout
+
+    import scala.concurrent.duration._
+    implicit val timeout: Timeout = Timeout(Duration(3, SECONDS))
+
+    val f = manager ? GetReaderInfoList
+    f.mapTo[Seq[ReaderInfo]]
+  }
+
   def writeSignal(mtId: String, bit: Boolean): Unit = {
     manager ! WriteSignal(mtId, bit)
   }
