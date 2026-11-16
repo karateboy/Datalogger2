@@ -317,7 +317,11 @@ export default Vue.extend({
         throw new Error('failed to get variation rules')
       }
     },
-    async saveRules(url: string, rules: Array<any>) {
+    async saveRules(
+      url: string,
+      rules: Array<any>,
+      showPrompt: boolean = true,
+    ) {
       let promiseList = Array<Promise<any>>()
       for (let rule of rules) {
         let p = axios.post(`${url}`, rule)
@@ -326,11 +330,13 @@ export default Vue.extend({
       let all = Promise.all(promiseList)
       try {
         await all
-        this.$bvModal.msgBoxOk('成功', { headerBgVariant: 'info' })
+        if (showPrompt)
+          this.$bvModal.msgBoxOk('成功', { headerBgVariant: 'info' })
       } catch (err) {
-        this.$bvModal.msgBoxOk(`失敗 ${err}`, {
-          headerBgVariant: 'danger',
-        })
+        if (showPrompt)
+          this.$bvModal.msgBoxOk(`失敗 ${err}`, {
+            headerBgVariant: 'danger',
+          })
         throw new Error('failed to save all rules')
       }
     },
@@ -349,6 +355,11 @@ export default Vue.extend({
         throw new Error('failed to delete spike rule')
       }
     },
+  },
+  async beforeDestroy() {
+    await this.saveRules('/VariationRule', this.variationRules, false)
+    await this.saveRules('/ConstantRule', this.constantRules, false)
+    await this.saveRules('/SpikeRule', this.spikeRules, false)
   },
 })
 </script>

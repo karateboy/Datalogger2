@@ -38,7 +38,7 @@ object MetOne1020 extends AbstractDrv(_id = "MetOne1020", name = "MetOne（BAM-1
 
     instrumentStatusKeyList(mt).filter(p => dataAddress.contains(p.addr)).map {
       ist =>
-        DataReg(monitorType = ist.key, ist.addr, multiplier = 1000)
+        DataReg(monitorType = ist.key, ist.addr)
     }
   }
 
