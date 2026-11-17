@@ -122,7 +122,7 @@ class MetOne1020Collector @Inject()(instrumentOp: InstrumentDB, monitorStatusOp:
         try{
           val dataLine = replies.last
           val dataPart = dataLine.split(",")
-          val value = dataPart(1).trim.toDouble/1000
+          val value = dataPart(1).trim.toDouble
           Some(ModelRegValue2(inputRegs = List((instrumentStatusKeyListOld(monitorType).head, value)),
             modeRegs = List.empty[(InstrumentStatusType, Boolean)],
             warnRegs = List.empty[(InstrumentStatusType, Boolean)]))
