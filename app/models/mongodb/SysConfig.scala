@@ -38,7 +38,8 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
     SMS_PHONES -> Document(valueKey -> ""),
     LINE_CHANNEL_TOKEN -> Document(valueKey -> ""),
     LINE_CHANNEL_GROUP_ID -> Document(valueKey -> ""),
-    HOUR_CALCULATION_RULES -> Document(valueKey -> Json.toJson(HourCalculationRule.defaultRules).toString())
+    HOUR_CALCULATION_RULES -> Document(valueKey -> Json.toJson(HourCalculationRule.defaultRules).toString()),
+    LINE_CHANNEL_TOKEN -> Document(valueKey -> MonitorStatus.NormalStat),
   )
 
   override def getSpectrumLastParseTime: Future[Instant] = getInstant(SpectrumLastParseTime)()
@@ -183,4 +184,10 @@ class SysConfig @Inject()(mongodb: MongoDB) extends SysConfigDB {
 
   override def setHourCalculationRules(rules: Seq[HourCalculationRule]): Future[UpdateResult] =
     set(HOUR_CALCULATION_RULES, BsonString(Json.toJson(rules).toString()))
+
+  override def getVocState: Future[String] =
+    get(VOC_STATE).map(_.asString().getValue)
+
+  override def setVocState(state: String): Future[UpdateResult] =
+  set(VOC_STATE, BsonString(state))
 }

@@ -276,4 +276,17 @@ class SysConfig @Inject()(sqlServer: SqlServer) extends SysConfigDB {
     val ret = set(HOUR_CALCULATION_RULES, Json.toJson(rules).toString())
     UpdateResult.acknowledged(ret, ret, null)
   }
+
+  override def getVocState: Future[String] = Future {
+    val valueOpt = get(VOC_STATE)
+    val ret =
+      for (value <- valueOpt) yield
+        value.v
+    ret.getOrElse(MonitorStatus.NormalStat)
+  }
+
+  override def setVocState(state: String): Future[UpdateResult] = Future {
+    val ret = set(VOC_STATE, state)
+    UpdateResult.acknowledged(ret, ret, null)
+  }
 }

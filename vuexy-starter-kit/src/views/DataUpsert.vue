@@ -20,13 +20,14 @@
           <b-form-file
             v-model="form.uploadFile"
             v-b-tooltip
-            :state="Boolean(form.uploadFile)"
+            :state="Boolean(checkFileName)"
             accept=".xlsx"
             browse-text="..."
             placeholder="選擇上傳檔案..."
             drop-placeholder="拖曳檔案至此..."
-            title="分鐘資料Excel表格"
+            :title="`${form.dataType === 'min' ? '分鐘' : '小時'}資料Excel表格`"
           ></b-form-file>
+          <span v-if="!checkFileName" class="text-danger">檔名不符合所選資料種類</span>
         </b-col>
       </b-row>
       <b-row>
@@ -36,7 +37,7 @@
             v-ripple.400="'rgba(255, 255, 255, 0.15)'"
             variant="primary"
             class="mr-1"
-            :disabled="!Boolean(form.uploadFile)"
+            :disabled="!checkFileName"
             @click="upload"
           >
             回補資料
@@ -69,12 +70,27 @@ export default Vue.extend({
       { id: 'min', txt: '分鐘資料' },
       { id: 'hour', txt: '小時資料' },
     ]
+    const errorMessage = ''
     return {
       dataTypes,
       form,
+      errorMessage,
     }
   },
-  computed: {},
+  computed: {
+    checkFileName() {
+      if (!this.form.uploadFile) return false
+
+      let file = this.form.uploadFile as any
+      let filename = file.name as string
+      if (this.form.dataType === 'min' && filename.indexOf('min') !== -1)
+        return true
+      else if (this.form.dataType === 'hour' && filename.indexOf('hour') !== -1)
+        return true
+
+      return false
+    },
+  },
   methods: {
     ...mapMutations(['setLoading']),
     async upload() {

@@ -70,6 +70,7 @@ PUT           /ResetInstrument/:ids                                             
 PUT           /WriteDO/:ids                                                                        controllers.HomeController.writeDO(ids)
 GET           /ExecuteSeq/:seq/:on                                                                 controllers.HomeController.getExecuteSeq(seq:String, on:Boolean)
 PUT           /VocState/:state                                                                     controllers.HomeController.setVocState(state)
+GET           /VocState                                                                            controllers.HomeController.getVocState()
 
 
 GET           /InstrumentStatusReport/:id/:start/:end                                              controllers.Query.instrumentStatusReport(id, start:Long, end:Long)

@@ -330,7 +330,8 @@ export default Vue.extend({
       const url = window.URL.createObjectURL(new Blob([res.data]))
       const link = document.createElement('a')
       link.href = url
-      const fileName = 'data.xlsx'
+      const fileName = reportUnit === 'Min' ? 'data_min.xlsx' : 'data_hour.xlsx'
+
       link.setAttribute('download', fileName)
       document.body.appendChild(link)
       link.click()

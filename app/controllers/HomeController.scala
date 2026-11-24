@@ -518,13 +518,21 @@ class HomeController @Inject()(
   def setVocState(state: String): Action[AnyContent] = security.Authenticated {
     logger.info(s"Set Voc State = $state")
     try {
+      sysConfig.setVocState(state)
       sqlServer.executeTrigger(state)
       Ok(Json.obj("ok" -> true))
     } catch {
       case _: Throwable =>
         Ok(Json.obj("ok" -> false))
     }
+  }
 
+  private case class VocStateInfo(state:String, cssStr:Seq[String])
+  def getVocState: Action[AnyContent] = security.Authenticated.async {
+    for(state<-sysConfig.getVocState) yield {
+      implicit val writes: OWrites[VocStateInfo] = Json.writes[VocStateInfo]
+      Ok(Json.toJson(VocStateInfo(state, MonitorStatus.getCssClassStr(state))))
+    }
   }
 
   def monitorList: Action[AnyContent] = security.Authenticated {
@@ -539,7 +547,7 @@ class HomeController @Inject()(
           monitorOp.mvList map { m => monitorOp.map(m) }
         else
           for (m <- monitorOp.mvList
-               if group.monitors.contains(m) || m == Monitor.activeId) yield
+               if group.monitors.contains(m)) yield
             monitorOp.map(m)
 
       // Make active monitor first

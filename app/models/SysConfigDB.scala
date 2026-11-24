@@ -25,6 +25,7 @@ trait SysConfigDB {
   val LINE_CHANNEL_TOKEN = "LineChannelToken"
   val LINE_CHANNEL_GROUP_ID = "LineChannelGroupId"
   val HOUR_CALCULATION_RULES = "HourCalculationRules"
+  val VOC_STATE = "VocState"
 
   def getSpectrumLastParseTime: Future[Instant]
 
@@ -48,15 +49,15 @@ trait SysConfigDB {
 
   def getCdxConfig: Future[CdxConfig]
 
-  def setCdxConfig(config:CdxConfig): Future[UpdateResult]
+  def setCdxConfig(config: CdxConfig): Future[UpdateResult]
 
   def getCdxMonitorTypes: Future[Seq[CdxMonitorType]]
 
-  def setCdxMonitorTypes(monitorTypes: Seq[CdxMonitorType]) : Future[UpdateResult]
+  def setCdxMonitorTypes(monitorTypes: Seq[CdxMonitorType]): Future[UpdateResult]
 
   def getActiveMonitorId: Future[String]
 
-  def setActiveMonitorId(id:String) : Future[UpdateResult]
+  def setActiveMonitorId(id: String): Future[UpdateResult]
 
   def getAqiMonitorTypes: Future[Seq[String]]
 
@@ -84,5 +85,9 @@ trait SysConfigDB {
 
   def getHourCalculationRules: Future[Seq[HourCalculationRule]]
 
-  def setHourCalculationRules(rules:Seq[HourCalculationRule]): Future[UpdateResult]
+  def setHourCalculationRules(rules: Seq[HourCalculationRule]): Future[UpdateResult]
+
+  def getVocState: Future[String]
+
+  def setVocState(state: String): Future[UpdateResult]
 }
