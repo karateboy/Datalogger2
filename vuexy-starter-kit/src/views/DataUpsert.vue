@@ -27,7 +27,9 @@
             drop-placeholder="拖曳檔案至此..."
             :title="`${form.dataType === 'min' ? '分鐘' : '小時'}資料Excel表格`"
           ></b-form-file>
-          <span v-if="!checkFileName" class="text-danger">檔名不符合所選資料種類</span>
+          <span v-if="!checkFileName" class="text-danger"
+            >檔名不符合所選資料種類</span
+          >
         </b-col>
       </b-row>
       <b-row>

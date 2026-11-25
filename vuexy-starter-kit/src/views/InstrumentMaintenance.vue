@@ -98,6 +98,47 @@
         </b-tr>
       </template>
     </b-table>
+    <b-table :items="readers" :fields="reader_fields">
+      <template #thead-top>
+        <tr>
+          <td colspan="3"><h3>檔案資料讀取</h3></td>
+        </tr>
+        <tr>
+          <td></td>
+          <td colspan="2">
+            <b-row>
+              <b-col cols="9">
+                <b-form-group
+                  label="VOC狀態"
+                  label-for="monitor"
+                  label-cols-md="3"
+                >
+                  <v-select
+                    id="VOC-state"
+                    v-model="form.vocState"
+                    label="name"
+                    :reduce="state => state.code"
+                    :options="vocStates"
+                    :close-on-select="false"
+                  />
+                </b-form-group>
+              </b-col>
+              <b-col cols="3">
+                <b-button
+                  v-ripple.400="'rgba(255, 255, 255, 0.15)'"
+                  type="submit"
+                  variant="primary"
+                  class="mr-1"
+                  @click="setVocState"
+                >
+                  設定
+                </b-button>
+              </b-col>
+            </b-row>
+          </td>
+        </tr>
+      </template>
+    </b-table>
   </b-card>
 </template>
 <script>
@@ -175,6 +216,56 @@ export default Vue.extend({
       },
     ]
 
+    const reader_fields = [
+      {
+        key: 'name',
+        label: '功能模組',
+        tdClass: (value, key, item) => {
+          return form.vocCss
+        },
+      },
+      {
+        key: 'path',
+        label: '路徑',
+        tdClass: (value, key, item) => {
+          return form.vocCss
+        },
+      },
+      {
+        key: 'setting',
+        label: '設定',
+        tdClass: (value, key, item) => {
+          return form.vocCss
+        },
+      },
+    ]
+    const form = {
+      vocState: '010',
+      vocCss: [],
+    }
+    let readers = []
+    let vocStates = [
+      {
+        name: '正常',
+        code: '010',
+      },
+      {
+        name: '儀器未啟用',
+        code: '000',
+      },
+      {
+        name: '查核',
+        code: '023',
+      },
+      {
+        name: '維修',
+        code: '031',
+      },
+      {
+        name: '保養',
+        code: '033',
+      },
+    ]
     return {
       fields,
       instList,
@@ -182,6 +273,10 @@ export default Vue.extend({
       selected: [],
       bit: 17,
       on: true,
+      reader_fields,
+      readers,
+      form,
+      vocStates,
     }
   },
   computed: {
@@ -208,8 +303,10 @@ export default Vue.extend({
       return '停用/啟用'
     },
   },
-  mounted() {
+  async mounted() {
     this.getInstList()
+    await this.getReaderInfos()
+    await this.getVocState()
   },
 
   methods: {
@@ -368,6 +465,38 @@ export default Vue.extend({
     },
     onDeleted() {
       this.getInstList()
+    },
+    async getReaderInfos() {
+      try {
+        let res = await axios.get('/ReaderInfos ')
+        if (res.status === 200) {
+          console.info('readerInfos', res.data)
+          this.readers = res.data
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    },
+    async getVocState() {
+      try {
+        let res = await axios.get('/VocState')
+        if (res.status === 200) {
+          console.info('vocState', res.data)
+          this.form.vocState = res.data.state
+          this.form.vocCss = res.data.cssStr
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    },
+    async setVocState() {
+      try {
+        const res = await axios.put(`/VocState/${this.form.vocState}`, {})
+        this.showResult(res.data.ok)
+        await this.getVocState()
+      } catch (err) {
+        console.error(err)
+      }
     },
   },
 })
